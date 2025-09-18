@@ -1157,9 +1157,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Create New Group</DialogTitle>
-                            </DialogHeader>
+                            <div className="flex items-center mb-2 relative">
+                              <DialogPrimitive.Close asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
+                                >
+                                  <span className="sr-only">Close</span>
+                                  <span className="text-lg font-semibold">×</span>
+                                </Button>
+                              </DialogPrimitive.Close>
+                              <DialogTitle className="w-full text-center">Create New Group</DialogTitle>
+                            </div>
                             <Form {...groupForm}>
                               <form onSubmit={groupForm.handleSubmit((data) => createGroupMutation.mutate(data))} className="space-y-4">
                                 <FormField
