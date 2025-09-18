@@ -685,6 +685,46 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       })()
     : sortedGroups;
 
+  // Filter variables for the search/filter dropdowns
+  const filteredGroupsForFilter = selectedOrgFilter === "all" 
+    ? filteredGroups
+    : filteredGroups.filter(group => group.organizationId.toString() === selectedOrgFilter);
+
+  const filteredTeamsForFilter = selectedGroupFilter === "all"
+    ? sortedTeams
+    : sortedTeams.filter(team => team.groupId.toString() === selectedGroupFilter);
+
+  // Apply filters to users for display
+  const filteredUsersForDisplay = sortedUsers.filter(user => {
+    // Organization filter
+    if (selectedOrgFilter !== "all") {
+      const userTeam = sortedTeams.find(t => t.id === user.teamId);
+      const userGroup = userTeam ? sortedGroups.find(g => g.id === userTeam.groupId) : null;
+      if (!userGroup || userGroup.organizationId.toString() !== selectedOrgFilter) {
+        return false;
+      }
+    }
+
+    // Group filter
+    if (selectedGroupFilter !== "all") {
+      const userTeam = sortedTeams.find(t => t.id === user.teamId);
+      if (!userTeam || userTeam.groupId.toString() !== selectedGroupFilter) {
+        return false;
+      }
+    }
+
+    // Team filter
+    if (selectedTeamFilter !== "all") {
+      if (selectedTeamFilter === "none") {
+        return !user.teamId;
+      } else {
+        return user.teamId?.toString() === selectedTeamFilter;
+      }
+    }
+
+    return true;
+  });
+
 
   return (
     <AppLayout sidebarWidth="80">
