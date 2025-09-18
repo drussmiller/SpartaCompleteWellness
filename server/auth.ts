@@ -6,8 +6,10 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import { db, users, logger } from "./db"; // Assuming db, users, and logger are imported from './db'
-import { eq } from "drizzle-orm"; // Assuming eq is imported from drizzle-orm
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { logger } from "./logger";
+import { eq } from "drizzle-orm";
 
 declare global {
   namespace Express {
