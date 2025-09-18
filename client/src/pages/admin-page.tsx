@@ -38,6 +38,7 @@ import {
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
@@ -64,6 +65,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>("all");
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>("all");
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
+  const [showInactiveOrgs, setShowInactiveOrgs] = useState(false);
+  const [showInactiveGroups, setShowInactiveGroups] = useState(false);
+  const [showInactiveTeams, setShowInactiveTeams] = useState(false);
+  const [showInactiveUsers, setShowInactiveUsers] = useState(false);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
@@ -686,7 +691,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     : sortedGroups;
 
   // Filter variables for the search/filter dropdowns
-  const filteredGroupsForFilter = selectedOrgFilter === "all" 
+  const filteredGroupsForFilter = selectedOrgFilter === "all"
     ? filteredGroups
     : filteredGroups.filter(group => group.organizationId.toString() === selectedOrgFilter);
 
@@ -724,6 +729,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
     return true;
   });
+
+  // Filtered lists for display based on showInactive state
+  const visibleOrganizations = showInactiveOrgs ? sortedOrganizations : sortedOrganizations.filter(org => org.status === 1);
+  const visibleGroups = showInactiveGroups ? sortedGroups : sortedGroups.filter(group => group.status === 1);
+  const visibleTeams = showInactiveTeams ? sortedTeams : sortedTeams.filter(team => team.status === 1);
+  const visibleUsers = showInactiveUsers ? sortedUsers : sortedUsers.filter(user => user.status === 1);
 
 
   return (
@@ -781,6 +792,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
+                        <div className="flex items-center space-x-2 mb-4">
+                          <Checkbox
+                            id="show-inactive-orgs"
+                            checked={showInactiveOrgs}
+                            onCheckedChange={setShowInactiveOrgs}
+                          />
+                          <label
+                            htmlFor="show-inactive-orgs"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Show inactive organizations
+                          </label>
+                        </div>
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button size="sm" className="mb-4 mt-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
@@ -838,7 +862,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Dialog>
                       </div>
                       <div className="space-y-4">
-                        {sortedOrganizations?.map((organization) => (
+                        {visibleOrganizations?.map((organization) => (
                           <Card key={organization.id}>
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
@@ -969,6 +993,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
+                        <div className="flex items-center space-x-2 mb-4">
+                          <Checkbox
+                            id="show-inactive-groups"
+                            checked={showInactiveGroups}
+                            onCheckedChange={setShowInactiveGroups}
+                          />
+                          <label
+                            htmlFor="show-inactive-groups"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Show inactive groups
+                          </label>
+                        </div>
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button size="sm" className="mb-4 mt-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
@@ -1070,7 +1107,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Dialog>
                       </div>
                       <div className="space-y-4">
-                        {filteredGroups?.map((group) => (
+                        {visibleGroups?.map((group) => (
                           <Card key={group.id}>
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
@@ -1230,6 +1267,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </div>
                 <CollapsibleContent>
                   <div className="space-y-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Checkbox
+                        id="show-inactive-teams"
+                        checked={showInactiveTeams}
+                        onCheckedChange={setShowInactiveTeams}
+                      />
+                      <label
+                        htmlFor="show-inactive-teams"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Show inactive teams
+                      </label>
+                    </div>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button size="sm" className="mb-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
@@ -1327,7 +1377,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Form>
                       </DialogContent>
                     </Dialog>
-                    {sortedTeams?.map((team) => (
+                    {visibleTeams?.map((team) => (
                       <Card key={team.id}>
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
@@ -1583,25 +1633,40 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-600">
-                          Showing {filteredUsersForDisplay?.length || 0} of {sortedUsers?.length || 0} users
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="show-inactive-users"
+                            checked={showInactiveUsers}
+                            onCheckedChange={setShowInactiveUsers}
+                          />
+                          <label
+                            htmlFor="show-inactive-users"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Show inactive users
+                          </label>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedOrgFilter("all");
-                            setSelectedGroupFilter("all");
-                            setSelectedTeamFilter("all");
-                          }}
-                        >
-                          Clear Filters
-                        </Button>
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm text-gray-600">
+                            Showing {filteredUsersForDisplay?.length || 0} of {sortedUsers?.length || 0} users
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedOrgFilter("all");
+                              setSelectedGroupFilter("all");
+                              setSelectedTeamFilter("all");
+                            }}
+                          >
+                            Clear Filters
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      {filteredUsersForDisplay?.map((user) => (
+                      {visibleUsers.map((user) => (
                         <Card key={user.id}>
                           <CardHeader className="pb-2">
                             <div className="flex justify-between items-start">
@@ -1734,7 +1799,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">No Team</SelectItem>
-                                  {sortedTeams?.map((team) => (
+                                  {visibleTeams?.map((team) => (
                                     <SelectItem key={team.id} value={team.id.toString()}>
                                       {team.name}
                                     </SelectItem>
