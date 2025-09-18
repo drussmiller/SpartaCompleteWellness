@@ -604,7 +604,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
-  
+
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || []  // Full admins see all teams
@@ -1026,7 +1026,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Dialog>
                       </div>
                       <div className="space-y-4">
-                        {sortedGroups?.map((group) => (
+                        {filteredGroups?.map((group) => (
                           <Card key={group.id}>
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
@@ -1072,18 +1072,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         defaultValue={group.description || ''}
                                         placeholder="Description"
                                       />
-                                      <Select name="organizationId" defaultValue={group.organizationId.toString()}>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select organization" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {sortedOrganizations?.map((org) => (
-                                            <SelectItem key={org.id} value={org.id.toString()}>
-                                              {org.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      {/* Only show organization selector for Full Admins */}
+                                      {currentUser?.isAdmin ? (
+                                        <Select name="organizationId" defaultValue={group.organizationId.toString()}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select organization" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {sortedOrganizations?.map((org) => (
+                                              <SelectItem key={org.id} value={org.id.toString()}>
+                                                {org.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      ) : (
+                                        <input type="hidden" name="organizationId" value={group.organizationId.toString()} />
+                                      )}
                                       <Select name="status" defaultValue={group.status?.toString() || "1"}>
                                         <SelectTrigger>
                                           <SelectValue placeholder="Select status" />
