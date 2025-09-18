@@ -624,7 +624,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const sortedTeams = [...filteredTeams].sort((a, b) => a.name.localeCompare(b.name));
   // Filter users based on user role - Group admins see users in their organization's teams
-  const teamIds = filteredTeams.map(team => team.id);  // Get IDs of teams the current user can see
   const filteredUsers = currentUser?.isAdmin
     ? users || []  // Full admins see all users
     : currentUser?.isGroupAdmin
@@ -636,22 +635,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         
         if (!userOrgId) return [];
         
-        // Get ALL groups in the same organization
-        const orgGroups = sortedGroups.filter(group => group.organizationId === userOrgId);
-        const orgGroupIds = orgGroups.map(group => group.id);
-        
-        // Get ALL teams in all groups within the organization
+        // Get ALL teams that belong to groups in the same organization
         const orgTeams = (teams || []).filter(team => {
-          return team.groupId && orgGroupIds.includes(team.groupId);
+          const teamGroup = sortedGroups.find(g => g.id === team.groupId);
+          return teamGroup && teamGroup.organizationId === userOrgId;
         });
         const orgTeamIds = orgTeams.map(team => team.id);
         
         // Return users who are in any team in the organization
         return (users || []).filter(u => {
-          if (u.teamId && orgTeamIds.includes(u.teamId)) {
-            return true;
-          }
-          return false;
+          return u.teamId && orgTeamIds.includes(u.teamId);
         });
       })()
     : [];  // Non-admins see no users
