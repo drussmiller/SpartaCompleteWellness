@@ -807,7 +807,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </div>
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button size="sm" className="mb-4 mt-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
+                            <Button size="sm" className="mb-6 mt-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
                               <Plus className="h-4 w-4 mr-2" />
                               New Organization
                             </Button>
@@ -1008,7 +1008,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </div>
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button size="sm" className="mb-4 mt-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
+                            <Button size="sm" className="mb-6 mt-4 px-3 bg-violet-700 text-white hover:bg-violet-800">
                               <Plus className="h-4 w-4 mr-2" />
                               New Group
                             </Button>
