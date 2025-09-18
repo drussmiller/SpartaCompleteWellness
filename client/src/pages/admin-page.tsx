@@ -1457,7 +1457,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Button
                               variant={user.isAdmin ? "default" : "outline"}
                               size="sm"
-                              className={user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}
+                              className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
                               onClick={() => {
                                 // Prevent removing admin from the admin user with username "admin"
                                 if (user.username === "admin" && user.isAdmin) {
@@ -1480,7 +1480,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Button
                               variant={user.isGroupAdmin ? "default" : "outline"}
                               size="sm"
-                              className={user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}
+                              className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
                               disabled={!user.teamId}
                               onClick={() => {
                                 if (!user.teamId) {
@@ -1503,7 +1503,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Button
                               variant={user.isTeamLead ? "default" : "outline"}
                               size="sm"
-                              className={user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}
+                              className={`text-xs ${user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
                               onClick={() => {
                                 updateUserRoleMutation.mutate({
                                   userId: user.id,
