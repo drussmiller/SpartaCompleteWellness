@@ -1709,7 +1709,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     variant={user.isTeamLead ? "default" : "outline"}
                                     size="sm"
                                     className={`text-xs ${user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    disabled={!user.teamId}
                                     onClick={() => {
+                                      if (!user.teamId) {
+                                        toast({
+                                          title: "Team Required",
+                                          description: "User must be assigned to a team before becoming a Team Lead.",
+                                          variant: "destructive"
+                                        });
+                                        return;
+                                      }
                                       updateUserRoleMutation.mutate({
                                         userId: user.id,
                                         role: 'isTeamLead',
