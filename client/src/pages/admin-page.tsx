@@ -1651,7 +1651,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Roles</p>
                           <div className="flex gap-2 mr-24">
-                            {/* Only show Admin button if current user is a full admin */}
+                            {/* Admin button - only show if current user is Admin */}
                             {user?.isAdmin && (
                               <Button
                                 variant={user.isAdmin ? "default" : "outline"}
@@ -1677,8 +1677,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 Admin
                               </Button>
                             )}
-                            {/* Only show Group Admin button if current user is a full admin */}
-                            {user?.isAdmin && (
+                            {/* Group Admin button - show if current user is Admin or Group Admin */}
+                            {(user?.isAdmin || user?.isGroupAdmin) && (
                               <Button
                                 variant={user.isGroupAdmin ? "default" : "outline"}
                                 size="sm"
@@ -1703,6 +1703,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 Group Admin
                               </Button>
                             )}
+                            {/* Team Lead button - show for Admin, Group Admin, or Team Lead */}
                             <Button
                               variant={user.isTeamLead ? "default" : "outline"}
                               size="sm"
