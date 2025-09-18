@@ -784,7 +784,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <Collapsible className="w-full border rounded-lg p-4">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
+                      <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4">
                         Organizations
                         <ChevronDown className="h-5 w-5 ml-2" />
                       </Button>
@@ -985,7 +985,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <Collapsible className="w-full border rounded-lg p-4">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
+                      <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4">
                         Groups
                         <ChevronDown className="h-5 w-5 ml-2" />
                       </Button>
@@ -1259,7 +1259,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <Collapsible className="w-full border rounded-lg p-4">
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
+                    <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4">
                       Teams
                       <ChevronDown className="h-5 w-5 ml-2" />
                     </Button>
@@ -1562,7 +1562,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <Collapsible className="w-full">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary">
+                      <Button variant="ghost" className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4">
                         Users
                         <ChevronDown className="h-5 w-5 ml-2" />
                       </Button>
