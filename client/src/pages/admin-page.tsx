@@ -924,58 +924,80 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <DialogTitle className="w-full text-center">Create New Group</DialogTitle>
                             </div>
                             <Form {...groupForm}>
-                              <form onSubmit={groupForm.handleSubmit((data) => createGroupMutation.mutate(data))} className="space-y-4">
-                                <FormField
-                                  control={groupForm.control}
-                                  name="name"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Group Name</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} />
-                                      </FormControl>
-                                    </FormItem>
+                                <form onSubmit={groupForm.handleSubmit((data) => {
+                                  // If Group Admin, auto-set their organization
+                                  if (currentUser?.isGroupAdmin && currentUser?.adminGroupId) {
+                                    const adminGroup = groups?.find(g => g.id === currentUser.adminGroupId);
+                                    if (adminGroup) {
+                                      data.organizationId = adminGroup.organizationId;
+                                    }
+                                  }
+                                  createGroupMutation.mutate(data);
+                                })} className="space-y-4">
+                                  <FormField
+                                    control={groupForm.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Group Name</FormLabel>
+                                        <FormControl>
+                                          <Input {...field} />
+                                        </FormControl>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={groupForm.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Description</FormLabel>
+                                        <FormControl>
+                                          <Input {...field} />
+                                        </FormControl>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  {currentUser?.isAdmin && (
+                                    <FormField
+                                      control={groupForm.control}
+                                      name="organizationId"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Organization</FormLabel>
+                                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select organization" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {sortedOrganizations?.map((org) => (
+                                                <SelectItem key={org.id} value={org.id.toString()}>
+                                                  {org.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
                                   )}
-                                />
-                                <FormField
-                                  control={groupForm.control}
-                                  name="description"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Description</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} />
-                                      </FormControl>
-                                    </FormItem>
+                                  {currentUser?.isGroupAdmin && (
+                                    <div className="text-sm text-muted-foreground">
+                                      Groups will be created in your organization: {
+                                        (() => {
+                                          const adminGroup = groups?.find(g => g.id === currentUser.adminGroupId);
+                                          const org = sortedOrganizations?.find(o => o.id === adminGroup?.organizationId);
+                                          return org?.name || "Unknown";
+                                        })()
+                                      }
+                                    </div>
                                   )}
-                                />
-                                <FormField
-                                  control={groupForm.control}
-                                  name="organizationId"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Organization</FormLabel>
-                                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select organization" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {sortedOrganizations?.map((org) => (
-                                            <SelectItem key={org.id} value={org.id.toString()}>
-                                              {org.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <Button type="submit" disabled={createGroupMutation.isPending}>
-                                  {createGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                  Create Group
-                                </Button>
-                              </form>
+                                  <Button type="submit" disabled={createGroupMutation.isPending}>
+                                    {createGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Create Group
+                                  </Button>
+                                </form>
                             </Form>
                           </DialogContent>
                         </Dialog>
