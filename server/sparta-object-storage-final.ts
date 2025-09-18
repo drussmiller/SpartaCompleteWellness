@@ -44,7 +44,20 @@ export class SpartaObjectStorageFinal {
         if (result && typeof result === 'object' && 'ok' in result) {
           const typedResult = result as { ok: boolean; error?: any; errorExtras?: any };
           if (typedResult.ok === false) {
-            throw new Error(`Object Storage operation failed: ${typedResult.error?.message || 'Unknown error'}`);
+            // Better error message handling for different error formats
+            let errorMessage = 'Unknown error';
+            if (typedResult.error) {
+              if (typeof typedResult.error === 'string') {
+                errorMessage = typedResult.error;
+              } else if (typedResult.error.message) {
+                errorMessage = typedResult.error.message;
+              } else if (typedResult.error.code) {
+                errorMessage = `Error code: ${typedResult.error.code}`;
+              } else {
+                errorMessage = JSON.stringify(typedResult.error);
+              }
+            }
+            throw new Error(`Object Storage operation failed: ${errorMessage}`);
           }
           // If ok is true or undefined, assume success and return the result
           return result;
@@ -189,22 +202,53 @@ export class SpartaObjectStorageFinal {
    * Download file from Object Storage
    */
   async downloadFile(storageKey: string): Promise<Buffer> {
+    console.log(`Attempting to download file from Object Storage: ${storageKey}`);
+    
     const result = await this.retryOperation(
       () => this.objectStorage.downloadAsBytes(storageKey),
       `Download ${storageKey}`
     );
 
+    console.log(`Download result for ${storageKey}:`, {
+      type: typeof result,
+      hasOkProperty: result && typeof result === 'object' && 'ok' in result,
+      isBuffer: Buffer.isBuffer(result)
+    });
+
     // Handle the result format from Object Storage API
     if (result && typeof result === 'object' && 'ok' in result) {
-      const typedResult = result as { ok: boolean; data?: Buffer; error?: any };
-      if (typedResult.ok && typedResult.data) {
-        return typedResult.data;
+      const typedResult = result as { ok: boolean; data?: Buffer; value?: Buffer; error?: any };
+      if (typedResult.ok) {
+        // Try different property names for the data
+        const data = typedResult.data || typedResult.value;
+        if (data && Buffer.isBuffer(data)) {
+          console.log(`Successfully downloaded ${storageKey}, size: ${data.length} bytes`);
+          return data;
+        }
+        throw new Error(`Download successful but no valid data found for ${storageKey}`);
       }
-      throw new Error(`Download failed: ${typedResult.error?.message || 'Unknown error'}`);
+      
+      // Handle error case with better error message
+      let errorMessage = 'Unknown download error';
+      if (typedResult.error) {
+        if (typeof typedResult.error === 'string') {
+          errorMessage = typedResult.error;
+        } else if (typedResult.error.message) {
+          errorMessage = typedResult.error.message;
+        } else {
+          errorMessage = JSON.stringify(typedResult.error);
+        }
+      }
+      throw new Error(`Download failed for ${storageKey}: ${errorMessage}`);
     }
 
     // Assume it's a Buffer if not in the ok/error format
-    return result as Buffer;
+    if (Buffer.isBuffer(result)) {
+      console.log(`Successfully downloaded ${storageKey}, size: ${result.length} bytes (direct buffer)`);
+      return result;
+    }
+
+    throw new Error(`Unexpected download result format for ${storageKey}: ${typeof result}`);
   }
 
   /**
