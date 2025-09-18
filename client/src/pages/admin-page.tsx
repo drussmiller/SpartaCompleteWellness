@@ -633,8 +633,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         
         if (!userOrgId) return [];
         
-        // Get all teams in the organization
-        const orgTeams = sortedTeams.filter(team => {
+        // Get all teams in the organization using the full teams data, not filtered teams
+        const orgTeams = (teams || []).filter(team => {
           const teamGroup = sortedGroups.find(g => g.id === team.groupId);
           return teamGroup && teamGroup.organizationId === userOrgId;
         });
@@ -1467,17 +1467,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
-                            {(() => {
-                              // For team member counts, we need to use all users that the current user can see
-                              // Group Admins should see all users in their organization's teams
-                              if (currentUser?.isAdmin) {
-                                return (users || []).filter((u) => u.teamId === team.id).length || 0;
-                              } else if (currentUser?.isGroupAdmin) {
-                                // For Group Admins, count all users in the team regardless of filteredUsers restrictions
-                                return (users || []).filter((u) => u.teamId === team.id).length || 0;
-                              }
-                              return 0;
-                            })()}
+                            {(users || []).filter((u) => u.teamId === team.id).length || 0}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Max Size: </span>
