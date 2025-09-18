@@ -51,7 +51,22 @@ export default function ActivityPage() {
     }
   }, [activityStatus]);
 
-  // Navigation functions
+  // Navigation functions for week content
+  const goToPreviousWeek = () => {
+    if (selectedWeek > 1) {
+      setSelectedWeek(selectedWeek - 1);
+    }
+  };
+
+  const goToNextWeek = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    // Don't allow going beyond current week
+    if (selectedWeek < currentWeek) {
+      setSelectedWeek(selectedWeek + 1);
+    }
+  };
+
+  // Navigation functions for daily content
   const goToPreviousDay = () => {
     if (selectedDay === 1) {
       // Go to previous week's day 7
@@ -83,7 +98,14 @@ export default function ActivityPage() {
     }
   };
 
-  // Check if we can navigate
+  // Check if we can navigate for week content
+  const canGoToPreviousWeek = selectedWeek > 1;
+  const canGoToNextWeek = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    return selectedWeek < currentWeek;
+  };
+
+  // Check if we can navigate for daily content
   const canGoToPrevious = selectedWeek > 1 || selectedDay > 1;
   const canGoToNext = () => {
     const currentWeek = activityStatus?.currentWeek || 1;
@@ -152,8 +174,8 @@ export default function ActivityPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={goToPreviousDay}
-                    disabled={!canGoToPrevious}
+                    onClick={goToPreviousWeek}
+                    disabled={!canGoToPreviousWeek}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -161,8 +183,8 @@ export default function ActivityPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={goToNextDay}
-                    disabled={!canGoToNext()}
+                    onClick={goToNextWeek}
+                    disabled={!canGoToNextWeek()}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
