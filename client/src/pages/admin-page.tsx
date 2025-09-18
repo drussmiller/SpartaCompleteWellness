@@ -1013,6 +1013,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Form>
                       </DialogContent>
                     </Dialog>
+                  </div>
+                  <CollapsibleContent>
                     <div className="space-y-4">
                       {sortedOrganizations?.map((organization) => (
                         <Card key={organization.id}>
@@ -1219,6 +1221,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Form>
                       </DialogContent>
                     </Dialog>
+                  </div>
+                  <CollapsibleContent>
                     <div className="space-y-4">
                       {sortedGroups?.map((group) => (
                         <Card key={group.id}>
