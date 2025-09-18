@@ -271,10 +271,3 @@ async function runMigrations() {
     throw error;
   }
 }
-// API endpoint for user authentication
-app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-    res.json(req.user);
-  });

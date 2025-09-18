@@ -237,11 +237,15 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     console.log('GET /api/user - Session:', req.sessionID);
     console.log('GET /api/user - Is Authenticated:', req.isAuthenticated());
-    if (!req.isAuthenticated()) {
+    console.log('GET /api/user - Session userId:', req.session?.userId);
+    console.log('GET /api/user - Passport user:', req.user?.id);
+    
+    if (!req.isAuthenticated() || !req.user) {
       console.log('Unauthenticated request to /api/user');
-      return res.sendStatus(401);
+      return res.status(401).json({ message: "Not authenticated" });
     }
-    console.log('Authenticated user:', req.user?.id);
+    
+    console.log('Authenticated user:', req.user.id);
     res.json(req.user);
   });
 
