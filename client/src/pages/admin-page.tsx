@@ -659,6 +659,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const isMobile = window.innerWidth <= 768;
 
+  // Filter groups based on the current user's organization if they are a Group Admin
+  const filteredGroups = currentUser?.isGroupAdmin
+    ? sortedGroups.filter(group => group.organizationId === currentUser.organizationId)
+    : sortedGroups;
+
+
   return (
     <AppLayout sidebarWidth="80">
       <div
@@ -1219,7 +1225,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         <SelectValue placeholder="Select a group" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {sortedGroups?.map((group) => (
+                                        {filteredGroups?.map((group) => (
                                           <SelectItem key={group.id} value={group.id.toString()}>
                                             {group.name}
                                           </SelectItem>
@@ -1307,7 +1313,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         <SelectValue placeholder="Select a group" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {sortedGroups?.map((group) => (
+                                        {filteredGroups?.map((group) => (
                                           <SelectItem key={group.id} value={group.id.toString()}>
                                             {group.name}
                                           </SelectItem>
