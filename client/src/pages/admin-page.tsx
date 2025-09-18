@@ -605,16 +605,24 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || []  // Full admins see all teams
-    : (teams || []).filter(team => team.groupId === currentUser?.adminGroupId);  // Group admins see only their group's teams
+    : currentUser?.isGroupAdmin
+    ? (teams || []).filter(team => {
+        // Group admins see all teams in their organization
+        const teamGroup = sortedGroups.find(g => g.id === team.groupId);
+        return teamGroup && teamGroup.organizationId === currentUser.organizationId;
+      })
+    : [];  // Non-admins see no teams
 
   const sortedTeams = [...filteredTeams].sort((a, b) => a.name.localeCompare(b.name));
   const sortedOrganizations = [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name));
   const sortedGroups = [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
-  // Filter users based on user role - Group admins only see users in their group's teams
+  // Filter users based on user role - Group admins see users in their organization's teams
   const teamIds = filteredTeams.map(team => team.id);  // Get IDs of teams the current user can see
   const filteredUsers = currentUser?.isAdmin
     ? users || []  // Full admins see all users
-    : (users || []).filter(u => u.teamId && teamIds.includes(u.teamId));  // Group admins see only users in their group's teams
+    : currentUser?.isGroupAdmin
+    ? (users || []).filter(u => u.teamId && teamIds.includes(u.teamId)) // Group admins see users in their organization's teams
+    : [];  // Non-admins see no users
 
   const sortedUsers = [...filteredUsers].sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
@@ -895,8 +903,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </Collapsible>
               )}
 
-              {/* Groups Section - Only show for full admins */}
-              {currentUser?.isAdmin && (
+              {/* Groups Section - Show for full admins and group admins */}
+              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                 <Collapsible className="w-full border rounded-lg p-4">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
@@ -1152,6 +1160,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </Collapsible>
               )}
 
+              {/* Teams Section - Show for admins and group admins */}
               <Collapsible className="w-full border rounded-lg p-4">
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
