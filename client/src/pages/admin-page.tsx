@@ -1016,7 +1016,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </Dialog>
                     </div>
                   </div>
-                  <CollapsibleContent>
+                </div>
+                <CollapsibleContent>
                     <div className="space-y-4">
                       {sortedOrganizations?.map((organization) => (
                         <Card key={organization.id}>
