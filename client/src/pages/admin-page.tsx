@@ -610,12 +610,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? teams || []  // Full admins see all teams
     : currentUser?.isGroupAdmin
     ? (teams || []).filter(team => {
-        // Group admins see all teams in their organization (not just their group)
-        const teamGroup = sortedGroups.find(g => g.id === team.groupId);
-        // Find the admin's group to get the organization ID
+        // Group admins see all teams in their organization (all groups in the org)
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
         const userOrgId = adminGroup?.organizationId;
-        return teamGroup && userOrgId && teamGroup.organizationId === userOrgId;
+        
+        if (!userOrgId) return false;
+        
+        // Check if this team's group belongs to the same organization
+        const teamGroup = sortedGroups.find(g => g.id === team.groupId);
+        return teamGroup && teamGroup.organizationId === userOrgId;
       })
     : [];  // Non-admins see no teams
 
@@ -627,16 +630,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     : currentUser?.isGroupAdmin
     ? (() => {
         // For Group Admins, show all users who have teams in their organization
-        // Get all teams in the organization, not just the ones they can manage
+        // Get the organization ID for the Group Admin
         const adminGroup = sortedGroups.find(g => g.id === currentUser.adminGroupId);
         const userOrgId = adminGroup?.organizationId;
         
         if (!userOrgId) return [];
         
-        // Get all teams in the organization using the full teams data, not filtered teams
+        // Get ALL groups in the same organization
+        const orgGroups = sortedGroups.filter(group => group.organizationId === userOrgId);
+        const orgGroupIds = orgGroups.map(group => group.id);
+        
+        // Get ALL teams in all groups within the organization
         const orgTeams = (teams || []).filter(team => {
-          const teamGroup = sortedGroups.find(g => g.id === team.groupId);
-          return teamGroup && teamGroup.organizationId === userOrgId;
+          return team.groupId && orgGroupIds.includes(team.groupId);
         });
         const orgTeamIds = orgTeams.map(team => team.id);
         
