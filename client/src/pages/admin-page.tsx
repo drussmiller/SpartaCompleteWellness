@@ -2218,7 +2218,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </div>
 
                     <div className="space-y-4">
-                      {visibleUsers.map((user) => (
+                      {showInactiveUsers 
+                        ? filteredUsersForDisplay
+                        : filteredUsersForDisplay.filter((user) => user.status === 1)
+                      }.map((user) => (
                         <Card key={user.id}>
                           <CardHeader className="pb-2">
                             <div className="flex justify-between items-start">
