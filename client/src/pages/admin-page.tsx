@@ -933,8 +933,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? sortedOrganizations
     : sortedOrganizations.filter((org) => org.status === 1);
   const visibleGroups = showInactiveGroups
-    ? sortedGroups
-    : sortedGroups.filter((group) => group.status === 1);
+    ? filteredGroups
+    : filteredGroups.filter((group) => group.status === 1);
   const visibleTeams = showInactiveTeams
     ? sortedTeams
     : sortedTeams.filter((team) => team.status === 1);
@@ -1445,7 +1445,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Dialog>
                       </div>
                       <div className="space-y-4">
-                        {visibleGroups?.map((group, index) => (
+                        {(showInactiveGroups ? filteredGroups : filteredGroups.filter(g => g.status === 1))?.map((group, index) => (
                           <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
@@ -2150,7 +2150,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All Groups</SelectItem>
-                                {filteredGroupsForFilter?.map((group) => (
+                                {filteredGroups?.map((group) => (
                                   <SelectItem
                                     key={group.id}
                                     value={group.id.toString()}
@@ -2544,7 +2544,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Card>
                       ))}
                     </div>
-                  </CollapsibleContent>
+                  </div>
+                </CollapsibleContent>
               </Collapsible>
             </div>
           </div>
