@@ -21,6 +21,7 @@ interface PostLimitsResponse {
     miscellaneous: boolean; // Added miscellaneous post type
   };
   remaining: PostLimits;
+  memoryVerseWeekCount?: number;
 }
 
 export function usePostLimits(selectedDate: Date = new Date()) {
@@ -43,10 +44,10 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       return result as PostLimitsResponse;
     },
     staleTime: 300000, // 5 minutes
-    cacheTime: 600000, // 10 minutes
+    gcTime: 600000, // 10 minutes
     refetchOnMount: true,
     refetchOnWindowFocus: false,
-    refetchInterval: null, // Disable automatic polling completely
+    refetchInterval: false, // Disable automatic polling completely
     retry: 1,
     enabled: !!user
   });

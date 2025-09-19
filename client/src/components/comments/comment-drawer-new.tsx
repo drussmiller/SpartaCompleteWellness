@@ -1,4 +1,4 @@
-ssimport { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
