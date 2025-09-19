@@ -2544,7 +2544,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Card>
                       ))}
                     </div>
-                  </div>
                 </CollapsibleContent>
               </Collapsible>
             </div>
