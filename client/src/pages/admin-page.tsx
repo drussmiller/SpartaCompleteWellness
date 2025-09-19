@@ -2075,9 +2075,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </Button>
                   </CollapsibleTrigger>
                 </div>
-                  <CollapsibleContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2 mb-4">
+                <CollapsibleContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 mb-4">
                         <Checkbox
                           id="show-inactive-users"
                           checked={showInactiveUsers}
