@@ -185,6 +185,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     }
   }, [users, tzOffset]);
 
+  // Auto-set organization filter for Group Admins
+  useEffect(() => {
+    if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups && organizations) {
+      const adminGroup = groups.find(g => g.id === currentUser.adminGroupId);
+      if (adminGroup && selectedOrgFilter === "all") {
+        setSelectedOrgFilter(adminGroup.organizationId.toString());
+      }
+    }
+  }, [currentUser, groups, organizations, selectedOrgFilter]);
+
   const form = useForm<TeamFormData>({
     resolver: zodResolver(insertTeamSchema),
     defaultValues: {
@@ -2097,33 +2107,36 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <h3 className="text-lg font-medium">
                           Search & Filter Users
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">
-                              Organization
-                            </label>
-                            <Select
-                              value={selectedOrgFilter}
-                              onValueChange={setSelectedOrgFilter}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="All Organizations" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">
-                                  All Organizations
-                                </SelectItem>
-                                {sortedOrganizations?.map((org) => (
-                                  <SelectItem
-                                    key={org.id}
-                                    value={org.id.toString()}
-                                  >
-                                    {org.name}
+                        <div className={`grid grid-cols-1 gap-4 ${currentUser?.isAdmin ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                          {/* Only show Organization dropdown for Full Admins */}
+                          {currentUser?.isAdmin && (
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Organization
+                              </label>
+                              <Select
+                                value={selectedOrgFilter}
+                                onValueChange={setSelectedOrgFilter}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="All Organizations" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">
+                                    All Organizations
                                   </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                                  {sortedOrganizations?.map((org) => (
+                                    <SelectItem
+                                      key={org.id}
+                                      value={org.id.toString()}
+                                    >
+                                      {org.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Group
@@ -2184,7 +2197,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                setSelectedOrgFilter("all");
+                                // For Group Admins, keep their organization filter but clear others
+                                if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups) {
+                                  const adminGroup = groups.find(g => g.id === currentUser.adminGroupId);
+                                  if (adminGroup) {
+                                    setSelectedOrgFilter(adminGroup.organizationId.toString());
+                                  }
+                                } else {
+                                  setSelectedOrgFilter("all");
+                                }
                                 setSelectedGroupFilter("all");
                                 setSelectedTeamFilter("all");
                               }}
