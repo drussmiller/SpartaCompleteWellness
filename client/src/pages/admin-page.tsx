@@ -976,564 +976,944 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Organizations Section - Only show for full admins */}
               {currentUser?.isAdmin && (
-                <Collapsible className="w-full border rounded-lg p-4">
-                  <div className="mb-4">
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
-                      >
-                        Organizations
-                        <ChevronDown className="h-5 w-5 ml-2" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    {/* Moved Dialog Trigger inside the CollapsibleContent */}
-                    <CollapsibleContent>
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Checkbox
-                            id="show-inactive-orgs"
-                            checked={showInactiveOrgs}
-                            onCheckedChange={setShowInactiveOrgs}
-                          />
-                          <label
-                            htmlFor="show-inactive-orgs"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Show inactive organizations
-                          </label>
-                        </div>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              className="mb-8 mt-6 px-3 bg-violet-700 text-white hover:bg-violet-800"
+                <div className="w-full">
+                  <Collapsible className="w-full border rounded-lg p-4">
+                    <div className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
+                        >
+                          Organizations
+                          <ChevronDown className="h-5 w-5 ml-2" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      {/* Moved Dialog Trigger inside the CollapsibleContent */}
+                      <CollapsibleContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-2 mb-4">
+                            <Checkbox
+                              id="show-inactive-orgs"
+                              checked={showInactiveOrgs}
+                              onCheckedChange={setShowInactiveOrgs}
+                            />
+                            <label
+                              htmlFor="show-inactive-orgs"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
-                              <Plus className="h-4 w-4 mr-2" />
-                              New Organization
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <div className="flex items-center mb-2 relative">
-                              <DialogPrimitive.Close asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
-                                >
-                                  <span className="sr-only">Close</span>
-                                  <span className="text-lg font-semibold">
-                                    ×
-                                  </span>
-                                </Button>
-                              </DialogPrimitive.Close>
-                              <DialogTitle className="w-full text-center">
-                                Create New Organization
-                              </DialogTitle>
-                            </div>
-                            <Form {...organizationForm}>
-                              <form
-                                onSubmit={organizationForm.handleSubmit(
-                                  (data) =>
-                                    createOrganizationMutation.mutate(data),
-                                )}
-                                className="space-y-4"
+                              Show inactive organizations
+                            </label>
+                          </div>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                className="mb-8 mt-6 px-3 bg-violet-700 text-white hover:bg-violet-800"
                               >
-                                <FormField
-                                  control={organizationForm.control}
-                                  name="name"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Organization Name</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Enter organization name"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={organizationForm.control}
-                                  name="description"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Description</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Enter description"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                    </FormItem>
-                                  )}
-                                />
-                                <Button
-                                  type="submit"
-                                  disabled={
-                                    createOrganizationMutation.isPending
-                                  }
-                                >
-                                  {createOrganizationMutation.isPending && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  )}
-                                  Create Organization
-                                </Button>
-                              </form>
-                            </Form>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                      <div className="space-y-4">
-                        {visibleOrganizations?.map((organization, index) => (
-                          <Card key={organization.id} className={index === 0 ? "mt-4" : ""}>
-                            <CardHeader className="pb-2">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  {editingOrganization?.id ===
-                                  organization.id ? (
-                                    <form
-                                      onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(
-                                          e.currentTarget,
-                                        );
-                                        const name = formData.get(
-                                          "name",
-                                        ) as string;
-                                        const description = formData.get(
-                                          "description",
-                                        ) as string;
-                                        const statusValue = formData.get(
-                                          "status",
-                                        ) as string;
-                                        const parsedStatus = statusValue
-                                          ? parseInt(statusValue)
-                                          : 1;
-                                        const status =
-                                          parsedStatus === 0 ||
-                                          parsedStatus === 1
-                                            ? parsedStatus
-                                            : 1;
-
-                                        if (!name) {
-                                          toast({
-                                            title: "Error",
-                                            description:
-                                              "Please fill in all required fields",
-                                            variant: "destructive",
-                                          });
-                                          return;
-                                        }
-
-                                        updateOrganizationMutation.mutate({
-                                          organizationId: organization.id,
-                                          data: {
-                                            name,
-                                            description:
-                                              description || undefined,
-                                            status: Number(status),
-                                          },
-                                        });
-                                      }}
-                                      className="space-y-2"
-                                    >
-                                      <Input
-                                        name="name"
-                                        defaultValue={organization.name}
-                                        placeholder="Organization name"
-                                        required
-                                      />
-                                      <Input
-                                        name="description"
-                                        defaultValue={
-                                          organization.description || ""
-                                        }
-                                        placeholder="Description"
-                                      />
-                                      <Select
-                                        name="status"
-                                        defaultValue={
-                                          organization.status?.toString() || "1"
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="1">
-                                            Active
-                                          </SelectItem>
-                                          <SelectItem value="0">
-                                            Inactive
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          type="submit"
-                                          size="sm"
-                                          disabled={
-                                            updateOrganizationMutation.isPending
-                                          }
-                                        >
-                                          {updateOrganizationMutation.isPending && (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          )}
-                                          Save
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() =>
-                                            setEditingOrganization(null)
-                                          }
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </div>
-                                    </form>
-                                  ) : (
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <CardTitle>
-                                          {organization.name}
-                                        </CardTitle>
-                                      </div>
-                                      <CardDescription>
-                                        {organization.description}
-                                      </CardDescription>
-                                      <p className="text-sm mt-2">
-                                        <span className="font-medium">
-                                          Status:{" "}
-                                        </span>
-                                        <span
-                                          className={
-                                            organization.status === 1
-                                              ? "text-green-600"
-                                              : "text-red-600"
-                                          }
-                                        >
-                                          {organization.status === 1
-                                            ? "Active"
-                                            : "Inactive"}
-                                        </span>
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex gap-2">
-                                  {editingOrganization?.id !==
-                                    organization.id && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        setEditingOrganization(organization)
-                                      }
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
+                                <Plus className="h-4 w-4 mr-2" />
+                                New Organization
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <div className="flex items-center mb-2 relative">
+                                <DialogPrimitive.Close asChild>
                                   <Button
-                                    variant="destructive"
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={() =>
-                                      deleteOrganizationMutation.mutate(
-                                        organization.id,
-                                      )
-                                    }
+                                    className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
+                                  >
+                                    <span className="sr-only">Close</span>
+                                    <span className="text-lg font-semibold">
+                                      ×
+                                    </span>
+                                  </Button>
+                                </DialogPrimitive.Close>
+                                <DialogTitle className="w-full text-center">
+                                  Create New Organization
+                                </DialogTitle>
+                              </div>
+                              <Form {...organizationForm}>
+                                <form
+                                  onSubmit={organizationForm.handleSubmit(
+                                    (data) =>
+                                      createOrganizationMutation.mutate(data),
+                                  )}
+                                  className="space-y-4"
+                                >
+                                  <FormField
+                                    control={organizationForm.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Organization Name</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            placeholder="Enter organization name"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={organizationForm.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Description</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            placeholder="Enter description"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <Button
+                                    type="submit"
                                     disabled={
-                                      deleteOrganizationMutation.isPending
+                                      createOrganizationMutation.isPending
                                     }
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    {createOrganizationMutation.isPending && (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Create Organization
                                   </Button>
+                                </form>
+                              </Form>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                        <div className="space-y-4">
+                          {visibleOrganizations?.map((organization, index) => (
+                            <Card key={organization.id} className={index === 0 ? "mt-4" : ""}>
+                              <CardHeader className="pb-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    {editingOrganization?.id ===
+                                    organization.id ? (
+                                      <form
+                                        onSubmit={(e) => {
+                                          e.preventDefault();
+                                          const formData = new FormData(
+                                            e.currentTarget,
+                                          );
+                                          const name = formData.get(
+                                            "name",
+                                          ) as string;
+                                          const description = formData.get(
+                                            "description",
+                                          ) as string;
+                                          const statusValue = formData.get(
+                                            "status",
+                                          ) as string;
+                                          const parsedStatus = statusValue
+                                            ? parseInt(statusValue)
+                                            : 1;
+                                          const status =
+                                            parsedStatus === 0 ||
+                                            parsedStatus === 1
+                                              ? parsedStatus
+                                              : 1;
+
+                                          if (!name) {
+                                            toast({
+                                              title: "Error",
+                                              description:
+                                                "Please fill in all required fields",
+                                              variant: "destructive",
+                                            });
+                                            return;
+                                          }
+
+                                          updateOrganizationMutation.mutate({
+                                            organizationId: organization.id,
+                                            data: {
+                                              name,
+                                              description:
+                                                description || undefined,
+                                              status: Number(status),
+                                            },
+                                          });
+                                        }}
+                                        className="space-y-2"
+                                      >
+                                        <Input
+                                          name="name"
+                                          defaultValue={organization.name}
+                                          placeholder="Organization name"
+                                          required
+                                        />
+                                        <Input
+                                          name="description"
+                                          defaultValue={
+                                            organization.description || ""
+                                          }
+                                          placeholder="Description"
+                                        />
+                                        <Select
+                                          name="status"
+                                          defaultValue={
+                                            organization.status?.toString() || "1"
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="1">
+                                              Active
+                                            </SelectItem>
+                                            <SelectItem value="0">
+                                              Inactive
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            type="submit"
+                                            size="sm"
+                                            disabled={
+                                              updateOrganizationMutation.isPending
+                                            }
+                                          >
+                                            {updateOrganizationMutation.isPending && (
+                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            )}
+                                            Save
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                              setEditingOrganization(null)
+                                            }
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      </form>
+                                    ) : (
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <CardTitle>
+                                            {organization.name}
+                                          </CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                          {organization.description}
+                                        </CardDescription>
+                                        <p className="text-sm mt-2">
+                                          <span className="font-medium">
+                                            Status:{" "}
+                                          </span>
+                                          <span
+                                            className={
+                                              organization.status === 1
+                                                ? "text-green-600"
+                                                : "text-red-600"
+                                            }
+                                          >
+                                            {organization.status === 1
+                                              ? "Active"
+                                              : "Inactive"}
+                                          </span>
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {editingOrganization?.id !==
+                                      organization.id && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          setEditingOrganization(organization)
+                                        }
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() =>
+                                        deleteOrganizationMutation.mutate(
+                                          organization.id,
+                                        )
+                                      }
+                                      disabled={
+                                        deleteOrganizationMutation.isPending
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-sm">
-                                <span className="font-medium">Groups: </span>
-                                {sortedGroups?.filter(
-                                  (g) => g.organizationId === organization.id,
-                                ).length || 0}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
+                              </CardHeader>
+                              <CardContent>
+                                <p className="text-sm">
+                                  <span className="font-medium">Groups: </span>
+                                  {sortedGroups?.filter(
+                                    (g) => g.organizationId === organization.id,
+                                  ).length || 0}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                </div>
               )}
 
               {/* Groups Section - Show for full admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                <div className="w-full">
+                  <Collapsible className="w-full border rounded-lg p-4">
+                    <div className="mb-4">
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
+                        >
+                          Groups
+                          <ChevronDown className="h-5 w-5 ml-2" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      {/* Moved Dialog Trigger inside the CollapsibleContent */}
+                      <CollapsibleContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-2 mb-4">
+                            <Checkbox
+                              id="show-inactive-groups"
+                              checked={showInactiveGroups}
+                              onCheckedChange={setShowInactiveGroups}
+                            />
+                            <label
+                              htmlFor="show-inactive-groups"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Show inactive groups
+                            </label>
+                          </div>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                className="mb-8 mt-6 px-3 bg-violet-700 text-white hover:bg-violet-800"
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                New Group
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <div className="flex items-center mb-2 relative">
+                                <DialogPrimitive.Close asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
+                                  >
+                                    <span className="sr-only">Close</span>
+                                    <span className="text-lg font-semibold">
+                                      ×
+                                    </span>
+                                  </Button>
+                                </DialogPrimitive.Close>
+                                <DialogTitle className="w-full text-center">
+                                  Create New Group
+                                </DialogTitle>
+                              </div>
+                              <Form {...groupForm}>
+                                <form
+                                  onSubmit={groupForm.handleSubmit((data) => {
+                                    // If Group Admin, auto-set their organization
+                                    if (
+                                      currentUser?.isGroupAdmin &&
+                                      currentUser?.adminGroupId
+                                    ) {
+                                      const adminGroup = groups?.find(
+                                        (g) => g.id === currentUser.adminGroupId,
+                                      );
+                                      if (adminGroup) {
+                                        data.organizationId =
+                                          adminGroup.organizationId;
+                                      }
+                                    }
+                                    createGroupMutation.mutate(data);
+                                  })}
+                                  className="space-y-4"
+                                >
+                                  <FormField
+                                    control={groupForm.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Group Name</FormLabel>
+                                        <FormControl>
+                                          <Input {...field} />
+                                        </FormControl>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={groupForm.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Description</FormLabel>
+                                        <FormControl>
+                                          <Input {...field} />
+                                        </FormControl>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  {currentUser?.isAdmin && (
+                                    <FormField
+                                      control={groupForm.control}
+                                      name="organizationId"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Organization</FormLabel>
+                                          <Select
+                                            onValueChange={(value) =>
+                                              field.onChange(parseInt(value))
+                                            }
+                                            value={field.value?.toString()}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select organization" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {sortedOrganizations?.map((org) => (
+                                                <SelectItem
+                                                  key={org.id}
+                                                  value={org.id.toString()}
+                                                >
+                                                  {org.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  )}
+                                  {currentUser?.isGroupAdmin && (
+                                    <div className="text-sm text-muted-foreground">
+                                      Groups will be created in your organization:{" "}
+                                      {(() => {
+                                        const adminGroup = groups?.find(
+                                          (g) =>
+                                            g.id === currentUser.adminGroupId,
+                                        );
+                                        const org = sortedOrganizations?.find(
+                                          (o) =>
+                                            o.id === adminGroup?.organizationId,
+                                        );
+                                        return org?.name || "Unknown";
+                                      })()}
+                                    </div>
+                                  )}
+                                  <Button
+                                    type="submit"
+                                    disabled={createGroupMutation.isPending}
+                                  >
+                                    {createGroupMutation.isPending && (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Create Group
+                                  </Button>
+                                </form>
+                              </Form>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                        <div className="space-y-4">
+                          {visibleGroups?.map((group, index) => (
+                            <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
+                              <CardHeader className="pb-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    {editingGroup?.id === group.id ? (
+                                      <form
+                                        onSubmit={(e) => {
+                                          e.preventDefault();
+                                          const formData = new FormData(
+                                            e.currentTarget,
+                                          );
+                                          const name = formData.get(
+                                            "name",
+                                          ) as string;
+                                          const description = formData.get(
+                                            "description",
+                                          ) as string;
+                                          const organizationId = parseInt(
+                                            formData.get(
+                                              "organizationId",
+                                            ) as string,
+                                          );
+                                          const statusValue = formData.get(
+                                            "status",
+                                          ) as string;
+                                          const parsedStatus = statusValue
+                                            ? parseInt(statusValue)
+                                            : 1;
+                                          const status =
+                                            parsedStatus === 0 ||
+                                            parsedStatus === 1
+                                              ? parsedStatus
+                                              : 1;
+
+                                          if (!name || !organizationId) {
+                                            toast({
+                                              title: "Error",
+                                              description:
+                                                "Please fill in all required fields",
+                                              variant: "destructive",
+                                            });
+                                            return;
+                                          }
+
+                                          updateGroupMutation.mutate({
+                                            groupId: group.id,
+                                            data: {
+                                              name,
+                                              description:
+                                                description || undefined,
+                                              organizationId,
+                                              status: Number(status),
+                                            },
+                                          });
+                                        }}
+                                        className="space-y-2"
+                                      >
+                                        <Input
+                                          name="name"
+                                          defaultValue={group.name}
+                                          placeholder="Group name"
+                                          required
+                                        />
+                                        <Input
+                                          name="description"
+                                          defaultValue={group.description || ""}
+                                          placeholder="Description"
+                                        />
+                                        {/* Only show organization selector for Full Admins */}
+                                        {currentUser?.isAdmin ? (
+                                          <Select
+                                            name="organizationId"
+                                            defaultValue={group.organizationId.toString()}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select organization" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {sortedOrganizations?.map((org) => (
+                                                <SelectItem
+                                                  key={org.id}
+                                                  value={org.id.toString()}
+                                                >
+                                                  {org.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        ) : (
+                                          <input
+                                            type="hidden"
+                                            name="organizationId"
+                                            value={group.organizationId.toString()}
+                                          />
+                                        )}
+                                        <Select
+                                          name="status"
+                                          defaultValue={
+                                            group.status?.toString() || "1"
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="1">
+                                              Active
+                                            </SelectItem>
+                                            <SelectItem value="0">
+                                              Inactive
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        <div className="flex gap-2">
+                                          <Button
+                                            type="submit"
+                                            size="sm"
+                                            disabled={
+                                              updateGroupMutation.isPending
+                                            }
+                                          >
+                                            {updateGroupMutation.isPending && (
+                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            )}
+                                            Save
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setEditingGroup(null)}
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      </form>
+                                    ) : (
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <CardTitle>{group.name}</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                          {group.description}
+                                        </CardDescription>
+                                        <p className="text-sm mt-2">
+                                          <span className="font-medium">
+                                            Status:{" "}
+                                          </span>
+                                          <span
+                                            className={
+                                              group.status === 1
+                                                ? "text-green-600"
+                                                : "text-red-600"
+                                            }
+                                          >
+                                            {group.status === 1
+                                              ? "Active"
+                                              : "Inactive"}
+                                          </span>
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {editingGroup?.id !== group.id && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setEditingGroup(group)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() =>
+                                        deleteGroupMutation.mutate(group.id)
+                                      }
+                                      disabled={deleteGroupMutation.isPending}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <p className="text-sm">
+                                  <span className="font-medium">
+                                    Organization:{" "}
+                                  </span>
+                                  {sortedOrganizations?.find(
+                                    (o) => o.id === group.organizationId,
+                                  )?.name || "Unknown"}
+                                </p>
+                                <p className="text-sm">
+                                  <span className="font-medium">Members: </span>
+                                  {sortedUsers?.filter((u) => {
+                                    const userTeam = sortedTeams?.find(
+                                      (t) => t.id === u.teamId,
+                                    );
+                                    return (
+                                      userTeam && userTeam.groupId === group.id
+                                    );
+                                  }).length || 0}
+                                </p>
+                                <p className="text-sm">
+                                  <span className="font-medium">Teams: </span>
+                                  {sortedTeams?.filter(
+                                    (t) => t.groupId === group.id,
+                                  ).length || 0}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                </div>
+              )}
+
+              {/* Teams Section - Show for admins and group admins */}
+              <div className="w-full">
                 <Collapsible className="w-full border rounded-lg p-4">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
+                        className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary"
                       >
-                        Groups
+                        Teams
                         <ChevronDown className="h-5 w-5 ml-2" />
                       </Button>
                     </CollapsibleTrigger>
-                    {/* Moved Dialog Trigger inside the CollapsibleContent */}
-                    <CollapsibleContent>
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Checkbox
-                            id="show-inactive-groups"
-                            checked={showInactiveGroups}
-                            onCheckedChange={setShowInactiveGroups}
-                          />
-                          <label
-                            htmlFor="show-inactive-groups"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Show inactive groups
-                          </label>
-                        </div>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              className="mb-8 mt-6 px-3 bg-violet-700 text-white hover:bg-violet-800"
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              New Group
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <div className="flex items-center mb-2 relative">
-                              <DialogPrimitive.Close asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
-                                >
-                                  <span className="sr-only">Close</span>
-                                  <span className="text-lg font-semibold">
-                                    ×
-                                  </span>
-                                </Button>
-                              </DialogPrimitive.Close>
-                              <DialogTitle className="w-full text-center">
-                                Create New Group
-                              </DialogTitle>
-                            </div>
-                            <Form {...groupForm}>
-                              <form
-                                onSubmit={groupForm.handleSubmit((data) => {
-                                  // If Group Admin, auto-set their organization
-                                  if (
-                                    currentUser?.isGroupAdmin &&
-                                    currentUser?.adminGroupId
-                                  ) {
-                                    const adminGroup = groups?.find(
-                                      (g) => g.id === currentUser.adminGroupId,
-                                    );
-                                    if (adminGroup) {
-                                      data.organizationId =
-                                        adminGroup.organizationId;
-                                    }
-                                  }
-                                  createGroupMutation.mutate(data);
-                                })}
-                                className="space-y-4"
-                              >
-                                <FormField
-                                  control={groupForm.control}
-                                  name="name"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Group Name</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} />
-                                      </FormControl>
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={groupForm.control}
-                                  name="description"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Description</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} />
-                                      </FormControl>
-                                    </FormItem>
-                                  )}
-                                />
-                                {currentUser?.isAdmin && (
-                                  <FormField
-                                    control={groupForm.control}
-                                    name="organizationId"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Organization</FormLabel>
-                                        <Select
-                                          onValueChange={(value) =>
-                                            field.onChange(parseInt(value))
-                                          }
-                                          value={field.value?.toString()}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select organization" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {sortedOrganizations?.map((org) => (
-                                              <SelectItem
-                                                key={org.id}
-                                                value={org.id.toString()}
-                                              >
-                                                {org.name}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
-                                {currentUser?.isGroupAdmin && (
-                                  <div className="text-sm text-muted-foreground">
-                                    Groups will be created in your organization:{" "}
-                                    {(() => {
-                                      const adminGroup = groups?.find(
-                                        (g) =>
-                                          g.id === currentUser.adminGroupId,
-                                      );
-                                      const org = sortedOrganizations?.find(
-                                        (o) =>
-                                          o.id === adminGroup?.organizationId,
-                                      );
-                                      return org?.name || "Unknown";
-                                    })()}
-                                  </div>
-                                )}
-                                <Button
-                                  type="submit"
-                                  disabled={createGroupMutation.isPending}
-                                >
-                                  {createGroupMutation.isPending && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  )}
-                                  Create Group
-                                </Button>
-                              </form>
-                            </Form>
-                          </DialogContent>
-                        </Dialog>
+                  </div>
+                  <CollapsibleContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Checkbox
+                          id="show-inactive-teams"
+                          checked={showInactiveTeams}
+                          onCheckedChange={setShowInactiveTeams}
+                        />
+                        <label
+                          htmlFor="show-inactive-teams"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Show inactive teams
+                        </label>
                       </div>
-                      <div className="space-y-4">
-                        {visibleGroups?.map((group, index) => (
-                          <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
-                            <CardHeader className="pb-2">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  {editingGroup?.id === group.id ? (
-                                    <form
-                                      onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(
-                                          e.currentTarget,
-                                        );
-                                        const name = formData.get(
-                                          "name",
-                                        ) as string;
-                                        const description = formData.get(
-                                          "description",
-                                        ) as string;
-                                        const organizationId = parseInt(
-                                          formData.get(
-                                            "organizationId",
-                                          ) as string,
-                                        );
-                                        const statusValue = formData.get(
-                                          "status",
-                                        ) as string;
-                                        const parsedStatus = statusValue
-                                          ? parseInt(statusValue)
-                                          : 1;
-                                        const status =
-                                          parsedStatus === 0 ||
-                                          parsedStatus === 1
-                                            ? parsedStatus
-                                            : 1;
-
-                                        if (!name || !organizationId) {
-                                          toast({
-                                            title: "Error",
-                                            description:
-                                              "Please fill in all required fields",
-                                            variant: "destructive",
-                                          });
-                                          return;
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            className="mb-4 px-3 bg-violet-700 text-white hover:bg-violet-800"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            New Team
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <div className="flex items-center mb-2 relative">
+                            <DialogPrimitive.Close asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
+                              >
+                                <span className="sr-only">Close</span>
+                                <span className="text-lg font-semibold">×</span>
+                              </Button>
+                            </DialogPrimitive.Close>
+                            <DialogTitle className="w-full text-center">
+                              Create New Team
+                            </DialogTitle>
+                          </div>
+                          <Form {...form}>
+                            <form
+                              onSubmit={form.handleSubmit((data) =>
+                                createTeamMutation.mutate(data),
+                              )}
+                              className="space-y-4"
+                            >
+                              <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Name</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl>
+                                      <Textarea {...field} />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="groupId"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Group</FormLabel>
+                                    <FormControl>
+                                      <Select
+                                        value={field.value?.toString() || ""}
+                                        onValueChange={(value) =>
+                                          field.onChange(parseInt(value))
                                         }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select a group" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {filteredGroups?.map((group) => (
+                                            <SelectItem
+                                              key={group.id}
+                                              value={group.id.toString()}
+                                            >
+                                              {group.name} (Org:{" "}
+                                              {
+                                                sortedOrganizations?.find(
+                                                  (o) =>
+                                                    o.id === group.organizationId,
+                                                )?.name
+                                              }
+                                              )
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="maxSize"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Maximum Team Size</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        {...field}
+                                        onChange={(e) =>
+                                          field.onChange(parseInt(e.target.value))
+                                        }
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <Button
+                                type="submit"
+                                disabled={createTeamMutation.isPending}
+                              >
+                                {createTeamMutation.isPending
+                                  ? "Creating..."
+                                  : "Create Team"}
+                              </Button>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>
+                      {visibleTeams?.map((team) => (
+                        <Card key={team.id}>
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                {editingTeam?.id === team.id ? (
+                                  <form
+                                    onSubmit={(e) => {
+                                      e.preventDefault();
+                                      const formData = new FormData(
+                                        e.currentTarget,
+                                      );
+                                      const name = formData.get("name") as string;
+                                      const description = formData.get(
+                                        "description",
+                                      ) as string;
+                                      const maxSize =
+                                        parseInt(
+                                          formData.get("maxSize") as string,
+                                        ) || 6;
+                                      const groupId = selectedGroupId
+                                        ? parseInt(selectedGroupId)
+                                        : undefined;
+                                      const statusValue = formData.get(
+                                        "status",
+                                      ) as string;
+                                      const parsedStatus = statusValue
+                                        ? parseInt(statusValue)
+                                        : 1;
+                                      const status =
+                                        parsedStatus === 0 || parsedStatus === 1
+                                          ? parsedStatus
+                                          : 1;
 
-                                        updateGroupMutation.mutate({
-                                          groupId: group.id,
-                                          data: {
-                                            name,
-                                            description:
-                                              description || undefined,
-                                            organizationId,
-                                            status: Number(status),
-                                          },
+                                      if (!name || !selectedGroupId) {
+                                        toast({
+                                          title: "Error",
+                                          description:
+                                            "Please fill in all required fields",
+                                          variant: "destructive",
                                         });
-                                      }}
-                                      className="space-y-2"
-                                    >
+                                        return;
+                                      }
+
+                                      updateTeamMutation.mutate({
+                                        teamId: team.id,
+                                        data: {
+                                          name,
+                                          description,
+                                          groupId,
+                                          maxSize,
+                                          status: Number(status),
+                                        },
+                                      });
+                                    }}
+                                  >
+                                    <div className="space-y-2">
                                       <Input
                                         name="name"
-                                        defaultValue={group.name}
-                                        placeholder="Group name"
-                                        required
+                                        defaultValue={team.name}
+                                        className="font-semibold"
                                       />
-                                      <Input
+                                      <Textarea
                                         name="description"
-                                        defaultValue={group.description || ""}
-                                        placeholder="Description"
+                                        defaultValue={team.description || ""}
+                                        className="text-sm"
                                       />
-                                      {/* Only show organization selector for Full Admins */}
-                                      {currentUser?.isAdmin ? (
-                                        <Select
-                                          name="organizationId"
-                                          defaultValue={group.organizationId.toString()}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select organization" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {sortedOrganizations?.map((org) => (
-                                              <SelectItem
-                                                key={org.id}
-                                                value={org.id.toString()}
-                                              >
-                                                {org.name}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <input
-                                          type="hidden"
-                                          name="organizationId"
-                                          value={group.organizationId.toString()}
-                                        />
-                                      )}
+                                      <Select
+                                        value={selectedGroupId}
+                                        onValueChange={setSelectedGroupId}
+                                      >
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="Select a group" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {filteredGroups?.map((group) => (
+                                            <SelectItem
+                                              key={group.id}
+                                              value={group.id.toString()}
+                                            >
+                                              {group.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Input
+                                        name="maxSize"
+                                        type="number"
+                                        min="1"
+                                        defaultValue={
+                                          team.maxSize?.toString() || "6"
+                                        }
+                                        placeholder="Maximum team size"
+                                        className="text-sm"
+                                      />
                                       <Select
                                         name="status"
                                         defaultValue={
-                                          group.status?.toString() || "1"
+                                          team.status?.toString() || "1"
                                         }
                                       >
                                         <SelectTrigger>
@@ -1549,521 +1929,147 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </SelectContent>
                                       </Select>
                                       <div className="flex gap-2">
-                                        <Button
-                                          type="submit"
-                                          size="sm"
-                                          disabled={
-                                            updateGroupMutation.isPending
-                                          }
-                                        >
-                                          {updateGroupMutation.isPending && (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          )}
+                                        <Button type="submit" size="sm">
                                           Save
                                         </Button>
                                         <Button
                                           type="button"
-                                          variant="outline"
+                                          variant="ghost"
                                           size="sm"
-                                          onClick={() => setEditingGroup(null)}
+                                          onClick={() => {
+                                            setEditingTeam(null);
+                                            setSelectedGroupId("");
+                                          }}
                                         >
                                           Cancel
                                         </Button>
                                       </div>
-                                    </form>
-                                  ) : (
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <CardTitle>{group.name}</CardTitle>
-                                      </div>
-                                      <CardDescription>
-                                        {group.description}
-                                      </CardDescription>
-                                      <p className="text-sm mt-2">
-                                        <span className="font-medium">
-                                          Status:{" "}
-                                        </span>
-                                        <span
-                                          className={
-                                            group.status === 1
-                                              ? "text-green-600"
-                                              : "text-red-600"
-                                          }
-                                        >
-                                          {group.status === 1
-                                            ? "Active"
-                                            : "Inactive"}
-                                        </span>
-                                      </p>
                                     </div>
-                                  )}
-                                </div>
-                                <div className="flex gap-2">
-                                  {editingGroup?.id !== group.id && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setEditingGroup(group)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() =>
-                                      deleteGroupMutation.mutate(group.id)
-                                    }
-                                    disabled={deleteGroupMutation.isPending}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                  </form>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center gap-2">
+                                      <CardTitle className="text-lg">
+                                        {team.name}
+                                      </CardTitle>
+                                    </div>
+                                    <CardDescription className="line-clamp-2 text-sm">
+                                      {team.description}
+                                    </CardDescription>
+                                    <p className="text-sm mt-2">
+                                      <span className="font-medium">
+                                        Status:{" "}
+                                      </span>
+                                      <span
+                                        className={
+                                          team.status === 1
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                        }
+                                      >
+                                        {team.status === 1
+                                          ? "Active"
+                                          : "Inactive"}
+                                      </span>
+                                    </p>
+                                  </>
+                                )}
                               </div>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-sm">
-                                <span className="font-medium">
-                                  Organization:{" "}
-                                </span>
-                                {sortedOrganizations?.find(
-                                  (o) => o.id === group.organizationId,
-                                )?.name || "Unknown"}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Members: </span>
-                                {sortedUsers?.filter((u) => {
-                                  const userTeam = sortedTeams?.find(
-                                    (t) => t.id === u.teamId,
-                                  );
-                                  return (
-                                    userTeam && userTeam.groupId === group.id
-                                  );
-                                }).length || 0}
-                              </p>
-                              <p className="text-sm">
-                                <span className="font-medium">Teams: </span>
-                                {sortedTeams?.filter(
-                                  (t) => t.groupId === group.id,
-                                ).length || 0}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              )}
-
-              {/* Teams Section - Show for admins and group admins */}
-              <Collapsible className="w-full border rounded-lg p-4">
-                <div className="mb-4">
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary"
-                    >
-                      Teams
-                      <ChevronDown className="h-5 w-5 ml-2" />
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Checkbox
-                        id="show-inactive-teams"
-                        checked={showInactiveTeams}
-                        onCheckedChange={setShowInactiveTeams}
-                      />
-                      <label
-                        htmlFor="show-inactive-teams"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Show inactive teams
-                      </label>
-                    </div>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          className="mb-4 px-3 bg-violet-700 text-white hover:bg-violet-800"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          New Team
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <div className="flex items-center mb-2 relative">
-                          <DialogPrimitive.Close asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
-                            >
-                              <span className="sr-only">Close</span>
-                              <span className="text-lg font-semibold">×</span>
-                            </Button>
-                          </DialogPrimitive.Close>
-                          <DialogTitle className="w-full text-center">
-                            Create New Team
-                          </DialogTitle>
-                        </div>
-                        <Form {...form}>
-                          <form
-                            onSubmit={form.handleSubmit((data) =>
-                              createTeamMutation.mutate(data),
-                            )}
-                            className="space-y-4"
-                          >
-                            <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Name</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="description"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Description</FormLabel>
-                                  <FormControl>
-                                    <Textarea {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="groupId"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Group</FormLabel>
-                                  <FormControl>
-                                    <Select
-                                      value={field.value?.toString() || ""}
-                                      onValueChange={(value) =>
-                                        field.onChange(parseInt(value))
-                                      }
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select a group" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {filteredGroups?.map((group) => (
-                                          <SelectItem
-                                            key={group.id}
-                                            value={group.id.toString()}
-                                          >
-                                            {group.name} (Org:{" "}
-                                            {
-                                              sortedOrganizations?.find(
-                                                (o) =>
-                                                  o.id === group.organizationId,
-                                              )?.name
-                                            }
-                                            )
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="maxSize"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Maximum Team Size</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      min="1"
-                                      {...field}
-                                      onChange={(e) =>
-                                        field.onChange(parseInt(e.target.value))
-                                      }
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <Button
-                              type="submit"
-                              disabled={createTeamMutation.isPending}
-                            >
-                              {createTeamMutation.isPending
-                                ? "Creating..."
-                                : "Create Team"}
-                            </Button>
-                          </form>
-                        </Form>
-                      </DialogContent>
-                    </Dialog>
-                    {visibleTeams?.map((team) => (
-                      <Card key={team.id}>
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              {editingTeam?.id === team.id ? (
-                                <form
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const formData = new FormData(
-                                      e.currentTarget,
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingTeam(team);
+                                    setSelectedGroupId(
+                                      team.groupId?.toString() || "",
                                     );
-                                    const name = formData.get("name") as string;
-                                    const description = formData.get(
-                                      "description",
-                                    ) as string;
-                                    const maxSize =
-                                      parseInt(
-                                        formData.get("maxSize") as string,
-                                      ) || 6;
-                                    const groupId = selectedGroupId
-                                      ? parseInt(selectedGroupId)
-                                      : undefined;
-                                    const statusValue = formData.get(
-                                      "status",
-                                    ) as string;
-                                    const parsedStatus = statusValue
-                                      ? parseInt(statusValue)
-                                      : 1;
-                                    const status =
-                                      parsedStatus === 0 || parsedStatus === 1
-                                        ? parsedStatus
-                                        : 1;
-
-                                    if (!name || !selectedGroupId) {
-                                      toast({
-                                        title: "Error",
-                                        description:
-                                          "Please fill in all required fields",
-                                        variant: "destructive",
-                                      });
-                                      return;
-                                    }
-
-                                    updateTeamMutation.mutate({
-                                      teamId: team.id,
-                                      data: {
-                                        name,
-                                        description,
-                                        groupId,
-                                        maxSize,
-                                        status: Number(status),
-                                      },
-                                    });
                                   }}
                                 >
-                                  <div className="space-y-2">
-                                    <Input
-                                      name="name"
-                                      defaultValue={team.name}
-                                      className="font-semibold"
-                                    />
-                                    <Textarea
-                                      name="description"
-                                      defaultValue={team.description || ""}
-                                      className="text-sm"
-                                    />
-                                    <Select
-                                      value={selectedGroupId}
-                                      onValueChange={setSelectedGroupId}
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select a group" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {filteredGroups?.map((group) => (
-                                          <SelectItem
-                                            key={group.id}
-                                            value={group.id.toString()}
-                                          >
-                                            {group.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <Input
-                                      name="maxSize"
-                                      type="number"
-                                      min="1"
-                                      defaultValue={
-                                        team.maxSize?.toString() || "6"
-                                      }
-                                      placeholder="Maximum team size"
-                                      className="text-sm"
-                                    />
-                                    <Select
-                                      name="status"
-                                      defaultValue={
-                                        team.status?.toString() || "1"
-                                      }
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select status" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="1">
-                                          Active
-                                        </SelectItem>
-                                        <SelectItem value="0">
-                                          Inactive
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <div className="flex gap-2">
-                                      <Button type="submit" size="sm">
-                                        Save
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          setEditingTeam(null);
-                                          setSelectedGroupId("");
-                                        }}
-                                      >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogTitle>
+                                      Delete Team?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete the team "
+                                      {team.name}"? This action cannot be undone.
+                                      {sortedUsers?.filter(
+                                        (u) => u.teamId === team.id,
+                                      ).length > 0 && (
+                                        <p className="mt-2 text-amber-600 font-medium">
+                                          Warning: This team has{" "}
+                                          {
+                                            sortedUsers?.filter(
+                                              (u) => u.teamId === team.id,
+                                            ).length
+                                          }{" "}
+                                          members. Deleting it will remove these
+                                          users from the team.
+                                        </p>
+                                      )}
+                                    </AlertDialogDescription>
+                                    <div className="flex items-center justify-end gap-2 mt-4">
+                                      <AlertDialogCancel className="h-10 px-4 py-2 flex items-center justify-center">
                                         Cancel
-                                      </Button>
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2 flex items-center justify-center"
+                                        onClick={() =>
+                                          deleteTeamMutation.mutate(team.id)
+                                        }
+                                      >
+                                        Delete Team
+                                      </AlertDialogAction>
                                     </div>
-                                  </div>
-                                </form>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-2">
-                                    <CardTitle className="text-lg">
-                                      {team.name}
-                                    </CardTitle>
-                                  </div>
-                                  <CardDescription className="line-clamp-2 text-sm">
-                                    {team.description}
-                                  </CardDescription>
-                                  <p className="text-sm mt-2">
-                                    <span className="font-medium">
-                                      Status:{" "}
-                                    </span>
-                                    <span
-                                      className={
-                                        team.status === 1
-                                          ? "text-green-600"
-                                          : "text-red-600"
-                                      }
-                                    >
-                                      {team.status === 1
-                                        ? "Active"
-                                        : "Inactive"}
-                                    </span>
-                                  </p>
-                                </>
-                              )}
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingTeam(team);
-                                  setSelectedGroupId(
-                                    team.groupId?.toString() || "",
-                                  );
-                                }}
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm">
+                              <span className="font-medium">Group: </span>
+                              {sortedGroups?.find((g) => g.id === team.groupId)
+                                ?.name || "No Group"}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Members: </span>
+                              {filteredUsers.filter((u) => u.teamId === team.id)
+                                .length || 0}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Max Size: </span>
+                              {team.maxSize || 6}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Status: </span>
+                              <span
+                                className={
+                                  team.status === 1
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }
                               >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogTitle>
-                                    Delete Team?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete the team "
-                                    {team.name}"? This action cannot be undone.
-                                    {sortedUsers?.filter(
-                                      (u) => u.teamId === team.id,
-                                    ).length > 0 && (
-                                      <p className="mt-2 text-amber-600 font-medium">
-                                        Warning: This team has{" "}
-                                        {
-                                          sortedUsers?.filter(
-                                            (u) => u.teamId === team.id,
-                                          ).length
-                                        }{" "}
-                                        members. Deleting it will remove these
-                                        users from the team.
-                                      </p>
-                                    )}
-                                  </AlertDialogDescription>
-                                  <div className="flex items-center justify-end gap-2 mt-4">
-                                    <AlertDialogCancel className="h-10 px-4 py-2 flex items-center justify-center">
-                                      Cancel
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2 flex items-center justify-center"
-                                      onClick={() =>
-                                        deleteTeamMutation.mutate(team.id)
-                                      }
-                                    >
-                                      Delete Team
-                                    </AlertDialogAction>
-                                  </div>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm">
-                            <span className="font-medium">Group: </span>
-                            {sortedGroups?.find((g) => g.id === team.groupId)
-                              ?.name || "No Group"}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Members: </span>
-                            {filteredUsers.filter((u) => u.teamId === team.id)
-                              .length || 0}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Max Size: </span>
-                            {team.maxSize || 6}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Status: </span>
-                            <span
-                              className={
-                                team.status === 1
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }
-                            >
-                              {team.status === 1 ? "Active" : "Inactive"}
-                            </span>
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+                                {team.status === 1 ? "Active" : "Inactive"}
+                              </span>
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
 
-              <div className="border rounded-lg p-4">
+              <div className="w-full">
                 <Collapsible className="w-full">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
