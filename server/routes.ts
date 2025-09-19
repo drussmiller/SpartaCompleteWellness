@@ -4480,6 +4480,10 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "User's team not found" });
       }
 
+      // Debug logging
+      console.log("Current user:", JSON.stringify(currentUser, null, 2));
+      console.log("Current team:", JSON.stringify(currentTeam, null, 2));
+
       // Get team members points
       const teamMembers = await db
         .select({
@@ -4520,6 +4524,9 @@ export const registerRoutes = async (
           GROUP BY t.id, t.name
           ORDER BY avg_points DESC
         `);
+
+      console.log("Filtering teams for group ID:", currentTeam.groupId);
+      console.log("Team stats query result:", JSON.stringify(teamStats.rows, null, 2));
 
       res.setHeader("Content-Type", "application/json");
       res.json({
