@@ -1574,29 +1574,29 @@ export const registerRoutes = async (
         // If organization status is being set to inactive (0), cascade to all groups, teams, and users
         if (req.body.status === 0) {
           logger.info(`Organization ${organizationId} set to inactive, cascading status updates...`);
-          
+
           // Get all groups in this organization
           const orgGroups = await storage.getGroupsByOrganization(organizationId);
           const groupIds = orgGroups.map(g => g.id);
-          
+
           if (groupIds.length > 0) {
             // Update all groups in this organization to inactive
             await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
             logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
-            
+
             // Get all teams in these groups
             const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
             const teamIds = teamsInGroups.map(t => t.id);
-            
+
             if (teamIds.length > 0) {
               // Update all teams in these groups to inactive
               await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
               logger.info(`Set ${teamIds.length} teams to inactive for organization ${organizationId}`);
-              
+
               // Get all users in these teams and update them to inactive
               const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
               const userIds = usersInTeams.map(u => u.id);
-              
+
               if (userIds.length > 0) {
                 await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
                 logger.info(`Set ${userIds.length} users to inactive for organization ${organizationId}`);
@@ -1721,20 +1721,20 @@ export const registerRoutes = async (
         // If group status is being set to inactive (0), cascade to all teams and users
         if (req.body.status === 0) {
           logger.info(`Group ${groupId} set to inactive, cascading status updates...`);
-          
+
           // Get all teams in this group
           const teamsInGroup = await tx.select().from(teams).where(eq(teams.groupId, groupId));
           const teamIds = teamsInGroup.map(t => t.id);
-          
+
           if (teamIds.length > 0) {
             // Update all teams in this group to inactive
             await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
             logger.info(`Set ${teamIds.length} teams to inactive for group ${groupId}`);
-            
+
             // Get all users in these teams and update them to inactive
             const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
             const userIds = usersInTeams.map(u => u.id);
-            
+
             if (userIds.length > 0) {
               await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
               logger.info(`Set ${userIds.length} users to inactive for group ${groupId}`);
@@ -1922,7 +1922,7 @@ export const registerRoutes = async (
             .set(parsedData.data)
             .where(eq(activities.id, existingActivity[0].id))
             .returning();
-          
+
           res.status(200).json({ 
             ...activity, 
             message: "Activity updated successfully" 
@@ -2017,44 +2017,44 @@ export const registerRoutes = async (
       if (!req.user?.isAdmin && !req.user?.isGroupAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      
+
       let users = await storage.getAllUsers();
-      
+
       // Filter users for group admins - only show users in their organization
       if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
         logger.info(`Group Admin ${req.user.id} requesting users for adminGroupId: ${req.user.adminGroupId}`);
-        
+
         // Get the admin's group to find the organization
         const [adminGroup] = await db
           .select()
           .from(groups)
           .where(eq(groups.id, req.user.adminGroupId))
           .limit(1);
-          
+
         if (!adminGroup) {
           logger.warn(`Admin group ${req.user.adminGroupId} not found for user ${req.user.id}`);
           return res.json([]);
         }
-        
+
         logger.info(`Admin group found: ${adminGroup.name} in organization ${adminGroup.organizationId}`);
-        
+
         // Get ALL teams in the same organization (across all groups)
         const orgGroups = await db
           .select({ id: groups.id })
           .from(groups)
           .where(eq(groups.organizationId, adminGroup.organizationId));
-          
+
         const orgGroupIds = orgGroups.map(g => g.id);
         logger.info(`Found ${orgGroupIds.length} groups in organization ${adminGroup.organizationId}:`, orgGroupIds);
-        
+
         const orgTeams = await db
           .select({ id: teams.id })
           .from(teams)
           .where(inArray(teams.groupId, orgGroupIds));
-        
+
         const teamIds = orgTeams.map(team => team.id);
         logger.info(`Found ${teamIds.length} teams in organization ${adminGroup.organizationId}:`, teamIds);
-        
+
         // Get team details for debugging
         const teamDetails = await db
           .select({
@@ -2065,17 +2065,17 @@ export const registerRoutes = async (
           .from(teams)
           .where(inArray(teams.id, teamIds));
         logger.info(`Team details in organization:`, teamDetails);
-        
+
         // Filter users to only those in the organization's teams
         const originalUserCount = users.length;
         const allUsersWithTeams = users.filter(user => user.teamId);
         logger.info(`Users with team assignments (before org filter):`, allUsersWithTeams.map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
-        
+
         users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
         logger.info(`Filtered users from ${originalUserCount} to ${users.length} for Group Admin ${req.user.id}`);
         logger.info(`Filtered user details:`, users.map(u => ({ id: u.id, username: u.username, teamId: u.teamId })));
       }
-      
+
       res.json(users);
     } catch (error) {
       logger.error("Error fetching users:", error);
@@ -3215,7 +3215,7 @@ export const registerRoutes = async (
 
       // Prepare update data - explicitly handle falsy values like status=0
       const updateData: any = { ...req.body };
-      
+
       // Fix teamJoinedAt logic to handle teamId=0 properly
       if (req.body.teamId !== undefined) {
         updateData.teamJoinedAt = req.body.teamId !== null && req.body.teamId !== 0 ? new Date() : null;
@@ -3811,13 +3811,11 @@ export const registerRoutes = async (
         clearTimeout(pingTimeout);
       }
 
-      // Set a timeout to terminate the connection if no pong is received
+      // Set a much longer timeout to avoid premature disconnections
       pingTimeout = setTimeout(() => {
-        logger.warn(
-          `WebSocket connection timed out after no response for 30s, userId: ${userId || "unauthenticated"}`,
-        );
+        logger.warn(`WebSocket connection timed out after no response for 120s, userId: ${userId || 'unauthenticated'}`);
         ws.terminate();
-      }, 30000); // 30 seconds timeout
+      }, 120000); // 2 minutes timeout instead of 30 seconds
     };
 
     // Start the heartbeat immediately on connection
@@ -3900,7 +3898,7 @@ export const registerRoutes = async (
           logger.info(
             `WebSocket user ${userId} authenticated with ${userClients?.size || 0} total connections`,
           );
-          ws.send(JSON.stringify({ type: "auth_success", userId }));
+          ws.send(JSON.stringify({ type:"auth_success", userId }));
         }
 
         // Handle ping from client (different from our server-initiated ping)
@@ -3967,11 +3965,11 @@ export const registerRoutes = async (
     });
 
     // Handle connection errors
-    ws.on("error", (err) => {
-      logger.error(
-        `WebSocket error for user ${userId || "unauthenticated"}:`,
-        err instanceof Error ? err : new Error(String(err)),
-      );
+    ws.on('error', (err) => {
+      // Only log non-routine connection errors
+      if (!err.message.includes('ECONNRESET') && !err.message.includes('EPIPE')) {
+        logger.error(`WebSocket error for user ${userId || 'unauthenticated'}:`, err instanceof Error ? err : new Error(String(err)));
+      }
 
       // Clear the ping timeout
       if (pingTimeout) {
@@ -3979,15 +3977,7 @@ export const registerRoutes = async (
         pingTimeout = null;
       }
 
-      // On error, terminate the connection
-      try {
-        ws.terminate();
-      } catch (termErr) {
-        logger.error(
-          "Error terminating WebSocket connection:",
-          termErr instanceof Error ? termErr : new Error(String(termErr)),
-        );
-      }
+      // Don't force terminate on error - let natural close handling take care of cleanup
 
       // Make sure to clean up client map
       if (userId) {
