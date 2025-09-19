@@ -1434,8 +1434,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Dialog>
                       </div>
                       <div className="space-y-4">
-                        {visibleGroups?.map((group) => (
-                          <Card key={group.id}>
+                        {visibleGroups?.map((group, index) => (
+                          <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
