@@ -995,7 +995,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <Checkbox
                             id="show-inactive-orgs"
                             checked={showInactiveOrgs}
-                            onCheckedChange={setShowInactiveOrgs}
+                            onCheckedChange={(checked) => setShowInactiveOrgs(checked === true)}
                           />
                           <label
                             htmlFor="show-inactive-orgs"
@@ -1291,7 +1291,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <Checkbox
                             id="show-inactive-groups"
                             checked={showInactiveGroups}
-                            onCheckedChange={setShowInactiveGroups}
+                            onCheckedChange={(checked) => setShowInactiveGroups(checked === true)}
                           />
                           <label
                             htmlFor="show-inactive-groups"
@@ -1676,7 +1676,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       <Checkbox
                         id="show-inactive-teams"
                         checked={showInactiveTeams}
-                        onCheckedChange={setShowInactiveTeams}
+                        onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
                       />
                       <label
                         htmlFor="show-inactive-teams"
@@ -2083,7 +2083,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <Checkbox
                           id="show-inactive-users"
                           checked={showInactiveUsers}
-                          onCheckedChange={setShowInactiveUsers}
+                          onCheckedChange={(checked) => setShowInactiveUsers(checked === true)}
                         />
                         <label
                           htmlFor="show-inactive-users"
