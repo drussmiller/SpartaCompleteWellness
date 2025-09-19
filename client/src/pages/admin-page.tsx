@@ -987,6 +987,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <ChevronDown className="h-5 w-5 ml-2" />
                       </Button>
                     </CollapsibleTrigger>
+                  </div>
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
@@ -1282,6 +1283,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <ChevronDown className="h-5 w-5 ml-2" />
                       </Button>
                     </CollapsibleTrigger>
+                  </div>
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
@@ -1652,11 +1654,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-                </div>
               )}
 
               {/* Teams Section - Show for admins and group admins */}
-              <Collapsible className="w-full border rounded-lg p-4 min-h-[120px]">
+              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                <Collapsible className="w-full border rounded-lg p-4 min-h-[120px]">
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
@@ -2061,6 +2063,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </div>
                 </CollapsibleContent>
               </Collapsible>
+              )}
 
               <Collapsible className="w-full border rounded-lg p-4 min-h-[120px]">
                 <div className="mb-4">
