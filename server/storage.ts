@@ -895,16 +895,6 @@ export const storage = {
     }
   },
 
-  // Update team functions to work with groupId
-  async getTeamsByGroup(groupId: number): Promise<Team[]> {
-    try {
-      return await db.select().from(teams).where(eq(teams.groupId, groupId));
-    } catch (error) {
-      logger.error(`Failed to get teams for group ${groupId}: ${error}`);
-      throw error;
-    }
-  },
-
   // Workout Types
   async getWorkoutTypes(): Promise<WorkoutType[]> {
     try {
