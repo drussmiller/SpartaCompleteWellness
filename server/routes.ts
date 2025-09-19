@@ -1874,7 +1874,7 @@ export const registerRoutes = async (
         day ? parseInt(day as string) : undefined,
         activityTypeIdNumber,
       );
-      logger.info(`Retrieved activities${activityTypeIdNumber ? ` with activity type: ${activityTypeIdNumber}` : ''}:`, JSON.stringify(activities, null, 2));
+      logger.info(`Retrieved activities${activityTypeIdNumber ? ` with activity type: ${activityTypeIdNumber}` : ''}`, { activitiesData: JSON.stringify(activities, null, 2) });
       res.json(activities);
     } catch (error) {
       logger.error("Error fetching activities:", error);
@@ -1890,7 +1890,7 @@ export const registerRoutes = async (
 
       logger.info(
         "Creating/updating activity with data:",
-        JSON.stringify(req.body, null, 2),
+        { activityData: JSON.stringify(req.body, null, 2) },
       );
 
       const parsedData = insertActivitySchema.safeParse(req.body);
@@ -1904,7 +1904,7 @@ export const registerRoutes = async (
 
       logger.info(
         "Parsed activity data:",
-        JSON.stringify(parsedData.data, null, 2),
+        { parsedData: JSON.stringify(parsedData.data, null, 2) },
       );
 
       try {
@@ -1965,7 +1965,7 @@ export const registerRoutes = async (
 
       logger.info(
         "Updating activity with data:",
-        JSON.stringify(req.body, null, 2),
+        { updateData: JSON.stringify(req.body, null, 2) },
       );
 
       const parsedData = insertActivitySchema.safeParse(req.body);

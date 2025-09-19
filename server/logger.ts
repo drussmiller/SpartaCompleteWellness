@@ -24,6 +24,7 @@ interface LogMetadata {
   route?: string;
   timestamp: string;
   level: string;
+  [key: string]: any; // Allow additional metadata properties
 }
 
 class Logger {
