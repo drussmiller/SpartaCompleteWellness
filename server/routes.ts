@@ -4488,13 +4488,36 @@ export const registerRoutes = async (
         .where(eq(users.teamId, currentUser.teamId))
         .orderBy(sql`points DESC`);
 
-      // Get all teams average points
-      const teamStats = await db.execute(sql`
+      // Get user's organization to filter teams
+      const [userTeam] = await db
+        .select({
+          groupId: teams.groupId
+        })
+        .from(teams)
+        .where(eq(teams.id, currentUser.teamId))
+        .limit(1);
+
+      let userOrgId = null;
+      if (userTeam?.groupId) {
+        const [userGroup] = await db
+          .select({
+            organizationId: groups.organizationId
+          })
+          .from(groups)
+          .where(eq(groups.id, userTeam.groupId))
+          .limit(1);
+        
+        userOrgId = userGroup?.organizationId;
+      }
+
+      // Get teams in the same organization only
+      const teamStats = userOrgId ? await db.execute(sql`
           SELECT 
             t.id, 
             t.name, 
             COALESCE(AVG(user_points.total_points), 0)::integer as avg_points
           FROM teams t
+          INNER JOIN groups g ON t.group_id = g.id
           LEFT JOIN (
             SELECT 
               u.team_id,
@@ -4505,9 +4528,10 @@ export const registerRoutes = async (
             WHERE u.team_id IS NOT NULL
             GROUP BY u.id
           ) user_points ON user_points.team_id = t.id
+          WHERE g.organization_id = ${userOrgId}
           GROUP BY t.id, t.name
           ORDER BY avg_points DESC
-        `);
+        `) : [];
 
       res.setHeader("Content-Type", "application/json");
       res.json({
