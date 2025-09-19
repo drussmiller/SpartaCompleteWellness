@@ -4458,7 +4458,7 @@ export const registerRoutes = async (
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
-      // First get the user's team ID
+      // First get the user's team ID and group information
       const [currentUser] = await db
         .select()
         .from(users)
@@ -4467,6 +4467,17 @@ export const registerRoutes = async (
 
       if (!currentUser || !currentUser.teamId) {
         return res.status(400).json({ message: "User not assigned to a team" });
+      }
+
+      // Get the user's team to find their group
+      const [currentTeam] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, currentUser.teamId))
+        .limit(1);
+
+      if (!currentTeam) {
+        return res.status(400).json({ message: "User's team not found" });
       }
 
       // Get team members points
@@ -4488,7 +4499,7 @@ export const registerRoutes = async (
         .where(eq(users.teamId, currentUser.teamId))
         .orderBy(sql`points DESC`);
 
-      // Get all teams average points
+      // Get teams average points - only from the same group as the user's team
       const teamStats = await db.execute(sql`
           SELECT 
             t.id, 
@@ -4505,6 +4516,7 @@ export const registerRoutes = async (
             WHERE u.team_id IS NOT NULL
             GROUP BY u.id
           ) user_points ON user_points.team_id = t.id
+          WHERE t.group_id = ${currentTeam.groupId}
           GROUP BY t.id, t.name
           ORDER BY avg_points DESC
         `);
