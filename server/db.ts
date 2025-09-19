@@ -15,15 +15,15 @@ const poolConfig = {
   connectionString: process.env.DATABASE_URL,
   connectionTimeoutMillis: 10000, // 10 seconds
   max: 3, // Limit max connections to prevent overloading
-  idleTimeoutMillis: 30000, // 30 seconds
+  idleTimeoutMillis: 300000, // 5 minutes instead of 30 seconds
   statement_timeout: 30000, // 30 seconds
   query_timeout: 30000, // 30 seconds
   keepAlive: true,
   keepAliveInitialDelayMillis: 1000,
   application_name: 'app',
   ssl: true,
-  maxUses: 100, // Close client after 100 uses (can help with issues)
-  allowExitOnIdle: true // Allow clients to exit on idle (helps with cleanup)
+  maxUses: 10000, // Much higher limit to reduce connection cycling
+  allowExitOnIdle: false // Keep connections alive to reduce churn
 };
 
 // Create pool with error handling
@@ -48,9 +48,10 @@ pool.on('error', (err) => {
   }
 });
 
-// Setup connection validation
+// Setup connection validation (reduced logging for stability)
 pool.on('connect', (client) => {
-  console.log('New database client connected');
+  // Only log initial pool establishment, not every connection
+  // console.log('Database client connected');
   client.on('error', (err) => {
     console.error('Database client error:', err);
   });
