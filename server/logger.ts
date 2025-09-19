@@ -36,7 +36,7 @@ class Logger {
   private constructor() {
     this.setupLogRotation();
     // Check environment variable to enable/disable console output
-    this.consoleOutputEnabled = process.env.ENABLE_CONSOLE_LOGGING === 'true';
+    this.consoleOutputEnabled = process.env.ENABLE_CONSOLE_LOGGING !== 'false';
   }
 
   public static getInstance(): Logger {
