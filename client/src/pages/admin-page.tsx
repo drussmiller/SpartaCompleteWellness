@@ -1267,7 +1267,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-                </div>
               )}
 
               {/* Groups Section - Show for full admins and group admins */}

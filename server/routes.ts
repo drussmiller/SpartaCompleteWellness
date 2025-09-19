@@ -308,7 +308,7 @@ export const registerRoutes = async (
     // Count active WebSocket connections
     let totalConnections = 0;
     let activeUsers = 0;
-    const userConnectionCounts = [];
+    const userConnectionCounts: { userId: number; connections: number }[] = [];
 
     // Analyze the clients map
     clients.forEach((userClients, userId) => {
@@ -389,7 +389,14 @@ export const registerRoutes = async (
       }
 
       // Keep track of notifications sent
-      const notificationsSent = [];
+      type SentNotification = {
+        userId: number;
+        username: string;
+        notificationId: number;
+        preferredTime: string;
+        currentTime: string;
+      };
+      const notificationsSent: SentNotification[] = [];
 
       // Process in batches if needed for large user counts
       // Using Promise.all with a limited batch size prevents server overload
