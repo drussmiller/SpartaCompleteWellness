@@ -24,18 +24,27 @@ interface PostLimitsResponse {
   memoryVerseWeekCount?: number;
 }
 
-export function usePostLimits(selectedDate: Date = new Date()) {
+export function usePostLimits(selectedDate?: Date) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Create a stable date that only changes once per day
+  const stableDate = useMemo(() => {
+    if (selectedDate) return selectedDate;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for consistency
+    return today;
+  }, [selectedDate]);
+  
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
-  const queryKey = useMemo(() => ["/api/posts/counts", selectedDate.toISOString(), tzOffset], [selectedDate, tzOffset]);
+  const queryKey = useMemo(() => ["/api/posts/counts", stableDate.toISOString(), tzOffset], [stableDate, tzOffset]);
 
   const { data, refetch, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
       const response = await apiRequest(
         "GET", 
-        `/api/posts/counts?tzOffset=${tzOffset}&date=${selectedDate.toISOString()}`
+        `/api/posts/counts?tzOffset=${tzOffset}&date=${stableDate.toISOString()}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch post limits");
@@ -71,7 +80,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
         window.removeEventListener('post-counts-changed', handlePostChange);
       };
     }
-  }, [user, queryClient, refetch]);
+  }, [user, queryClient]);
 
   const defaultCounts = {
     food: 0,
@@ -86,7 +95,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     food: true,
     workout: true,
     scripture: true,
-    memory_verse: selectedDate.getDay() === 6,
+    memory_verse: stableDate.getDay() === 6,
     miscellaneous: true, // Added miscellaneous post type
     prayer: true // Always allow prayer requests
   };
@@ -95,7 +104,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     food: 3,
     workout: 1,
     scripture: 1,
-    memory_verse: selectedDate.getDay() === 6 ? 1 : 0,
+    memory_verse: stableDate.getDay() === 6 ? 1 : 0,
     miscellaneous: Infinity, // Added miscellaneous post type; unlimited
     prayer: Infinity // Unlimited prayer requests
   };
@@ -106,7 +115,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
   
   // Derive canPost from counts rather than using potentially stale data from API
   const canPost = {
-    food: (selectedDate.getDay() !== 0) && (counts.food < 3),
+    food: (stableDate.getDay() !== 0) && (counts.food < 3),
     workout: counts.workout < 1,
     scripture: counts.scripture < 1,
     memory_verse: memoryVerseWeekCount === 0,
@@ -117,7 +126,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     food: Math.max(0, 3 - counts.food),
     workout: Math.max(0, 1 - counts.workout),
     scripture: Math.max(0, 1 - counts.scripture),
-    memory_verse: (selectedDate.getDay() === 6) ? Math.max(0, 1 - counts.memory_verse) : 0,
+    memory_verse: (stableDate.getDay() === 6) ? Math.max(0, 1 - counts.memory_verse) : 0,
     miscellaneous: null, // No limit
     prayer: null // No limit for prayer requests
   };
@@ -129,15 +138,15 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       queryClient.removeQueries({ queryKey });
       refetch();
     }
-  }, [selectedDate.toISOString(), user, queryClient, refetch]);
+  }, [stableDate.toISOString(), user, queryClient]);
 
-  // Log post limits for debugging
-  console.log("Post limits updated:", {
-    date: selectedDate.toISOString(),
-    counts,
-    canPost,
-    remaining
-  });
+  // Temporarily disable logging to reduce noise
+  // console.log("Post limits updated:", {
+  //   date: stableDate.toISOString(),
+  //   counts,
+  //   canPost,
+  //   remaining
+  // });
 
   return {
     counts,
