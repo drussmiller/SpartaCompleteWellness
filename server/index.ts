@@ -21,21 +21,21 @@ let port: number = 5000;
 // Declare scheduleDailyScoreCheck function
 let scheduleDailyScoreCheck: () => void;
 
-// Increase timeouts and add keep-alive
-const serverTimeout = 14400000; // 4 hours
+// Set reasonable timeouts for deployment
+const serverTimeout = 120000; // 2 minutes (reasonable for deployment)
 app.use((req, res, next) => {
-  // Set keep-alive header with increased timeout
+  // Set keep-alive header with reasonable timeout
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Keep-Alive', 'timeout=14400');
+  res.setHeader('Keep-Alive', 'timeout=120');
 
-  // Increase socket timeout and add connection handling
+  // Set reasonable socket timeout
   if (req.socket) {
     req.socket.setKeepAlive(true, 60000); // Keep-alive probe every 60 seconds
     req.socket.setTimeout(serverTimeout);
     req.socket.setNoDelay(true); // Disable Nagle's algorithm
   }
 
-  // Set generous timeouts
+  // Set reasonable timeouts
   req.setTimeout(serverTimeout);
 
   res.setTimeout(serverTimeout, () => {
@@ -141,6 +141,66 @@ app.use('/api', (req, res, next) => {
     server.listen(port, "0.0.0.0", () => {
       log(`[Server Startup] Server listening on port ${port}`);
       console.log("[Startup] Server ready!");
+      
+      // Run optional initialization immediately after server is ready (non-blocking)
+      setImmediate(() => {
+        (async () => {
+          try {
+            console.log("[Post-Startup] Beginning optional initialization...");
+            
+            // Setup simplified shared files handler (lazy loaded)
+            app.use('/shared/uploads', async (req, res, next) => {
+              try {
+                const filename = path.basename(req.path.split('?')[0]);
+                const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+                
+                const isThumbnail = req.query.thumbnail === "true";
+                let storageKey = isThumbnail && !filename.includes("thumbnail") 
+                  ? `shared/uploads/thumbnails/${filename}`
+                  : `shared/uploads/${filename}`;
+
+                const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
+                
+                if (fileBuffer && fileBuffer.length > 0) {
+                  const ext = path.extname(req.path).toLowerCase();
+                  const contentTypes: Record<string, string> = {
+                    '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+                    '.gif': 'image/gif', '.mp4': 'video/mp4', '.mov': 'video/quicktime',
+                    '.svg': 'image/svg+xml', '.webp': 'image/webp'
+                  };
+                  
+                  res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+                  res.setHeader('Cache-Control', 'public, max-age=86400');
+                  return res.send(fileBuffer);
+                } else {
+                  return res.status(404).json({ error: "File not found" });
+                }
+              } catch (error) {
+                console.error('Error serving shared file:', error);
+                next(error);
+              }
+            });
+
+            // Setup simplified uploads redirect
+            app.use('/uploads', (req, res) => {
+              const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${req.path}`;
+              return res.redirect(302, objectStorageUrl);
+            });
+
+            // Run migrations lazily in background (won't block deployment)
+            runMigrations().then(() => {
+              console.log("[Post-Startup] Database migrations completed successfully");
+            }).catch((error) => {
+              console.error("[Post-Startup] Migration failed (non-critical for deployment):", error);
+            });
+
+            console.log("[Post-Startup] Optional initialization complete");
+
+          } catch (error) {
+            console.error("[Post-Startup] Non-critical initialization error:", error);
+          }
+        })();
+      });
     });
 
   } catch (error) {
@@ -148,66 +208,6 @@ app.use('/api', (req, res, next) => {
     process.exit(1);
   }
 })();
-
-// Run optional initialization after server is ready (non-critical setup)
-setTimeout(() => {
-  (async () => {
-    try {
-      console.log("[Post-Startup] Beginning optional initialization...");
-      
-      // Setup simplified shared files handler (lazy loaded)
-      app.use('/shared/uploads', async (req, res, next) => {
-        try {
-          const filename = path.basename(req.path.split('?')[0]);
-          const { spartaObjectStorage } = await import("./sparta-object-storage-final");
-          
-          const isThumbnail = req.query.thumbnail === "true";
-          let storageKey = isThumbnail && !filename.includes("thumbnail") 
-            ? `shared/uploads/thumbnails/${filename}`
-            : `shared/uploads/${filename}`;
-
-          const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
-          
-          if (fileBuffer && fileBuffer.length > 0) {
-            const ext = path.extname(req.path).toLowerCase();
-            const contentTypes: Record<string, string> = {
-              '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
-              '.gif': 'image/gif', '.mp4': 'video/mp4', '.mov': 'video/quicktime',
-              '.svg': 'image/svg+xml', '.webp': 'image/webp'
-            };
-            
-            res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
-            res.setHeader('Cache-Control', 'public, max-age=86400');
-            return res.send(fileBuffer);
-          } else {
-            return res.status(404).json({ error: "File not found" });
-          }
-        } catch (error) {
-          console.error('Error serving shared file:', error);
-          next(error);
-        }
-      });
-
-      // Setup simplified uploads redirect
-      app.use('/uploads', (req, res) => {
-        const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${req.path}`;
-        return res.redirect(302, objectStorageUrl);
-      });
-
-      // Run migrations lazily in background (won't block deployment)
-      runMigrations().then(() => {
-        console.log("[Post-Startup] Database migrations completed successfully");
-      }).catch((error) => {
-        console.error("[Post-Startup] Migration failed (non-critical for deployment):", error);
-      });
-
-      console.log("[Post-Startup] Optional initialization complete");
-
-    } catch (error) {
-      console.error("[Post-Startup] Non-critical initialization error:", error);
-    }
-  })();
-}, 1000); // Wait 1 second after server starts to run optional tasks
 
 async function runMigrations() {
   console.log("Running database migrations...");

@@ -13,17 +13,17 @@ if (!process.env.DATABASE_URL) {
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 10000, // 10 seconds
-  max: 3, // Limit max connections to prevent overloading
-  idleTimeoutMillis: 300000, // 5 minutes instead of 30 seconds
-  statement_timeout: 30000, // 30 seconds
-  query_timeout: 30000, // 30 seconds
+  connectionTimeoutMillis: 5000, // 5 seconds (faster for deployment)
+  max: 2, // Minimal connections for startup
+  idleTimeoutMillis: 60000, // 1 minute (faster cleanup)
+  statement_timeout: 15000, // 15 seconds (faster failure)
+  query_timeout: 15000, // 15 seconds (faster failure)
   keepAlive: true,
-  keepAliveInitialDelayMillis: 1000,
+  keepAliveInitialDelayMillis: 500, // Faster initial delay
   application_name: 'app',
   ssl: true,
-  maxUses: 10000, // Much higher limit to reduce connection cycling
-  allowExitOnIdle: false // Keep connections alive to reduce churn
+  maxUses: 100, // Lower limit to prevent resource issues
+  allowExitOnIdle: true // Allow connections to close when idle for deployment
 };
 
 // Create pool with error handling
@@ -44,7 +44,7 @@ pool.on('error', (err) => {
       } catch (reconnectError) {
         console.error('Failed to reconnect to database:', reconnectError);
       }
-    }, 5000); // Wait 5 seconds before attempting to reconnect
+    }, 2000); // Wait 2 seconds before attempting to reconnect (faster for deployment)
   }
 });
 
