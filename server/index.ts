@@ -106,34 +106,14 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Remove the placeholder route since the real endpoint is in routes.ts
-// We'll directly call the endpoint in routes.ts
-
-
-// Start server immediately on port 5000 for fast deployment detection
-console.log(`[Server Startup] Starting server on port ${port} for immediate availability...`);
-server.listen(port, "0.0.0.0", () => {
-  log(`[Server Startup] Server listening on port ${port}`);
-  console.log("[Startup] Port opened successfully - now initializing features asynchronously...");
-});
-
-// Run initialization asynchronously after server starts
+// Initialize server asynchronously but start listening immediately
 (async () => {
   try {
-    console.log("[Startup] Beginning async initialization...");
-    console.log("[Debug] Environment variables:", {
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL: process.env.DATABASE_URL ? '***configured***' : 'missing',
-      ENABLE_CONSOLE_LOGGING: process.env.ENABLE_CONSOLE_LOGGING
-    });
-    const startTime = Date.now();
-
-    // Register API routes first (lightweight operation)
+    // Register API routes before server starts (critical for deployment)
     console.log("[Startup] Registering routes...");
     await registerRoutes(app);
-    console.log("[Startup] Routes registered", Date.now() - startTime, "ms");
 
-    // Global API error handler
+    // Global API error handlers
     app.use('/api', (err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('[API Error]:', err);
       res.status(err.status || 500).json({
@@ -148,79 +128,86 @@ server.listen(port, "0.0.0.0", () => {
       res.status(status).json({ message });
     });
 
-    // Setup Vite or static files
+    // Setup static file serving based on environment
     if (app.get("env") === "development") {
       console.log("[Startup] Setting up Vite...");
       await setupVite(app, server);
-      console.log("[Startup] Vite setup complete", Date.now() - startTime, "ms");
     } else {
       serveStatic(app);
     }
 
-    // Verify database connection asynchronously (non-blocking)
-    console.log("[Startup] Verifying database connection asynchronously...");
-    db.execute(sql`SELECT 1`).then(() => {
-      console.log("[Startup] Database connection verified", Date.now() - startTime, "ms");
-    }).catch((error) => {
-      console.error("[Startup] Database connection failed (non-blocking):", error);
-      // Don't throw - let the app continue running for health checks
+    // Start server immediately on port 5000 for fast deployment detection
+    console.log(`[Server Startup] Starting server on port ${port} for immediate availability...`);
+    server.listen(port, "0.0.0.0", () => {
+      log(`[Server Startup] Server listening on port ${port}`);
+      console.log("[Startup] Server ready!");
     });
-
-    // Run migrations asynchronously (non-blocking)
-    runMigrations().then(() => {
-      console.log("[Startup] Migrations completed", Date.now() - startTime, "ms");
-    }).catch((error) => {
-      console.error("[Startup] Migration failed (non-blocking):", error);
-      // Don't throw - let the app continue running
-    });
-
-    // Setup simplified shared files handler
-    console.log("[Startup] Setting up simplified shared files handler");
-    app.use('/shared/uploads', async (req, res, next) => {
-      try {
-        const filename = path.basename(req.path.split('?')[0]);
-        const { spartaObjectStorage } = await import("./sparta-object-storage-final");
-        
-        const isThumbnail = req.query.thumbnail === "true";
-        let storageKey = isThumbnail && !filename.includes("thumbnail") 
-          ? `shared/uploads/thumbnails/${filename}`
-          : `shared/uploads/${filename}`;
-
-        const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
-        
-        if (fileBuffer && fileBuffer.length > 0) {
-          const ext = path.extname(req.path).toLowerCase();
-          const contentTypes: Record<string, string> = {
-            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
-            '.gif': 'image/gif', '.mp4': 'video/mp4', '.mov': 'video/quicktime',
-            '.svg': 'image/svg+xml', '.webp': 'image/webp'
-          };
-          
-          res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
-          res.setHeader('Cache-Control', 'public, max-age=86400');
-          return res.send(fileBuffer);
-        } else {
-          return res.status(404).json({ error: "File not found" });
-        }
-      } catch (error) {
-        console.error('Error serving shared file:', error);
-        next(error);
-      }
-    });
-
-    // Setup simplified uploads redirect
-    app.use('/uploads', (req, res) => {
-      const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${req.path}`;
-      return res.redirect(302, objectStorageUrl);
-    });
-
-    console.log("[Startup] Async initialization complete", Date.now() - startTime, "ms");
 
   } catch (error) {
-    console.error("[Startup] Non-fatal async initialization error:", error);
-    // Don't exit - server is already running
+    console.error("[Startup] Critical error during server initialization:", error);
+    process.exit(1);
   }
 })();
+
+// Run optional initialization after server is ready (non-critical setup)
+setTimeout(() => {
+  (async () => {
+    try {
+      console.log("[Post-Startup] Beginning optional initialization...");
+      
+      // Setup simplified shared files handler (lazy loaded)
+      app.use('/shared/uploads', async (req, res, next) => {
+        try {
+          const filename = path.basename(req.path.split('?')[0]);
+          const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+          
+          const isThumbnail = req.query.thumbnail === "true";
+          let storageKey = isThumbnail && !filename.includes("thumbnail") 
+            ? `shared/uploads/thumbnails/${filename}`
+            : `shared/uploads/${filename}`;
+
+          const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
+          
+          if (fileBuffer && fileBuffer.length > 0) {
+            const ext = path.extname(req.path).toLowerCase();
+            const contentTypes: Record<string, string> = {
+              '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+              '.gif': 'image/gif', '.mp4': 'video/mp4', '.mov': 'video/quicktime',
+              '.svg': 'image/svg+xml', '.webp': 'image/webp'
+            };
+            
+            res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.send(fileBuffer);
+          } else {
+            return res.status(404).json({ error: "File not found" });
+          }
+        } catch (error) {
+          console.error('Error serving shared file:', error);
+          next(error);
+        }
+      });
+
+      // Setup simplified uploads redirect
+      app.use('/uploads', (req, res) => {
+        const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${req.path}`;
+        return res.redirect(302, objectStorageUrl);
+      });
+
+      // Run migrations lazily in background (won't block deployment)
+      runMigrations().then(() => {
+        console.log("[Post-Startup] Database migrations completed successfully");
+      }).catch((error) => {
+        console.error("[Post-Startup] Migration failed (non-critical for deployment):", error);
+      });
+
+      console.log("[Post-Startup] Optional initialization complete");
+
+    } catch (error) {
+      console.error("[Post-Startup] Non-critical initialization error:", error);
+    }
+  })();
+}, 1000); // Wait 1 second after server starts to run optional tasks
 
 async function runMigrations() {
   console.log("Running database migrations...");
