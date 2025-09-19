@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 export interface PostLimits {
   food: number;
@@ -26,8 +26,8 @@ interface PostLimitsResponse {
 export function usePostLimits(selectedDate: Date = new Date()) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const tzOffset = new Date().getTimezoneOffset();
-  const queryKey = ["/api/posts/counts", selectedDate.toISOString(), tzOffset];
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+  const queryKey = useMemo(() => ["/api/posts/counts", selectedDate.toISOString(), tzOffset], [selectedDate, tzOffset]);
 
   const { data, refetch, isLoading, error } = useQuery({
     queryKey,
@@ -63,9 +63,6 @@ export function usePostLimits(selectedDate: Date = new Date()) {
       window.addEventListener('post-mutation', handlePostChange);
       window.addEventListener('post-counts-changed', handlePostChange);
 
-      // Initial refetch when component mounts
-      refetch();
-
       console.log('Post limit event listeners attached');
 
       return () => {
@@ -73,7 +70,7 @@ export function usePostLimits(selectedDate: Date = new Date()) {
         window.removeEventListener('post-counts-changed', handlePostChange);
       };
     }
-  }, [user, queryClient, queryKey]);
+  }, [user, queryClient, refetch]);
 
   const defaultCounts = {
     food: 0,
@@ -124,14 +121,14 @@ export function usePostLimits(selectedDate: Date = new Date()) {
     prayer: null // No limit for prayer requests
   };
 
-  // Force a clean fetch of the data when the hook is used
+  // Force a clean fetch of the data when the date changes
   useEffect(() => {
     if (user) {
       // Clear the cache for this query and fetch fresh data
       queryClient.removeQueries({ queryKey });
       refetch();
     }
-  }, [selectedDate.toISOString()]);
+  }, [selectedDate.toISOString(), user, queryClient, refetch]);
 
   // Log post limits for debugging
   console.log("Post limits updated:", {
