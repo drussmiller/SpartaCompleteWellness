@@ -32,8 +32,12 @@ export function useNotifications(suppressToasts = false) {
     refetchInterval: 60000, // Refetch every minute
   });
 
-  // Simple function to connect to WebSocket server
+  // Simple function to connect to WebSocket server - TEMPORARILY DISABLED
   const connectWebSocket = useCallback(() => {
+    // TEMPORARILY DISABLED TO DEBUG RESTART ISSUES
+    console.log("WebSocket connection temporarily disabled for debugging");
+    return;
+    
     // Exit if no user 
     if (!user) {
       console.log("WebSocket not connecting - user not authenticated");
@@ -108,7 +112,7 @@ export function useNotifications(suppressToasts = false) {
                 console.error("Error sending ping:", err);
               }
             }
-          }, 30000); // Send ping every 30 seconds
+          }, 60000); // Send ping every 60 seconds to reduce connection stress
         };
         
         socket.onmessage = (event) => {
