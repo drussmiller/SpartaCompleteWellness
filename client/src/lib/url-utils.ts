@@ -4,13 +4,13 @@ import { createThumbnailUrl, createMediaUrl } from './media-utils';
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
 export function convertUrlsToLinks(text: string): string {
-  // Don't process text that already contains HTML tags
-  if (text.includes('<') && text.includes('>')) {
+  // Don't process text that already contains HTML tags or links
+  if (text.includes('<a ') || text.includes('<div') || text.includes('<p') || text.includes('<span')) {
     return text;
   }
 
-  // Enhanced URL regex that matches various URL formats
-  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+  // More specific URL regex that only matches actual URLs starting with http/https
+  const urlRegex = /(?<!["'])https?:\/\/[^\s<>"']+/g;
 
   return text.replace(urlRegex, (url) => {
     // Clean up any trailing punctuation
