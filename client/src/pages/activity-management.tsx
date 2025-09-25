@@ -277,6 +277,16 @@ export default function ActivityManagementPage() {
         content = content.replace(fullMatch, replacement);
       });
 
+      // Convert Bible verses to clickable links
+      // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
+      const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+      
+      content = content.replace(bibleVerseRegex, (match) => {
+        // Clean up the verse reference for the URL (remove spaces, normalize)
+        const cleanVerse = match.replace(/\s+/g, '').replace(/Psalms/gi, 'Psalm');
+        return `<a href="bible:verse/${cleanVerse}">${match}</a>`;
+      });
+
       // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
         id: Math.random().toString(36).substring(7),
@@ -504,6 +514,16 @@ export default function ActivityManagementPage() {
                         // Second pass: replace all matches from end to beginning to preserve indices
                         videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
                           content = content.replace(fullMatch, replacement);
+                        });
+
+                        // Convert Bible verses to clickable links
+                        // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
+                        const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+                        
+                        content = content.replace(bibleVerseRegex, (match) => {
+                          // Clean up the verse reference for the URL (remove spaces, normalize)
+                          const cleanVerse = match.replace(/\s+/g, '').replace(/Psalms/gi, 'Psalm');
+                          return `<a href="bible:verse/${cleanVerse}">${match}</a>`;
                         });
 
 
