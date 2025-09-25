@@ -4,32 +4,35 @@ import { createThumbnailUrl, createMediaUrl } from './media-utils';
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
 export function convertUrlsToLinks(text: string): string {
-  // Don't process text that contains any HTML-like content at all
-  if (text.includes('<') || text.includes('>') || text.includes('&')) {
+  // Don't process text that already contains any HTML or links
+  if (text.includes('<a ') || text.includes('<') || text.includes('>') || text.includes('&')) {
     return text;
   }
 
-  // Don't process if it looks like encoded HTML
-  if (text.includes('%3C') || text.includes('%3E') || text.includes('%20class=')) {
+  // Don't process if it looks like encoded HTML or contains encoded attributes
+  if (text.includes('%3C') || text.includes('%3E') || text.includes('%20class=') || text.includes('bible:verse')) {
     return text;
   }
 
-  // Only process plain text that clearly contains URLs
-  const urlRegex = /\bhttps?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?/g;
-
-  // Only apply if we actually find URLs
-  const hasUrls = urlRegex.test(text);
-  if (!hasUrls) {
+  // Return early if this looks like it contains HTML attributes or tags
+  if (text.includes('href=') || text.includes('class=') || text.includes('div')) {
     return text;
   }
 
-  // Reset regex for replacement
-  urlRegex.lastIndex = 0;
+  // Only process completely plain text that clearly contains standalone URLs
+  const urlRegex = /(?:^|\s)(https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/g;
 
-  return text.replace(urlRegex, (url) => {
+  // Only apply if we actually find URLs and the text doesn't look like HTML
+  const matches = text.match(urlRegex);
+  if (!matches || matches.length === 0) {
+    return text;
+  }
+
+  return text.replace(urlRegex, (match, url) => {
     // Clean up any trailing punctuation that shouldn't be part of the URL
     const cleanUrl = url.replace(/[.,;:!?'")\]]+$/, '');
-    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${cleanUrl}</a>`;
+    const leadingSpace = match.startsWith(' ') ? ' ' : '';
+    return `${leadingSpace}<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${cleanUrl}</a>`;
   });
 }
 
