@@ -1913,9 +1913,10 @@ export const registerRoutes = async (
           parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
             if (field.type === 'text' && field.content) {
               // Convert Bible verses to clickable links
-              // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
+              // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", "Galatians 4", etc.
               // Includes common misspellings like "Galation" for "Galatians"
-              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+              // Updated to handle chapter-only references (e.g., "Galatians 4")
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?::\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*)?(?!\d)\b/gi;
 
               const originalContent = field.content;
               field.content = field.content.replace(bibleVerseRegex, (match) => {
@@ -1924,7 +1925,11 @@ export const registerRoutes = async (
                   .replace(/\s+/g, '')
                   .replace(/Psalms/gi, 'Psalm')
                   .replace(/Galation/gi, 'Galatians'); // Fix common misspelling
-                return `<a href="bible:verse/${cleanVerse}">${match}</a>`;
+                
+                // For mobile compatibility, use a web-based Bible app instead of bible: scheme
+                // This will work in both web browsers and mobile apps
+                const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
+                return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
               });
 
               // Log if any Bible verses were converted
