@@ -645,7 +645,7 @@ export const registerRoutes = async (
         if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaStorage } = await import("./sparta-object-storage");
+            const { spartaObjectStorage } = await import("./sparta-object-storage");
 
             // Determine if this is a video file
             const originalFilename = req.file.originalname.toLowerCase();
@@ -686,7 +686,7 @@ export const registerRoutes = async (
               cleanFilename = `comment-media.${ext}`;
             }
 
-            const fileInfo = await spartaStorage.storeFile(
+            const fileInfo = await spartaObjectStorage.storeFile(
               req.file.buffer,
               cleanFilename,
               req.file.mimetype,
@@ -1589,7 +1589,7 @@ export const registerRoutes = async (
           if (groupIds.length > 0) {
             // Update all groups in this organization to inactive
             await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
-            logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
+            logger.log(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
 
             // Get all teams in these groups
             const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
@@ -1908,6 +1908,35 @@ export const registerRoutes = async (
       );
 
       try {
+        // Apply Bible verse conversion to the parsed data before saving to database
+        if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
+          parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
+            if (field.type === 'text' && field.content) {
+              // Convert Bible verses to clickable links
+              // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
+              // Includes common misspellings like "Galation" for "Galatians"
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+
+              const originalContent = field.content;
+              field.content = field.content.replace(bibleVerseRegex, (match) => {
+                // Clean up the verse reference for the URL (remove spaces, normalize common misspellings)
+                const cleanVerse = match
+                  .replace(/\s+/g, '')
+                  .replace(/Psalms/gi, 'Psalm')
+                  .replace(/Galation/gi, 'Galatians'); // Fix common misspelling
+                return `<a href="bible:verse/${cleanVerse}">${match}</a>`;
+              });
+
+              // Log if any Bible verses were converted
+              if (originalContent !== field.content) {
+                logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+                logger.info(`Original content length: ${originalContent.length}, converted length: ${field.content.length}`);
+              }
+            }
+            return field;
+          });
+        }
+
         // Check if an activity already exists for this week and day
         const existingActivity = await db
           .select()
@@ -4146,7 +4175,7 @@ export const registerRoutes = async (
 
       const userId = req.user.id;
 
-      // Get timezone offset in minutes directly from the client
+      // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
 
       logger.info(
