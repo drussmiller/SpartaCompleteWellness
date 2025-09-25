@@ -536,15 +536,18 @@ export default function ActivityManagementPage() {
 
 
                         // Create activity data
+                        const contentFields = [{
+                          id: Math.random().toString(36).substring(7),
+                          type: 'text',
+                          content: content.trim(),
+                          title: title
+                        }];
+
                         const activityData = {
                           week: extractedWeek,
                           day: extractedDay,
-                          contentFields: [{
-                            id: Math.random().toString(36).substring(7),
-                            type: 'text',
-                            content: content.trim(),
-                            title: title
-                          }]
+                          contentFields: contentFields,
+                          activityTypeId: selectedActivityTypeId
                         };
 
                         // Create or update the activity

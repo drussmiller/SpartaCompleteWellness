@@ -1451,7 +1451,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update team endpoint  
+  // Update team endpoint
   router.patch("/api/teams/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1546,7 +1546,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update organization endpoint  
+  // Update organization endpoint
   router.patch("/api/organizations/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1606,7 +1606,7 @@ export const registerRoutes = async (
 
               if (userIds.length > 0) {
                 await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
-                logger.info(`Set ${userIds.length} users to inactive for organization ${organizationId}`);
+                logger.log(`Set ${userIds.length} users to inactive for organization ${organizationId}`);
               }
             }
           }
@@ -1693,7 +1693,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update group endpoint  
+  // Update group endpoint
   router.patch("/api/groups/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1908,6 +1908,12 @@ export const registerRoutes = async (
       );
 
       try {
+        // Ensure contentFields is properly serialized if it exists
+        const activityData = {
+          ...parsedData.data,
+          contentFields: parsedData.data.contentFields ? JSON.stringify(parsedData.data.contentFields) : null
+        };
+
         // Check if an activity already exists for this week and day
         const existingActivity = await db
           .select()
@@ -1926,18 +1932,24 @@ export const registerRoutes = async (
           logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
           [activity] = await db
             .update(activities)
-            .set(parsedData.data)
+            .set(activityData)
             .where(eq(activities.id, existingActivity[0].id))
             .returning();
 
-          res.status(200).json({ 
-            ...activity, 
-            message: "Activity updated successfully" 
+          res.status(200).json({
+            ...activity,
+            message: "Activity updated successfully"
           });
         } else {
           // Create new activity
           logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
-          activity = await storage.createActivity(parsedData.data);
+
+          // Use direct database insert instead of storage function to ensure proper JSON handling
+          [activity] = await db
+            .insert(activities)
+            .values(activityData)
+            .returning();
+
           res.status(201).json(activity);
         }
       } catch (dbError) {
@@ -1977,9 +1989,15 @@ export const registerRoutes = async (
         });
       }
 
+      // Ensure contentFields is properly serialized if it exists
+      const activityData = {
+        ...parsedData.data,
+        contentFields: parsedData.data.contentFields ? JSON.stringify(parsedData.data.contentFields) : null
+      };
+
       const [activity] = await db
         .update(activities)
-        .set(parsedData.data)
+        .set(activityData)
         .where(eq(activities.id, parseInt(req.params.id)))
         .returning();
       res.json(activity);
@@ -2588,7 +2606,7 @@ export const registerRoutes = async (
       // Get yesterday's date with proper timezone handling
       const now = new Date();
       const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setDate(now.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
       const today = new Date(now);
@@ -5241,7 +5259,7 @@ export const registerRoutes = async (
         logger.error("Error processing document:", error);
         // Ensure we still return JSON on error
         res.setHeader("Content-Type", "application/json");
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Failed to process document",
           error: error instanceof Error ? error.message : "Unknown error"
         });
