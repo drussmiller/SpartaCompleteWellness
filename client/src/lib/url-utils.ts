@@ -4,13 +4,27 @@ import { createThumbnailUrl, createMediaUrl } from './media-utils';
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
 export function convertUrlsToLinks(text: string): string {
-  // Don't process text that already contains any HTML tags
-  if (text.includes('<') && text.includes('>')) {
+  // Don't process text that contains any HTML-like content at all
+  if (text.includes('<') || text.includes('>') || text.includes('&')) {
     return text;
   }
 
-  // Very strict URL regex - only matches complete URLs with proper protocols
-  const urlRegex = /\bhttps?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s]*)?/g;
+  // Don't process if it looks like encoded HTML
+  if (text.includes('%3C') || text.includes('%3E') || text.includes('%20class=')) {
+    return text;
+  }
+
+  // Only process plain text that clearly contains URLs
+  const urlRegex = /\bhttps?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?/g;
+
+  // Only apply if we actually find URLs
+  const hasUrls = urlRegex.test(text);
+  if (!hasUrls) {
+    return text;
+  }
+
+  // Reset regex for replacement
+  urlRegex.lastIndex = 0;
 
   return text.replace(urlRegex, (url) => {
     // Clean up any trailing punctuation that shouldn't be part of the URL
