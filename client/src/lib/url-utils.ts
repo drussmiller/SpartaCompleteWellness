@@ -4,17 +4,17 @@ import { createThumbnailUrl, createMediaUrl } from './media-utils';
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
 export function convertUrlsToLinks(text: string): string {
-  // Don't process text that already contains HTML tags or links
-  if (text.includes('<a ') || text.includes('<div') || text.includes('<p') || text.includes('<span')) {
+  // Don't process text that already contains any HTML tags
+  if (text.includes('<') && text.includes('>')) {
     return text;
   }
 
-  // More specific URL regex that only matches actual URLs starting with http/https
-  const urlRegex = /(?<!["'])https?:\/\/[^\s<>"']+/g;
+  // Very strict URL regex - only matches complete URLs with proper protocols
+  const urlRegex = /\bhttps?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s]*)?/g;
 
   return text.replace(urlRegex, (url) => {
-    // Clean up any trailing punctuation
-    const cleanUrl = url.replace(/[.,;:!?]+$/, '');
+    // Clean up any trailing punctuation that shouldn't be part of the URL
+    const cleanUrl = url.replace(/[.,;:!?'")\]]+$/, '');
     return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${cleanUrl}</a>`;
   });
 }
