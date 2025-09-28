@@ -448,7 +448,7 @@ export default function ActivityManagementPage() {
 
                           console.log(`Processing BibleVerses.Doc with ${lines.length} lines:`, lines);
 
-                          // Create activities for each line (Day 1, Day 2, etc.)
+                          // Add Bible verses to existing activities for each line (Day 1, Day 2, etc.)
                           for (let dayIndex = 0; dayIndex < lines.length; dayIndex++) {
                             const day = dayIndex + 1; // Day 1, Day 2, etc.
                             const verseLine = lines[dayIndex].trim();
@@ -467,34 +467,87 @@ export default function ActivityManagementPage() {
                               return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
                             });
 
-                            // Create content with the Bible verse link at the top
-                            const contentFields = [{
-                              id: Math.random().toString(36).substring(7),
-                              type: 'text',
-                              content: `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;"><h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3><p style="margin: 0; font-size: 16px; font-weight: 500;">${verseWithLink}</p></div>`,
-                              title: `Day ${day} Bible Verse`
-                            }];
+                            // Create the Bible verse section HTML
+                            const bibleVerseHTML = `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;"><h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3><p style="margin: 0; font-size: 16px; font-weight: 500;">${verseWithLink}</p></div>`;
 
-                            const activityData = {
-                              week: 1, // Default to week 1 for Bible verses
-                              day: day,
-                              contentFields: contentFields,
-                              activityTypeId: selectedActivityTypeId
-                            };
+                            // Find existing activity for this day (check multiple weeks)
+                            const existingActivities = activities?.filter(activity => activity.day === day) || [];
+                            
+                            if (existingActivities.length > 0) {
+                              // Add Bible verse to existing activities
+                              for (const existingActivity of existingActivities) {
+                                const updatedContentFields = existingActivity.contentFields ? [...existingActivity.contentFields] : [];
+                                
+                                // Check if the first content field already has a Bible verse
+                                if (updatedContentFields.length > 0 && updatedContentFields[0].content?.includes('Today\'s Bible Verse')) {
+                                  // Replace existing Bible verse
+                                  updatedContentFields[0] = {
+                                    ...updatedContentFields[0],
+                                    content: bibleVerseHTML + (updatedContentFields[0].content?.replace(/<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa;[^>]*>.*?<\/div>/, '') || '')
+                                  };
+                                } else {
+                                  // Add Bible verse to the first content field
+                                  if (updatedContentFields.length > 0) {
+                                    updatedContentFields[0] = {
+                                      ...updatedContentFields[0],
+                                      content: bibleVerseHTML + (updatedContentFields[0].content || '')
+                                    };
+                                  } else {
+                                    // Create new content field if none exist
+                                    updatedContentFields.push({
+                                      id: Math.random().toString(36).substring(7),
+                                      type: 'text',
+                                      content: bibleVerseHTML,
+                                      title: `Day ${day} with Bible Verse`
+                                    });
+                                  }
+                                }
 
-                            // Create the activity
-                            const activityRes = await apiRequest("POST", "/api/activities", activityData);
-                            if (!activityRes.ok) {
-                              const errorData = await activityRes.json();
-                              throw new Error(errorData.message || `Failed to save Bible verse activity for Day ${day}`);
+                                // Update the existing activity
+                                const updateRes = await apiRequest("PUT", `/api/activities/${existingActivity.id}`, {
+                                  contentFields: updatedContentFields
+                                });
+
+                                if (!updateRes.ok) {
+                                  const errorData = await updateRes.json();
+                                  throw new Error(errorData.message || `Failed to update activity Week ${existingActivity.week} Day ${day} with Bible verse`);
+                                }
+
+                                processedCount++;
+                                toast({
+                                  title: "Success",
+                                  description: `Added Bible verse to Week ${existingActivity.week} Day ${day}: ${verseLine}`
+                                });
+                              }
+                            } else {
+                              // No existing activity found, create new one with just the Bible verse
+                              const contentFields = [{
+                                id: Math.random().toString(36).substring(7),
+                                type: 'text',
+                                content: bibleVerseHTML,
+                                title: `Day ${day} Bible Verse`
+                              }];
+
+                              const activityData = {
+                                week: 1, // Default to week 1 for Bible verses
+                                day: day,
+                                contentFields: contentFields,
+                                activityTypeId: selectedActivityTypeId
+                              };
+
+                              // Create the activity
+                              const activityRes = await apiRequest("POST", "/api/activities", activityData);
+                              if (!activityRes.ok) {
+                                const errorData = await activityRes.json();
+                                throw new Error(errorData.message || `Failed to save Bible verse activity for Day ${day}`);
+                              }
+
+                              processedCount++;
+                              toast({
+                                title: "Success",
+                                description: `Created new Day ${day} activity with Bible Verse: ${verseLine}`
+                              });
                             }
-
-                            const responseData = await activityRes.json();
-                            processedCount++;
-                            toast({
-                              title: "Success",
-                              description: `${responseData.message ? 'Updated' : 'Created'} Day ${day} Bible Verse: ${verseLine}`
-                            });
                           }
 
                           continue; // Skip the normal processing for this file
