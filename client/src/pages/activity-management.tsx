@@ -419,6 +419,88 @@ export default function ActivityManagementPage() {
                       const file = files[i];
 
                       try {
+                        // Check if this is a BibleVerses.Doc file (case insensitive)
+                        const isBibleVersesDoc = file.name.toLowerCase().includes('bibleverses');
+
+                        if (isBibleVersesDoc) {
+                          // Special handling for BibleVerses.Doc
+                          const formData = new FormData();
+                          formData.append('document', file);
+
+                          const uploadRes = await fetch('/api/activities/upload-doc', {
+                            method: 'POST',
+                            body: formData,
+                            credentials: 'include'
+                          });
+
+                          if (!uploadRes.ok) {
+                            throw new Error(`Failed to process ${file.name}`);
+                          }
+
+                          const uploadData = await uploadRes.json();
+                          const content = uploadData.content;
+
+                          // Extract lines from the HTML content
+                          const tempDiv = document.createElement('div');
+                          tempDiv.innerHTML = content;
+                          const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                          const lines = textContent.split('\n').filter(line => line.trim().length > 0);
+
+                          console.log(`Processing BibleVerses.Doc with ${lines.length} lines:`, lines);
+
+                          // Create activities for each line (Day 1, Day 2, etc.)
+                          for (let dayIndex = 0; dayIndex < lines.length; dayIndex++) {
+                            const day = dayIndex + 1; // Day 1, Day 2, etc.
+                            const verseLine = lines[dayIndex].trim();
+
+                            if (!verseLine) continue;
+
+                            // Convert the verse to a clickable link
+                            const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+                            
+                            const verseWithLink = verseLine.replace(bibleVerseRegex, (match) => {
+                              const cleanVerse = match
+                                .replace(/\s+/g, '')
+                                .replace(/Psalms/gi, 'Psalm')
+                                .replace(/Galation/gi, 'Galatians');
+                              const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
+                              return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+                            });
+
+                            // Create content with the Bible verse link at the top
+                            const contentFields = [{
+                              id: Math.random().toString(36).substring(7),
+                              type: 'text',
+                              content: `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;"><h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3><p style="margin: 0; font-size: 16px; font-weight: 500;">${verseWithLink}</p></div>`,
+                              title: `Day ${day} Bible Verse`
+                            }];
+
+                            const activityData = {
+                              week: 1, // Default to week 1 for Bible verses
+                              day: day,
+                              contentFields: contentFields,
+                              activityTypeId: selectedActivityTypeId
+                            };
+
+                            // Create the activity
+                            const activityRes = await apiRequest("POST", "/api/activities", activityData);
+                            if (!activityRes.ok) {
+                              const errorData = await activityRes.json();
+                              throw new Error(errorData.message || `Failed to save Bible verse activity for Day ${day}`);
+                            }
+
+                            const responseData = await activityRes.json();
+                            processedCount++;
+                            toast({
+                              title: "Success",
+                              description: `${responseData.message ? 'Updated' : 'Created'} Day ${day} Bible Verse: ${verseLine}`
+                            });
+                          }
+
+                          continue; // Skip the normal processing for this file
+                        }
+
+                        // Normal processing for non-BibleVerses files
                         // Extract week and day from filename
                         const filename = file.name.replace('.docx', '');
                         const numbers = filename.match(/\d+/g);
@@ -594,7 +676,7 @@ export default function ActivityManagementPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content).
+                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content). Special: Files named "BibleVerses.docx" will create daily Bible verse activities with each line becoming a day's verse.
               </p>
             </div>
 
