@@ -159,10 +159,10 @@ export default function ActivityPage() {
     activity.week === selectedWeek && activity.day === selectedDay
   );
 
-  // Find Bible verse for the selected day (repeats every week - always use week 1 verses)
-  const selectedBibleVerse = bibleVerses?.find(verse => 
-    verse.week === 1 && verse.day === selectedDay
-  );
+  // Find Bible verse for the selected day (only for week 1)
+  const selectedBibleVerse = selectedWeek === 1 
+    ? bibleVerses?.find(verse => verse.day === selectedDay)
+    : null;
 
   return (
     <AppLayout>
@@ -284,72 +284,55 @@ export default function ActivityPage() {
                 {selectedActivity || selectedBibleVerse ? (
                   <div className="mt-4">
                     <h3 className="text-lg font-semibold mb-4">Week {selectedWeek} - Day {selectedDay}</h3>
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       {/* Display Bible verse first if it exists */}
-                      {selectedBibleVerse && (
-                        <div className="bible-verse-section">
-                          {selectedBibleVerse.contentFields?.map((item: any, index: number) => (
-                            <div key={`bible-${index}`}>
-                              {item.type === 'text' && (
-                                <div 
-                                  className="rich-text-content daily-content prose prose-sm max-w-none"
-                                  style={{
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                  }}
-                                  dangerouslySetInnerHTML={{ 
-                                    __html: (item.content || '')
-                                      .replace(/(<\/div>)\\?">/g, '$1')
-                                  }} 
-                                />
-                              )}
+                      {selectedBibleVerse?.contentFields?.map((item: any, index: number) => (
+                        <div key={`bible-${index}`}>
+                          {item.type === 'text' && (
+                            <div>
+                              <div 
+                                className="rich-text-content daily-content prose prose-sm max-w-none"
+                                style={{
+                                  wordBreak: 'break-word',
+                                  overflowWrap: 'break-word'
+                                }}
+                                dangerouslySetInnerHTML={{ 
+                                  __html: (item.content || '')
+                                    .replace(/(<\/div>)\\?">/g, '$1')
+                                }} 
+                              />
                             </div>
-                          ))}
+                          )}
                         </div>
-                      )}
+                      ))}
 
                       {/* Display workout activity content below Bible verse */}
-                      {selectedActivity && (
-                        <div className="workout-activity-section">
-                          {selectedActivity.contentFields?.map((item: any, index: number) => (
-                            <div key={`activity-${index}`}>
-                              {item.type === 'text' && (
-                                <div>
-                                  <h4 className="text-md font-medium mb-2">{item.title}</h4>
-                                  <div 
-                                    className="rich-text-content daily-content prose prose-sm max-w-none"
-                                    style={{
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'break-word'
-                                    }}
-                                    dangerouslySetInnerHTML={{ 
-                                      __html: (item.content || '')
-                                        .replace(/(<\/div>)\\?">/g, '$1')
-                                    }} 
-                                  />
-                                </div>
-                              )}
-                              {item.type === 'video' && (
-                                <div>
-                                  <h4 className="text-md font-medium mb-2">{item.title}</h4>
-                                  <YouTubePlayer videoId={item.content} />
-                                </div>
-                              )}
+                      {selectedActivity?.contentFields?.map((item: any, index: number) => (
+                        <div key={`activity-${index}`}>
+                          {item.type === 'text' && (
+                            <div>
+                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                              <div 
+                                className="rich-text-content daily-content prose prose-sm max-w-none"
+                                style={{
+                                  wordBreak: 'break-word',
+                                  overflowWrap: 'break-word'
+                                }}
+                                dangerouslySetInnerHTML={{ 
+                                  __html: (item.content || '')
+                                    .replace(/(<\/div>)\\?">/g, '$1')
+                                }} 
+                              />
                             </div>
-                          ))}
+                          )}
+                          {item.type === 'video' && (
+                            <div>
+                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                              <YouTubePlayer videoId={item.content} />
+                            </div>
+                          )}
                         </div>
-                      )}
-
-                      {/* Show message if only Bible verse exists but no workout */}
-                      {selectedBibleVerse && !selectedActivity && (
-                        <div className="text-center text-gray-600 mt-4 p-4 bg-muted/30 rounded-lg">
-                          <p>
-                            No workout activity available for Week {selectedWeek}, Day {selectedDay}.
-                            <br />
-                            Check with your coach if you think this is an error.
-                          </p>
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </div>
                 ) : activityStatus?.programHasStarted === false ? (
