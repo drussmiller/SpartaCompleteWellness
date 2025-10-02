@@ -303,8 +303,7 @@ export default function ActivityPage() {
                                     overflowWrap: 'break-word'
                                   }}
                                   dangerouslySetInnerHTML={{ 
-                                    __html: (item.content || '')
-                                      .replace(/(<\/div>)\\?">/g, '$1')
+                                    __html: item.content || ''
                                   }} 
                                 />
                               )}
@@ -327,8 +326,7 @@ export default function ActivityPage() {
                                       overflowWrap: 'break-word'
                                     }}
                                     dangerouslySetInnerHTML={{ 
-                                      __html: (item.content || '')
-                                        .replace(/(<\/div>)\\?">/g, '$1')
+                                      __html: item.content || ''
                                     }} 
                                   />
                                 </div>
