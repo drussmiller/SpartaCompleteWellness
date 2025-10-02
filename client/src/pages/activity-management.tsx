@@ -620,10 +620,6 @@ export default function ActivityManagementPage() {
                           content = content.replace(fullMatch, replacement);
                         });
 
-                        // Third pass: Remove any remaining standalone YouTube URLs that weren't already converted
-                        // This prevents them from being turned into text links later
-                        content = content.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?(?!<\/iframe>)/gi, '');
-
                         // Bible verses are kept as plain text
 
                         // Create activity data
