@@ -620,10 +620,6 @@ export default function ActivityManagementPage() {
                           content = content.replace(fullMatch, replacement);
                         });
 
-                        // Third pass: Remove any remaining standalone YouTube URLs that weren't converted to prevent duplicate links
-                        // This regex matches YouTube URLs that are NOT already inside iframe src attributes
-                        content = content.replace(/(?<!src=")(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi, '');
-
                         // Bible verses are kept as plain text
 
                         // Create activity data

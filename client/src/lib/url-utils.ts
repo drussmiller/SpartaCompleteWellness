@@ -29,6 +29,11 @@ export function convertUrlsToLinks(text: string): string {
   }
 
   return text.replace(urlRegex, (match, url) => {
+    // Skip YouTube URLs - they should already be embedded as iframes
+    if (url.match(/(?:youtube\.com|youtu\.be)/i)) {
+      return match;
+    }
+    
     // Clean up any trailing punctuation that shouldn't be part of the URL
     const cleanUrl = url.replace(/[.,;:!?'")\]]+$/, '');
     const leadingSpace = match.startsWith(' ') ? ' ' : '';
