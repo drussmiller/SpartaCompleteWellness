@@ -583,7 +583,7 @@ export default function ActivityManagementPage() {
                           throw new Error(`Failed to process ${file.name}`);
                         }
 
-                        const uploadData = await res.json();
+                        const uploadData = await uploadRes.json();
                         let title = filename;
 
                         let content = uploadData.content;
