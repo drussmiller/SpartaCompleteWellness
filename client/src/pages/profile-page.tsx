@@ -14,35 +14,14 @@ import ChangePasswordForm from "@/components/change-password-form";
 import { insertMeasurementSchema } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { BottomNav } from "@/components/bottom-nav";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Edit } from "lucide-react";
 
 interface ProfilePageProps {
@@ -55,17 +34,15 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const [, setLocation] = useLocation();
   const [uploading, setUploading] = useState(false);
 
-  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose(
-    {
-      onSwipeRight: () => {
-        if (onClose) {
-          onClose();
-        } else {
-          setLocation(-1);
-        }
-      },
-    },
-  );
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation(-1);
+      }
+    }
+  });
 
   const { data: user, refetch: refetchUser } = useQuery({
     queryKey: ["/api/user"],
@@ -74,9 +51,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   });
 
   const [isEditingPreferredName, setIsEditingPreferredName] = useState(false);
-  const [preferredNameValue, setPreferredNameValue] = useState(
-    user?.preferredName || "",
-  );
+  const [preferredNameValue, setPreferredNameValue] = useState(user?.preferredName || "");
 
   useEffect(() => {
     setPreferredNameValue(user?.preferredName || "");
@@ -89,9 +64,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const updatePreferredNameMutation = useMutation({
     mutationFn: async (preferredName: string) => {
       console.log("Updating preferred name to:", preferredName);
-      const res = await apiRequest("PATCH", "/api/user/preferred-name", {
-        preferredName,
-      });
+      const res = await apiRequest("PATCH", "/api/user/preferred-name", { preferredName });
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Failed to update preferred name:", errorText);
@@ -123,9 +96,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const updateActivityTypeMutation = useMutation({
     mutationFn: async (activityTypeId: number) => {
       console.log("Updating activity type to:", activityTypeId);
-      const res = await apiRequest("PATCH", "/api/user/activity-type", {
-        activityTypeId,
-      });
+      const res = await apiRequest("PATCH", "/api/user/activity-type", { activityTypeId });
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Failed to update activity type:", errorText);
@@ -153,14 +124,14 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       });
     },
   });
-
+  
   // Add user stats query with timezone offset
   const tzOffset = new Date().getTimezoneOffset();
   const { data: userStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/user/stats", tzOffset],
     queryFn: async () => {
       const response = await fetch(`/api/user/stats?tzOffset=${tzOffset}`);
-      if (!response.ok) throw new Error("Failed to fetch user stats");
+      if (!response.ok) throw new Error('Failed to fetch user stats');
       return response.json();
     },
     staleTime: 60000, // 1 minute
@@ -171,10 +142,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const { data: activityProgress } = useQuery({
     queryKey: ["/api/activities/current", tzOffset],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/activities/current?tzOffset=${tzOffset}`,
-      );
-      if (!response.ok) throw new Error("Failed to fetch activity progress");
+      const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+      if (!response.ok) throw new Error('Failed to fetch activity progress');
       return response.json();
     },
     staleTime: 60000, // 1 minute
@@ -186,22 +155,18 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     queryKey: ["/api/teams"],
     queryFn: async () => {
       const response = await fetch("/api/teams");
-      if (!response.ok) throw new Error("Failed to fetch teams");
+      if (!response.ok) throw new Error('Failed to fetch teams');
       return response.json();
     },
     enabled: !!authUser && !!user?.teamId,
   });
 
   // Add measurements query
-  const {
-    data: measurements,
-    isLoading: measurementsLoading,
-    error: measurementsError,
-  } = useQuery<Measurement[]>({
+  const { data: measurements, isLoading: measurementsLoading, error: measurementsError } = useQuery<Measurement[]>({
     queryKey: ["/api/measurements", user?.id],
     queryFn: async () => {
       const response = await fetch(`/api/measurements?userId=${user?.id}`);
-      if (!response.ok) throw new Error("Failed to fetch measurements");
+      if (!response.ok) throw new Error('Failed to fetch measurements');
       return response.json();
     },
     enabled: !!user?.id,
@@ -215,25 +180,23 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
   // Activity type selection state
   const [isEditingActivityType, setIsEditingActivityType] = useState(false);
-  const [selectedActivityTypeId, setSelectedActivityTypeId] = useState(
-    user?.preferredActivityTypeId || 1,
-  );
+  const [selectedActivityTypeId, setSelectedActivityTypeId] = useState(user?.preferredActivityTypeId || 1);
 
   useEffect(() => {
-    console.log("Profile page user data updated:", user);
+    console.log('Profile page user data updated:', user);
   }, [user]);
 
   useEffect(() => {
-    console.log("Refetching user data");
+    console.log('Refetching user data');
     refetchUser();
   }, [refetchUser]);
 
   const handleRefresh = async () => {
-    console.log("Manual refresh requested");
+    console.log('Manual refresh requested');
     await refetchUser();
     toast({
       title: "Refreshed",
-      description: "Profile data has been refreshed",
+      description: "Profile data has been refreshed"
     });
   };
 
@@ -243,40 +206,29 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
   // Add measurement form
   const form = useForm({
-    resolver: zodResolver(
-      insertMeasurementSchema.omit({ userId: true, date: true }),
-    ),
+    resolver: zodResolver(insertMeasurementSchema.omit({ userId: true, date: true })),
     defaultValues: {
-      weight: "",
-      waist: "",
+      weight: '',
+      waist: '',
     },
   });
 
   const addMeasurementMutation = useMutation({
-    mutationFn: async (data: {
-      weight?: number | null;
-      waist?: number | null;
-    }) => {
+    mutationFn: async (data: { weight?: number | null; waist?: number | null }) => {
       // Ensure we're sending at least one measurement
-      if (
-        (data.weight === undefined ||
-          data.weight === null ||
-          data.weight === "") &&
-        (data.waist === undefined || data.waist === null || data.waist === "")
-      ) {
+      if ((data.weight === undefined || data.weight === null || data.weight === '') &&
+        (data.waist === undefined || data.waist === null || data.waist === '')) {
         throw new Error("Please enter at least one measurement");
       }
 
       // Only send fields that have valid values
       const payload = {
         userId: user?.id,
-        ...(data.weight &&
-          data.weight !== "" && { weight: parseInt(String(data.weight)) }),
-        ...(data.waist &&
-          data.waist !== "" && { waist: parseInt(String(data.waist)) }),
+        ...(data.weight && data.weight !== '' && { weight: parseInt(String(data.weight)) }),
+        ...(data.waist && data.waist !== '' && { waist: parseInt(String(data.waist)) })
       };
 
-      console.log("Submitting measurement:", payload);
+      console.log('Submitting measurement:', payload);
 
       const res = await apiRequest("POST", "/api/measurements", payload);
 
@@ -288,7 +240,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
           const errorData = JSON.parse(text);
           errorMessage = errorData.message || errorMessage;
         } catch (parseError) {
-          console.error("Error parsing error response:", parseError, text);
+          console.error('Error parsing error response:', parseError, text);
         }
 
         throw new Error(errorMessage);
@@ -297,7 +249,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       try {
         return await res.json();
       } catch (parseError) {
-        console.error("Error parsing success response:", parseError);
+        console.error('Error parsing success response:', parseError);
         throw new Error("Invalid response from server");
       }
     },
@@ -310,19 +262,17 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       });
     },
     onError: (error: any) => {
-      console.error("Error adding measurement:", error);
+      console.error('Error adding measurement:', error);
       toast({
         title: "Unable to Update",
-        description:
-          error.message ||
-          "There was a problem updating your measurements. Please try again.",
+        description: error.message || "There was a problem updating your measurements. Please try again.",
         variant: "destructive",
       });
     },
   });
 
   return (
-    <div
+    <div 
       className="flex flex-col h-screen"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -354,15 +304,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               <div className="relative">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
-                    src={
-                      user?.imageUrl ||
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`
-                    }
+                    src={user?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`}
                     alt={user?.username}
                   />
-                  <AvatarFallback>
-                    {user?.username?.[0].toUpperCase()}
-                  </AvatarFallback>
+                  <AvatarFallback>{user?.username?.[0].toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-full">
                   <Input
@@ -375,45 +320,39 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       if (!file) return;
 
                       const formData = new FormData();
-                      formData.append("image", file);
+                      formData.append('image', file);
 
                       try {
                         setUploading(true);
-                        const res = await fetch("/api/user/image", {
-                          method: "POST",
+                        const res = await fetch('/api/user/image', {
+                          method: 'POST',
                           body: formData,
                         });
 
                         if (!res.ok) {
-                          throw new Error("Failed to update profile image");
+                          throw new Error('Failed to update profile image');
                         }
 
                         await refetchUser();
                         // Invalidate all queries to ensure profile image is updated everywhere
-                        await queryClient.invalidateQueries({
-                          queryKey: ["/api/posts"],
-                        });
-                        await queryClient.invalidateQueries({
-                          queryKey: ["/api/posts/comments"],
-                        });
+                        await queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+                        await queryClient.invalidateQueries({ queryKey: ["/api/posts/comments"] });
 
                         // Clear the entire cache to make sure everything refreshes
                         queryClient.clear();
 
                         // Force refresh the home page data
-                        await queryClient.refetchQueries({
-                          queryKey: ["/api/posts"],
-                        });
+                        await queryClient.refetchQueries({ queryKey: ["/api/posts"] });
 
                         toast({
                           title: "Success",
-                          description: "Profile image updated successfully",
+                          description: "Profile image updated successfully"
                         });
                       } catch (error) {
                         toast({
                           title: "Error",
                           description: "Failed to update profile image",
-                          variant: "destructive",
+                          variant: "destructive"
                         });
                       } finally {
                         setUploading(false);
@@ -441,11 +380,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                         placeholder="Enter preferred name"
                         className="text-base w-full"
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            updatePreferredNameMutation.mutate(
-                              preferredNameValue,
-                            );
-                          } else if (e.key === "Escape") {
+                          if (e.key === 'Enter') {
+                            updatePreferredNameMutation.mutate(preferredNameValue);
+                          } else if (e.key === 'Escape') {
                             setPreferredNameValue(user?.preferredName || "");
                             setIsEditingPreferredName(false);
                           }
@@ -454,16 +391,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          onClick={() =>
-                            updatePreferredNameMutation.mutate(
-                              preferredNameValue,
-                            )
-                          }
+                          onClick={() => updatePreferredNameMutation.mutate(preferredNameValue)}
                           disabled={updatePreferredNameMutation.isPending}
                         >
-                          {updatePreferredNameMutation.isPending
-                            ? "Saving..."
-                            : "Save"}
+                          {updatePreferredNameMutation.isPending ? "Saving..." : "Save"}
                         </Button>
                         <Button
                           size="sm"
@@ -480,8 +411,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Preferred Name:{" "}
-                        {user?.preferredName || preferredNameValue || "Not set"}
+                        Preferred Name: {user?.preferredName || preferredNameValue || "Not set"}
                       </span>
                       <Button
                         size="sm"
@@ -497,9 +427,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     </div>
                   )}
                 </div>
-                <p className="text-lg text-muted-foreground mt-1">
-                  {user?.email}
-                </p>
+                <p className="text-lg text-muted-foreground mt-1">{user?.email}</p>
               </div>
             </CardContent>
           </Card>
@@ -513,66 +441,44 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     {user.teamJoinedAt && (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="text-lg text-muted-foreground">
-                            Team
-                          </span>
+                          <span className="text-lg text-muted-foreground">Team</span>
                           <span className="text-sm font-medium">
-                            {teams?.find((t) => t.id === user.teamId)?.name ||
-                              "Loading..."}
+                            {teams?.find(t => t.id === user.teamId)?.name || 'Loading...'}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-lg text-muted-foreground">
-                            Team Joined
-                          </span>
+                          <span className="text-lg text-muted-foreground">Team Joined</span>
                           <span className="text-sm font-medium">
-                            {format(new Date(user.teamJoinedAt), "PPP")}
+                            {format(new Date(user.teamJoinedAt), 'PPP')}
                           </span>
                         </div>
-                        {activityProgress &&
-                          activityProgress.currentWeek &&
-                          activityProgress.currentDay && (
-                            <>
-                              <div className="flex justify-between items-center">
-                                <span className="text-lg text-muted-foreground">
-                                  Current Week
-                                </span>
-                                <span className="text-lg font-medium">
-                                  Week {activityProgress.currentWeek}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <span className="text-lg text-muted-foreground">
-                                  Current Day
-                                </span>
-                                <span className="text-lg font-medium">
-                                  Day {activityProgress.currentDay}
-                                </span>
-                              </div>
-                            </>
-                          )}
-
+                        {activityProgress && activityProgress.currentWeek && activityProgress.currentDay && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-lg text-muted-foreground">Current Week</span>
+                              <span className="text-lg font-medium">Week {activityProgress.currentWeek}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-lg text-muted-foreground">Current Day</span>
+                              <span className="text-lg font-medium">Day {activityProgress.currentDay}</span>
+                            </div>
+                          </>
+                        )}
+                        
                         <div className="flex justify-between items-center">
-                          <span className="text-lg text-muted-foreground">
-                            Activity Type
-                          </span>
+                          <span className="text-lg text-muted-foreground">Activity Type</span>
                           {isEditingActivityType ? (
                             <div className="flex items-center gap-2">
-                              <Select
-                                value={selectedActivityTypeId.toString()}
-                                onValueChange={(value) =>
-                                  setSelectedActivityTypeId(parseInt(value))
-                                }
+                              <Select 
+                                value={selectedActivityTypeId.toString()} 
+                                onValueChange={(value) => setSelectedActivityTypeId(parseInt(value))}
                               >
                                 <SelectTrigger className="w-32">
                                   <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {workoutTypes?.map((workoutType) => (
-                                    <SelectItem
-                                      key={workoutType.id}
-                                      value={workoutType.id.toString()}
-                                    >
+                                    <SelectItem key={workoutType.id} value={workoutType.id.toString()}>
                                       {workoutType.type}
                                     </SelectItem>
                                   ))}
@@ -580,25 +486,17 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                               </Select>
                               <Button
                                 size="sm"
-                                onClick={() =>
-                                  updateActivityTypeMutation.mutate(
-                                    selectedActivityTypeId,
-                                  )
-                                }
+                                onClick={() => updateActivityTypeMutation.mutate(selectedActivityTypeId)}
                                 disabled={updateActivityTypeMutation.isPending}
                                 className="h-6 px-2 text-xs"
                               >
-                                {updateActivityTypeMutation.isPending
-                                  ? "..."
-                                  : "Save"}
+                                {updateActivityTypeMutation.isPending ? "..." : "Save"}
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => {
-                                  setSelectedActivityTypeId(
-                                    user?.preferredActivityTypeId || 1,
-                                  );
+                                  setSelectedActivityTypeId(user?.preferredActivityTypeId || 1);
                                   setIsEditingActivityType(false);
                                 }}
                                 className="h-6 px-2 text-xs"
@@ -609,19 +507,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           ) : (
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium">
-                                {workoutTypes?.find(
-                                  (wt) =>
-                                    wt.id ===
-                                    (user?.preferredActivityTypeId || 1),
-                                )?.type || "Bands"}
+                                {workoutTypes?.find(wt => wt.id === (user?.preferredActivityTypeId || 1))?.type || 'Bands'}
                               </span>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
-                                  setSelectedActivityTypeId(
-                                    user?.preferredActivityTypeId || 1,
-                                  );
+                                  setSelectedActivityTypeId(user?.preferredActivityTypeId || 1);
                                   setIsEditingActivityType(true);
                                 }}
                                 className="h-6 px-2 text-xs"
@@ -649,9 +541,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               <h3 className="text-lg font-semibold mb-4">My Stats</h3>
               <div className="grid grid-cols-3 gap-2">
                 <div className="flex flex-col items-center">
-                  <div className="text-base text-muted-foreground">
-                    Daily Total
-                  </div>
+                  <div className="text-base text-muted-foreground">Daily Total</div>
                   <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
@@ -660,11 +550,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     )}
                   </div>
                 </div>
-
+                
                 <div className="flex flex-col items-center">
-                  <div className="text-base text-muted-foreground">
-                    Week Total
-                  </div>
+                  <div className="text-base text-muted-foreground">Week Total</div>
                   <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
@@ -673,11 +561,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     )}
                   </div>
                 </div>
-
+                
                 <div className="flex flex-col items-center">
-                  <div className="text-base text-muted-foreground">
-                    Monthly Avg
-                  </div>
+                  <div className="text-base text-muted-foreground">Monthly Avg</div>
                   <div className="text-2xl font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
@@ -695,32 +581,21 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               <h3 className="text-lg font-semibold mb-4">Measurements</h3>
 
               <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit((data) =>
-                    addMeasurementMutation.mutate(data),
-                  )}
-                  className="space-y-4 mb-6"
-                >
+                <form onSubmit={form.handleSubmit((data) => addMeasurementMutation.mutate(data))} className="space-y-4 mb-6">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="weight"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg">
-                            Weight (lbs)
-                          </FormLabel>
+                          <FormLabel className="text-lg">Weight (lbs)</FormLabel>
                           <FormControl>
                             <Input
                               className="text-base"
                               type="number"
                               placeholder="Enter weight"
-                              value={field.value || ""}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value ? Number(e.target.value) : "",
-                                )
-                              }
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : '')}
                             />
                           </FormControl>
                         </FormItem>
@@ -731,20 +606,14 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       name="waist"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg">
-                            Waist (inches)
-                          </FormLabel>
+                          <FormLabel className="text-lg">Waist (inches)</FormLabel>
                           <FormControl>
                             <Input
                               className="text-base"
                               type="number"
                               placeholder="Enter waist"
-                              value={field.value || ""}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value ? Number(e.target.value) : "",
-                                )
-                              }
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : '')}
                             />
                           </FormControl>
                         </FormItem>
@@ -756,9 +625,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     disabled={addMeasurementMutation.isPending}
                     className="bg-violet-700 text-white hover:bg-violet-800"
                   >
-                    {addMeasurementMutation.isPending
-                      ? "Adding..."
-                      : "Add Measurement"}
+                    {addMeasurementMutation.isPending ? "Adding..." : "Add Measurement"}
                   </Button>
                 </form>
               </Form>
@@ -768,107 +635,63 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : measurementsError ? (
-                <p className="text-sm text-destructive">
-                  Failed to load measurements
-                </p>
+                <p className="text-sm text-destructive">Failed to load measurements</p>
               ) : !measurements?.length ? (
                 <div className="text-center py-6">
-                  <p className="text-base text-muted-foreground">
-                    No measurements recorded yet
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Record your measurements to track your progress
-                  </p>
+                  <p className="text-base text-muted-foreground">No measurements recorded yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Record your measurements to track your progress</p>
                 </div>
               ) : (
                 <>
                   <div className="space-y-6 mb-6">
                     <div className="h-[300px]">
-                      <h4 className="text-sm font-medium mb-4">
-                        Weight Progress
-                      </h4>
+                      <h4 className="text-sm font-medium mb-4">Weight Progress</h4>
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart
                           data={measurements
-                            .filter((m) => m.weight !== null)
-                            .sort(
-                              (a, b) =>
-                                new Date(a.date!).getTime() -
-                                new Date(b.date!).getTime(),
-                            )}
+                            .filter(m => m.weight !== null)
+                            .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
+                          }
                           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
-                            }
+                            tickFormatter={(date) => new Date(date).toLocaleDateString()}
                           />
-                          <YAxis
-                            tick={{ fontSize: 12 }}
-                            unit=" lbs"
-                            domain={["auto", "auto"]}
-                          />
+                          <YAxis unit=" lbs" domain={['auto', 'auto']} />
                           <Tooltip
-                            labelFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
-                            }
-                            formatter={(value) => [`${value} lbs`, "Weight"]}
+                            labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                            formatter={(value) => [`${value} lbs`, 'Weight']}
                           />
                           <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="weight"
-                            stroke="#2563eb"
-                            name="Weight"
-                          />
+                          <Line type="monotone" dataKey="weight" stroke="#2563eb" name="Weight" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
 
                     <div className="h-[300px]">
-                      <h4 className="text-sm font-medium mb-4">
-                        Waist Progress
-                      </h4>
+                      <h4 className="text-sm font-medium mb-4">Waist Progress</h4>
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart
                           data={measurements
-                            .filter((m) => m.waist !== null)
-                            .sort(
-                              (a, b) =>
-                                new Date(a.date!).getTime() -
-                                new Date(b.date!).getTime(),
-                            )}
+                            .filter(m => m.waist !== null)
+                            .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())
+                          }
                           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
-                            }
+                            tickFormatter={(date) => new Date(date).toLocaleDateString()}
                           />
-                          <YAxis
-                            tick={{ fontSize: 12 }}
-                            unit=" in"
-                            domain={["auto", "auto"]}
-                          />
+                          <YAxis unit=" in" domain={['auto', 'auto']} />
                           <Tooltip
-                            labelFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
-                            }
-                            formatter={(value) => [`${value} inches`, "Waist"]}
+                            labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                            formatter={(value) => [`${value} inches`, 'Waist']}
                           />
                           <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="waist"
-                            stroke="#16a34a"
-                            name="Waist"
-                          />
+                          <Line type="monotone" dataKey="waist" stroke="#16a34a" name="Waist" />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
@@ -876,35 +699,22 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
                   <div className="space-y-4">
                     {measurements.map((measurement) => (
-                      <div
-                        key={measurement.id}
-                        className="p-4 rounded-lg bg-muted/50"
-                      >
+                      <div key={measurement.id} className="p-4 rounded-lg bg-muted/50">
                         <div className="space-y-2">
                           {measurement.weight !== null && (
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">
-                                Weight
-                              </span>
-                              <span className="text-sm font-medium">
-                                {measurement.weight} lbs
-                              </span>
+                              <span className="text-sm text-muted-foreground">Weight</span>
+                              <span className="text-sm font-medium">{measurement.weight} lbs</span>
                             </div>
                           )}
                           {measurement.waist !== null && (
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">
-                                Waist
-                              </span>
-                              <span className="text-sm font-medium">
-                                {measurement.waist} inches
-                              </span>
+                              <span className="text-sm text-muted-foreground">Waist</span>
+                              <span className="text-sm font-medium">{measurement.waist} inches</span>
                             </div>
                           )}
                           <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                            {measurement.date
-                              ? new Date(measurement.date).toLocaleDateString()
-                              : "Date not recorded"}
+                            {measurement.date ? new Date(measurement.date).toLocaleDateString() : 'Date not recorded'}
                           </div>
                         </div>
                       </div>
@@ -925,11 +735,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
             </CardContent>
           </Card>
 
-          <Button
-            variant="destructive"
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-          >
+          <Button variant="destructive" onClick={handleLogout} disabled={logoutMutation.isPending}>
             {logoutMutation.isPending ? "Logging out..." : "Logout"}
             <LogOut className="ml-2 h-4 w-4" />
           </Button>

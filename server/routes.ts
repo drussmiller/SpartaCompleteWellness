@@ -645,7 +645,7 @@ export const registerRoutes = async (
         if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaObjectStorage } = await import("./sparta-object-storage");
+            const { spartaStorage } = await import("./sparta-object-storage");
 
             // Determine if this is a video file
             const originalFilename = req.file.originalname.toLowerCase();
@@ -686,7 +686,7 @@ export const registerRoutes = async (
               cleanFilename = `comment-media.${ext}`;
             }
 
-            const fileInfo = await spartaObjectStorage.storeFile(
+            const fileInfo = await spartaStorage.storeFile(
               req.file.buffer,
               cleanFilename,
               req.file.mimetype,
@@ -827,7 +827,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Get aggregated weekly data
+  // Endpoint to get aggregated weekly data
   router.get(
     "/api/debug/posts/weekly-stats",
     authenticate,
@@ -1451,7 +1451,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update team endpoint
+  // Update team endpoint  
   router.patch("/api/teams/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1546,7 +1546,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update organization endpoint
+  // Update organization endpoint  
   router.patch("/api/organizations/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1589,7 +1589,7 @@ export const registerRoutes = async (
           if (groupIds.length > 0) {
             // Update all groups in this organization to inactive
             await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
-            logger.log(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
+            logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
 
             // Get all teams in these groups
             const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
@@ -1693,7 +1693,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update group endpoint
+  // Update group endpoint  
   router.patch("/api/groups/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1908,48 +1908,14 @@ export const registerRoutes = async (
       );
 
       try {
-        // Apply Bible verse conversion to the parsed data before saving to database
-        if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
-          parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
-            if (field.type === 'text' && field.content) {
-              // Only match actual Bible verses - requires book name followed by chapter:verse
-              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
-
-              const originalContent = field.content;
-              field.content = field.content.replace(bibleVerseRegex, (match) => {
-                // Clean up the verse reference for the URL (remove spaces, normalize common misspellings)
-                const cleanVerse = match
-                  .replace(/\s+/g, '')
-                  .replace(/Psalms/gi, 'Psalm')
-                  .replace(/Galation/gi, 'Galatians'); // Fix common misspelling
-
-                // For mobile compatibility, use a web-based Bible app instead of bible: scheme
-                // This will work in both web browsers and mobile apps
-                const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
-                return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
-              });
-
-              // Don't process YouTube embeds in Bible verse content
-              // YouTube embeds are already properly formatted from the client
-
-              // Log if any Bible verses were converted
-              if (originalContent !== field.content) {
-                logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
-              }
-            }
-            return field;
-          });
-        }
-
-        // Check if an activity already exists for this week, day, AND activity type
+        // Check if an activity already exists for this week and day
         const existingActivity = await db
           .select()
           .from(activities)
           .where(
             and(
               eq(activities.week, parsedData.data.week),
-              eq(activities.day, parsedData.data.day),
-              eq(activities.activityTypeId, parsedData.data.activityTypeId)
+              eq(activities.day, parsedData.data.day)
             )
           )
           .limit(1);
@@ -1957,20 +1923,20 @@ export const registerRoutes = async (
         let activity;
         if (existingActivity.length > 0) {
           // Update existing activity
-          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
+          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
           [activity] = await db
             .update(activities)
             .set(parsedData.data)
             .where(eq(activities.id, existingActivity[0].id))
             .returning();
 
-          res.status(200).json({
-            ...activity,
-            message: "Activity updated successfully"
+          res.status(200).json({ 
+            ...activity, 
+            message: "Activity updated successfully" 
           });
         } else {
           // Create new activity
-          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
+          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
           activity = await storage.createActivity(parsedData.data);
           res.status(201).json(activity);
         }
@@ -1986,7 +1952,7 @@ export const registerRoutes = async (
       res.status(500).json({
         message:
           error instanceof Error ? error.message : "Failed to create/update activity",
-        error: error instanceof Error ? error.stack : "Unknown error",
+        error: error instanceof Error ? error.stack : undefined,
       });
     }
   });
@@ -2622,7 +2588,7 @@ export const registerRoutes = async (
       // Get yesterday's date with proper timezone handling
       const now = new Date();
       const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
+      yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
       const today = new Date(now);
@@ -2858,7 +2824,7 @@ export const registerRoutes = async (
     }
   };
 
-  // Add activity progress endpoint before the return statement
+  // Add activity progress endpoint before the return httpServer statement
   router.get("/api/activities/current", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -3509,7 +3475,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Add messages endpoints before statement
+  // Add messages endpoints before return statement
   router.get(
     "/api/messages/unread/by-sender",
     authenticate,
@@ -4180,7 +4146,7 @@ export const registerRoutes = async (
 
       const userId = req.user.id;
 
-      // Get timezone offset from query params (in minutes)
+      // Get timezone offset in minutes directly from the client
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
 
       logger.info(
@@ -4514,6 +4480,10 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "User's team not found" });
       }
 
+      // Debug logging
+      console.log("Current user:", JSON.stringify(currentUser, null, 2));
+      console.log("Current team:", JSON.stringify(currentTeam, null, 2));
+
       // Get team members points
       const teamMembers = await db
         .select({
@@ -4554,6 +4524,9 @@ export const registerRoutes = async (
           GROUP BY t.id, t.name
           ORDER BY avg_points DESC
         `);
+
+      console.log("Filtering teams for group ID:", currentTeam.groupId);
+      console.log("Team stats query result:", JSON.stringify(teamStats.rows, null, 2));
 
       res.setHeader("Content-Type", "application/json");
       res.json({
@@ -5069,7 +5042,8 @@ export const registerRoutes = async (
 
       // Add points to user
       await db
-        .update(users)        .set({
+        .update(users)
+        .set({
           points: sql`${users.points} + ${achievementTypeObj.pointValue}`,
         })
         .where(eq(users.id, userId));
@@ -5236,34 +5210,6 @@ export const registerRoutes = async (
     }
   });
 
-  // Helper function to validate and fix HTML tags
-  const validateAndFixHTML = (html: string): { content: string; errors: string[] } => {
-    const errors: string[] = [];
-    let fixedContent = html;
-
-    // Simple fix for malformed YouTube video embeds: 
-    // Replace closing </div> with </div></a> for video-wrapper divs
-    // This handles the case where mammoth creates: <a href="<div class="video-wrapper">...</div>
-    // Pattern matches the complete video-wrapper div and adds </a> after the closing </div>
-    fixedContent = fixedContent.replace(/(<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?)<\/div>/g, '$1</div></a>');
-    
-    // Basic tag validation for debugging
-    const openDivCount = (fixedContent.match(/<div/g) || []).length;
-    const closeDivCount = (fixedContent.match(/<\/div>/g) || []).length;
-    const openACount = (fixedContent.match(/<a\s/g) || []).length;
-    const closeACount = (fixedContent.match(/<\/a>/g) || []).length;
-    
-    if (openDivCount !== closeDivCount) {
-      errors.push(`Mismatched div tags: ${openDivCount} opening, ${closeDivCount} closing`);
-    }
-    
-    if (openACount !== closeACount) {
-      errors.push(`Mismatched anchor tags: ${openACount} opening, ${closeACount} closing`);
-    }
-    
-    return { content: fixedContent, errors };
-  };
-
   // Add document upload endpoint for activities
   router.post(
     "/api/activities/upload-doc",
@@ -5274,62 +5220,30 @@ export const registerRoutes = async (
         // Set content type early to ensure JSON response
         res.setHeader("Content-Type", "application/json");
 
-        logger.info('Document upload endpoint called', {
-          hasUser: !!req.user,
-          isAdmin: req.user?.isAdmin,
-          hasFile: !!req.file,
-          filename: req.file?.originalname
-        });
-
         if (!req.user?.isAdmin) {
-          logger.warn('Upload denied - not admin');
           return res.status(403).json({ message: "Not authorized" });
         }
 
         if (!req.file) {
-          logger.error('No file in upload request');
-          return res.status(400).json({ message: "No file uploaded" });
+          return res.status(400).json({ message: "No document uploaded" });
         }
 
         // Validate file type
         if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
-          logger.warn('Upload denied - invalid file type', { filename: req.file.originalname });
           return res.status(400).json({ message: "Only .docx files are supported" });
         }
 
-        // Use mammoth to convert Word document to HTML to preserve formatting
-        logger.info(`Processing document: ${req.file.originalname}, size: ${req.file.buffer.length} bytes`);
+        const docxBuffer = req.file.buffer;
+        const result = await mammoth.convertToHtml({ buffer: docxBuffer });
 
-        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
-
-        logger.info(`Document converted successfully, content length: ${result.value.length}`);
-
-        // Validate and fix HTML tags before returning
-        const { content: validatedContent, errors } = validateAndFixHTML(result.value);
-        
-        if (errors.length > 0) {
-          logger.warn(`HTML validation found ${errors.length} issues in ${req.file.originalname}:`, errors);
-        } else {
-          logger.info(`HTML validation passed for ${req.file.originalname}`);
-        }
-
-        // Return validated content
-        res.json({ 
-          content: validatedContent,
-          validationErrors: errors.length > 0 ? errors : undefined
-        });
+        res.json({ content: result.value });
       } catch (error) {
-        logger.error("Error processing document:", {
-          error,
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          filename: req.file?.originalname
-        });
-
+        logger.error("Error processing document:", error);
+        // Ensure we still return JSON on error
+        res.setHeader("Content-Type", "application/json");
         res.status(500).json({ 
           message: "Failed to process document",
-          error: error instanceof Error ? error.message : "Unknown error",
-          details: error instanceof Error ? error.stack : undefined
+          error: error instanceof Error ? error.message : "Unknown error"
         });
       }
     }
