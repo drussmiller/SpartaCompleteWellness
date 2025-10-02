@@ -159,10 +159,10 @@ export default function ActivityPage() {
     activity.week === selectedWeek && activity.day === selectedDay
   );
 
-  // Find Bible verse for the selected day (always from week 1)
-  const selectedBibleVerse = bibleVerses?.find(verse => 
-    verse.day === selectedDay
-  );
+  // Find Bible verse for the selected day (only for week 1)
+  const selectedBibleVerse = selectedWeek === 1 
+    ? bibleVerses?.find(verse => verse.day === selectedDay)
+    : null;
 
   return (
     <AppLayout>
