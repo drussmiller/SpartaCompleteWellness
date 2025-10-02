@@ -5248,81 +5248,49 @@ export const registerRoutes = async (
     const errors: string[] = [];
     let fixedContent = html;
 
-    // Stack to track open tags
-    const tagStack: { tag: string; pos: number }[] = [];
+    // First, remove all malformed <a href="<div... patterns completely
+    // These are invalid and should just be the div without the anchor
+    fixedContent = fixedContent.replace(/<a\s+href=["']<div[^>]*>/gi, '');
     
-    // Self-closing tags that don't need a closing tag
-    const selfClosingTags = new Set(['br', 'hr', 'img', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'param', 'source', 'track', 'wbr']);
+    // Also remove <a href="\n patterns (malformed links with just newlines)
+    fixedContent = fixedContent.replace(/<a\s+href=["']\s*\n/gi, '');
     
-    // Find all HTML tags (opening, closing, and self-closing)
-    const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
-    let match;
-    
-    while ((match = tagRegex.exec(html)) !== null) {
-      const fullTag = match[0];
-      const tagName = match[1].toLowerCase();
-      const isClosing = fullTag.startsWith('</');
-      const isSelfClosing = selfClosingTags.has(tagName) || fullTag.endsWith('/>');
-      
-      if (isSelfClosing) {
-        // Self-closing tags are fine, skip
-        continue;
-      }
-      
-      if (!isClosing) {
-        // Opening tag
-        tagStack.push({ tag: tagName, pos: match.index });
-      } else {
-        // Closing tag
-        if (tagStack.length === 0) {
-          errors.push(`Unexpected closing tag </${tagName}> at position ${match.index} with no matching opening tag`);
-          // Remove the orphaned closing tag
-          fixedContent = fixedContent.replace(fullTag, '');
-        } else {
-          const lastOpen = tagStack[tagStack.length - 1];
-          if (lastOpen.tag === tagName) {
-            // Matching pair, pop from stack
-            tagStack.pop();
-          } else {
-            // Mismatched tags
-            errors.push(`Mismatched tags: expected </${lastOpen.tag}> but found </${tagName}> at position ${match.index}`);
-            // Try to fix by closing the mismatched tag
-            const closeTag = `</${lastOpen.tag}>`;
-            fixedContent = fixedContent.slice(0, match.index) + closeTag + fixedContent.slice(match.index);
-            tagStack.pop();
-          }
-        }
-      }
-    }
-    
-    // Close any remaining open tags
-    while (tagStack.length > 0) {
-      const unclosed = tagStack.pop()!;
-      errors.push(`Unclosed tag <${unclosed.tag}> at position ${unclosed.pos}`);
-      fixedContent += `</${unclosed.tag}>`;
-    }
-    
-    // Clean up malformed link tags like <a href="\n<p> or <a href="<div...
-    const malformedLinkPattern = /<a\s+href=["'](?:<[^>]+>|\\n|[\s\n])+/gi;
-    const malformedLinks = fixedContent.match(malformedLinkPattern);
-    if (malformedLinks) {
-      malformedLinks.forEach(link => {
-        errors.push(`Found malformed link tag: ${link.substring(0, 50)}...`);
-        fixedContent = fixedContent.replace(link, '');
-      });
-    }
-    
-    // Remove empty href attributes
+    // Remove any empty href attributes
     fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
     
-    // Add closing </a> tags after video-wrapper divs that don't already have them
-    // Pattern: find </div> that closes a video-wrapper and check if </a> follows
-    const videoWrapperPattern = /(<div\s+class=["']video-wrapper["'][^>]*>.*?<\/div>)(?!\s*<\/a>)/gi;
-    fixedContent = fixedContent.replace(videoWrapperPattern, '$1</a>');
+    // Now find all video-wrapper divs and ensure they have proper closing </a> tags
+    // This pattern looks for complete div.video-wrapper blocks
+    const videoWrapperRegex = /<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>/gi;
     
-    // Remove orphaned closing </a> tags that don't follow a video wrapper
-    // Only remove </a> that doesn't come after </div>
-    fixedContent = fixedContent.replace(/(?<!<\/div>)\s*<\/a>(?=\s*(?:<(?!iframe|div)|[^<]))/gi, '');
+    // Replace each video wrapper to ensure it has a closing </a> if it doesn't already have one
+    fixedContent = fixedContent.replace(videoWrapperRegex, (match) => {
+      // Check if this div is immediately followed by </a>
+      const afterDiv = fixedContent.substring(fixedContent.indexOf(match) + match.length, fixedContent.indexOf(match) + match.length + 10);
+      
+      if (!afterDiv.trim().startsWith('</a>')) {
+        // Add closing </a> tag
+        return match + '</a>';
+      }
+      return match;
+    });
+    
+    // Remove any orphaned </a> tags that are NOT after a </div>
+    // This regex looks for </a> that doesn't have a </div> before it (within 20 chars)
+    fixedContent = fixedContent.replace(/(?<!<\/div>)(?<!<\/div>\n)(?<!<\/div>\s)<\/a>/g, '');
+    
+    // Basic tag validation for debugging
+    const openDivCount = (fixedContent.match(/<div/g) || []).length;
+    const closeDivCount = (fixedContent.match(/<\/div>/g) || []).length;
+    const openACount = (fixedContent.match(/<a\s/g) || []).length;
+    const closeACount = (fixedContent.match(/<\/a>/g) || []).length;
+    
+    if (openDivCount !== closeDivCount) {
+      errors.push(`Mismatched div tags: ${openDivCount} opening, ${closeDivCount} closing`);
+    }
+    
+    if (openACount !== closeACount) {
+      errors.push(`Mismatched anchor tags: ${openACount} opening, ${closeACount} closing`);
+    }
     
     return { content: fixedContent, errors };
   };
