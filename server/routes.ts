@@ -1942,14 +1942,15 @@ export const registerRoutes = async (
           });
         }
 
-        // Check if an activity already exists for this week and day
+        // Check if an activity already exists for this week, day, AND activity type
         const existingActivity = await db
           .select()
           .from(activities)
           .where(
             and(
               eq(activities.week, parsedData.data.week),
-              eq(activities.day, parsedData.data.day)
+              eq(activities.day, parsedData.data.day),
+              eq(activities.activityTypeId, parsedData.data.activityTypeId)
             )
           )
           .limit(1);
@@ -1957,7 +1958,7 @@ export const registerRoutes = async (
         let activity;
         if (existingActivity.length > 0) {
           // Update existing activity
-          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
           [activity] = await db
             .update(activities)
             .set(parsedData.data)
@@ -1970,7 +1971,7 @@ export const registerRoutes = async (
           });
         } else {
           // Create new activity
-          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
           activity = await storage.createActivity(parsedData.data);
           res.status(201).json(activity);
         }
