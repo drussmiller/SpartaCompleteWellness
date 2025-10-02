@@ -620,24 +620,6 @@ export default function ActivityManagementPage() {
                           content = content.replace(fullMatch, replacement);
                         });
 
-                        // Third pass: Remove any remaining YouTube URLs that are NOT inside iframe src attributes
-                        // This prevents them from being converted to links when displayed
-                        const iframePattern = /<iframe[^>]*src="([^"]*)"[^>]*><\/iframe>/g;
-                        const iframeSrcs = new Set();
-                        let iframeMatch;
-                        
-                        // Collect all iframe src URLs
-                        while ((iframeMatch = iframePattern.exec(content)) !== null) {
-                          iframeSrcs.add(iframeMatch[1]);
-                        }
-                        
-                        // Remove YouTube URLs that are not in iframe src attributes
-                        content = content.replace(youtubeRegex, (match) => {
-                          // Check if this URL is in any iframe src
-                          const matchedSrc = Array.from(iframeSrcs).find(src => String(src).includes(match));
-                          return matchedSrc ? match : ''; // Keep if in iframe, remove otherwise
-                        });
-
                         // Bible verses are kept as plain text
 
                         // Create activity data

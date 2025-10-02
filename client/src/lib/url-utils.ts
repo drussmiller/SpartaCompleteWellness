@@ -4,18 +4,19 @@ import { createThumbnailUrl, createMediaUrl } from './media-utils';
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
 export function convertUrlsToLinks(text: string): string {
-  // Don't process text that already contains any HTML or links
-  if (text.includes('<a ') || text.includes('<') || text.includes('>') || text.includes('&')) {
+  // Don't process text that already contains links or is clearly HTML
+  if (text.includes('<a ') || text.includes('href=')) {
     return text;
   }
 
-  // Don't process if it looks like encoded HTML or contains encoded attributes
-  if (text.includes('%3C') || text.includes('%3E') || text.includes('%20class=') || text.includes('bible:verse')) {
+  // Don't process encoded HTML or special schemes
+  if (text.includes('%3C') || text.includes('%3E') || text.includes('bible:verse')) {
     return text;
   }
 
-  // Return early if this looks like it contains HTML attributes or tags
-  if (text.includes('href=') || text.includes('class=') || text.includes('div')) {
+  // If the text contains iframes or divs, only process URLs that are NOT inside HTML tags
+  if (text.includes('<iframe') || text.includes('<div')) {
+    // Don't convert URLs that are inside HTML tags or attributes
     return text;
   }
 
