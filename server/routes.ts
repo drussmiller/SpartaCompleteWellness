@@ -5283,44 +5283,8 @@ export const registerRoutes = async (
 
         logger.info(`Document converted successfully, content length: ${result.value.length}`);
 
-        // Modify the content to only convert YouTube URLs to embedded videos
-        // and leave all other URLs as plain text.
-        // This is done by replacing the existing content processing logic.
-        let data = { content: result.value }; // Simulate the structure expected by the original logic
-
-        // YouTube URL regex - matches various YouTube URL formats
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
-        let content = data.content;
-
-        // Clean up invalid HTML symbols that may be added during document conversion
-        content = content
-          .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
-          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-          .trim();
-
-        // Track unique video IDs to prevent duplicates
-        const seenVideoIds = new Set<string>();
-
-        // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
-        content = content.replace(youtubeRegex, (match, videoId) => {
-          if (!videoId) return match;
-
-          // If we've already embedded this video, remove the duplicate
-          if (seenVideoIds.has(videoId)) {
-            return '';
-          }
-
-          seenVideoIds.add(videoId);
-          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
-        });
-
-        // Do NOT convert other URLs to links - leave them as plain text
-        // Only YouTube URLs should be converted to embedded videos
-
-        // Bible verses are kept as plain text
-
-        // Return content with only YouTube embeds processed
-        res.json({ content: content });
+        // Return content without converting Bible verses to links
+        res.json({ content: result.value });
       } catch (error) {
         logger.error("Error processing document:", {
           error,
