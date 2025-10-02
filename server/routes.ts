@@ -1912,10 +1912,8 @@ export const registerRoutes = async (
         if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
           parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
             if (field.type === 'text' && field.content) {
-              // Convert Bible verses to clickable links - must have FULL book name + chapter:verse
-              // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
-              // Word boundaries ensure we don't match partial words
-              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1\s*Samuel|2\s*Samuel|1\s*Kings|2\s*Kings|1\s*Chronicles|2\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1\s*Corinthians|2\s*Corinthians|Galatians?|Galations?|Ephesians|Philippians|Colossians|1\s*Thessalonians|2\s*Thessalonians|1\s*Timothy|2\s*Timothy|Titus|Philemon|Hebrews|James|1\s*Peter|2\s*Peter|1\s*John|2\s*John|3\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+              // Only match actual Bible verses - requires book name followed by space and chapter:verse
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
 
               const originalContent = field.content;
               field.content = field.content.replace(bibleVerseRegex, (match) => {
@@ -1923,7 +1921,8 @@ export const registerRoutes = async (
                 const cleanVerse = match
                   .replace(/\s+/g, '')
                   .replace(/Psalms/gi, 'Psalm')
-                  .replace(/Galations/gi, 'Galatians'); // Fix common misspelling
+                  .replace(/Galation/gi, 'Galatians'); // Fix common misspelling
+
                 // For mobile compatibility, use a web-based Bible app instead of bible: scheme
                 // This will work in both web browsers and mobile apps
                 const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
@@ -2623,7 +2622,7 @@ export const registerRoutes = async (
       // Get yesterday's date with proper timezone handling
       const now = new Date();
       const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setDate(now.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
       const today = new Date(now);
@@ -5077,8 +5076,7 @@ export const registerRoutes = async (
 
       // Add points to user
       await db
-        .update(users)
-        .set({
+        .update(users)        .set({
           points: sql`${users.points} + ${achievementTypeObj.pointValue}`,
         })
         .where(eq(users.id, userId));
@@ -5120,7 +5118,7 @@ export const registerRoutes = async (
   // Object Storage routes removed - not needed
 
   // Main file serving route that thumbnails expect
-  router.get("/api/serve-file", async (req: Request, res: Response) => {
+  app.get("/api/serve-file", async (req: Request, res: Response) => {
     try {
       const filename = req.query.filename as string;
 
@@ -5255,30 +5253,49 @@ export const registerRoutes = async (
         // Set content type early to ensure JSON response
         res.setHeader("Content-Type", "application/json");
 
+        logger.info('Document upload endpoint called', {
+          hasUser: !!req.user,
+          isAdmin: req.user?.isAdmin,
+          hasFile: !!req.file,
+          filename: req.file?.originalname
+        });
+
         if (!req.user?.isAdmin) {
+          logger.warn('Upload denied - not admin');
           return res.status(403).json({ message: "Not authorized" });
         }
 
         if (!req.file) {
-          return res.status(400).json({ message: "No document uploaded" });
+          logger.error('No file in upload request');
+          return res.status(400).json({ message: "No file uploaded" });
         }
 
         // Validate file type
         if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
+          logger.warn('Upload denied - invalid file type', { filename: req.file.originalname });
           return res.status(400).json({ message: "Only .docx files are supported" });
         }
 
-        const docxBuffer = req.file.buffer;
-        const result = await mammoth.convertToHtml({ buffer: docxBuffer });
+        // Use mammoth to extract text from the Word document
+        logger.info(`Processing document: ${req.file.originalname}, size: ${req.file.buffer.length} bytes`);
+
+        const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+
+        logger.info(`Document converted successfully, content length: ${result.value.length}`);
 
         res.json({ content: result.value });
       } catch (error) {
-        logger.error("Error processing document:", error);
-        // Ensure we still return JSON on error
-        res.setHeader("Content-Type", "application/json");
-        res.status(500).json({
+        logger.error("Error processing document:", {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          filename: req.file?.originalname
+        });
+
+        res.status(500).json({ 
           message: "Failed to process document",
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
+          details: error instanceof Error ? error.stack : undefined
         });
       }
     }

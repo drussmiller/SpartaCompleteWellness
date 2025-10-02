@@ -679,10 +679,16 @@ export default function ActivityManagementPage() {
                         });
 
                       } catch (error) {
-                        console.error(`Error processing ${file.name}:`, error);
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                        console.error(`Error processing ${file.name}:`, {
+                          error,
+                          message: errorMessage,
+                          stack: error instanceof Error ? error.stack : undefined
+                        });
+                        skippedCount++;
                         toast({
                           title: "Error",
-                          description: `Failed to process ${file.name}: ${error instanceof Error ? error.message : "Unknown error"}`,
+                          description: `Failed to process ${file.name}: ${errorMessage}`,
                           variant: "destructive"
                         });
                       }
