@@ -1932,6 +1932,14 @@ export const registerRoutes = async (
                 return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
               });
 
+              // Keep YouTube links as clickable links instead of converting to embedded videos
+              // This ensures Bible verses with YouTube links remain as simple hyperlinks
+              const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/gi;
+              field.content = field.content.replace(youtubeRegex, (match) => {
+                // Return the YouTube link as a simple clickable link
+                return `<a href="${match}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+              });
+
               // Log if any Bible verses were converted
               if (originalContent !== field.content) {
                 logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
