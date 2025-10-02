@@ -827,7 +827,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Endpoint to get aggregated weekly data
+  // Get aggregated weekly data
   router.get(
     "/api/debug/posts/weekly-stats",
     authenticate,
@@ -1925,7 +1925,7 @@ export const registerRoutes = async (
                   .replace(/\s+/g, '')
                   .replace(/Psalms/gi, 'Psalm')
                   .replace(/Galation/gi, 'Galatians'); // Fix common misspelling
-                
+
                 // For mobile compatibility, use a web-based Bible app instead of bible: scheme
                 // This will work in both web browsers and mobile apps
                 const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
@@ -1935,7 +1935,6 @@ export const registerRoutes = async (
               // Log if any Bible verses were converted
               if (originalContent !== field.content) {
                 logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
-                logger.info(`Original content length: ${originalContent.length}, converted length: ${field.content.length}`);
               }
             }
             return field;
@@ -5077,8 +5076,7 @@ export const registerRoutes = async (
 
       // Add points to user
       await db
-        .update(users)
-        .set({
+        .update(users)        .set({
           points: sql`${users.points} + ${achievementTypeObj.pointValue}`,
         })
         .where(eq(users.id, userId));
