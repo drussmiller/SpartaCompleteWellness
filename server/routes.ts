@@ -5312,18 +5312,11 @@ export const registerRoutes = async (
       });
     }
     
-    // Remove empty href attributes but preserve structure for YouTube embeds
+    // Remove empty href attributes
     fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
     
-    // Fix YouTube video embeds to have proper closing tags
-    // Pattern: <div class="video-wrapper"><iframe...></iframe></div> should be followed by </a>
-    const videoWrapperPattern = /(<div\s+class=["']video-wrapper["']><iframe[^>]*><\/iframe><\/div>)(?!\s*<\/a>)/gi;
-    fixedContent = fixedContent.replace(videoWrapperPattern, '$1</a>');
-    
-    // Only remove orphaned closing </a> tags that aren't after video wrappers
-    // This regex looks for </a> that doesn't follow a </div> (video wrapper closing)
-    const orphanedClosingA = /(?<!<\/div>)\s*<\/a>\s*(?!<)/gi;
-    fixedContent = fixedContent.replace(orphanedClosingA, '');
+    // Remove orphaned closing </a> tags
+    fixedContent = fixedContent.replace(/<\/a>\s*(?!<)/gi, '');
     
     return { content: fixedContent, errors };
   };
