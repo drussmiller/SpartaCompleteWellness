@@ -5276,10 +5276,10 @@ export const registerRoutes = async (
           return res.status(400).json({ message: "Only .docx files are supported" });
         }
 
-        // Use mammoth to extract text from the Word document
+        // Use mammoth to convert Word document to HTML to preserve formatting
         logger.info(`Processing document: ${req.file.originalname}, size: ${req.file.buffer.length} bytes`);
 
-        const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
 
         logger.info(`Document converted successfully, content length: ${result.value.length}`);
 
