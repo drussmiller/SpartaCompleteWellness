@@ -277,6 +277,11 @@ export default function ActivityManagementPage() {
         content = content.replace(fullMatch, replacement);
       });
 
+      // Third pass: Clean up any anchor tags that might be wrapping the video embeds
+      // This handles cases where YouTube URLs were hyperlinked in the Word doc
+      content = content.replace(/<a[^>]*href="[^"]*youtube[^"]*"[^>]*>(\s*)<div class="video-wrapper">/g, '<div class="video-wrapper">');
+      content = content.replace(/<\/div>(\s*)<\/a>/g, '</div>');
+
       // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
         id: Math.random().toString(36).substring(7),
@@ -505,6 +510,11 @@ export default function ActivityManagementPage() {
                         videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
                           content = content.replace(fullMatch, replacement);
                         });
+
+                        // Third pass: Clean up any anchor tags that might be wrapping the video embeds
+                        // This handles cases where YouTube URLs were hyperlinked in the Word doc
+                        content = content.replace(/<a[^>]*href="[^"]*youtube[^"]*"[^>]*>(\s*)<div class="video-wrapper">/g, '<div class="video-wrapper">');
+                        content = content.replace(/<\/div>(\s*)<\/a>/g, '</div>');
 
 
                         // Create activity data
