@@ -520,8 +520,11 @@ export default function ActivityManagementPage() {
                                   }
                                 }
 
-                                // Update the existing activity
+                                // Update the existing activity with all required fields
                                 const updateRes = await apiRequest("PUT", `/api/activities/${existingActivity.id}`, {
+                                  week: existingActivity.week,
+                                  day: existingActivity.day,
+                                  activityTypeId: existingActivity.activityTypeId,
                                   contentFields: updatedContentFields
                                 });
 
