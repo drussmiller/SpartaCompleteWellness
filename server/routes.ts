@@ -4514,10 +4514,6 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "User's team not found" });
       }
 
-      // Debug logging
-      console.log("Current user:", JSON.stringify(currentUser, null, 2));
-      console.log("Current team:", JSON.stringify(currentTeam, null, 2));
-
       // Get team members points
       const teamMembers = await db
         .select({
@@ -4558,9 +4554,6 @@ export const registerRoutes = async (
           GROUP BY t.id, t.name
           ORDER BY avg_points DESC
         `);
-
-      console.log("Filtering teams for group ID:", currentTeam.groupId);
-      console.log("Team stats query result:", JSON.stringify(teamStats.rows, null, 2));
 
       res.setHeader("Content-Type", "application/json");
       res.json({
@@ -5248,34 +5241,27 @@ export const registerRoutes = async (
     const errors: string[] = [];
     let fixedContent = html;
 
-    // First, remove all malformed <a href="<div... patterns completely
-    // These are invalid and should just be the div without the anchor
-    fixedContent = fixedContent.replace(/<a\s+href=["']<div[^>]*>/gi, '');
+    // Fix malformed anchor tags that wrap video-wrapper divs
+    // Pattern: <a href="<div class="video-wrapper">...content...</div>
+    // This happens when mammoth converts YouTube links in Word docs
+    // We need to remove the malformed <a href="<div part and any orphaned </a> after the video wrapper
+    
+    // Match and fix the specific pattern: <a href="<div class="video-wrapper">...(iframe content)...</div></a>
+    // This regex finds malformed anchor tags that start with <a href="<div
+    fixedContent = fixedContent.replace(/<a\s+href=["'](<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>)["']>/gi, '$1');
+    
+    // Also handle cases where the closing </a> is separate
+    // Remove malformed opening <a href="<div...> patterns
+    fixedContent = fixedContent.replace(/<a\s+href=["']<div\s+class=["']video-wrapper["'][^>]*>/gi, '<div class="video-wrapper">');
+    
+    // Remove orphaned </a> tags that immediately follow video-wrapper closing divs
+    fixedContent = fixedContent.replace(/(<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>)\s*<\/a>/gi, '$1');
     
     // Also remove <a href="\n patterns (malformed links with just newlines)
-    fixedContent = fixedContent.replace(/<a\s+href=["']\s*\n/gi, '');
+    fixedContent = fixedContent.replace(/<a\s+href=["']\s*\n[^>]*>/gi, '');
     
-    // Remove any empty or malformed href attributes
+    // Remove any empty or malformed href attributes with just whitespace or quotes
     fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
-    fixedContent = fixedContent.replace(/<a\s+href=["']\s*\n/gi, '');
-    
-    // Remove all malformed <a href="<div... patterns completely
-    fixedContent = fixedContent.replace(/<a\s+href=["']<div[^>]*>/gi, '');
-    
-    // Remove all orphaned </a> tags (we'll add them back properly)
-    fixedContent = fixedContent.replace(/<\/a>/g, '');
-    
-    // Now find all video-wrapper divs and add closing </a> tags after their closing </div>
-    // Match complete video-wrapper blocks
-    const videoWrapperPattern = /(<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>)/g;
-    
-    fixedContent = fixedContent.replace(videoWrapperPattern, (match) => {
-      // Add </a> after the closing </div> if it's not already there
-      if (!match.endsWith('</a>')) {
-        return match + '</a>';
-      }
-      return match;
-    });
     
     // Basic tag validation for debugging
     const openDivCount = (fixedContent.match(/<div/g) || []).length;
