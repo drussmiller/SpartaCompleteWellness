@@ -444,7 +444,16 @@ export default function ActivityManagementPage() {
                           const tempDiv = document.createElement('div');
                           tempDiv.innerHTML = content;
                           const textContent = tempDiv.textContent || tempDiv.innerText || '';
-                          const lines = textContent.split('\n').filter(line => line.trim().length > 0);
+                          
+                          // First try splitting by newlines, then try splitting by common separators if we only get one line
+                          let lines = textContent.split('\n').filter(line => line.trim().length > 0);
+                          
+                          // If we only got one line, try splitting by book names (each verse should start with a book name)
+                          if (lines.length === 1) {
+                            // Split by Bible book names that appear at the start of a verse reference
+                            const bookPattern = /(?=(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1 Samuel|2 Samuel|1 Kings|2 Kings|1 Chronicles|2 Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Proverbs|Ecclesiastes|Song of Songs|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1 Corinthians|2 Corinthians|Galatians|Ephesians|Philippians|Colossians|1 Thessalonians|2 Thessalonians|1 Timothy|2 Timothy|Titus|Philemon|Hebrews|James|1 Peter|2 Peter|1 John|2 John|3 John|Jude|Revelation)\s+\d)/gi;
+                            lines = textContent.split(bookPattern).filter(line => line.trim().length > 0);
+                          }
 
                           console.log(`Processing BibleVerses.Doc with ${lines.length} lines:`, lines);
 
