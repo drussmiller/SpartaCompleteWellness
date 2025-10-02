@@ -1912,8 +1912,10 @@ export const registerRoutes = async (
         if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
           parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
             if (field.type === 'text' && field.content) {
-              // Only match actual Bible verses - requires book name followed by space and chapter:verse
-              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+              // Convert Bible verses to clickable links - must have FULL book name + chapter:verse
+              // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
+              // Word boundaries ensure we don't match partial words
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1\s*Samuel|2\s*Samuel|1\s*Kings|2\s*Kings|1\s*Chronicles|2\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1\s*Corinthians|2\s*Corinthians|Galatians?|Galations?|Ephesians|Philippians|Colossians|1\s*Thessalonians|2\s*Thessalonians|1\s*Timothy|2\s*Timothy|Titus|Philemon|Hebrews|James|1\s*Peter|2\s*Peter|1\s*John|2\s*John|3\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
 
               const originalContent = field.content;
               field.content = field.content.replace(bibleVerseRegex, (match) => {
@@ -1921,8 +1923,7 @@ export const registerRoutes = async (
                 const cleanVerse = match
                   .replace(/\s+/g, '')
                   .replace(/Psalms/gi, 'Psalm')
-                  .replace(/Galation/gi, 'Galatians'); // Fix common misspelling
-
+                  .replace(/Galations/gi, 'Galatians'); // Fix common misspelling
                 // For mobile compatibility, use a web-based Bible app instead of bible: scheme
                 // This will work in both web browsers and mobile apps
                 const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
@@ -5076,7 +5077,8 @@ export const registerRoutes = async (
 
       // Add points to user
       await db
-        .update(users)        .set({
+        .update(users)
+        .set({
           points: sql`${users.points} + ${achievementTypeObj.pointValue}`,
         })
         .where(eq(users.id, userId));
@@ -5118,7 +5120,7 @@ export const registerRoutes = async (
   // Object Storage routes removed - not needed
 
   // Main file serving route that thumbnails expect
-  app.get("/api/serve-file", async (req: Request, res: Response) => {
+  router.get("/api/serve-file", async (req: Request, res: Response) => {
     try {
       const filename = req.query.filename as string;
 
