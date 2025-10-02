@@ -289,7 +289,6 @@ export default function ActivityPage() {
                 {/* Daily Activity Content Display */}
                 {selectedActivity || selectedBibleVerse ? (
                   <div className="mt-4">
-                    <h3 className="text-lg font-semibold mb-4">Week {selectedWeek} - Day {selectedDay}</h3>
                     <div className="space-y-6">
                       {/* Display Bible verse first if it exists */}
                       {selectedBibleVerse && (
@@ -321,7 +320,6 @@ export default function ActivityPage() {
                             <div key={`activity-${index}`}>
                               {item.type === 'text' && (
                                 <div>
-                                  <h4 className="text-md font-medium mb-2">{item.title}</h4>
                                   <div 
                                     className="rich-text-content daily-content prose prose-sm max-w-none"
                                     style={{
