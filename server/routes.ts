@@ -5255,44 +5255,27 @@ export const registerRoutes = async (
     // Also remove <a href="\n patterns (malformed links with just newlines)
     fixedContent = fixedContent.replace(/<a\s+href=["']\s*\n/gi, '');
     
-    // Remove any empty href attributes
+    // Remove any empty or malformed href attributes
     fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
+    fixedContent = fixedContent.replace(/<a\s+href=["']\s*\n/gi, '');
     
-    // Remove any orphaned </a> tags BEFORE we add new ones
-    // This regex looks for </a> that doesn't have a </div> immediately before it
-    fixedContent = fixedContent.replace(/(?<!<\/div>)<\/a>/g, '');
+    // Remove all malformed <a href="<div... patterns completely
+    fixedContent = fixedContent.replace(/<a\s+href=["']<div[^>]*>/gi, '');
     
-    // Now find all video-wrapper divs and add closing </a> tags after them
-    // Use a more reliable approach: find each video-wrapper div and add </a> after it
-    const lines = fixedContent.split('\n');
-    const result: string[] = [];
+    // Remove all orphaned </a> tags (we'll add them back properly)
+    fixedContent = fixedContent.replace(/<\/a>/g, '');
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      result.push(line);
-      
-      // Check if this line closes a video-wrapper div
-      if (line.includes('</div>') && i > 0) {
-        // Look back to see if we're inside a video-wrapper
-        let foundVideoWrapper = false;
-        for (let j = i; j >= 0 && j > i - 10; j--) {
-          if (lines[j].includes('class="video-wrapper"') || lines[j].includes("class='video-wrapper'")) {
-            foundVideoWrapper = true;
-            break;
-          }
-        }
-        
-        // If we found a video wrapper and the next line is not already </a>, add it
-        if (foundVideoWrapper) {
-          const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
-          if (!nextLine.startsWith('</a>')) {
-            result.push('</a>');
-          }
-        }
+    // Now find all video-wrapper divs and add closing </a> tags after their closing </div>
+    // Match complete video-wrapper blocks
+    const videoWrapperPattern = /(<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>)/g;
+    
+    fixedContent = fixedContent.replace(videoWrapperPattern, (match) => {
+      // Add </a> after the closing </div> if it's not already there
+      if (!match.endsWith('</a>')) {
+        return match + '</a>';
       }
-    }
-    
-    fixedContent = result.join('\n');
+      return match;
+    });
     
     // Basic tag validation for debugging
     const openDivCount = (fixedContent.match(/<div/g) || []).length;
