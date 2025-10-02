@@ -5258,25 +5258,41 @@ export const registerRoutes = async (
     // Remove any empty href attributes
     fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
     
-    // Now find all video-wrapper divs and ensure they have proper closing </a> tags
-    // This pattern looks for complete div.video-wrapper blocks
-    const videoWrapperRegex = /<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>/gi;
+    // Remove any orphaned </a> tags BEFORE we add new ones
+    // This regex looks for </a> that doesn't have a </div> immediately before it
+    fixedContent = fixedContent.replace(/(?<!<\/div>)<\/a>/g, '');
     
-    // Replace each video wrapper to ensure it has a closing </a> if it doesn't already have one
-    fixedContent = fixedContent.replace(videoWrapperRegex, (match) => {
-      // Check if this div is immediately followed by </a>
-      const afterDiv = fixedContent.substring(fixedContent.indexOf(match) + match.length, fixedContent.indexOf(match) + match.length + 10);
+    // Now find all video-wrapper divs and add closing </a> tags after them
+    // Use a more reliable approach: find each video-wrapper div and add </a> after it
+    const lines = fixedContent.split('\n');
+    const result: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      result.push(line);
       
-      if (!afterDiv.trim().startsWith('</a>')) {
-        // Add closing </a> tag
-        return match + '</a>';
+      // Check if this line closes a video-wrapper div
+      if (line.includes('</div>') && i > 0) {
+        // Look back to see if we're inside a video-wrapper
+        let foundVideoWrapper = false;
+        for (let j = i; j >= 0 && j > i - 10; j--) {
+          if (lines[j].includes('class="video-wrapper"') || lines[j].includes("class='video-wrapper'")) {
+            foundVideoWrapper = true;
+            break;
+          }
+        }
+        
+        // If we found a video wrapper and the next line is not already </a>, add it
+        if (foundVideoWrapper) {
+          const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+          if (!nextLine.startsWith('</a>')) {
+            result.push('</a>');
+          }
+        }
       }
-      return match;
-    });
+    }
     
-    // Remove any orphaned </a> tags that are NOT after a </div>
-    // This regex looks for </a> that doesn't have a </div> before it (within 20 chars)
-    fixedContent = fixedContent.replace(/(?<!<\/div>)(?<!<\/div>\n)(?<!<\/div>\s)<\/a>/g, '');
+    fixedContent = result.join('\n');
     
     // Basic tag validation for debugging
     const openDivCount = (fixedContent.match(/<div/g) || []).length;
