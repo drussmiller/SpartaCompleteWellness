@@ -5315,8 +5315,14 @@ export const registerRoutes = async (
     // Remove empty href attributes
     fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
     
-    // Remove orphaned closing </a> tags
-    fixedContent = fixedContent.replace(/<\/a>\s*(?!<)/gi, '');
+    // Add closing </a> tags after video-wrapper divs that don't already have them
+    // Pattern: find </div> that closes a video-wrapper and check if </a> follows
+    const videoWrapperPattern = /(<div\s+class=["']video-wrapper["'][^>]*>.*?<\/div>)(?!\s*<\/a>)/gi;
+    fixedContent = fixedContent.replace(videoWrapperPattern, '$1</a>');
+    
+    // Remove orphaned closing </a> tags that don't follow a video wrapper
+    // Only remove </a> that doesn't come after </div>
+    fixedContent = fixedContent.replace(/(?<!<\/div>)\s*<\/a>(?=\s*(?:<(?!iframe|div)|[^<]))/gi, '');
     
     return { content: fixedContent, errors };
   };
