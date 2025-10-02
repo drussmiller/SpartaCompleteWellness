@@ -465,10 +465,13 @@ export default function ActivityManagementPage() {
 
                           console.log(`Processing BibleVerses.Doc with ${lines.length} lines:`, lines);
 
-                          // Create separate Bible verse activities for each line (Day 1, Day 2, etc.)
+                          // Create separate Bible verse activities for each line
+                          // Calculate week and day from absolute day number (line index + 1)
                           // These will be stored with activityTypeId = 0 to distinguish them as Bible verses
                           for (let dayIndex = 0; dayIndex < lines.length; dayIndex++) {
-                            const day = dayIndex + 1; // Day 1, Day 2, etc.
+                            const absoluteDay = dayIndex + 1; // Absolute day 1, 2, 3, etc.
+                            const week = Math.ceil(absoluteDay / 7); // Week 1-52
+                            const day = absoluteDay % 7 || 7; // Day 1-7 (7 instead of 0)
                             const verseLine = lines[dayIndex].trim();
 
                             if (!verseLine) continue;
@@ -490,20 +493,20 @@ export default function ActivityManagementPage() {
 
                             // Check if a Bible verse activity already exists for this week/day
                             const existingBibleVerse = activities?.find(activity => 
-                              activity.week === 1 && activity.day === day && activity.activityTypeId === 0
+                              activity.week === week && activity.day === day && activity.activityTypeId === 0
                             );
 
                             const contentFields = [{
                               id: Math.random().toString(36).substring(7),
                               type: 'text',
                               content: bibleVerseHTML,
-                              title: `Day ${day} Bible Verse`
+                              title: `Day ${absoluteDay} Bible Verse`
                             }];
 
                             if (existingBibleVerse) {
                               // Update existing Bible verse activity
                               const updateRes = await apiRequest("PUT", `/api/activities/${existingBibleVerse.id}`, {
-                                week: 1,
+                                week: week,
                                 day: day,
                                 activityTypeId: 0, // 0 = Bible verse
                                 contentFields: contentFields
@@ -511,18 +514,18 @@ export default function ActivityManagementPage() {
 
                               if (!updateRes.ok) {
                                 const errorData = await updateRes.json();
-                                throw new Error(errorData.message || `Failed to update Bible verse for Day ${day}`);
+                                throw new Error(errorData.message || `Failed to update Bible verse for absolute day ${absoluteDay}`);
                               }
 
                               processedCount++;
                               toast({
                                 title: "Success",
-                                description: `Updated Bible verse for Day ${day}: ${verseLine}`
+                                description: `Updated Bible verse for Day ${absoluteDay}: ${verseLine}`
                               });
                             } else {
                               // Create new Bible verse activity
                               const activityData = {
-                                week: 1, // Always week 1 for Bible verses (applies to all weeks)
+                                week: week,
                                 day: day,
                                 contentFields: contentFields,
                                 activityTypeId: 0 // 0 = Bible verse (special type)
@@ -531,13 +534,13 @@ export default function ActivityManagementPage() {
                               const activityRes = await apiRequest("POST", "/api/activities", activityData);
                               if (!activityRes.ok) {
                                 const errorData = await activityRes.json();
-                                throw new Error(errorData.message || `Failed to save Bible verse activity for Day ${day}`);
+                                throw new Error(errorData.message || `Failed to save Bible verse activity for absolute day ${absoluteDay}`);
                               }
 
                               processedCount++;
                               toast({
                                 title: "Success",
-                                description: `Created Bible verse for Day ${day}: ${verseLine}`
+                                description: `Created Bible verse for Day ${absoluteDay} (Week ${week}, Day ${day}): ${verseLine}`
                               });
                             }
                           }

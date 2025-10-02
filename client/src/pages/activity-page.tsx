@@ -159,10 +159,16 @@ export default function ActivityPage() {
     activity.week === selectedWeek && activity.day === selectedDay
   );
 
-  // Find Bible verse for the selected day (repeats every week - always use week 1 verses)
-  const selectedBibleVerse = bibleVerses?.find(verse => 
-    verse.week === 1 && verse.day === selectedDay
-  );
+  // Find Bible verse for the selected day based on absolute day number
+  // Calculate the absolute day: (week - 1) * 7 + day
+  const absoluteDay = (selectedWeek - 1) * 7 + selectedDay;
+
+  // Find the Bible verse that matches this absolute day
+  // Bible verses are stored with their absolute day calculated as (week - 1) * 7 + day
+  const selectedBibleVerse = bibleVerses?.find(verse => {
+    const verseAbsoluteDay = (verse.week - 1) * 7 + verse.day;
+    return verseAbsoluteDay === absoluteDay;
+  });
 
   return (
     <AppLayout>
