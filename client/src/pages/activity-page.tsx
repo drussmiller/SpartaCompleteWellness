@@ -326,7 +326,7 @@ export default function ActivityPage() {
                                       overflowWrap: 'break-word'
                                     }}
                                     dangerouslySetInnerHTML={{ 
-                                      __html: item.content || ''
+                                      __html: (item.content || '')
                                     }} 
                                   />
                                 </div>
