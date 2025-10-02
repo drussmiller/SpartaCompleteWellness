@@ -465,7 +465,8 @@ export default function ActivityManagementPage() {
 
                           console.log(`Processing BibleVerses.Doc with ${lines.length} lines:`, lines);
 
-                          // Add Bible verses to existing activities for each line (Day 1, Day 2, etc.)
+                          // Create separate Bible verse activities for each line (Day 1, Day 2, etc.)
+                          // These will be stored with activityTypeId = 0 to distinguish them as Bible verses
                           for (let dayIndex = 0; dayIndex < lines.length; dayIndex++) {
                             const day = dayIndex + 1; // Day 1, Day 2, etc.
                             const verseLine = lines[dayIndex].trim();
@@ -487,75 +488,46 @@ export default function ActivityManagementPage() {
                             // Create the Bible verse section HTML
                             const bibleVerseHTML = `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;"><h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3><p style="margin: 0; font-size: 16px; font-weight: 500;">${verseWithLink}</p></div>`;
 
-                            // Find existing activity for this day (check multiple weeks)
-                            const existingActivities = activities?.filter(activity => activity.day === day) || [];
-                            
-                            if (existingActivities.length > 0) {
-                              // Add Bible verse to existing activities
-                              for (const existingActivity of existingActivities) {
-                                const updatedContentFields = existingActivity.contentFields ? [...existingActivity.contentFields] : [];
-                                
-                                // Check if the first content field already has a Bible verse
-                                if (updatedContentFields.length > 0 && updatedContentFields[0].content?.includes('Today\'s Bible Verse')) {
-                                  // Replace existing Bible verse
-                                  updatedContentFields[0] = {
-                                    ...updatedContentFields[0],
-                                    content: bibleVerseHTML + (updatedContentFields[0].content?.replace(/<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa;[^>]*>.*?<\/div>/, '') || '')
-                                  };
-                                } else {
-                                  // Add Bible verse to the first content field
-                                  if (updatedContentFields.length > 0) {
-                                    updatedContentFields[0] = {
-                                      ...updatedContentFields[0],
-                                      content: bibleVerseHTML + (updatedContentFields[0].content || '')
-                                    };
-                                  } else {
-                                    // Create new content field if none exist
-                                    updatedContentFields.push({
-                                      id: Math.random().toString(36).substring(7),
-                                      type: 'text',
-                                      content: bibleVerseHTML,
-                                      title: `Day ${day} with Bible Verse`
-                                    });
-                                  }
-                                }
+                            // Check if a Bible verse activity already exists for this week/day
+                            const existingBibleVerse = activities?.find(activity => 
+                              activity.week === 1 && activity.day === day && activity.activityTypeId === 0
+                            );
 
-                                // Update the existing activity with all required fields
-                                const updateRes = await apiRequest("PUT", `/api/activities/${existingActivity.id}`, {
-                                  week: existingActivity.week,
-                                  day: existingActivity.day,
-                                  activityTypeId: existingActivity.activityTypeId,
-                                  contentFields: updatedContentFields
-                                });
+                            const contentFields = [{
+                              id: Math.random().toString(36).substring(7),
+                              type: 'text',
+                              content: bibleVerseHTML,
+                              title: `Day ${day} Bible Verse`
+                            }];
 
-                                if (!updateRes.ok) {
-                                  const errorData = await updateRes.json();
-                                  throw new Error(errorData.message || `Failed to update activity Week ${existingActivity.week} Day ${day} with Bible verse`);
-                                }
+                            if (existingBibleVerse) {
+                              // Update existing Bible verse activity
+                              const updateRes = await apiRequest("PUT", `/api/activities/${existingBibleVerse.id}`, {
+                                week: 1,
+                                day: day,
+                                activityTypeId: 0, // 0 = Bible verse
+                                contentFields: contentFields
+                              });
 
-                                processedCount++;
-                                toast({
-                                  title: "Success",
-                                  description: `Added Bible verse to Week ${existingActivity.week} Day ${day}: ${verseLine}`
-                                });
+                              if (!updateRes.ok) {
+                                const errorData = await updateRes.json();
+                                throw new Error(errorData.message || `Failed to update Bible verse for Day ${day}`);
                               }
-                            } else {
-                              // No existing activity found, create new one with just the Bible verse
-                              const contentFields = [{
-                                id: Math.random().toString(36).substring(7),
-                                type: 'text',
-                                content: bibleVerseHTML,
-                                title: `Day ${day} Bible Verse`
-                              }];
 
+                              processedCount++;
+                              toast({
+                                title: "Success",
+                                description: `Updated Bible verse for Day ${day}: ${verseLine}`
+                              });
+                            } else {
+                              // Create new Bible verse activity
                               const activityData = {
-                                week: 1, // Default to week 1 for Bible verses
+                                week: 1, // Always week 1 for Bible verses (applies to all weeks)
                                 day: day,
                                 contentFields: contentFields,
-                                activityTypeId: selectedActivityTypeId
+                                activityTypeId: 0 // 0 = Bible verse (special type)
                               };
 
-                              // Create the activity
                               const activityRes = await apiRequest("POST", "/api/activities", activityData);
                               if (!activityRes.ok) {
                                 const errorData = await activityRes.json();
@@ -565,7 +537,7 @@ export default function ActivityManagementPage() {
                               processedCount++;
                               toast({
                                 title: "Success",
-                                description: `Created new Day ${day} activity with Bible Verse: ${verseLine}`
+                                description: `Created Bible verse for Day ${day}: ${verseLine}`
                               });
                             }
                           }
