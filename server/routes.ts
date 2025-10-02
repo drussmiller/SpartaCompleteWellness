@@ -5241,27 +5241,11 @@ export const registerRoutes = async (
     const errors: string[] = [];
     let fixedContent = html;
 
-    // Fix malformed anchor tags that wrap video-wrapper divs
-    // Pattern: <a href="<div class="video-wrapper">...content...</div>
-    // This happens when mammoth converts YouTube links in Word docs
-    // We need to remove the malformed <a href="<div part and any orphaned </a> after the video wrapper
-    
-    // Match and fix the specific pattern: <a href="<div class="video-wrapper">...(iframe content)...</div></a>
-    // This regex finds malformed anchor tags that start with <a href="<div
-    fixedContent = fixedContent.replace(/<a\s+href=["'](<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>)["']>/gi, '$1');
-    
-    // Also handle cases where the closing </a> is separate
-    // Remove malformed opening <a href="<div...> patterns
-    fixedContent = fixedContent.replace(/<a\s+href=["']<div\s+class=["']video-wrapper["'][^>]*>/gi, '<div class="video-wrapper">');
-    
-    // Remove orphaned </a> tags that immediately follow video-wrapper closing divs
-    fixedContent = fixedContent.replace(/(<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?<\/div>)\s*<\/a>/gi, '$1');
-    
-    // Also remove <a href="\n patterns (malformed links with just newlines)
-    fixedContent = fixedContent.replace(/<a\s+href=["']\s*\n[^>]*>/gi, '');
-    
-    // Remove any empty or malformed href attributes with just whitespace or quotes
-    fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
+    // Simple fix for malformed YouTube video embeds: 
+    // Replace closing </div> with </div></a> for video-wrapper divs
+    // This handles the case where mammoth creates: <a href="<div class="video-wrapper">...</div>
+    // Pattern matches the complete video-wrapper div and adds </a> after the closing </div>
+    fixedContent = fixedContent.replace(/(<div\s+class=["']video-wrapper["'][^>]*>[\s\S]*?)<\/div>/g, '$1</div></a>');
     
     // Basic tag validation for debugging
     const openDivCount = (fixedContent.match(/<div/g) || []).length;
