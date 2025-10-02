@@ -5283,6 +5283,7 @@ export const registerRoutes = async (
 
         logger.info(`Document converted successfully, content length: ${result.value.length}`);
 
+        // Return content without converting Bible verses to links
         res.json({ content: result.value });
       } catch (error) {
         logger.error("Error processing document:", {
