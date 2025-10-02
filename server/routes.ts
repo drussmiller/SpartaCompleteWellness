@@ -1932,6 +1932,9 @@ export const registerRoutes = async (
                 return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
               });
 
+              // Don't process YouTube embeds in Bible verse content
+              // YouTube embeds are already properly formatted from the client
+              
               // Log if any Bible verses were converted
               if (originalContent !== field.content) {
                 logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);

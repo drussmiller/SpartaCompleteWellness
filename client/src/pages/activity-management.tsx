@@ -233,48 +233,30 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      // Enhanced YouTube regex to catch more URL formats but avoid duplicates
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
+      // YouTube URL regex - matches various YouTube URL formats
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
       let content = data.content;
 
       // Clean up invalid HTML symbols that may be added during document conversion
       content = content
         .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim();
 
-      // First pass: collect all video IDs and their positions
-      const videoMatches = [];
-      const seenVideoIds = new Set();
-      let match;
-      const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
-
-      while ((match = regex.exec(content)) !== null) {
-        const videoId = match[1];
-        const fullMatch = match[0];
-        const startIndex = match.index;
-
-        // Only keep the first occurrence of each video ID
-        if (!seenVideoIds.has(videoId)) {
-          seenVideoIds.add(videoId);
-          videoMatches.push({
-            videoId,
-            fullMatch,
-            startIndex,
-            replacement: `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
-          });
-        } else {
-          // Mark duplicate for removal
-          videoMatches.push({
-            videoId,
-            fullMatch,
-            startIndex,
-            replacement: '' // Remove duplicates completely
-          });
+      // Track unique video IDs to prevent duplicates
+      const seenVideoIds = new Set<string>();
+      
+      // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
+      content = content.replace(youtubeRegex, (match, videoId) => {
+        if (!videoId) return match;
+        
+        // If we've already embedded this video, remove the duplicate
+        if (seenVideoIds.has(videoId)) {
+          return '';
         }
-      }
-
-      // Second pass: replace all matches from end to beginning to preserve indices
-      videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
-        content = content.replace(fullMatch, replacement);
+        
+        seenVideoIds.add(videoId);
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
       // Convert Bible verses to clickable links
