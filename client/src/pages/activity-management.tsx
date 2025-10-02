@@ -462,7 +462,7 @@ export default function ActivityManagementPage() {
                             const bibleVerseHTML = `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;"><h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3><p style="margin: 0; font-size: 16px; font-weight: 500;">${verseWithLink}</p></div>`;
 
                             // Check if a Bible verse activity already exists for this week/day
-                            const existingBibleVerse = activities?.find(activity => 
+                            const existingBibleVerse = activities?.find(activity =>
                               activity.week === week && activity.day === day && activity.activityTypeId === 0
                             );
 
@@ -575,9 +575,14 @@ export default function ActivityManagementPage() {
 
                         let content = uploadData.content;
 
-                        // Clean up invalid HTML symbols that may be added during document conversion
+                        // Clean up invalid HTML symbols and escaped entities that may be added during document conversion
                         content = content
+                          .replace(/\\"/g, '"') // Unescape quotes
+                          .replace(/\\n/g, '') // Remove escaped newlines
                           .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
+                          .replace(/<a href="\\n<p>/g, '') // Remove malformed link tags with escaped newlines
+                          .replace(/<a href="">/g, '') // Remove empty link tags
+                          .replace(/<\/a>\s*<\/p>/g, '</p>') // Clean up closing tags
                           .replace(/\s+/g, ' ') // Replace multiple spaces with single space
                           .replace(/(<\/p>)\s*(<p[^>]*>)/g, '$1\n$2') // Add line breaks between paragraphs
                           .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
