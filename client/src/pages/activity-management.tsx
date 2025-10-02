@@ -245,16 +245,16 @@ export default function ActivityManagementPage() {
 
       // Track unique video IDs to prevent duplicates
       const seenVideoIds = new Set<string>();
-      
+
       // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
       content = content.replace(youtubeRegex, (match, videoId) => {
         if (!videoId) return match;
-        
+
         // If we've already embedded this video, remove the duplicate
         if (seenVideoIds.has(videoId)) {
           return '';
         }
-        
+
         seenVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
@@ -262,9 +262,9 @@ export default function ActivityManagementPage() {
       // Convert Bible verses to clickable links
       // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
       // Includes common misspellings like "Galation" for "Galatians"
-      // More strict pattern that requires actual Bible book names
-      const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalm(?:s)?|Proverbs|Ecclesiastes|Song\s+of\s+Solomon|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*(?=\s|$|<)/gi;
-      
+      // Uses word boundaries and requires space before chapter number to avoid false matches
+      const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+
       content = content.replace(bibleVerseRegex, (match) => {
         // Clean up the verse reference for the URL (remove spaces, normalize common misspellings)
         const cleanVerse = match
@@ -426,12 +426,12 @@ export default function ActivityManagementPage() {
                           // Extract lines from the HTML content
                           const tempDiv = document.createElement('div');
                           tempDiv.innerHTML = content;
-                          
+
                           // Extract lines by preserving paragraph structure from HTML
                           // Word docs convert to <p> tags or <div> tags for each line
                           const paragraphs = tempDiv.querySelectorAll('p, div');
                           let lines: string[] = [];
-                          
+
                           if (paragraphs.length > 0) {
                             // Extract text from each paragraph/div
                             paragraphs.forEach(para => {
@@ -461,7 +461,7 @@ export default function ActivityManagementPage() {
 
                             // Convert the verse to a clickable link
                             const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
-                            
+
                             const verseWithLink = verseLine.replace(bibleVerseRegex, (match) => {
                               const cleanVerse = match
                                 .replace(/\s+/g, '')
@@ -583,7 +583,7 @@ export default function ActivityManagementPage() {
                           throw new Error(`Failed to process ${file.name}`);
                         }
 
-                        const uploadData = await uploadRes.json();
+                        const uploadData = await res.json();
                         let title = filename;
 
                         let content = uploadData.content;
@@ -637,7 +637,7 @@ export default function ActivityManagementPage() {
                         // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", etc.
                         // Includes common misspellings like "Galation" for "Galatians"
                         const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
-                        
+
                         content = content.replace(bibleVerseRegex, (match) => {
                           // Clean up the verse reference for the URL (remove spaces, normalize common misspellings)
                           const cleanVerse = match

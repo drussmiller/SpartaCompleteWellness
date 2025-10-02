@@ -1912,11 +1912,8 @@ export const registerRoutes = async (
         if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
           parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
             if (field.type === 'text' && field.content) {
-              // Convert Bible verses to clickable links
-              // Pattern matches formats like "John 3:16", "1 John 2:3-5", "Psalm 23:1-6", "John 2: Verses 13-25", etc.
-              // Includes common misspellings like "Galation" for "Galatians"
-              // Handles various formats including spaces and the word "Verses"
-              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalm(?:s)?|Proverbs|Ecclesiastes|Song\s+of\s+Solomon|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*(?=\s|$)/gi;
+              // Only match actual Bible verses - requires book name followed by space and chapter:verse
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
 
               const originalContent = field.content;
               field.content = field.content.replace(bibleVerseRegex, (match) => {
@@ -1989,7 +1986,7 @@ export const registerRoutes = async (
       res.status(500).json({
         message:
           error instanceof Error ? error.message : "Failed to create/update activity",
-        error: error instanceof Error ? error.stack : undefined,
+        error: error instanceof Error ? error.stack : "Unknown error",
       });
     }
   });
