@@ -233,8 +233,6 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      // YouTube URL regex - matches various YouTube URL formats
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
       let content = data.content;
 
       // Clean up invalid HTML symbols that may be added during document conversion
@@ -246,7 +244,21 @@ export default function ActivityManagementPage() {
       // Track unique video IDs to prevent duplicates
       const seenVideoIds = new Set<string>();
 
-      // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
+      // First, handle anchor tags containing YouTube links (from hyperlinked URLs in Word docs)
+      content = content.replace(/<a[^>]*href=["']([^"']*(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>.*?<\/a>/gi, (match, url, videoId) => {
+        if (!videoId) return match;
+
+        // If we've already embedded this video, remove the duplicate
+        if (seenVideoIds.has(videoId)) {
+          return '';
+        }
+
+        seenVideoIds.add(videoId);
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+      });
+
+      // Then handle any remaining standalone YouTube URLs
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
       content = content.replace(youtubeRegex, (match, videoId) => {
         if (!videoId) return match;
 
@@ -583,41 +595,34 @@ export default function ActivityManagementPage() {
                           .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
                           .trim();
 
-                        // First pass: collect all video IDs and their positions
-                        const videoMatches = [];
+                        // Track unique video IDs to prevent duplicates
                         const seenVideoIds = new Set();
-                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
-                        const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
 
-                        let match;
-                        while ((match = regex.exec(content)) !== null) {
-                          const videoId = match[1];
-                          const fullMatch = match[0];
-                          const startIndex = match.index;
+                        // First, handle anchor tags containing YouTube links (from hyperlinked URLs in Word docs)
+                        content = content.replace(/<a[^>]*href=["']([^"']*(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>.*?<\/a>/gi, (match, url, videoId) => {
+                          if (!videoId) return match;
 
-                          // Only keep the first occurrence of each video ID
-                          if (!seenVideoIds.has(videoId)) {
-                            seenVideoIds.add(videoId);
-                            videoMatches.push({
-                              videoId,
-                              fullMatch,
-                              startIndex,
-                              replacement: `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
-                            });
-                          } else {
-                            // Mark duplicate for removal
-                            videoMatches.push({
-                              videoId,
-                              fullMatch,
-                              startIndex,
-                              replacement: '' // Remove duplicates completely
-                            });
+                          // If we've already embedded this video, remove the duplicate
+                          if (seenVideoIds.has(videoId)) {
+                            return '';
                           }
-                        }
 
-                        // Second pass: replace all matches from end to beginning to preserve indices
-                        videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
-                          content = content.replace(fullMatch, replacement);
+                          seenVideoIds.add(videoId);
+                          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+                        });
+
+                        // Then handle any remaining standalone YouTube URLs
+                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
+                        content = content.replace(youtubeRegex, (match, videoId) => {
+                          if (!videoId) return match;
+
+                          // If we've already embedded this video, remove the duplicate
+                          if (seenVideoIds.has(videoId)) {
+                            return '';
+                          }
+
+                          seenVideoIds.add(videoId);
+                          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
                         });
 
                         // Bible verses are kept as plain text
