@@ -233,54 +233,33 @@ export default function ActivityManagementPage() {
       const data = await res.json();
       let title = filename;
 
-      // Enhanced YouTube regex to catch more URL formats but avoid duplicates
-      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})(?:[^\s]*)?/g;
+      // YouTube URL regex - matches various YouTube URL formats
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
       let content = data.content;
 
       // Clean up invalid HTML symbols that may be added during document conversion
       content = content
         .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim();
 
-      // First pass: collect all video IDs and their positions
-      const videoMatches = [];
-      const seenVideoIds = new Set();
-      let match;
-      const regex = new RegExp(youtubeRegex.source, youtubeRegex.flags);
+      // Track unique video IDs to prevent duplicates
+      const seenVideoIds = new Set<string>();
 
-      while ((match = regex.exec(content)) !== null) {
-        const videoId = match[1];
-        const fullMatch = match[0];
-        const startIndex = match.index;
+      // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
+      content = content.replace(youtubeRegex, (match, videoId) => {
+        if (!videoId) return match;
 
-        // Only keep the first occurrence of each video ID
-        if (!seenVideoIds.has(videoId)) {
-          seenVideoIds.add(videoId);
-          videoMatches.push({
-            videoId,
-            fullMatch,
-            startIndex,
-            replacement: `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
-          });
-        } else {
-          // Mark duplicate for removal
-          videoMatches.push({
-            videoId,
-            fullMatch,
-            startIndex,
-            replacement: '' // Remove duplicates completely
-          });
+        // If we've already embedded this video, remove the duplicate
+        if (seenVideoIds.has(videoId)) {
+          return '';
         }
-      }
 
-      // Second pass: replace all matches from end to beginning to preserve indices
-      videoMatches.reverse().forEach(({ fullMatch, replacement }) => {
-        content = content.replace(fullMatch, replacement);
+        seenVideoIds.add(videoId);
+        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
-      // Third pass: Clean up any anchor tags that might be wrapping the video embeds
-      // This handles cases where YouTube URLs were hyperlinked in the Word doc
-      content = content.replace(/<a[^>]*href="[^"]*youtube[^"]*"[^>]*>(\s*)<div class="video-wrapper">/g, '<div class="video-wrapper">');
-      content = content.replace(/<\/div>(\s*)<\/a>/g, '</div>');
+      // Bible verses are kept as plain text
 
       // Create single content field with embedded videos in correct positions
       const newFields: ContentField[] = [{
@@ -410,6 +389,136 @@ export default function ActivityManagementPage() {
                       const file = files[i];
 
                       try {
+                        // Check if this is a BibleVerses.Doc file (case insensitive)
+                        const isBibleVersesDoc = file.name.toLowerCase().includes('bibleverses');
+
+                        if (isBibleVersesDoc) {
+                          // Special handling for BibleVerses.Doc
+                          const formData = new FormData();
+                          formData.append('document', file);
+
+                          const uploadRes = await fetch('/api/activities/upload-doc', {
+                            method: 'POST',
+                            body: formData,
+                            credentials: 'include'
+                          });
+
+                          if (!uploadRes.ok) {
+                            throw new Error(`Failed to process ${file.name}`);
+                          }
+
+                          const uploadData = await uploadRes.json();
+                          const content = uploadData.content;
+
+                          // Extract lines from the HTML content
+                          const tempDiv = document.createElement('div');
+                          tempDiv.innerHTML = content;
+
+                          // Extract lines by preserving paragraph structure from HTML
+                          // Word docs convert to <p> tags or <div> tags for each line
+                          const paragraphs = tempDiv.querySelectorAll('p, div');
+                          let lines: string[] = [];
+
+                          if (paragraphs.length > 0) {
+                            // Extract text from each paragraph/div
+                            paragraphs.forEach(para => {
+                              const text = (para.textContent || '').trim();
+                              if (text.length > 0) {
+                                lines.push(text);
+                              }
+                            });
+                          } else {
+                            // Fallback: try splitting by newlines if no paragraph structure
+                            const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                            lines = textContent.split('\n').filter(line => line.trim().length > 0);
+                          }
+
+                          console.log(`Processing BibleVerses.Doc with ${lines.length} lines:`, lines);
+
+                          // Create separate Bible verse activities for each line
+                          // Calculate week and day from absolute day number (line index + 1)
+                          // These will be stored with activityTypeId = 0 to distinguish them as Bible verses
+                          for (let dayIndex = 0; dayIndex < lines.length; dayIndex++) {
+                            const absoluteDay = dayIndex + 1; // Absolute day 1, 2, 3, etc.
+                            const week = Math.ceil(absoluteDay / 7); // Week 1-52
+                            const day = absoluteDay % 7 || 7; // Day 1-7 (7 instead of 0)
+                            const verseLine = lines[dayIndex].trim();
+
+                            if (!verseLine) continue;
+
+                            // Convert the verse to a clickable link
+                            const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+
+                            const verseWithLink = verseLine.replace(bibleVerseRegex, (match) => {
+                              const cleanVerse = match
+                                .replace(/\s+/g, '')
+                                .replace(/Psalms/gi, 'Psalm')
+                                .replace(/Galation/gi, 'Galatians');
+                              const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
+                              return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+                            });
+
+                            // Create the Bible verse section HTML
+                            const bibleVerseHTML = `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;"><h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3><p style="margin: 0; font-size: 16px; font-weight: 500;">${verseWithLink}</p></div>`;
+
+                            // Check if a Bible verse activity already exists for this week/day
+                            const existingBibleVerse = activities?.find(activity =>
+                              activity.week === week && activity.day === day && activity.activityTypeId === 0
+                            );
+
+                            const contentFields = [{
+                              id: Math.random().toString(36).substring(7),
+                              type: 'text',
+                              content: bibleVerseHTML,
+                              title: `Day ${absoluteDay} Bible Verse`
+                            }];
+
+                            if (existingBibleVerse) {
+                              // Update existing Bible verse activity
+                              const updateRes = await apiRequest("PUT", `/api/activities/${existingBibleVerse.id}`, {
+                                week: week,
+                                day: day,
+                                activityTypeId: 0, // 0 = Bible verse
+                                contentFields: contentFields
+                              });
+
+                              if (!updateRes.ok) {
+                                const errorData = await updateRes.json();
+                                throw new Error(errorData.message || `Failed to update Bible verse for absolute day ${absoluteDay}`);
+                              }
+
+                              processedCount++;
+                              toast({
+                                title: "Success",
+                                description: `Updated Bible verse for Day ${absoluteDay}: ${verseLine}`
+                              });
+                            } else {
+                              // Create new Bible verse activity
+                              const activityData = {
+                                week: week,
+                                day: day,
+                                contentFields: contentFields,
+                                activityTypeId: 0 // 0 = Bible verse (special type)
+                              };
+
+                              const activityRes = await apiRequest("POST", "/api/activities", activityData);
+                              if (!activityRes.ok) {
+                                const errorData = await activityRes.json();
+                                throw new Error(errorData.message || `Failed to save Bible verse activity for absolute day ${absoluteDay}`);
+                              }
+
+                              processedCount++;
+                              toast({
+                                title: "Success",
+                                description: `Created Bible verse for Day ${absoluteDay} (Week ${week}, Day ${day}): ${verseLine}`
+                              });
+                            }
+                          }
+
+                          continue; // Skip the normal processing for this file
+                        }
+
+                        // Normal processing for non-BibleVerses files
                         // Extract week and day from filename
                         const filename = file.name.replace('.docx', '');
                         const numbers = filename.match(/\d+/g);
@@ -466,9 +575,14 @@ export default function ActivityManagementPage() {
 
                         let content = uploadData.content;
 
-                        // Clean up invalid HTML symbols that may be added during document conversion
+                        // Clean up invalid HTML symbols and escaped entities that may be added during document conversion
                         content = content
+                          .replace(/\\"/g, '"') // Unescape quotes
+                          .replace(/\\n/g, '') // Remove escaped newlines
                           .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
+                          .replace(/<a href="\\n<p>/g, '') // Remove malformed link tags with escaped newlines
+                          .replace(/<a href="">/g, '') // Remove empty link tags
+                          .replace(/<\/a>\s*<\/p>/g, '</p>') // Clean up closing tags
                           .replace(/\s+/g, ' ') // Replace multiple spaces with single space
                           .replace(/(<\/p>)\s*(<p[^>]*>)/g, '$1\n$2') // Add line breaks between paragraphs
                           .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
@@ -511,22 +625,21 @@ export default function ActivityManagementPage() {
                           content = content.replace(fullMatch, replacement);
                         });
 
-                        // Third pass: Clean up any anchor tags that might be wrapping the video embeds
-                        // This handles cases where YouTube URLs were hyperlinked in the Word doc
-                        content = content.replace(/<a[^>]*href="[^"]*youtube[^"]*"[^>]*>(\s*)<div class="video-wrapper">/g, '<div class="video-wrapper">');
-                        content = content.replace(/<\/div>(\s*)<\/a>/g, '</div>');
-
+                        // Bible verses are kept as plain text
 
                         // Create activity data
+                        const contentFields = [{
+                          id: Math.random().toString(36).substring(7),
+                          type: 'text',
+                          content: content.trim(),
+                          title: title
+                        }];
+
                         const activityData = {
                           week: extractedWeek,
                           day: extractedDay,
-                          contentFields: [{
-                            id: Math.random().toString(36).substring(7),
-                            type: 'text',
-                            content: content.trim(),
-                            title: title
-                          }]
+                          contentFields: contentFields,
+                          activityTypeId: selectedActivityTypeId
                         };
 
                         // Create or update the activity
@@ -545,10 +658,16 @@ export default function ActivityManagementPage() {
                         });
 
                       } catch (error) {
-                        console.error(`Error processing ${file.name}:`, error);
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                        console.error(`Error processing ${file.name}:`, {
+                          error,
+                          message: errorMessage,
+                          stack: error instanceof Error ? error.stack : undefined
+                        });
+                        skippedCount++;
                         toast({
                           title: "Error",
-                          description: `Failed to process ${file.name}: ${error instanceof Error ? error.message : "Unknown error"}`,
+                          description: `Failed to process ${file.name}: ${errorMessage}`,
                           variant: "destructive"
                         });
                       }
@@ -573,7 +692,7 @@ export default function ActivityManagementPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content).
+                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content). Special: Files named "BibleVerses.docx" will create daily Bible verse activities with each line becoming a day's verse.
               </p>
             </div>
 

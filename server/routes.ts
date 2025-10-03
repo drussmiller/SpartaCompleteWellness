@@ -645,7 +645,7 @@ export const registerRoutes = async (
         if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaStorage } = await import("./sparta-object-storage");
+            const { spartaObjectStorage } = await import("./sparta-object-storage");
 
             // Determine if this is a video file
             const originalFilename = req.file.originalname.toLowerCase();
@@ -686,7 +686,7 @@ export const registerRoutes = async (
               cleanFilename = `comment-media.${ext}`;
             }
 
-            const fileInfo = await spartaStorage.storeFile(
+            const fileInfo = await spartaObjectStorage.storeFile(
               req.file.buffer,
               cleanFilename,
               req.file.mimetype,
@@ -827,7 +827,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Endpoint to get aggregated weekly data
+  // Get aggregated weekly data
   router.get(
     "/api/debug/posts/weekly-stats",
     authenticate,
@@ -1451,7 +1451,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update team endpoint  
+  // Update team endpoint
   router.patch("/api/teams/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1546,7 +1546,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update organization endpoint  
+  // Update organization endpoint
   router.patch("/api/organizations/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1589,7 +1589,7 @@ export const registerRoutes = async (
           if (groupIds.length > 0) {
             // Update all groups in this organization to inactive
             await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
-            logger.info(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
+            logger.log(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
 
             // Get all teams in these groups
             const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
@@ -1693,7 +1693,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update group endpoint  
+  // Update group endpoint
   router.patch("/api/groups/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1908,14 +1908,48 @@ export const registerRoutes = async (
       );
 
       try {
-        // Check if an activity already exists for this week and day
+        // Apply Bible verse conversion to the parsed data before saving to database
+        if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
+          parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
+            if (field.type === 'text' && field.content) {
+              // Only match actual Bible verses - requires book name followed by chapter:verse
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
+
+              const originalContent = field.content;
+              field.content = field.content.replace(bibleVerseRegex, (match) => {
+                // Clean up the verse reference for the URL (remove spaces, normalize common misspellings)
+                const cleanVerse = match
+                  .replace(/\s+/g, '')
+                  .replace(/Psalms/gi, 'Psalm')
+                  .replace(/Galation/gi, 'Galatians'); // Fix common misspelling
+
+                // For mobile compatibility, use a web-based Bible app instead of bible: scheme
+                // This will work in both web browsers and mobile apps
+                const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
+                return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+              });
+
+              // Don't process YouTube embeds in Bible verse content
+              // YouTube embeds are already properly formatted from the client
+
+              // Log if any Bible verses were converted
+              if (originalContent !== field.content) {
+                logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+              }
+            }
+            return field;
+          });
+        }
+
+        // Check if an activity already exists for this week, day, AND activity type
         const existingActivity = await db
           .select()
           .from(activities)
           .where(
             and(
               eq(activities.week, parsedData.data.week),
-              eq(activities.day, parsedData.data.day)
+              eq(activities.day, parsedData.data.day),
+              eq(activities.activityTypeId, parsedData.data.activityTypeId)
             )
           )
           .limit(1);
@@ -1923,20 +1957,20 @@ export const registerRoutes = async (
         let activity;
         if (existingActivity.length > 0) {
           // Update existing activity
-          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
           [activity] = await db
             .update(activities)
             .set(parsedData.data)
             .where(eq(activities.id, existingActivity[0].id))
             .returning();
 
-          res.status(200).json({ 
-            ...activity, 
-            message: "Activity updated successfully" 
+          res.status(200).json({
+            ...activity,
+            message: "Activity updated successfully"
           });
         } else {
           // Create new activity
-          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
           activity = await storage.createActivity(parsedData.data);
           res.status(201).json(activity);
         }
@@ -1952,7 +1986,7 @@ export const registerRoutes = async (
       res.status(500).json({
         message:
           error instanceof Error ? error.message : "Failed to create/update activity",
-        error: error instanceof Error ? error.stack : undefined,
+        error: error instanceof Error ? error.stack : "Unknown error",
       });
     }
   });
@@ -2588,7 +2622,7 @@ export const registerRoutes = async (
       // Get yesterday's date with proper timezone handling
       const now = new Date();
       const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setDate(now.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
 
       const today = new Date(now);
@@ -2824,7 +2858,7 @@ export const registerRoutes = async (
     }
   };
 
-  // Add activity progress endpoint before the return httpServer statement
+  // Add activity progress endpoint before the return statement
   router.get("/api/activities/current", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -3475,7 +3509,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Add messages endpoints before return statement
+  // Add messages endpoints before statement
   router.get(
     "/api/messages/unread/by-sender",
     authenticate,
@@ -4146,7 +4180,7 @@ export const registerRoutes = async (
 
       const userId = req.user.id;
 
-      // Get timezone offset in minutes directly from the client
+      // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
 
       logger.info(
@@ -5042,8 +5076,7 @@ export const registerRoutes = async (
 
       // Add points to user
       await db
-        .update(users)
-        .set({
+        .update(users)        .set({
           points: sql`${users.points} + ${achievementTypeObj.pointValue}`,
         })
         .where(eq(users.id, userId));
@@ -5210,6 +5243,84 @@ export const registerRoutes = async (
     }
   });
 
+  // Helper function to validate and fix HTML tags
+  const validateAndFixHTML = (html: string): { content: string; errors: string[] } => {
+    const errors: string[] = [];
+    let fixedContent = html;
+
+    // Stack to track open tags
+    const tagStack: { tag: string; pos: number }[] = [];
+    
+    // Self-closing tags that don't need a closing tag
+    const selfClosingTags = new Set(['br', 'hr', 'img', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'param', 'source', 'track', 'wbr']);
+    
+    // Find all HTML tags (opening, closing, and self-closing)
+    const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
+    let match;
+    
+    while ((match = tagRegex.exec(html)) !== null) {
+      const fullTag = match[0];
+      const tagName = match[1].toLowerCase();
+      const isClosing = fullTag.startsWith('</');
+      const isSelfClosing = selfClosingTags.has(tagName) || fullTag.endsWith('/>');
+      
+      if (isSelfClosing) {
+        // Self-closing tags are fine, skip
+        continue;
+      }
+      
+      if (!isClosing) {
+        // Opening tag
+        tagStack.push({ tag: tagName, pos: match.index });
+      } else {
+        // Closing tag
+        if (tagStack.length === 0) {
+          errors.push(`Unexpected closing tag </${tagName}> at position ${match.index} with no matching opening tag`);
+          // Remove the orphaned closing tag
+          fixedContent = fixedContent.replace(fullTag, '');
+        } else {
+          const lastOpen = tagStack[tagStack.length - 1];
+          if (lastOpen.tag === tagName) {
+            // Matching pair, pop from stack
+            tagStack.pop();
+          } else {
+            // Mismatched tags
+            errors.push(`Mismatched tags: expected </${lastOpen.tag}> but found </${tagName}> at position ${match.index}`);
+            // Try to fix by closing the mismatched tag
+            const closeTag = `</${lastOpen.tag}>`;
+            fixedContent = fixedContent.slice(0, match.index) + closeTag + fixedContent.slice(match.index);
+            tagStack.pop();
+          }
+        }
+      }
+    }
+    
+    // Close any remaining open tags
+    while (tagStack.length > 0) {
+      const unclosed = tagStack.pop()!;
+      errors.push(`Unclosed tag <${unclosed.tag}> at position ${unclosed.pos}`);
+      fixedContent += `</${unclosed.tag}>`;
+    }
+    
+    // Clean up malformed link tags like <a href="\n<p> or <a href="<div...
+    const malformedLinkPattern = /<a\s+href=["'](?:<[^>]+>|\\n|[\s\n])+/gi;
+    const malformedLinks = fixedContent.match(malformedLinkPattern);
+    if (malformedLinks) {
+      malformedLinks.forEach(link => {
+        errors.push(`Found malformed link tag: ${link.substring(0, 50)}...`);
+        fixedContent = fixedContent.replace(link, '');
+      });
+    }
+    
+    // Remove empty href attributes
+    fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
+    
+    // Remove orphaned closing </a> tags
+    fixedContent = fixedContent.replace(/<\/a>\s*(?!<)/gi, '');
+    
+    return { content: fixedContent, errors };
+  };
+
   // Add document upload endpoint for activities
   router.post(
     "/api/activities/upload-doc",
@@ -5220,30 +5331,62 @@ export const registerRoutes = async (
         // Set content type early to ensure JSON response
         res.setHeader("Content-Type", "application/json");
 
+        logger.info('Document upload endpoint called', {
+          hasUser: !!req.user,
+          isAdmin: req.user?.isAdmin,
+          hasFile: !!req.file,
+          filename: req.file?.originalname
+        });
+
         if (!req.user?.isAdmin) {
+          logger.warn('Upload denied - not admin');
           return res.status(403).json({ message: "Not authorized" });
         }
 
         if (!req.file) {
-          return res.status(400).json({ message: "No document uploaded" });
+          logger.error('No file in upload request');
+          return res.status(400).json({ message: "No file uploaded" });
         }
 
         // Validate file type
         if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
+          logger.warn('Upload denied - invalid file type', { filename: req.file.originalname });
           return res.status(400).json({ message: "Only .docx files are supported" });
         }
 
-        const docxBuffer = req.file.buffer;
-        const result = await mammoth.convertToHtml({ buffer: docxBuffer });
+        // Use mammoth to convert Word document to HTML to preserve formatting
+        logger.info(`Processing document: ${req.file.originalname}, size: ${req.file.buffer.length} bytes`);
 
-        res.json({ content: result.value });
+        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
+
+        logger.info(`Document converted successfully, content length: ${result.value.length}`);
+
+        // Validate and fix HTML tags before returning
+        const { content: validatedContent, errors } = validateAndFixHTML(result.value);
+        
+        if (errors.length > 0) {
+          logger.warn(`HTML validation found ${errors.length} issues in ${req.file.originalname}:`, errors);
+        } else {
+          logger.info(`HTML validation passed for ${req.file.originalname}`);
+        }
+
+        // Return validated content
+        res.json({ 
+          content: validatedContent,
+          validationErrors: errors.length > 0 ? errors : undefined
+        });
       } catch (error) {
-        logger.error("Error processing document:", error);
-        // Ensure we still return JSON on error
-        res.setHeader("Content-Type", "application/json");
+        logger.error("Error processing document:", {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          filename: req.file?.originalname
+        });
+
         res.status(500).json({ 
           message: "Failed to process document",
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
+          details: error instanceof Error ? error.stack : undefined
         });
       }
     }

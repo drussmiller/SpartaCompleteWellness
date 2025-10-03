@@ -26,20 +26,29 @@ export default function ActivityPage() {
     enabled: !!user?.teamId,
   });
 
-  // Get all activities based on user's activity type preference
-  const { data: activities, isLoading: activitiesLoading, error: activitiesError } = useQuery<Activity[]>({
-    queryKey: ["/api/activities", user?.preferredActivityTypeId],
+  // Get all activities including Bible verses (activityTypeId = 0)
+  const { data: allActivities, isLoading: activitiesLoading, error: activitiesError } = useQuery<Activity[]>({
+    queryKey: ["/api/activities"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (user?.preferredActivityTypeId) {
-        params.append('activityTypeId', user.preferredActivityTypeId.toString());
-      }
-      const response = await fetch(`/api/activities?${params.toString()}`);
+      const response = await fetch(`/api/activities`);
       if (!response.ok) throw new Error("Failed to fetch activities");
       return response.json();
     },
     enabled: !!user?.teamId,
   });
+
+  // Separate Bible verses from workout activities
+  const bibleVerses = React.useMemo(() => 
+    allActivities?.filter(activity => activity.activityTypeId === 0) || [], 
+    [allActivities]
+  );
+
+  const activities = React.useMemo(() => 
+    allActivities?.filter(activity => 
+      activity.activityTypeId === (user?.preferredActivityTypeId || 1)
+    ) || [], 
+    [allActivities, user?.preferredActivityTypeId]
+  );
 
   // Set initial values based on current week/day
   React.useEffect(() => {
@@ -149,6 +158,17 @@ export default function ActivityPage() {
   const selectedActivity = activities?.find(activity => 
     activity.week === selectedWeek && activity.day === selectedDay
   );
+
+  // Find Bible verse for the selected day based on absolute day number
+  // Calculate the absolute day: (week - 1) * 7 + day
+  const absoluteDay = (selectedWeek - 1) * 7 + selectedDay;
+
+  // Find the Bible verse that matches this absolute day
+  // Bible verses are stored with their absolute day calculated as (week - 1) * 7 + day
+  const selectedBibleVerse = bibleVerses?.find(verse => {
+    const verseAbsoluteDay = (verse.week - 1) * 7 + verse.day;
+    return verseAbsoluteDay === absoluteDay;
+  });
 
   return (
     <AppLayout>
@@ -267,36 +287,71 @@ export default function ActivityPage() {
                 </div>
 
                 {/* Daily Activity Content Display */}
-                {selectedActivity ? (
+                {selectedActivity || selectedBibleVerse ? (
                   <div className="mt-4">
-                    <h3 className="text-lg font-semibold mb-4">Week {selectedActivity.week} - Day {selectedActivity.day}</h3>
-                    <div className="space-y-4">
-                      {selectedActivity.contentFields?.map((item: any, index: number) => (
-                        <div key={index}>
-                          {item.type === 'text' && (
-                            <div>
-                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
-                              <div 
-                                className="rich-text-content daily-content prose prose-sm max-w-none"
-                                style={{
-                                  wordBreak: 'break-word',
-                                  overflowWrap: 'break-word'
-                                }}
-                                dangerouslySetInnerHTML={{ 
-                                  __html: (item.content || '')
-                                    .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
-                                }} 
-                              />
+                    <div className="space-y-6">
+                      {/* Display Bible verse first if it exists */}
+                      {selectedBibleVerse && (
+                        <div className="bible-verse-section">
+                          {selectedBibleVerse.contentFields?.map((item: any, index: number) => (
+                            <div key={`bible-${index}`}>
+                              {item.type === 'text' && (
+                                <div 
+                                  className="rich-text-content daily-content prose prose-sm max-w-none"
+                                  style={{
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'break-word'
+                                  }}
+                                  dangerouslySetInnerHTML={{ 
+                                    __html: item.content || ''
+                                  }} 
+                                />
+                              )}
                             </div>
-                          )}
-                          {item.type === 'video' && (
-                            <div>
-                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
-                              <YouTubePlayer videoId={item.content} />
-                            </div>
-                          )}
+                          ))}
                         </div>
-                      ))}
+                      )}
+
+                      {/* Display workout activity content below Bible verse */}
+                      {selectedActivity && (
+                        <div className="workout-activity-section">
+                          {selectedActivity.contentFields?.map((item: any, index: number) => (
+                            <div key={`activity-${index}`}>
+                              {item.type === 'text' && (
+                                <div>
+                                  <div 
+                                    className="rich-text-content daily-content prose prose-sm max-w-none"
+                                    style={{
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word'
+                                    }}
+                                    dangerouslySetInnerHTML={{ 
+                                      __html: (item.content || '')
+                                    }} 
+                                  />
+                                </div>
+                              )}
+                              {item.type === 'video' && (
+                                <div>
+                                  <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                                  <YouTubePlayer videoId={item.content} />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Show message if only Bible verse exists but no workout */}
+                      {selectedBibleVerse && !selectedActivity && (
+                        <div className="text-center text-gray-600 mt-4 p-4 bg-muted/30 rounded-lg">
+                          <p>
+                            No workout activity available for Week {selectedWeek}, Day {selectedDay}.
+                            <br />
+                            Check with your coach if you think this is an error.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : activityStatus?.programHasStarted === false ? (

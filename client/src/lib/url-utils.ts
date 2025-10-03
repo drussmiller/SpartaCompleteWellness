@@ -4,8 +4,40 @@ import { createThumbnailUrl, createMediaUrl } from './media-utils';
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
 export function convertUrlsToLinks(text: string): string {
-  return text.replace(urlRegex, (url) => {
-    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${url}</a>`;
+  // Don't process any text that contains HTML tags
+  if (text.includes('<') || text.includes('>')) {
+    return text;
+  }
+
+  // Don't process encoded HTML or special schemes
+  if (text.includes('%3C') || text.includes('%3E') || text.includes('bible:verse')) {
+    return text;
+  }
+
+  // Don't process text that already contains links
+  if (text.includes('href=')) {
+    return text;
+  }
+
+  // Only process completely plain text that clearly contains standalone URLs
+  const urlRegex = /(?:^|\s)(https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/g;
+
+  // Only apply if we actually find URLs and the text doesn't look like HTML
+  const matches = text.match(urlRegex);
+  if (!matches || matches.length === 0) {
+    return text;
+  }
+
+  return text.replace(urlRegex, (match, url) => {
+    // Skip YouTube URLs - they should already be embedded as iframes
+    if (url.match(/(?:youtube\.com|youtu\.be)/i)) {
+      return match;
+    }
+    
+    // Clean up any trailing punctuation that shouldn't be part of the URL
+    const cleanUrl = url.replace(/[.,;:!?'")\]]+$/, '');
+    const leadingSpace = match.startsWith(' ') ? ' ' : '';
+    return `${leadingSpace}<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${cleanUrl}</a>`;
   });
 }
 
