@@ -1912,7 +1912,7 @@ export const registerRoutes = async (
         if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
           parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
             if (field.type === 'text' && field.content) {
-              // Only match actual Bible verses - requires book name followed by chapter:verse
+              // Only match actual Bible verses - requires book name followed by space and chapter:verse
               const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*\b/gi;
 
               const originalContent = field.content;
@@ -5243,84 +5243,6 @@ export const registerRoutes = async (
     }
   });
 
-  // Helper function to validate and fix HTML tags
-  const validateAndFixHTML = (html: string): { content: string; errors: string[] } => {
-    const errors: string[] = [];
-    let fixedContent = html;
-
-    // Stack to track open tags
-    const tagStack: { tag: string; pos: number }[] = [];
-    
-    // Self-closing tags that don't need a closing tag
-    const selfClosingTags = new Set(['br', 'hr', 'img', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'param', 'source', 'track', 'wbr']);
-    
-    // Find all HTML tags (opening, closing, and self-closing)
-    const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
-    let match;
-    
-    while ((match = tagRegex.exec(html)) !== null) {
-      const fullTag = match[0];
-      const tagName = match[1].toLowerCase();
-      const isClosing = fullTag.startsWith('</');
-      const isSelfClosing = selfClosingTags.has(tagName) || fullTag.endsWith('/>');
-      
-      if (isSelfClosing) {
-        // Self-closing tags are fine, skip
-        continue;
-      }
-      
-      if (!isClosing) {
-        // Opening tag
-        tagStack.push({ tag: tagName, pos: match.index });
-      } else {
-        // Closing tag
-        if (tagStack.length === 0) {
-          errors.push(`Unexpected closing tag </${tagName}> at position ${match.index} with no matching opening tag`);
-          // Remove the orphaned closing tag
-          fixedContent = fixedContent.replace(fullTag, '');
-        } else {
-          const lastOpen = tagStack[tagStack.length - 1];
-          if (lastOpen.tag === tagName) {
-            // Matching pair, pop from stack
-            tagStack.pop();
-          } else {
-            // Mismatched tags
-            errors.push(`Mismatched tags: expected </${lastOpen.tag}> but found </${tagName}> at position ${match.index}`);
-            // Try to fix by closing the mismatched tag
-            const closeTag = `</${lastOpen.tag}>`;
-            fixedContent = fixedContent.slice(0, match.index) + closeTag + fixedContent.slice(match.index);
-            tagStack.pop();
-          }
-        }
-      }
-    }
-    
-    // Close any remaining open tags
-    while (tagStack.length > 0) {
-      const unclosed = tagStack.pop()!;
-      errors.push(`Unclosed tag <${unclosed.tag}> at position ${unclosed.pos}`);
-      fixedContent += `</${unclosed.tag}>`;
-    }
-    
-    // Clean up malformed link tags like <a href="\n<p> or <a href="<div...
-    const malformedLinkPattern = /<a\s+href=["'](?:<[^>]+>|\\n|[\s\n])+/gi;
-    const malformedLinks = fixedContent.match(malformedLinkPattern);
-    if (malformedLinks) {
-      malformedLinks.forEach(link => {
-        errors.push(`Found malformed link tag: ${link.substring(0, 50)}...`);
-        fixedContent = fixedContent.replace(link, '');
-      });
-    }
-    
-    // Remove empty href attributes
-    fixedContent = fixedContent.replace(/<a\s+href=["']\s*["'][^>]*>/gi, '');
-    
-    // Remove orphaned closing </a> tags
-    fixedContent = fixedContent.replace(/<\/a>\s*(?!<)/gi, '');
-    
-    return { content: fixedContent, errors };
-  };
-
   // Add document upload endpoint for activities
   router.post(
     "/api/activities/upload-doc",
@@ -5361,20 +5283,8 @@ export const registerRoutes = async (
 
         logger.info(`Document converted successfully, content length: ${result.value.length}`);
 
-        // Validate and fix HTML tags before returning
-        const { content: validatedContent, errors } = validateAndFixHTML(result.value);
-        
-        if (errors.length > 0) {
-          logger.warn(`HTML validation found ${errors.length} issues in ${req.file.originalname}:`, errors);
-        } else {
-          logger.info(`HTML validation passed for ${req.file.originalname}`);
-        }
-
-        // Return validated content
-        res.json({ 
-          content: validatedContent,
-          validationErrors: errors.length > 0 ? errors : undefined
-        });
+        // Return content without converting Bible verses to links
+        res.json({ content: result.value });
       } catch (error) {
         logger.error("Error processing document:", {
           error,
