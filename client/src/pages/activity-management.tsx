@@ -525,26 +525,44 @@ export default function ActivityManagementPage() {
                         // Normal processing for non-BibleVerses files
                         // Extract week and day from filename
                         const filename = file.name.replace('.docx', '');
-                        const numbers = filename.match(/\d+/g);
-
-                        if (!numbers || numbers.length < 1) {
+                        
+                        // Check for week range pattern (e.g., Week9-11Day2 means weeks 9, 10, 11 for day 2)
+                        const weekRangeMatch = filename.match(/Week(\d+)-(\d+)(?:Day(\d+))?/i);
+                        const singleWeekMatch = filename.match(/\d+/g);
+                        
+                        let weekNumbers: number[] = [];
+                        let extractedDay = 0;
+                        
+                        if (weekRangeMatch) {
+                          // Handle week range (e.g., Week9-11Day2)
+                          const startWeek = parseInt(weekRangeMatch[1]);
+                          const endWeek = parseInt(weekRangeMatch[2]);
+                          extractedDay = weekRangeMatch[3] ? parseInt(weekRangeMatch[3]) : 0;
+                          
+                          // Generate array of week numbers in the range
+                          for (let w = startWeek; w <= endWeek; w++) {
+                            weekNumbers.push(w);
+                          }
+                        } else if (singleWeekMatch && singleWeekMatch.length >= 1) {
+                          // Handle single week (e.g., Week1Day2 or Week25)
+                          weekNumbers = [parseInt(singleWeekMatch[0])];
+                          extractedDay = singleWeekMatch.length >= 2 ? parseInt(singleWeekMatch[1]) : 0;
+                        } else {
                           skippedCount++;
                           toast({
                             title: `Skipping ${file.name}`,
-                            description: "Filename must contain at least 1 number (week). Examples: 'Week25.docx' or 'Week1Day2.docx'",
+                            description: "Filename must contain week number(s). Examples: 'Week25.docx', 'Week1Day2.docx', or 'Week9-11Day2.docx'",
                             variant: "destructive"
                           });
                           continue;
                         }
 
-                        const extractedWeek = parseInt(numbers[0]);
-                        const extractedDay = numbers.length >= 2 ? parseInt(numbers[1]) : 0; // Default to 0 for week-only content
-
-                        if (isNaN(extractedWeek) || extractedWeek < 1) {
+                        // Validate week numbers
+                        if (weekNumbers.some(w => isNaN(w) || w < 1)) {
                           skippedCount++;
                           toast({
                             title: `Skipping ${file.name}`,
-                            description: "Week number must be >= 1",
+                            description: "Week number(s) must be >= 1",
                             variant: "destructive"
                           });
                           continue;
@@ -611,7 +629,7 @@ export default function ActivityManagementPage() {
 
                         // Bible verses are kept as plain text
 
-                        // Create activity data
+                        // Create activity data for each week in the range
                         const contentFields = [{
                           id: Math.random().toString(36).substring(7),
                           type: 'text',
@@ -619,26 +637,33 @@ export default function ActivityManagementPage() {
                           title: title
                         }];
 
-                        const activityData = {
-                          week: extractedWeek,
-                          day: extractedDay,
-                          contentFields: contentFields,
-                          activityTypeId: selectedActivityTypeId
-                        };
+                        // Process each week in the range
+                        for (const weekNum of weekNumbers) {
+                          const activityData = {
+                            week: weekNum,
+                            day: extractedDay,
+                            contentFields: contentFields,
+                            activityTypeId: selectedActivityTypeId
+                          };
 
-                        // Create or update the activity
-                        const activityRes = await apiRequest("POST", "/api/activities", activityData);
-                        if (!activityRes.ok) {
-                          const errorData = await activityRes.json();
-                          throw new Error(errorData.message || `Failed to save activity for ${file.name}`);
+                          // Create or update the activity
+                          const activityRes = await apiRequest("POST", "/api/activities", activityData);
+                          if (!activityRes.ok) {
+                            const errorData = await activityRes.json();
+                            throw new Error(errorData.message || `Failed to save activity for ${file.name} Week ${weekNum}`);
+                          }
+
+                          const responseData = await activityRes.json();
+                          processedCount++;
                         }
-
-                        const responseData = await activityRes.json();
-                        processedCount++;
+                        
                         const activityType = extractedDay === 0 ? "Week Information" : `Day ${extractedDay}`;
+                        const weekRange = weekNumbers.length > 1 
+                          ? `Weeks ${weekNumbers[0]}-${weekNumbers[weekNumbers.length - 1]}` 
+                          : `Week ${weekNumbers[0]}`;
                         toast({
                           title: "Success",
-                          description: `${responseData.message ? 'Updated' : 'Created'} ${file.name} - Week ${extractedWeek} ${activityType}`
+                          description: `Created/Updated ${file.name} - ${weekRange} ${activityType}`
                         });
 
                       } catch (error) {
