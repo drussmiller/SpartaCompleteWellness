@@ -244,22 +244,10 @@ export default function ActivityManagementPage() {
       // Track unique video IDs to prevent duplicates
       const seenVideoIds = new Set<string>();
 
-      // First, replace complete anchor tags containing YouTube URLs (from hyperlinked URLs in Word docs)
-      // This matches: <a href="YOUTUBE_URL">...anything...</a>
-      content = content.replace(/<a[^>]*href=["']?((?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"'\s>]*)["']?[^>]*>.*?<\/a>/gi, (match: string, url: string, videoId: string) => {
-        if (!videoId) return match;
-
-        // If we've already embedded this video, remove the duplicate
-        if (seenVideoIds.has(videoId)) {
-          return '';
-        }
-
-        seenVideoIds.add(videoId);
-        return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
-      });
-
-      // Then, replace any remaining standalone YouTube URLs (not wrapped in anchor tags)
+      // YouTube URL regex - matches various YouTube URL formats
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
+      
+      // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
       content = content.replace(youtubeRegex, (match: string, videoId: string) => {
         if (!videoId) return match;
 
@@ -271,6 +259,10 @@ export default function ActivityManagementPage() {
         seenVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
+
+      // Clean up any anchor tags that might be wrapping video embeds (from hyperlinked URLs in Word docs)
+      content = content.replace(/<a[^>]*>(\s*)<div class="video-wrapper">/gi, '<div class="video-wrapper">');
+      content = content.replace(/<\/div>(\s*)<\/a>/gi, '</div>');
 
       // Bible verses are kept as plain text
 
@@ -599,22 +591,10 @@ export default function ActivityManagementPage() {
                         // Track unique video IDs to prevent duplicates
                         const seenVideoIds = new Set<string>();
 
-                        // First, replace complete anchor tags containing YouTube URLs (from hyperlinked URLs in Word docs)
-                        // This matches: <a href="YOUTUBE_URL">...anything...</a>
-                        content = content.replace(/<a[^>]*href=["']?((?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"'\s>]*)["']?[^>]*>.*?<\/a>/gi, (match: string, url: string, videoId: string) => {
-                          if (!videoId) return match;
-
-                          // If we've already embedded this video, remove the duplicate
-                          if (seenVideoIds.has(videoId)) {
-                            return '';
-                          }
-
-                          seenVideoIds.add(videoId);
-                          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-                        });
-
-                        // Then, replace any remaining standalone YouTube URLs (not wrapped in anchor tags)
+                        // YouTube URL regex - matches various YouTube URL formats
                         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
+                        
+                        // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
                         content = content.replace(youtubeRegex, (match: string, videoId: string) => {
                           if (!videoId) return match;
 
@@ -626,6 +606,10 @@ export default function ActivityManagementPage() {
                           seenVideoIds.add(videoId);
                           return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
                         });
+
+                        // Clean up any anchor tags that might be wrapping video embeds (from hyperlinked URLs in Word docs)
+                        content = content.replace(/<a[^>]*>(\s*)<div class="video-wrapper">/gi, '<div class="video-wrapper">');
+                        content = content.replace(/<\/div>(\s*)<\/a>/gi, '</div>');
 
                         // Bible verses are kept as plain text
 
