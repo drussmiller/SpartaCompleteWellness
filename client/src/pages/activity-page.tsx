@@ -293,22 +293,39 @@ export default function ActivityPage() {
                       {/* Display Bible verse first if it exists */}
                       {selectedBibleVerse && (
                         <div className="bible-verse-section">
-                          {selectedBibleVerse.contentFields?.map((item: any, index: number) => (
-                            <div key={`bible-${index}`}>
-                              {item.type === 'text' && (
-                                <div 
-                                  className="rich-text-content daily-content prose prose-sm max-w-none"
-                                  style={{
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                  }}
-                                  dangerouslySetInnerHTML={{ 
-                                    __html: item.content || ''
-                                  }} 
-                                />
-                              )}
-                            </div>
-                          ))}
+                          {selectedBibleVerse.contentFields?.map((item: any, index: number) => {
+                            if (item.type === 'text') {
+                              // Convert Bible verses to links on the client side
+                              let content = item.content || '';
+                              
+                              // Match Bible verses with chapter:verse OR just chapter (e.g., "Acts 1" or "Psalm 11")
+                              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*\b/gi;
+                              
+                              // Only convert if not already a link
+                              if (!content.includes('<a href=')) {
+                                content = content.replace(bibleVerseRegex, (match) => {
+                                  const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
+                                  return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+                                });
+                              }
+                              
+                              return (
+                                <div key={`bible-${index}`}>
+                                  <div 
+                                    className="rich-text-content daily-content prose prose-sm max-w-none"
+                                    style={{
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word'
+                                    }}
+                                    dangerouslySetInnerHTML={{ 
+                                      __html: content
+                                    }} 
+                                  />
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
                         </div>
                       )}
 
