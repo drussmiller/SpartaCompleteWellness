@@ -1760,7 +1760,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <SelectValue placeholder="Select a group" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {sortedGroups?.map((group) => (
+                                          {(currentUser?.isAdmin ? sortedGroups : filteredGroups)?.map((group) => (
                                             <SelectItem
                                               key={group.id}
                                               value={group.id.toString()}
