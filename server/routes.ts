@@ -1753,6 +1753,22 @@ export const registerRoutes = async (
 
       if (!isFullAdmin && !isGroupAdminForThisGroup) {
         logger.warn(`Authorization failed for user ${req.user?.id} on group ${groupId}`);
+        
+        // Provide helpful error message for Group Admins
+        if (req.user?.isGroupAdmin && req.user?.adminGroupId) {
+          // Get the group name they are authorized for
+          const [authorizedGroup] = await db
+            .select({ name: groups.name })
+            .from(groups)
+            .where(eq(groups.id, req.user.adminGroupId))
+            .limit(1);
+          
+          const groupName = authorizedGroup?.name || `Group ${req.user.adminGroupId}`;
+          return res.status(403).json({ 
+            message: `Not authorized to make changes to this group. You are Group Admin for ${groupName} only.` 
+          });
+        }
+        
         return res.status(403).json({ message: "Not authorized" });
       }
 

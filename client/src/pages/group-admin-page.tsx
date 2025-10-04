@@ -201,9 +201,14 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
             <div className="text-center">
               <h1 className="text-2xl font-bold mb-2">Group Admin Dashboard</h1>
               {group && (
-                <p className="text-muted-foreground">
-                  Managing teams for <span className="font-semibold">{group.name}</span>
-                </p>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground">
+                    You are Group Admin for: <span className="font-semibold text-purple-700">{group.name}</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Managing teams in this group
+                  </p>
+                </div>
               )}
             </div>
 
