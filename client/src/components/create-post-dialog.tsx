@@ -505,24 +505,16 @@ export function CreatePostDialog({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start" onClick={(e) => console.log("PopoverContent clicked", e.target)}>
+                    <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={selectedDate}
                         onSelect={(date) => {
-                          console.log("Calendar onSelect fired with:", date);
                           if (date) {
-                            console.log("Date selected:", date);
                             setSelectedDate(date);
                             field.onChange(date);
-                            // Refetch post limits when date changes
                             refetch();
-                          } else {
-                            console.log("Date was null/undefined");
                           }
-                        }}
-                        onDayClick={(day, modifiers) => {
-                          console.log("Calendar onDayClick fired", { day, modifiers });
                         }}
                         disabled={(date) => {
                           const today = new Date();
@@ -530,29 +522,17 @@ export function CreatePostDialog({
                           const checkDate = new Date(date);
                           checkDate.setHours(0, 0, 0, 0);
                           
-                          console.log("Calendar disabled check:", {
-                            date: checkDate.toISOString(),
-                            today: today.toISOString(),
-                            isCompetitive,
-                            isFuture: checkDate > today,
-                            isToday: checkDate.getTime() === today.getTime()
-                          });
-                          
                           // Disable future dates for everyone
                           if (checkDate > today) {
-                            console.log("Disabling future date");
                             return true;
                           }
                           
                           // For competitive groups, only allow today's date
                           if (isCompetitive) {
-                            const shouldDisable = checkDate.getTime() !== today.getTime();
-                            console.log("Competitive mode - disabling non-today:", shouldDisable);
-                            return shouldDisable;
+                            return checkDate.getTime() !== today.getTime();
                           }
                           
                           // For non-competitive groups, allow all past/present dates
-                          console.log("Non-competitive - allowing date");
                           return false;
                         }}
                         initialFocus
