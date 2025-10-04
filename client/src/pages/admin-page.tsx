@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
@@ -207,7 +207,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      groupId: 0,
+      groupId: currentUser?.isGroupAdmin && !currentUser?.isAdmin 
+        ? currentUser.adminGroupId || 0 
+        : 0,
       maxSize: 6,
     },
   });
@@ -826,16 +828,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   );
 
   // Filter groups based on the current user's role
-  const filteredGroups =
-    currentUser?.isGroupAdmin && !currentUser?.isAdmin
-      ? (() => {
-          // Group admins only see their specific group
-          const adminGroup = sortedGroups.find(
-            (g) => g.id === currentUser.adminGroupId,
-          );
-          return adminGroup ? [adminGroup] : [];
-        })()
-      : sortedGroups;
+  const filteredGroups = React.useMemo(() => {
+    if (currentUser?.isGroupAdmin && !currentUser?.isAdmin) {
+      // Group admins only see their specific group
+      const adminGroup = sortedGroups.find(
+        (g) => g.id === currentUser.adminGroupId,
+      );
+      return adminGroup ? [adminGroup] : [];
+    }
+    return sortedGroups;
+  }, [currentUser?.isGroupAdmin, currentUser?.isAdmin, currentUser?.adminGroupId, sortedGroups]);
 
   // Filter variables for the search/filter dropdowns
   const filteredGroupsForFilter =
@@ -1756,33 +1758,41 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 <FormItem>
                                   <FormLabel>Group</FormLabel>
                                   <FormControl>
-                                    <Select
-                                      value={field.value?.toString() || ""}
-                                      onValueChange={(value) =>
-                                        field.onChange(parseInt(value))
-                                      }
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select a group" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {filteredGroups?.map((group) => (
-                                          <SelectItem
-                                            key={group.id}
-                                            value={group.id.toString()}
-                                          >
-                                            {group.name} (Org:{" "}
-                                            {
-                                              sortedOrganizations?.find(
-                                                (o) =>
-                                                  o.id === group.organizationId,
-                                              )?.name
-                                            }
-                                            )
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                                    {currentUser?.isGroupAdmin && !currentUser?.isAdmin ? (
+                                      // Group Admins see their group as read-only text
+                                      <div className="px-3 py-2 border rounded-md bg-muted text-sm">
+                                        {filteredGroups[0]?.name || 'Your Group'}
+                                      </div>
+                                    ) : (
+                                      // Full Admins see dropdown
+                                      <Select
+                                        value={field.value?.toString() || ""}
+                                        onValueChange={(value) =>
+                                          field.onChange(parseInt(value))
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select a group" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {filteredGroups?.map((group) => (
+                                            <SelectItem
+                                              key={group.id}
+                                              value={group.id.toString()}
+                                            >
+                                              {group.name} (Org:{" "}
+                                              {
+                                                sortedOrganizations?.find(
+                                                  (o) =>
+                                                    o.id === group.organizationId,
+                                                )?.name
+                                              }
+                                              )
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
                                   </FormControl>
                                 </FormItem>
                               )}
