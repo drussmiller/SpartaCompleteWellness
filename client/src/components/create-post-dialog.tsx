@@ -46,6 +46,7 @@ export function CreatePostDialog({
   const queryClient = useQueryClient();
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Check if user's team is in a competitive group
   const { data: isCompetitive = false, isLoading: isLoadingCompetitive } = useQuery({
@@ -493,7 +494,7 @@ export function CreatePostDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Post Date</FormLabel>
-                  <Popover modal={false}>
+                  <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -514,6 +515,7 @@ export function CreatePostDialog({
                             setSelectedDate(date);
                             field.onChange(date);
                             refetch();
+                            setDatePickerOpen(false);
                           }
                         }}
                         disabled={(date) => {
