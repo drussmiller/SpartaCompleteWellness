@@ -516,20 +516,19 @@ export function CreatePostDialog({
                           }
                         }}
                         disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          const checkDate = new Date(date);
-                          checkDate.setHours(0, 0, 0, 0);
+                          // Disable future dates
+                          if (date > new Date()) return true;
                           
-                          // Future dates are always disabled
-                          if (checkDate > today) return true;
-                          
-                          // For competitive groups, only allow today's date
-                          if (isCompetitive === true && checkDate.getTime() !== today.getTime()) {
-                            return true;
+                          // For competitive groups, only allow current date
+                          if (isCompetitive === true) {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const checkDate = new Date(date);
+                            checkDate.setHours(0, 0, 0, 0);
+                            return checkDate.getTime() !== today.getTime();
                           }
                           
-                          // For non-competitive groups, allow any past date up to today
+                          // For non-competitive groups, allow all past dates
                           return false;
                         }}
                         initialFocus
