@@ -511,8 +511,11 @@ export function CreatePostDialog({
                         selected={selectedDate}
                         onSelect={(date) => {
                           if (date) {
+                            console.log("Date selected:", date);
                             setSelectedDate(date);
                             field.onChange(date);
+                            // Refetch post limits when date changes
+                            refetch();
                           }
                         }}
                         disabled={(date) => {
