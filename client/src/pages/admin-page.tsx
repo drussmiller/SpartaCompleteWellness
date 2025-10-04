@@ -1760,7 +1760,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <SelectValue placeholder="Select a group" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {!sortedGroups || sortedGroups.length === 0 ? (
+                                          {!groups || groups.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-muted-foreground">
                                               No groups available
                                             </div>
