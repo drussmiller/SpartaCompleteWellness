@@ -48,7 +48,7 @@ export function CreatePostDialog({
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
 
   // Check if user's team is in a competitive group
-  const { data: isCompetitive = false } = useQuery({
+  const { data: isCompetitive, isLoading: isLoadingCompetitive } = useQuery({
     queryKey: ["/api/teams/competitive", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) return false;
@@ -525,7 +525,7 @@ export function CreatePostDialog({
                           if (checkDate > today) return true;
                           
                           // For competitive groups, only allow today's date
-                          if (isCompetitive && checkDate.getTime() !== today.getTime()) {
+                          if (isCompetitive === true && checkDate.getTime() !== today.getTime()) {
                             return true;
                           }
                           
@@ -536,7 +536,7 @@ export function CreatePostDialog({
                       />
                     </PopoverContent>
                   </Popover>
-                  {isCompetitive && (
+                  {isCompetitive === true && (
                     <p className="text-xs text-muted-foreground">
                       Competitive groups must post on the current date
                     </p>
