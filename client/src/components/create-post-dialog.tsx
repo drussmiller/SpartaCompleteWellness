@@ -508,6 +508,7 @@ export function CreatePostDialog({
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                       <Calendar
+                        key={`calendar-${isCompetitive}-${isLoadingCompetitive}`}
                         mode="single"
                         selected={selectedDate}
                         onSelect={(date) => {
@@ -519,22 +520,40 @@ export function CreatePostDialog({
                           }
                         }}
                         disabled={(date) => {
+                          // Wait for competitive status to load
+                          if (isLoadingCompetitive) {
+                            return true; // Disable all dates while loading
+                          }
+
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
                           const checkDate = new Date(date);
                           checkDate.setHours(0, 0, 0, 0);
-                          
+
+                          console.log("Calendar disabled check:", {
+                            date: checkDate.toISOString(),
+                            today: today.toISOString(),
+                            isCompetitive,
+                            isLoadingCompetitive,
+                            isFuture: checkDate > today,
+                            isToday: checkDate.getTime() === today.getTime()
+                          });
+
                           // Disable future dates for everyone
                           if (checkDate > today) {
+                            console.log("Disabling future date");
                             return true;
                           }
-                          
+
                           // For competitive groups, only allow today's date
-                          if (isCompetitive) {
-                            return checkDate.getTime() !== today.getTime();
+                          if (isCompetitive === true) {
+                            const shouldDisable = checkDate.getTime() !== today.getTime();
+                            console.log("Competitive mode - disabling non-today:", shouldDisable);
+                            return shouldDisable;
                           }
-                          
+
                           // For non-competitive groups, allow all past/present dates
+                          console.log("Non-competitive - allowing date");
                           return false;
                         }}
                         initialFocus
