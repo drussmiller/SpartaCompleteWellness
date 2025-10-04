@@ -787,6 +787,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     a.name.localeCompare(b.name),
   );
 
+  // Debug logging
+  console.log('Groups data:', { 
+    groups, 
+    filteredGroups, 
+    sortedGroups,
+    isAdmin: currentUser?.isAdmin,
+    isGroupAdmin: currentUser?.isGroupAdmin 
+  });
+
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || []
