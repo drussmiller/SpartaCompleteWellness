@@ -528,7 +528,8 @@ export default function ActivityManagementPage() {
                         let activityTypeId = selectedActivityTypeId;
 
                         if (workoutTypeMatch) {
-                          const workoutTypeName = workoutTypeMatch[1].trim();
+                          // Remove trailing hyphen or dash from the workout type name
+                          const workoutTypeName = workoutTypeMatch[1].trim().replace(/[-–]$/, '');
 
                           // Check if this workout type exists
                           let existingType = workoutTypes?.find(wt => 
