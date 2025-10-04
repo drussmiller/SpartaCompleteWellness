@@ -1749,7 +1749,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         {filteredGroups[0]?.name || 'Your Group'}
                                       </div>
                                     ) : (
-                                      // Full Admins see dropdown
+                                      // Full Admins see dropdown with all groups
                                       <Select
                                         value={field.value?.toString() || ""}
                                         onValueChange={(value) =>
@@ -1760,7 +1760,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <SelectValue placeholder="Select a group" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {filteredGroups?.map((group) => (
+                                          {sortedGroups?.map((group) => (
                                             <SelectItem
                                               key={group.id}
                                               value={group.id.toString()}
