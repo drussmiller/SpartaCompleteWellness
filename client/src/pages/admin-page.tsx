@@ -767,69 +767,58 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     );
   }
 
-  // Sort organizations and groups - these are needed for the useMemo dependencies
-  const sortedOrganizations = React.useMemo(() => 
-    [...(organizations || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [organizations]
+  // Sort and filter data - do all computations without useMemo to avoid hooks order issues
+  const sortedOrganizations = [...(organizations || [])].sort((a, b) =>
+    a.name.localeCompare(b.name),
   );
   
-  const sortedGroups = React.useMemo(() => 
-    [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [groups]
+  const sortedGroups = [...(groups || [])].sort((a, b) =>
+    a.name.localeCompare(b.name),
   );
 
-  // Filter groups based on the current user's role - must be called unconditionally
-  const filteredGroups = React.useMemo(() => {
-    if (currentUser?.isGroupAdmin && !currentUser?.isAdmin) {
-      // Group admins only see their specific group
-      const adminGroup = sortedGroups.find(
-        (g) => g.id === currentUser.adminGroupId,
-      );
-      return adminGroup ? [adminGroup] : [];
-    }
-    return sortedGroups;
-  }, [currentUser?.isGroupAdmin, currentUser?.isAdmin, currentUser?.adminGroupId, sortedGroups]);
+  // Filter groups based on the current user's role
+  const filteredGroups = currentUser?.isGroupAdmin && !currentUser?.isAdmin
+    ? (() => {
+        const adminGroup = sortedGroups.find(
+          (g) => g.id === currentUser.adminGroupId,
+        );
+        return adminGroup ? [adminGroup] : [];
+      })()
+    : sortedGroups;
 
-  // Filter teams based on user role - use useMemo to keep hook order consistent
-  const filteredTeams = React.useMemo(() => {
-    if (currentUser?.isAdmin) {
-      return teams || [];
-    }
-    if (currentUser?.isGroupAdmin) {
-      return (teams || []).filter((team) => team.groupId === currentUser.adminGroupId);
-    }
-    return [];
-  }, [currentUser?.isAdmin, currentUser?.isGroupAdmin, currentUser?.adminGroupId, teams]);
+  // Filter teams based on user role
+  const filteredTeams = currentUser?.isAdmin
+    ? teams || []
+    : currentUser?.isGroupAdmin
+      ? (teams || []).filter((team) => team.groupId === currentUser.adminGroupId)
+      : [];
 
-  const sortedTeams = React.useMemo(() => 
-    [...filteredTeams].sort((a, b) => a.name.localeCompare(b.name)),
-    [filteredTeams]
+  const sortedTeams = [...filteredTeams].sort((a, b) =>
+    a.name.localeCompare(b.name),
   );
   
-  // Filter users based on user role - use useMemo to keep hook order consistent
-  const filteredUsers = React.useMemo(() => {
-    if (currentUser?.isAdmin) {
-      return users || [];
-    }
-    if (currentUser?.isGroupAdmin) {
-      const adminGroupId = currentUser.adminGroupId;
-      if (!adminGroupId) {
-        return [];
-      }
-      const groupTeams = (teams || []).filter((team) => team.groupId === adminGroupId);
-      const groupTeamIds = groupTeams.map((team) => team.id);
-      return (users || []).filter((u) => {
-        if (u.teamId && groupTeamIds.includes(u.teamId)) {
-          return true;
-        }
-        if (!u.teamId) {
-          return true;
-        }
-        return false;
-      });
-    }
-    return [];
-  }, [currentUser?.isAdmin, currentUser?.isGroupAdmin, currentUser?.adminGroupId, teams, users]);
+  // Filter users based on user role
+  const filteredUsers = currentUser?.isAdmin
+    ? users || []
+    : currentUser?.isGroupAdmin
+      ? (() => {
+          const adminGroupId = currentUser.adminGroupId;
+          if (!adminGroupId) {
+            return [];
+          }
+          const groupTeams = (teams || []).filter((team) => team.groupId === adminGroupId);
+          const groupTeamIds = groupTeams.map((team) => team.id);
+          return (users || []).filter((u) => {
+            if (u.teamId && groupTeamIds.includes(u.teamId)) {
+              return true;
+            }
+            if (!u.teamId) {
+              return true;
+            }
+            return false;
+          });
+        })()
+      : [];
 
   const sortedUsers = [...filteredUsers].sort((a, b) =>
     (a.username || "").localeCompare(b.username || ""),
