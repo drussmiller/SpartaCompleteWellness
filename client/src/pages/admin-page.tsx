@@ -799,6 +799,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const sortedTeams = [...filteredTeams].sort((a, b) =>
     a.name.localeCompare(b.name),
   );
+  
   // Filter users based on user role - Group admins see users in their specific group or unassigned
   const filteredUsers = currentUser?.isAdmin
     ? users || [] // Full admins see all users
