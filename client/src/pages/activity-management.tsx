@@ -260,9 +260,8 @@ export default function ActivityManagementPage() {
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
-      // Clean up any anchor tags that might be wrapping video embeds (from hyperlinked URLs in Word docs)
-      content = content.replace(/<a[^>]*>(\s*)<div class="video-wrapper">/gi, '<div class="video-wrapper">');
-      content = content.replace(/<\/div>(\s*)<\/a>/gi, '</div>');
+      // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
+      content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
 
       // Bible verses are kept as plain text
 
@@ -613,9 +612,8 @@ export default function ActivityManagementPage() {
                             return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
                           });
 
-                          // Clean up any anchor tags that might be wrapping video embeds
-                          contentHtml = contentHtml.replace(/<a[^>]*>(\s*)<div class="video-wrapper">/gi, '<div class="video-wrapper">');
-                          contentHtml = contentHtml.replace(/<\/div>(\s*)<\/a>/gi, '</div>');
+                          // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
+                          contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);
                         }
