@@ -57,11 +57,6 @@ iframe {
   display: block;
 }
 
-/* Hide all duplicate videos in weekly-content by using a data attribute */
-.weekly-content .video-wrapper[data-duplicate="true"] {
-  display: none !important;
-}
-
 /* Special treatment for daily content */
 .daily-content .video-wrapper {
   margin-top: 15px;
@@ -120,16 +115,10 @@ p > .youtube-video-container:only-child {
   display: none;
 }
 
-/* Fix for nested div within paragraph tags that cause duplicate rendering */
+/* Fix for nested div within paragraph tags */
 .rich-text-content p > div.video-wrapper,
 .rich-text-content p > div.youtube-video-container {
   display: block;
   margin-top: 1em;
   margin-bottom: 1em;
-}
-
-/* Hide duplicate videos */
-.rich-text-content p > div.video-wrapper + div.video-wrapper,
-.rich-text-content p > div.youtube-video-container + div.youtube-video-container {
-  display: none;
 }
