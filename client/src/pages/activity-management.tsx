@@ -523,118 +523,95 @@ export default function ActivityManagementPage() {
                         }
 
                         // Normal processing for non-BibleVerses files
+                        // Extract workout type from filename (before "Week")
+                        const workoutTypeMatch = file.name.match(/^([^W]+?)\s*Week/i);
+                        let activityTypeId = selectedActivityTypeId;
+
+                        if (workoutTypeMatch) {
+                          const workoutTypeName = workoutTypeMatch[1].trim();
+
+                          // Check if this workout type exists
+                          let existingType = workoutTypes?.find(wt => 
+                            wt.type.toLowerCase() === workoutTypeName.toLowerCase()
+                          );
+
+                          // If it doesn't exist, create it
+                          if (!existingType) {
+                            toast({
+                              title: "Creating new workout type",
+                              description: `Adding "${workoutTypeName}" to workout types...`,
+                            });
+
+                            const createTypeRes = await apiRequest("POST", "/api/workout-types", {
+                              type: workoutTypeName
+                            });
+
+                            if (!createTypeRes.ok) {
+                              const errorData = await createTypeRes.json();
+                              throw new Error(errorData.message || `Failed to create workout type: ${workoutTypeName}`);
+                            }
+
+                            const newType = await createTypeRes.json();
+                            activityTypeId = newType.id;
+
+                            // Refresh workout types
+                            await queryClient.invalidateQueries({ queryKey: ["/api/workout-types"] });
+                          } else {
+                            activityTypeId = existingType.id;
+                          }
+                        }
+
                         // Extract week and day from filename
-                        const filename = file.name.replace('.docx', '');
-                        
-                        // Check for week range pattern (e.g., Week9-11Day2 means weeks 9, 10, 11 for day 2)
-                        const weekRangeMatch = filename.match(/Week(\d+)-(\d+)(?:Day(\d+))?/i);
-                        const singleWeekMatch = filename.match(/\d+/g);
-                        
-                        let weekNumbers: number[] = [];
-                        let extractedDay = 0;
-                        
-                        if (weekRangeMatch) {
-                          // Handle week range (e.g., Week9-11Day2)
-                          const startWeek = parseInt(weekRangeMatch[1]);
-                          const endWeek = parseInt(weekRangeMatch[2]);
-                          extractedDay = weekRangeMatch[3] ? parseInt(weekRangeMatch[3]) : 0;
-                          
-                          // Generate array of week numbers in the range
-                          for (let w = startWeek; w <= endWeek; w++) {
+                        const weekDayMatch = file.name.match(/Week\s*(\d+(?:-\d+)?)[,\s]*Day\s*(\d+)/i);
+                        if (!weekDayMatch) {
+                          throw new Error(`Could not extract week and day from filename: ${file.name}`);
+                        }
+
+                        const weekPart = weekDayMatch[1];
+                        const dayPart = parseInt(weekDayMatch[2]);
+                        setExtractedDay(dayPart);
+
+                        // Parse week numbers (could be single number or range like 9-11)
+                        const weekNumbers: number[] = [];
+                        if (weekPart.includes('-')) {
+                          const [start, end] = weekPart.split('-').map(Number);
+                          for (let w = start; w <= end; w++) {
                             weekNumbers.push(w);
                           }
-                        } else if (singleWeekMatch && singleWeekMatch.length >= 1) {
-                          // Handle single week (e.g., Week1Day2 or Week25)
-                          weekNumbers = [parseInt(singleWeekMatch[0])];
-                          extractedDay = singleWeekMatch.length >= 2 ? parseInt(singleWeekMatch[1]) : 0;
                         } else {
-                          skippedCount++;
-                          toast({
-                            title: `Skipping ${file.name}`,
-                            description: "Filename must contain week number(s). Examples: 'Week25.docx', 'Week1Day2.docx', or 'Week9-11Day2.docx'",
-                            variant: "destructive"
+                          weekNumbers.push(parseInt(weekPart));
+                        }
+
+                        setExtractedWeek(weekNumbers[0]);
+
+                        // Get or parse content
+                        let contentHtml = '';
+                        if (file.name.toLowerCase().endsWith('.docx')) {
+                          // Upload and parse the document
+                          const formData = new FormData();
+                          formData.append('document', file);
+
+                          const uploadRes = await apiRequest("POST", "/api/activities/upload-doc", formData, {
+                            headers: {} // Let browser set multipart headers
                           });
-                          continue;
-                        }
 
-                        // Validate week numbers
-                        if (weekNumbers.some(w => isNaN(w) || w < 1)) {
-                          skippedCount++;
-                          toast({
-                            title: `Skipping ${file.name}`,
-                            description: "Week number(s) must be >= 1",
-                            variant: "destructive"
-                          });
-                          continue;
-                        }
-
-                        if (extractedDay !== 0 && (isNaN(extractedDay) || extractedDay < 1 || extractedDay > 7)) {
-                          skippedCount++;
-                          toast({
-                            title: `Skipping ${file.name}`,
-                            description: "Day number must be between 1-7 (or omit for week-only content)",
-                            variant: "destructive"
-                          });
-                          continue;
-                        }
-
-                        // Upload and process the document
-                        const formData = new FormData();
-                        formData.append('document', file);
-
-                        const uploadRes = await fetch('/api/activities/upload-doc', {
-                          method: 'POST',
-                          body: formData,
-                          credentials: 'include'
-                        });
-
-                        if (!uploadRes.ok) {
-                          throw new Error(`Failed to process ${file.name}`);
-                        }
-
-                        const uploadData = await uploadRes.json();
-                        let title = filename;
-
-                        let content = uploadData.content;
-
-                        // Clean up invalid HTML symbols that may be added during document conversion
-                        content = content
-                          .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
-                          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-                          .replace(/(<\/p>)\s*(<p[^>]*>)/g, '$1\n$2') // Add line breaks between paragraphs
-                          .replace(/(<\/div>)\s*(<div[^>]*>)/g, '$1\n$2') // Add line breaks between divs
-                          .trim();
-
-                        // Track unique video IDs to prevent duplicates
-                        const seenVideoIds = new Set<string>();
-
-                        // YouTube URL regex - matches various YouTube URL formats
-                        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
-
-                        // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
-                        content = content.replace(youtubeRegex, (match: string, videoId: string) => {
-                          if (!videoId) return match;
-
-                          // If we've already embedded this video, remove the duplicate
-                          if (seenVideoIds.has(videoId)) {
-                            return '';
+                          if (!uploadRes.ok) {
+                            const errorData = await uploadRes.json();
+                            throw new Error(errorData.message || `Failed to upload ${file.name}`);
                           }
 
-                          seenVideoIds.add(videoId);
-                          return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-                        });
+                          const uploadData = await uploadRes.json();
+                          contentHtml = uploadData.content;
+                        } else {
+                          throw new Error(`Unsupported file type for ${file.name}`);
+                        }
 
-                        // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
-                        content = content.replace(/<\/div><\/p>/g, '</div></a></p>');
-
-                        // Bible verses are kept as plain text
-
-                        // Create activity data for each week in the range
+                        // Create content fields
                         const contentFields = [{
-                          id: Math.random().toString(36).substring(7),
-                          type: 'text',
-                          content: content.trim(),
-                          title: title
+                          id: crypto.randomUUID(),
+                          type: 'text' as const,
+                          content: contentHtml,
+                          title: `Week ${weekNumbers.join(', ')} - Day ${dayPart}`
                         }];
 
                         // Process each week in the range
@@ -643,7 +620,7 @@ export default function ActivityManagementPage() {
                             week: weekNum,
                             day: extractedDay,
                             contentFields: contentFields,
-                            activityTypeId: selectedActivityTypeId
+                            activityTypeId: activityTypeId
                           };
 
                           // Create or update the activity
@@ -656,7 +633,7 @@ export default function ActivityManagementPage() {
                           const responseData = await activityRes.json();
                           processedCount++;
                         }
-                        
+
                         const activityType = extractedDay === 0 ? "Week Information" : `Day ${extractedDay}`;
                         const weekRange = weekNumbers.length > 1 
                           ? `Weeks ${weekNumbers[0]}-${weekNumbers[weekNumbers.length - 1]}` 
