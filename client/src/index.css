@@ -104,6 +104,18 @@ div[data-post-id] .video-container {
   border: none;
 }
 
+/* Normalize spacing in activity content */
+.rich-text-content p,
+.daily-content p {
+  margin: 0.5rem 0; /* Consistent paragraph spacing */
+}
+
+/* Remove extra margin from paragraphs containing videos */
+.rich-text-content p:has(.video-wrapper),
+.daily-content p:has(.video-wrapper) {
+  margin: 0;
+}
+
 /* Hide scrollbar but maintain scroll functionality */
 * {
   scrollbar-width: none; /* Firefox */
