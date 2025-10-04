@@ -777,92 +777,47 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? teams || [] // Full admins see all teams
     : currentUser?.isGroupAdmin
       ? (teams || []).filter((team) => {
-          // Group admins see ALL teams in their organization (across all groups in the org)
-          const adminGroup = sortedGroups.find(
-            (g) => g.id === currentUser.adminGroupId,
-          );
-          const userOrgId = adminGroup?.organizationId;
-
-          if (!userOrgId) return false;
-
-          // Check if this team's group belongs to the same organization
-          const teamGroup = sortedGroups.find((g) => g.id === team.groupId);
-          return teamGroup && teamGroup.organizationId === userOrgId;
+          // Group admins see only teams in their specific group
+          return team.groupId === currentUser.adminGroupId;
         })
       : []; // Non-admins see no teams
 
   const sortedTeams = [...filteredTeams].sort((a, b) =>
     a.name.localeCompare(b.name),
   );
-  // Filter users based on user role - Group admins see users in their organization's teams
+  // Filter users based on user role - Group admins see users in their specific group or unassigned
   const filteredUsers = currentUser?.isAdmin
     ? users || [] // Full admins see all users
     : currentUser?.isGroupAdmin
       ? (() => {
-          // For Group Admins, show ALL users in their organization
-          // Get the organization ID for the Group Admin
-          console.log(
-            "DEBUG: currentUser.adminGroupId:",
-            currentUser.adminGroupId,
-          );
-          console.log("DEBUG: sortedGroups:", sortedGroups);
-
-          const adminGroup = sortedGroups.find(
-            (g) => g.id === currentUser.adminGroupId,
-          );
-          console.log("DEBUG: adminGroup found:", adminGroup);
-
-          const userOrgId = adminGroup?.organizationId;
-          console.log("DEBUG: userOrgId:", userOrgId);
-
-          if (!userOrgId) {
-            console.log("DEBUG: No userOrgId found, returning empty array");
+          // For Group Admins, show users in their specific group's teams + unassigned users
+          const adminGroupId = currentUser.adminGroupId;
+          
+          if (!adminGroupId) {
             return [];
           }
 
-          // Get ALL teams that belong to ANY group in the same organization
-          const orgTeams = (teams || []).filter((team) => {
-            const teamGroup = sortedGroups.find((g) => g.id === team.groupId);
-            return teamGroup && teamGroup.organizationId === userOrgId;
+          // Get teams that belong to the admin's specific group
+          const groupTeams = (teams || []).filter((team) => {
+            return team.groupId === adminGroupId;
           });
-          console.log("DEBUG: orgTeams found:", orgTeams);
 
-          const orgTeamIds = orgTeams.map((team) => team.id);
-          console.log("DEBUG: orgTeamIds:", orgTeamIds);
+          const groupTeamIds = groupTeams.map((team) => team.id);
 
-          // Return ALL users who are in any team in the organization, including users without teams
-          const filteredUsersResult = (users || []).filter((u) => {
-            // Include users who are in teams within this organization
-            if (u.teamId && orgTeamIds.includes(u.teamId)) {
+          // Return users who are in teams within this group OR have no team
+          return (users || []).filter((u) => {
+            // Include users in teams within this specific group
+            if (u.teamId && groupTeamIds.includes(u.teamId)) {
               return true;
             }
 
-            // Also include users who have no team but belong to this organization via other means
-            // For now, we'll focus on team-based filtering
+            // Also include users who have no team (unassigned)
+            if (!u.teamId) {
+              return true;
+            }
+
             return false;
           });
-          console.log(
-            "DEBUG: filteredUsersResult count:",
-            filteredUsersResult.length,
-          );
-          console.log(
-            "DEBUG: filteredUsersResult:",
-            filteredUsersResult.map((u) => ({
-              id: u.id,
-              username: u.username,
-              teamId: u.teamId,
-            })),
-          );
-          console.log(
-            "DEBUG: All available users:",
-            (users || []).map((u) => ({
-              id: u.id,
-              username: u.username,
-              teamId: u.teamId,
-            })),
-          );
-
-          return filteredUsersResult;
         })()
       : []; // Non-admins see no users
 
