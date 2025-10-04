@@ -1769,7 +1769,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         <SelectTrigger>
                                           <SelectValue placeholder="Select a group" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-[9999]">
                                           {!sortedGroups || sortedGroups.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-muted-foreground">
                                               No groups available
