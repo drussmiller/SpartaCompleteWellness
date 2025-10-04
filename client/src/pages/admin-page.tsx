@@ -397,17 +397,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   const updateGroupMutation = useMutation({
-    mutationFn: async ({
-      groupId,
-      data,
-    }: {
-      groupId: number;
-      data: Partial<Group>;
-    }) => {
+    mutationFn: async ({ groupId, data }: { groupId: number; data: any }) => {
       const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update group");
+        let errorMessage = "Failed to update group";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use default message
+          console.error("Failed to parse error response:", e);
+        }
+        throw new Error(errorMessage);
       }
       return res.json();
     },
