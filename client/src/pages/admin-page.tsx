@@ -2164,7 +2164,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="all">All Groups</SelectItem>
-                                  {filteredGroups?.map((group) => (
+                                  {sortedGroups?.map((group) => (
                                     <SelectItem
                                       key={group.id}
                                       value={group.id.toString()}
