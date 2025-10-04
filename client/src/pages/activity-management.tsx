@@ -537,25 +537,27 @@ export default function ActivityManagementPage() {
 
                           // If it doesn't exist, create it
                           if (!existingType) {
-                            toast({
-                              title: "Creating new workout type",
-                              description: `Adding "${workoutTypeName}" to workout types...`,
-                            });
-
                             const createTypeRes = await apiRequest("POST", "/api/workout-types", {
                               type: workoutTypeName
                             });
 
-                            if (!createTypeRes.ok) {
-                              const errorData = await createTypeRes.json();
-                              throw new Error(errorData.message || `Failed to create workout type: ${workoutTypeName}`);
+                            if (createTypeRes.ok) {
+                              const newType = await createTypeRes.json();
+                              activityTypeId = newType.id;
+
+                              // Refresh workout types
+                              await queryClient.invalidateQueries({ queryKey: ["/api/workout-types"] });
+                            } else {
+                              // If creation fails (likely duplicate), try to find it again after refresh
+                              await queryClient.invalidateQueries({ queryKey: ["/api/workout-types"] });
+                              const refreshedTypes = queryClient.getQueryData<WorkoutType[]>(["/api/workout-types"]);
+                              const foundType = refreshedTypes?.find(wt => 
+                                wt.type.toLowerCase() === workoutTypeName.toLowerCase()
+                              );
+                              if (foundType) {
+                                activityTypeId = foundType.id;
+                              }
                             }
-
-                            const newType = await createTypeRes.json();
-                            activityTypeId = newType.id;
-
-                            // Refresh workout types
-                            await queryClient.invalidateQueries({ queryKey: ["/api/workout-types"] });
                           } else {
                             activityTypeId = existingType.id;
                           }
