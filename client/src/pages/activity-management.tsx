@@ -604,16 +604,24 @@ export default function ActivityManagementPage() {
                           // Process YouTube URLs in the content
                           const seenVideoIds = new Set<string>();
                           const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
-                          
+
                           contentHtml = contentHtml.replace(youtubeRegex, (match: string, videoId: string) => {
                             if (!videoId) return match;
                             if (seenVideoIds.has(videoId)) return '';
                             seenVideoIds.add(videoId);
-                            return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+                            return `</p><div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><p>`;
                           });
 
-                          // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
-                          contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
+                          // Remove any stray anchor tags that might have been left from Word doc hyperlinks
+                          contentHtml = contentHtml.replace(/<a[^>]*>(\s*<div class="video-wrapper">.*?<\/div>\s*)<\/a>/gi, '$1');
+
+                          // Also clean up any remaining closing anchor tags after video divs
+                          contentHtml = contentHtml.replace(/(<\/div>)\s*<\/a>/gi, '$1');
+
+                          // Clean up empty paragraphs and normalize spacing
+                          contentHtml = contentHtml.replace(/<p>\s*<\/p>/gi, '');
+                          contentHtml = contentHtml.replace(/<\/p>\s*<\/p>/gi, '</p>');
+                          contentHtml = contentHtml.replace(/<p>\s*<p>/gi, '<p>');
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);
                         }
