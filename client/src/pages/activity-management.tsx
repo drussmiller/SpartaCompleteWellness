@@ -572,7 +572,6 @@ export default function ActivityManagementPage() {
 
                         const weekPart = weekDayMatch[1];
                         const dayPart = parseInt(weekDayMatch[2]);
-                        setExtractedDay(dayPart);
 
                         // Parse week numbers (could be single number or range like 9-11)
                         const weekNumbers: number[] = [];
@@ -584,8 +583,6 @@ export default function ActivityManagementPage() {
                         } else {
                           weekNumbers.push(parseInt(weekPart));
                         }
-
-                        setExtractedWeek(weekNumbers[0]);
 
                         // Get or parse content
                         let contentHtml = '';
@@ -621,7 +618,7 @@ export default function ActivityManagementPage() {
                         for (const weekNum of weekNumbers) {
                           const activityData = {
                             week: weekNum,
-                            day: extractedDay,
+                            day: dayPart,
                             contentFields: contentFields,
                             activityTypeId: activityTypeId
                           };
@@ -637,7 +634,7 @@ export default function ActivityManagementPage() {
                           processedCount++;
                         }
 
-                        const activityType = extractedDay === 0 ? "Week Information" : `Day ${extractedDay}`;
+                        const activityType = dayPart === 0 ? "Week Information" : `Day ${dayPart}`;
                         const weekRange = weekNumbers.length > 1 
                           ? `Weeks ${weekNumbers[0]}-${weekNumbers[weekNumbers.length - 1]}` 
                           : `Week ${weekNumbers[0]}`;
