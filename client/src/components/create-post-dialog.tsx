@@ -515,7 +515,23 @@ export function CreatePostDialog({
                             field.onChange(date);
                           }
                         }}
-                        disabled={(date) => date > new Date() || (isCompetitive && date.toDateString() !== new Date().toDateString())}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const checkDate = new Date(date);
+                          checkDate.setHours(0, 0, 0, 0);
+                          
+                          // Future dates are always disabled
+                          if (checkDate > today) return true;
+                          
+                          // For competitive groups, only allow today's date
+                          if (isCompetitive && checkDate.getTime() !== today.getTime()) {
+                            return true;
+                          }
+                          
+                          // For non-competitive groups, allow any past date up to today
+                          return false;
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
