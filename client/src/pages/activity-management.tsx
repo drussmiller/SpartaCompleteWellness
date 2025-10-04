@@ -241,6 +241,14 @@ export default function ActivityManagementPage() {
         .replace(/\s+/g, ' ') // Replace multiple spaces with single space
         .trim();
 
+      // CRITICAL: Strip ALL inline styles from Word docs - they override our CSS
+      content = content.replace(/\s*style="[^"]*"/gi, '');
+      content = content.replace(/\s*style='[^']*'/gi, '');
+      
+      // Strip margin/padding attributes
+      content = content.replace(/\s*margin[^=]*="[^"]*"/gi, '');
+      content = content.replace(/\s*padding[^=]*="[^"]*"/gi, '');
+
       // Track unique video IDs to prevent duplicates
       const seenVideoIds = new Set<string>();
 
@@ -600,6 +608,14 @@ export default function ActivityManagementPage() {
 
                           const uploadData = await uploadRes.json();
                           contentHtml = uploadData.content;
+
+                          // CRITICAL: Strip ALL inline styles from Word docs - they override our CSS
+                          contentHtml = contentHtml.replace(/\s*style="[^"]*"/gi, '');
+                          contentHtml = contentHtml.replace(/\s*style='[^']*'/gi, '');
+                          
+                          // Strip margin/padding attributes
+                          contentHtml = contentHtml.replace(/\s*margin[^=]*="[^"]*"/gi, '');
+                          contentHtml = contentHtml.replace(/\s*padding[^=]*="[^"]*"/gi, '');
 
                           // Process YouTube URLs in the content
                           const seenVideoIds = new Set<string>();
