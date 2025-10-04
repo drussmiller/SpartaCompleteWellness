@@ -57,7 +57,7 @@ export function CreatePostDialog({
       });
       if (!response.ok) return false;
       const data = await response.json();
-      return data.competitive || false;
+      return data.competitive === true;
     },
     enabled: !!user?.teamId,
     staleTime: 300000, // 5 minutes
@@ -499,7 +499,6 @@ export function CreatePostDialog({
                         <Button
                           variant={"outline"}
                           className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
-                          disabled={isCompetitive}
                         >
                           {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
