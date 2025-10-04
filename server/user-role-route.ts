@@ -12,10 +12,6 @@ export const userRoleRouter = Router();
 // Endpoint for updating user roles (admin/team lead)
 userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Request, res: Response) => {
   try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
     const userId = parseInt(req.params.userId);
     if (isNaN(userId)) {
       return res.status(400).json({ message: "Invalid user ID format" });
@@ -28,6 +24,45 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
 
     if (role !== 'isAdmin' && role !== 'isTeamLead' && role !== 'isGroupAdmin') {
       return res.status(400).json({ message: "Invalid role. Must be 'isAdmin', 'isTeamLead', or 'isGroupAdmin'" });
+    }
+
+    // Check authorization based on role being modified
+    const isFullAdmin = req.user?.isAdmin;
+    const isGroupAdmin = req.user?.isGroupAdmin;
+
+    // Full admins can do anything
+    if (!isFullAdmin) {
+      // Group admins can only manage Team Lead roles
+      if (role !== 'isTeamLead' || !isGroupAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Verify the target user is in the Group Admin's group
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!targetUser || !targetUser.teamId) {
+        return res.status(400).json({ message: "User must be in a team" });
+      }
+
+      // Get the target user's team to find their group
+      const [targetTeam] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, targetUser.teamId))
+        .limit(1);
+
+      if (!targetTeam) {
+        return res.status(400).json({ message: "User's team not found" });
+      }
+
+      // Verify the Group Admin has authority over this group
+      if (targetTeam.groupId !== req.user.adminGroupId) {
+        return res.status(403).json({ message: "You can only manage Team Leads in your own group" });
+      }
     }
 
     // Don't allow removing admin from primary admin account
