@@ -1754,6 +1754,9 @@ export const registerRoutes = async (
       if (!isFullAdmin && !isGroupAdminForThisGroup) {
         logger.warn(`Authorization failed for user ${req.user?.id} on group ${groupId}`);
         
+        // Set content type before any response
+        res.setHeader("Content-Type", "application/json");
+        
         // Provide helpful error message for Group Admins
         if (req.user?.isGroupAdmin && req.user?.adminGroupId) {
           // Get the group name they are authorized for

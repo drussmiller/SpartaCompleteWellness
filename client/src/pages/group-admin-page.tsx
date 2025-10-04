@@ -100,8 +100,15 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     mutationFn: async ({ teamId, data }: { teamId: number; data: Partial<TeamFormData> }) => {
       const res = await apiRequest("PATCH", `/api/group-admin/teams/${teamId}`, data);
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update team");
+        let errorMessage = "Failed to update team";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use default message
+          console.error("Failed to parse error response:", e);
+        }
+        throw new Error(errorMessage);
       }
       return res.json();
     },
