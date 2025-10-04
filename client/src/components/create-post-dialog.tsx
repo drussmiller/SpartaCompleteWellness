@@ -493,7 +493,7 @@ export function CreatePostDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Post Date</FormLabel>
-                  <Popover>
+                  <Popover modal={false}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -505,7 +505,7 @@ export function CreatePostDialog({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align="start" onClick={(e) => console.log("PopoverContent clicked", e.target)}>
                       <Calendar
                         mode="single"
                         selected={selectedDate}
@@ -520,6 +520,9 @@ export function CreatePostDialog({
                           } else {
                             console.log("Date was null/undefined");
                           }
+                        }}
+                        onDayClick={(day, modifiers) => {
+                          console.log("Calendar onDayClick fired", { day, modifiers });
                         }}
                         disabled={(date) => {
                           const today = new Date();
