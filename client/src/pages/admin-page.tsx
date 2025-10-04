@@ -185,15 +185,22 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     }
   }, [users, tzOffset]);
 
-  // Auto-set organization filter for Group Admins
+  // Auto-set filters for Group Admins to their specific group
   useEffect(() => {
     if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups && organizations) {
       const adminGroup = groups.find(g => g.id === currentUser.adminGroupId);
-      if (adminGroup && selectedOrgFilter === "all") {
-        setSelectedOrgFilter(adminGroup.organizationId.toString());
+      if (adminGroup) {
+        // Set organization filter
+        if (selectedOrgFilter === "all") {
+          setSelectedOrgFilter(adminGroup.organizationId.toString());
+        }
+        // Set group filter to their specific group
+        if (selectedGroupFilter === "all") {
+          setSelectedGroupFilter(adminGroup.id.toString());
+        }
       }
     }
-  }, [currentUser, groups, organizations, selectedOrgFilter]);
+  }, [currentUser, groups, organizations, selectedOrgFilter, selectedGroupFilter]);
 
   const form = useForm<TeamFormData>({
     resolver: zodResolver(insertTeamSchema),
@@ -863,18 +870,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     (a.username || "").localeCompare(b.username || ""),
   );
 
-  // Filter groups based on the current user's organization if they are a Group Admin
+  // Filter groups based on the current user's role
   const filteredGroups =
     currentUser?.isGroupAdmin && !currentUser?.isAdmin
       ? (() => {
-          // Find the admin's group to get the organization ID
+          // Group admins only see their specific group
           const adminGroup = sortedGroups.find(
             (g) => g.id === currentUser.adminGroupId,
           );
-          const userOrgId = adminGroup?.organizationId;
-          return userOrgId
-            ? sortedGroups.filter((group) => group.organizationId === userOrgId)
-            : [];
+          return adminGroup ? [adminGroup] : [];
         })()
       : sortedGroups;
 
@@ -2175,29 +2179,36 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </Select>
                             </div>
                           )}
+                          {/* Group Admins see their group name but can't change it */}
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Group
                             </label>
-                            <Select
-                              value={selectedGroupFilter}
-                              onValueChange={setSelectedGroupFilter}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="All Groups" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Groups</SelectItem>
-                                {filteredGroups?.map((group) => (
-                                  <SelectItem
-                                    key={group.id}
-                                    value={group.id.toString()}
-                                  >
-                                    {group.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            {currentUser?.isGroupAdmin && !currentUser?.isAdmin ? (
+                              <div className="px-3 py-2 border rounded-md bg-muted text-sm">
+                                {filteredGroups[0]?.name || 'Your Group'}
+                              </div>
+                            ) : (
+                              <Select
+                                value={selectedGroupFilter}
+                                onValueChange={setSelectedGroupFilter}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="All Groups" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All Groups</SelectItem>
+                                  {filteredGroups?.map((group) => (
+                                    <SelectItem
+                                      key={group.id}
+                                      value={group.id.toString()}
+                                    >
+                                      {group.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">
@@ -2235,16 +2246,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                // For Group Admins, keep their organization filter but clear others
+                                // For Group Admins, reset to their group's defaults
                                 if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups) {
                                   const adminGroup = groups.find(g => g.id === currentUser.adminGroupId);
                                   if (adminGroup) {
                                     setSelectedOrgFilter(adminGroup.organizationId.toString());
+                                    setSelectedGroupFilter(adminGroup.id.toString());
                                   }
                                 } else {
                                   setSelectedOrgFilter("all");
+                                  setSelectedGroupFilter("all");
                                 }
-                                setSelectedGroupFilter("all");
                                 setSelectedTeamFilter("all");
                               }}
                             >
