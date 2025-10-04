@@ -48,7 +48,7 @@ export function CreatePostDialog({
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
 
   // Check if user's team is in a competitive group
-  const { data: isCompetitive, isLoading: isLoadingCompetitive } = useQuery({
+  const { data: isCompetitive = false, isLoading: isLoadingCompetitive } = useQuery({
     queryKey: ["/api/teams/competitive", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) return false;
@@ -521,15 +521,15 @@ export function CreatePostDialog({
                           const checkDate = new Date(date);
                           checkDate.setHours(0, 0, 0, 0);
                           
-                          // Disable future dates
+                          // Disable future dates for everyone
                           if (checkDate > today) return true;
                           
-                          // For competitive groups, only allow current date
-                          if (isCompetitive === true) {
+                          // For competitive groups, only allow today's date
+                          if (isCompetitive) {
                             return checkDate.getTime() !== today.getTime();
                           }
                           
-                          // For non-competitive groups, allow all past dates up to today
+                          // For non-competitive groups, allow all past/present dates
                           return false;
                         }}
                         initialFocus
