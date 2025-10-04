@@ -1733,14 +1733,20 @@ export const registerRoutes = async (
   // Update group endpoint
   router.patch("/api/groups/:id", authenticate, async (req, res) => {
     try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
+      // Check if user is either a full admin OR a group admin managing this specific group
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
         return res.status(400).json({ message: "Invalid group ID" });
       }
+
+      const isFullAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+
+      if (!isFullAdmin && !isGroupAdminForThisGroup) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      logger.info(`Updating group ${groupId} with data:`, req.body);
 
       // Validate status field if present
       if (req.body.status !== undefined) {
@@ -1751,14 +1757,23 @@ export const registerRoutes = async (
         }
       }
 
-      logger.info(`Updating group ${groupId} with data:`, req.body);
+      // Group Admins can only update certain fields (not organizationId or status)
+      let updateData = req.body;
+      if (isGroupAdminForThisGroup && !isFullAdmin) {
+        // Group admins can only update name, description, and competitive status
+        const { name, description, competitive } = req.body;
+        updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        if (competitive !== undefined) updateData.competitive = competitive;
+      }
 
       // Use database transaction for atomic updates
       const result = await db.transaction(async (tx) => {
         // Update the group using transaction
         const [updatedGroup] = await tx
           .update(groups)
-          .set(req.body)
+          .set(updateData)
           .where(eq(groups.id, groupId))
           .returning();
 
