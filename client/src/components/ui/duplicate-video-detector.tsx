@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 
 /**
@@ -9,9 +10,7 @@ export function DuplicateVideoDetector() {
   return null;
 }
 
-// The FixWeek3WarmupVideo component has been removed as part of the duplicate video removal logic.
-
-// Special function just for Week 9 video fix
+// Special function just for Week 9 video fix - disabled
 export function FixWeek9WarmupVideo() {
   // Component disabled - no duplicate detection
   return null;
