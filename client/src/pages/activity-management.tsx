@@ -592,9 +592,7 @@ export default function ActivityManagementPage() {
                           const formData = new FormData();
                           formData.append('document', file);
 
-                          const uploadRes = await apiRequest("POST", "/api/activities/upload-doc", formData, {
-                            headers: {} // Let browser set multipart headers
-                          });
+                          const uploadRes = await apiRequest("POST", "/api/activities/upload-doc", formData);
 
                           if (!uploadRes.ok) {
                             const errorData = await uploadRes.json();
@@ -603,6 +601,21 @@ export default function ActivityManagementPage() {
 
                           const uploadData = await uploadRes.json();
                           contentHtml = uploadData.content;
+
+                          // Process YouTube URLs in the content
+                          const seenVideoIds = new Set<string>();
+                          const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
+                          
+                          contentHtml = contentHtml.replace(youtubeRegex, (match: string, videoId: string) => {
+                            if (!videoId) return match;
+                            if (seenVideoIds.has(videoId)) return '';
+                            seenVideoIds.add(videoId);
+                            return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+                          });
+
+                          // Clean up any anchor tags that might be wrapping video embeds
+                          contentHtml = contentHtml.replace(/<a[^>]*>(\s*)<div class="video-wrapper">/gi, '<div class="video-wrapper">');
+                          contentHtml = contentHtml.replace(/<\/div>(\s*)<\/a>/gi, '</div>');
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);
                         }
