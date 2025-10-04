@@ -47,6 +47,22 @@ export function CreatePostDialog({
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
 
+  // Check if user's team is in a competitive group
+  const { data: isCompetitive = false } = useQuery({
+    queryKey: ["/api/teams/competitive", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return false;
+      const response = await fetch(`/api/teams/${user.teamId}/competitive`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      return data.competitive || false;
+    },
+    enabled: !!user?.teamId,
+    staleTime: 300000, // 5 minutes
+  });
+
   // Check if user has posted an introduction (for users not in a team)
   const { data: hasPostedIntroduction = false } = useQuery({
     queryKey: ["/api/posts/has-introduction", user?.id],
@@ -483,6 +499,7 @@ export function CreatePostDialog({
                         <Button
                           variant={"outline"}
                           className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                          disabled={isCompetitive}
                         >
                           {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -499,11 +516,16 @@ export function CreatePostDialog({
                             field.onChange(date);
                           }
                         }}
-                        disabled={(date) => date > new Date()}
+                        disabled={(date) => date > new Date() || (isCompetitive && date.toDateString() !== new Date().toDateString())}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
+                  {isCompetitive && (
+                    <p className="text-xs text-muted-foreground">
+                      Competitive groups must post on the current date
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

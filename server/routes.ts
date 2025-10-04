@@ -1394,6 +1394,43 @@ export const registerRoutes = async (
     }
   });
 
+  // Check if a team is in a competitive group
+  router.get("/api/teams/:teamId/competitive", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Get the team's group
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Get the group to check if it's competitive
+      const [group] = await db
+        .select()
+        .from(groups)
+        .where(eq(groups.id, team.groupId))
+        .limit(1);
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      res.json({ competitive: group.competitive || false });
+    } catch (error) {
+      logger.error("Error checking team competitive status:", error);
+      res.status(500).json({ message: "Failed to check competitive status" });
+    }
+  });
+
   // Add the missing POST endpoint for creating teams
   router.post("/api/teams", authenticate, async (req, res) => {
     try {
