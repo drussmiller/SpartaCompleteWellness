@@ -1479,6 +1479,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           parsedStatus === 1
                                             ? parsedStatus
                                             : 1;
+                                        const competitive = formData.get(
+                                          "competitive",
+                                        ) === "on";
 
                                         if (!name || !organizationId) {
                                           toast({
@@ -1498,6 +1501,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               description || undefined,
                                             organizationId,
                                             status: Number(status),
+                                            competitive,
                                           },
                                         });
                                       }}
@@ -1559,6 +1563,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           </SelectItem>
                                         </SelectContent>
                                       </Select>
+                                      <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                          id={`edit-competitive-${group.id}`}
+                                          name="competitive"
+                                          defaultChecked={group.competitive || false}
+                                        />
+                                        <label
+                                          htmlFor={`edit-competitive-${group.id}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                          Competitive
+                                        </label>
+                                      </div>
                                       <div className="flex gap-2">
                                         <Button
                                           type="submit"
@@ -1606,6 +1623,26 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             : "Inactive"}
                                         </span>
                                       </p>
+                                      <div className="flex items-center space-x-2 mt-2">
+                                        <Checkbox
+                                          id={`competitive-${group.id}`}
+                                          checked={group.competitive || false}
+                                          onCheckedChange={(checked) => {
+                                            updateGroupMutation.mutate({
+                                              groupId: group.id,
+                                              data: {
+                                                competitive: checked === true,
+                                              },
+                                            });
+                                          }}
+                                        />
+                                        <label
+                                          htmlFor={`competitive-${group.id}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                          Competitive
+                                        </label>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
