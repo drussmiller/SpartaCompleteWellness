@@ -91,7 +91,7 @@ div[data-post-id] .video-container {
   width: 100%;
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   height: 0;
-  margin: 1.5rem 0 !important; /* Consistent top and bottom margin */
+  margin: 0 !important; /* No margin on wrapper itself */
   overflow: hidden;
 }
 
@@ -104,17 +104,24 @@ div[data-post-id] .video-container {
   border: none;
 }
 
+/* Video section container - ensures consistent spacing */
+.video-section {
+  margin: 1.5rem 0 !important;
+}
+
+.video-section .video-title {
+  margin: 0 0 0.75rem 0 !important;
+  font-weight: normal;
+}
+
+.video-section .video-wrapper {
+  margin: 0 !important;
+}
+
 /* Normalize spacing in activity content */
 .rich-text-content p,
 .daily-content p {
   margin: 0.75rem 0 !important; /* Consistent paragraph spacing */
-}
-
-/* Force consistent spacing for all elements in activity content */
-.rich-text-content > *,
-.daily-content > * {
-  margin-top: 0.75rem !important;
-  margin-bottom: 0.75rem !important;
 }
 
 .rich-text-content > *:first-child,

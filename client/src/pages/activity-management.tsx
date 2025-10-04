@@ -263,6 +263,15 @@ export default function ActivityManagementPage() {
       // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
       content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
 
+      // Normalize spacing: ensure paragraphs before videos don't have bottom margin conflicts
+      // Wrap title + video pairs in a consistent structure
+      content = content.replace(/<p>(.*?)<\/p>\s*<p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
+      content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></div>');
+      
+      // Also handle cases where video is not in a paragraph
+      content = content.replace(/<p>(.*?)<\/p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
+      content = content.replace(/<\/iframe><\/div>(?!<\/div>)/g, '</iframe></div></div>');
+
       // Bible verses are kept as plain text
 
       // Create single content field with embedded videos in correct positions
@@ -609,19 +618,17 @@ export default function ActivityManagementPage() {
                             if (!videoId) return match;
                             if (seenVideoIds.has(videoId)) return '';
                             seenVideoIds.add(videoId);
-                            return `</p><div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><p>`;
+                            return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
                           });
 
-                          // Remove any stray anchor tags that might have been left from Word doc hyperlinks
-                          contentHtml = contentHtml.replace(/<a[^>]*>(\s*<div class="video-wrapper">.*?<\/div>\s*)<\/a>/gi, '$1');
+                          // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
+                          contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
 
-                          // Also clean up any remaining closing anchor tags after video divs
-                          contentHtml = contentHtml.replace(/(<\/div>)\s*<\/a>/gi, '$1');
-
-                          // Clean up empty paragraphs and normalize spacing
-                          contentHtml = contentHtml.replace(/<p>\s*<\/p>/gi, '');
-                          contentHtml = contentHtml.replace(/<\/p>\s*<\/p>/gi, '</p>');
-                          contentHtml = contentHtml.replace(/<p>\s*<p>/gi, '<p>');
+                          // Normalize spacing: wrap title + video pairs in consistent structure
+                          contentHtml = contentHtml.replace(/<p>(.*?)<\/p>\s*<p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
+                          contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></div>');
+                          contentHtml = contentHtml.replace(/<p>(.*?)<\/p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
+                          contentHtml = contentHtml.replace(/<\/iframe><\/div>(?!<\/div>)/g, '</iframe></div></div>');
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);
                         }
