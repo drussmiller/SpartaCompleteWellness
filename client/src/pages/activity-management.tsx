@@ -249,22 +249,12 @@ export default function ActivityManagementPage() {
       content = content.replace(/\s*margin[^=]*="[^"]*"/gi, '');
       content = content.replace(/\s*padding[^=]*="[^"]*"/gi, '');
 
-      // Track unique video IDs to prevent duplicates
-      const seenVideoIds = new Set<string>();
-
       // YouTube URL regex - matches various YouTube URL formats
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
-      // Replace YouTube URLs with embedded players, keeping only first occurrence of each video
+      // Replace YouTube URLs with embedded players
       content = content.replace(youtubeRegex, (match: string, videoId: string) => {
         if (!videoId) return match;
-
-        // If we've already embedded this video, remove the duplicate
-        if (seenVideoIds.has(videoId)) {
-          return '';
-        }
-
-        seenVideoIds.add(videoId);
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
@@ -617,14 +607,11 @@ export default function ActivityManagementPage() {
                           contentHtml = contentHtml.replace(/\s*margin[^=]*="[^"]*"/gi, '');
                           contentHtml = contentHtml.replace(/\s*padding[^=]*="[^"]*"/gi, '');
 
-                          // Process YouTube URLs in the content
-                          const seenVideoIds = new Set<string>();
+                          // Process YouTube URLs in the content - convert to embedded iframes
                           const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
                           contentHtml = contentHtml.replace(youtubeRegex, (match: string, videoId: string) => {
                             if (!videoId) return match;
-                            if (seenVideoIds.has(videoId)) return '';
-                            seenVideoIds.add(videoId);
                             return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
                           });
 
