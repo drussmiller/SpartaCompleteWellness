@@ -1751,7 +1751,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     ) : (
                                       // Full Admins see dropdown with all groups
                                       <Select
-                                        value={field.value?.toString() || ""}
+                                        value={field.value && field.value > 0 ? field.value.toString() : undefined}
                                         onValueChange={(value) =>
                                           field.onChange(parseInt(value))
                                         }
