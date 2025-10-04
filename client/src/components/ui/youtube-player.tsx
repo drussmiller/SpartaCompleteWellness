@@ -35,7 +35,7 @@ export function removeDuplicateVideos(content: string): string {
   return content;
 }
 
-export default function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
+export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
   const cleanVideoId = extractYouTubeId(videoId);
 
   if (!cleanVideoId) {
