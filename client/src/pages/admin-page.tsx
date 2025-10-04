@@ -774,6 +774,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     a.name.localeCompare(b.name),
   );
 
+  // Filter groups based on the current user's role - must be called unconditionally
+  const filteredGroups = React.useMemo(() => {
+    if (currentUser?.isGroupAdmin && !currentUser?.isAdmin) {
+      // Group admins only see their specific group
+      const adminGroup = sortedGroups.find(
+        (g) => g.id === currentUser.adminGroupId,
+      );
+      return adminGroup ? [adminGroup] : [];
+    }
+    return sortedGroups;
+  }, [currentUser?.isGroupAdmin, currentUser?.isAdmin, currentUser?.adminGroupId, sortedGroups]);
+
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || [] // Full admins see all teams
@@ -826,18 +838,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const sortedUsers = [...filteredUsers].sort((a, b) =>
     (a.username || "").localeCompare(b.username || ""),
   );
-
-  // Filter groups based on the current user's role
-  const filteredGroups = React.useMemo(() => {
-    if (currentUser?.isGroupAdmin && !currentUser?.isAdmin) {
-      // Group admins only see their specific group
-      const adminGroup = sortedGroups.find(
-        (g) => g.id === currentUser.adminGroupId,
-      );
-      return adminGroup ? [adminGroup] : [];
-    }
-    return sortedGroups;
-  }, [currentUser?.isGroupAdmin, currentUser?.isAdmin, currentUser?.adminGroupId, sortedGroups]);
 
   // Filter variables for the search/filter dropdowns
   const filteredGroupsForFilter =
