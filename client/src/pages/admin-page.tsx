@@ -1760,21 +1760,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <SelectValue placeholder="Select a group" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {(currentUser?.isAdmin ? sortedGroups : filteredGroups)?.map((group) => (
-                                            <SelectItem
-                                              key={group.id}
-                                              value={group.id.toString()}
-                                            >
-                                              {group.name} (Org:{" "}
-                                              {
-                                                sortedOrganizations?.find(
-                                                  (o) =>
-                                                    o.id === group.organizationId,
-                                                )?.name
-                                              }
-                                              )
-                                            </SelectItem>
-                                          ))}
+                                          {!sortedGroups || sortedGroups.length === 0 ? (
+                                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                                              No groups available
+                                            </div>
+                                          ) : (
+                                            sortedGroups.map((group) => (
+                                              <SelectItem
+                                                key={group.id}
+                                                value={group.id.toString()}
+                                              >
+                                                {group.name} (Org:{" "}
+                                                {
+                                                  sortedOrganizations?.find(
+                                                    (o) =>
+                                                      o.id === group.organizationId,
+                                                  )?.name
+                                                }
+                                                )
+                                              </SelectItem>
+                                            ))
+                                          )}
                                         </SelectContent>
                                       </Select>
                                     )}
