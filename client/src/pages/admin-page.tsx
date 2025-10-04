@@ -772,19 +772,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     a.name.localeCompare(b.name),
   );
   
-  const sortedGroups = [...(groups || [])].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
-
-  // Filter groups based on the current user's role
+  // Filter groups based on the current user's role first
   const filteredGroups = currentUser?.isGroupAdmin && !currentUser?.isAdmin
     ? (() => {
-        const adminGroup = sortedGroups.find(
+        const adminGroup = (groups || []).find(
           (g) => g.id === currentUser.adminGroupId,
         );
         return adminGroup ? [adminGroup] : [];
       })()
-    : sortedGroups;
+    : (groups || []);
+
+  // Sort the filtered groups
+  const sortedGroups = [...filteredGroups].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
@@ -1760,7 +1761,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <SelectValue placeholder="Select a group" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {!groups || groups.length === 0 ? (
+                                          {!sortedGroups || sortedGroups.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-muted-foreground">
                                               No groups available
                                             </div>
