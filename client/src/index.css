@@ -91,8 +91,9 @@ div[data-post-id] .video-container {
   width: 100%;
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   height: 0;
-  margin: 0 !important; /* No margin on wrapper itself */
+  margin: 1rem 0 !important;
   overflow: hidden;
+  clear: both;
 }
 
 .video-wrapper iframe {
@@ -104,26 +105,27 @@ div[data-post-id] .video-container {
   border: none;
 }
 
-/* Video section container - ensures consistent spacing */
-.video-section {
-  margin: 1.5rem 0 !important;
+/* Normalize ALL spacing in activity content - force uniformity */
+.rich-text-content *,
+.daily-content * {
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
 }
 
-.video-section .video-title {
-  margin: 0 0 0.75rem 0 !important;
-  font-weight: normal;
-}
-
-.video-section .video-wrapper {
-  margin: 0 !important;
-}
-
-/* Normalize spacing in activity content */
+/* Special handling for paragraphs */
 .rich-text-content p,
 .daily-content p {
-  margin: 0.75rem 0 !important; /* Consistent paragraph spacing */
+  margin: 0.75rem 0 !important;
+  line-height: 1.5;
 }
 
+/* Video wrappers get slightly more space */
+.rich-text-content .video-wrapper,
+.daily-content .video-wrapper {
+  margin: 1rem 0 !important;
+}
+
+/* First element has no top margin */
 .rich-text-content > *:first-child,
 .daily-content > *:first-child {
   margin-top: 0 !important;

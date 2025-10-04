@@ -263,15 +263,6 @@ export default function ActivityManagementPage() {
       // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
       content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
 
-      // Normalize spacing: ensure paragraphs before videos don't have bottom margin conflicts
-      // Wrap title + video pairs in a consistent structure
-      content = content.replace(/<p>(.*?)<\/p>\s*<p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
-      content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></div>');
-      
-      // Also handle cases where video is not in a paragraph
-      content = content.replace(/<p>(.*?)<\/p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
-      content = content.replace(/<\/iframe><\/div>(?!<\/div>)/g, '</iframe></div></div>');
-
       // Bible verses are kept as plain text
 
       // Create single content field with embedded videos in correct positions
@@ -623,12 +614,6 @@ export default function ActivityManagementPage() {
 
                           // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
                           contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
-
-                          // Normalize spacing: wrap title + video pairs in consistent structure
-                          contentHtml = contentHtml.replace(/<p>(.*?)<\/p>\s*<p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
-                          contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></div>');
-                          contentHtml = contentHtml.replace(/<p>(.*?)<\/p>\s*<div class="video-wrapper">/g, '<div class="video-section"><p class="video-title">$1</p><div class="video-wrapper">');
-                          contentHtml = contentHtml.replace(/<\/iframe><\/div>(?!<\/div>)/g, '</iframe></div></div>');
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);
                         }
