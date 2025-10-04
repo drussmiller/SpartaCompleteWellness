@@ -1733,23 +1733,34 @@ export const registerRoutes = async (
   // Update group endpoint
   router.patch("/api/groups/:id", authenticate, async (req, res) => {
     try {
-      // Check if user is either a full admin OR a group admin managing this specific group
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
+      // Check authorization
       const isFullAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
 
+      logger.info(`Group update attempt by user ${req.user?.id}:`, {
+        groupId,
+        isFullAdmin,
+        isGroupAdmin: req.user?.isGroupAdmin,
+        adminGroupId: req.user?.adminGroupId,
+        isGroupAdminForThisGroup,
+        requestBody: req.body
+      });
+
       if (!isFullAdmin && !isGroupAdminForThisGroup) {
+        logger.warn(`Authorization failed for user ${req.user?.id} on group ${groupId}`);
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      logger.info(`Updating group ${groupId} with data:`, req.body);
-
-      // Validate status field if present
+      // Validate status field if present (only Full Admins can change status)
       if (req.body.status !== undefined) {
+        if (!isFullAdmin) {
+          return res.status(403).json({ message: "Only Full Admins can change group status" });
+        }
         const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
         const statusValidation = statusSchema.safeParse({ status: req.body.status });
         if (!statusValidation.success) {
@@ -1758,14 +1769,23 @@ export const registerRoutes = async (
       }
 
       // Group Admins can only update certain fields (not organizationId or status)
-      let updateData = req.body;
+      let updateData: any = {};
       if (isGroupAdminForThisGroup && !isFullAdmin) {
         // Group admins can only update name, description, and competitive status
         const { name, description, competitive } = req.body;
-        updateData = {};
         if (name !== undefined) updateData.name = name;
         if (description !== undefined) updateData.description = description;
         if (competitive !== undefined) updateData.competitive = competitive;
+        
+        logger.info(`Group Admin filtered update data for group ${groupId}:`, updateData);
+      } else {
+        // Full admins can update everything
+        updateData = req.body;
+      }
+
+      // Ensure we have something to update
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
       }
 
       // Use database transaction for atomic updates
