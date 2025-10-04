@@ -47,6 +47,22 @@ export function CreatePostDialog({
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
 
+  // Check if user's team is in a competitive group
+  const { data: isCompetitive, isLoading: isLoadingCompetitive } = useQuery({
+    queryKey: ["/api/teams/competitive", user?.teamId],
+    queryFn: async () => {
+      if (!user?.teamId) return false;
+      const response = await fetch(`/api/teams/${user.teamId}/competitive`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      return data.competitive === true;
+    },
+    enabled: !!user?.teamId,
+    staleTime: 300000, // 5 minutes
+  });
+
   // Check if user has posted an introduction (for users not in a team)
   const { data: hasPostedIntroduction = false } = useQuery({
     queryKey: ["/api/posts/has-introduction", user?.id],
@@ -499,11 +515,32 @@ export function CreatePostDialog({
                             field.onChange(date);
                           }
                         }}
-                        disabled={(date) => date > new Date()}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const checkDate = new Date(date);
+                          checkDate.setHours(0, 0, 0, 0);
+                          
+                          // Disable future dates
+                          if (checkDate > today) return true;
+                          
+                          // For competitive groups, only allow current date
+                          if (isCompetitive === true) {
+                            return checkDate.getTime() !== today.getTime();
+                          }
+                          
+                          // For non-competitive groups, allow all past dates up to today
+                          return false;
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
+                  {isCompetitive === true && (
+                    <p className="text-xs text-muted-foreground">
+                      Competitive groups must post on the current date
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
