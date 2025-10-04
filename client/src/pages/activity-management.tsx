@@ -260,8 +260,12 @@ export default function ActivityManagementPage() {
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
-      // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
-      content = content.replace(/<\/div><\/p>/g, '</div></a></p>');
+      // Remove any stray anchor tags that might have been left from Word doc hyperlinks
+      // This removes <a> tags that wrap around video embeds
+      content = content.replace(/<a[^>]*>(\s*<div class="video-wrapper">.*?<\/div>\s*)<\/a>/gi, '$1');
+
+      // Also clean up any remaining closing anchor tags after video divs
+      content = content.replace(/(<\/div>)\s*<\/a>/gi, '$1');
 
       // Bible verses are kept as plain text
 
