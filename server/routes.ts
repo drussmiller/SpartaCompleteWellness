@@ -3349,15 +3349,30 @@ export const registerRoutes = async (
         return programStart;
       };
 
+      // Handle programStartDate - convert string to Date if needed
+      if (req.body.programStartDate !== undefined) {
+        if (req.body.programStartDate) {
+          updateData.programStartDate = new Date(req.body.programStartDate);
+        } else {
+          updateData.programStartDate = null;
+        }
+      }
+
       // Fix teamJoinedAt and programStartDate logic to handle teamId=0 properly
       if (req.body.teamId !== undefined) {
         if (req.body.teamId !== null && req.body.teamId !== 0) {
           const now = new Date();
           updateData.teamJoinedAt = now;
-          updateData.programStartDate = calculateProgramStartDate(now);
+          // Only auto-calculate if programStartDate wasn't explicitly provided
+          if (req.body.programStartDate === undefined) {
+            updateData.programStartDate = calculateProgramStartDate(now);
+          }
         } else {
           updateData.teamJoinedAt = null;
-          updateData.programStartDate = null;
+          // Only clear programStartDate if it wasn't explicitly provided
+          if (req.body.programStartDate === undefined) {
+            updateData.programStartDate = null;
+          }
         }
       }
 
