@@ -2250,6 +2250,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           e.currentTarget,
                                         );
                                         const programStartDateValue = formData.get("programStartDate") as string;
+                                        
+                                        // Convert the date string to ISO format for the database
+                                        let programStartDate = null;
+                                        if (programStartDateValue) {
+                                          const dateObj = new Date(programStartDateValue);
+                                          programStartDate = dateObj.toISOString();
+                                        }
+                                        
                                         updateUserMutation.mutate({
                                           userId: user.id,
                                           data: {
@@ -2267,7 +2275,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 ? parsed
                                                 : 1;
                                             })(formData.get("status") as string),
-                                            programStartDate: programStartDateValue ? programStartDateValue : null,
+                                            programStartDate,
                                           },
                                         });
                                       }}
