@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
   teamJoinedAt: timestamp("team_joined_at"), // When user joined their team
+  programStartDate: timestamp("program_start_date"), // First Monday on or after team join date
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference

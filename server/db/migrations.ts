@@ -169,6 +169,17 @@ export async function runMigrations() {
       console.error('Error adding notification_time column:', columnError);
     }
 
+    // Add program_start_date column to users table
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS program_start_date TIMESTAMP WITH TIME ZONE
+      `);
+      console.log('Added program_start_date column to users table');
+    } catch (columnError) {
+      console.error('Error adding program_start_date column:', columnError);
+    }
+
     // Add Group Admin columns to users table
     try {
       await db.execute(sql`

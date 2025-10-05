@@ -2965,35 +2965,24 @@ export const registerRoutes = async (
         return localDate;
       };
 
-      // Get user's team join date
+      // Get user's program start date
       const [user] = await db
         .select()
         .from(users)
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!user?.teamJoinedAt) {
-        return res.status(400).json({ message: "User has no team join date" });
+      if (!user?.programStartDate) {
+        return res.status(400).json({ message: "User has no program start date" });
       }
 
       // Get current time in user's timezone
       const utcNow = new Date();
       const userLocalNow = toUserLocalTime(utcNow);
 
-      // Calculate the first Monday after joining the team
-      const teamJoinLocalTime = toUserLocalTime(new Date(user.teamJoinedAt));
-      const teamJoinDate = new Date(teamJoinLocalTime);
-      teamJoinDate.setHours(0, 0, 0, 0);
-
-      // Find the first Monday after the team join date
-      const programStartDate = new Date(teamJoinDate);
-      const daysUntilMonday = (8 - programStartDate.getDay()) % 7; // Days until next Monday (0 if already Monday)
-      if (daysUntilMonday === 0 && programStartDate.getTime() === teamJoinDate.getTime()) {
-        // If they joined on a Monday, start the following Monday
-        programStartDate.setDate(programStartDate.getDate() + 7);
-      } else {
-        programStartDate.setDate(programStartDate.getDate() + daysUntilMonday);
-      }
+      // Use the stored program start date
+      const programStartDate = new Date(user.programStartDate);
+      programStartDate.setHours(0, 0, 0, 0);
 
       // Get start of current day in user's timezone
       const currentStartOfDay = new Date(userLocalNow);
@@ -3349,9 +3338,27 @@ export const registerRoutes = async (
       // Prepare update data - explicitly handle falsy values like status=0
       const updateData: any = { ...req.body };
 
-      // Fix teamJoinedAt logic to handle teamId=0 properly
+      // Helper function to calculate program start date (first Monday on or after team join date)
+      const calculateProgramStartDate = (teamJoinDate: Date): Date => {
+        const joinDate = new Date(teamJoinDate);
+        const dayOfWeek = joinDate.getDay();
+        const daysUntilMonday = dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7;
+        const programStart = new Date(joinDate);
+        programStart.setDate(joinDate.getDate() + daysUntilMonday);
+        programStart.setHours(0, 0, 0, 0);
+        return programStart;
+      };
+
+      // Fix teamJoinedAt and programStartDate logic to handle teamId=0 properly
       if (req.body.teamId !== undefined) {
-        updateData.teamJoinedAt = req.body.teamId !== null && req.body.teamId !== 0 ? new Date() : null;
+        if (req.body.teamId !== null && req.body.teamId !== 0) {
+          const now = new Date();
+          updateData.teamJoinedAt = now;
+          updateData.programStartDate = calculateProgramStartDate(now);
+        } else {
+          updateData.teamJoinedAt = null;
+          updateData.programStartDate = null;
+        }
       }
 
       logger.info(`PATCH /api/users/${userId} - Request body:`, JSON.stringify(req.body));
