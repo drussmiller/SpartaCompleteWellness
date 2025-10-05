@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 
 // Increase body parser limits
 app.use(express.json({ limit: '150mb' }));
-app.use(express.urlendoded({ extended: true, limit: '150mb' }));
+app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 // Body parser middleware already defined above
 
