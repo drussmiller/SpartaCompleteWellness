@@ -2249,6 +2249,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       const formData = new FormData(
                                         e.currentTarget,
                                       );
+                                      const programStartDateValue = formData.get("programStartDate") as string;
                                       updateUserMutation.mutate({
                                         userId: user.id,
                                         data: {
@@ -2266,6 +2267,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               ? parsed
                                               : 1;
                                           })(formData.get("status") as string),
+                                          programStartDate: programStartDateValue ? new Date(programStartDateValue).toISOString() : null,
                                         },
                                       });
                                     }}
@@ -2282,6 +2284,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         type="email"
                                         className="text-sm"
                                       />
+                                      <div>
+                                        <label className="text-sm font-medium">
+                                          Program Start Date
+                                        </label>
+                                        <Input
+                                          name="programStartDate"
+                                          type="date"
+                                          defaultValue={
+                                            user.programStartDate
+                                              ? new Date(user.programStartDate)
+                                                  .toISOString()
+                                                  .split("T")[0]
+                                              : ""
+                                          }
+                                          className="text-sm"
+                                        />
+                                      </div>
                                       <Select
                                         name="status"
                                         defaultValue={
@@ -2376,11 +2395,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       {user.email}
                                     </CardDescription>
                                     <div className="mt-1 text-sm text-muted-foreground">
-                                      Start Date:{" "}
+                                      Date Joined:{" "}
                                       {new Date(
                                         user.createdAt!,
                                       ).toLocaleDateString()}
                                     </div>
+                                    {user.programStartDate && (
+                                      <div className="mt-1 text-sm text-muted-foreground">
+                                        Program Start Date:{" "}
+                                        {new Date(
+                                          user.programStartDate,
+                                        ).toLocaleDateString()}
+                                      </div>
+                                    )}
                                     <div className="mt-1 text-sm text-muted-foreground">
                                       Progress: Week{" "}
                                       {userProgress[user.id]?.week ??
