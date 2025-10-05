@@ -1753,10 +1753,10 @@ export const registerRoutes = async (
 
       if (!isFullAdmin && !isGroupAdminForThisGroup) {
         logger.warn(`Authorization failed for user ${req.user?.id} on group ${groupId}`);
-        
+
         // Set content type before any response
         res.setHeader("Content-Type", "application/json");
-        
+
         // Provide helpful error message for Group Admins
         if (req.user?.isGroupAdmin && req.user?.adminGroupId) {
           // Get the group name they are authorized for
@@ -1765,13 +1765,13 @@ export const registerRoutes = async (
             .from(groups)
             .where(eq(groups.id, req.user.adminGroupId))
             .limit(1);
-          
+
           const groupName = authorizedGroup?.name || `Group ${req.user.adminGroupId}`;
           return res.status(403).json({ 
             message: `Not authorized to make changes to this group. You are Group Admin for ${groupName} only.` 
           });
         }
-        
+
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -1795,7 +1795,7 @@ export const registerRoutes = async (
         if (name !== undefined) updateData.name = name;
         if (description !== undefined) updateData.description = description;
         if (competitive !== undefined) updateData.competitive = competitive;
-        
+
         logger.info(`Group Admin filtered update data for group ${groupId}:`, updateData);
       } else {
         // Full admins can update everything
@@ -4636,7 +4636,7 @@ export const registerRoutes = async (
         .where(eq(users.teamId, currentUser.teamId))
         .orderBy(sql`points DESC`);
 
-      // Get teams average points - only from the same group as the user's team
+      // Get team average points - only from the same group as the user's team
       const teamStats = await db.execute(sql`
           SELECT 
             t.id, 
@@ -5175,7 +5175,8 @@ export const registerRoutes = async (
 
       // Add points to user
       await db
-        .update(users)        .set({
+        .update(users)
+        .set({
           points: sql`${users.points} + ${achievementTypeObj.pointValue}`,
         })
         .where(eq(users.id, userId));
