@@ -456,12 +456,22 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       toast({
         title: "Success",
         description: "User updated successfully",
       });
       setEditingUser(null);
+      
+      // Optimistically update the users list in the cache
+      queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
+        if (!oldUsers) return oldUsers;
+        return oldUsers.map(user => 
+          user.id === updatedUser.id ? updatedUser : user
+        );
+      });
+      
+      // Also invalidate to ensure we're in sync with server
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
