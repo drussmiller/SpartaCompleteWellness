@@ -2294,9 +2294,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           type="date"
                                           defaultValue={
                                             user.programStartDate
-                                              ? new Date(user.programStartDate)
-                                                  .toISOString()
-                                                  .split("T")[0]
+                                              ? (() => {
+                                                  const date = new Date(user.programStartDate);
+                                                  const offset = date.getTimezoneOffset();
+                                                  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                                                  return localDate.toISOString().split("T")[0];
+                                                })()
                                               : ""
                                           }
                                           className="text-sm"
