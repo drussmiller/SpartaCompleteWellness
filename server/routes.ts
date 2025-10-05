@@ -3000,8 +3000,6 @@ export const registerRoutes = async (
         console.log("Program Not Started:", {
           timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
           userLocalNow: userLocalNow.toLocaleString(),
-          teamJoinedAt: user.teamJoinedAt,
-          teamJoinLocalTime: teamJoinLocalTime.toLocaleString(),
           programStartDate: programStartDate.toLocaleString(),
           daysToProgramStart,
           programHasStarted: false,
@@ -3018,7 +3016,6 @@ export const registerRoutes = async (
           debug: {
             timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
             localTime: userLocalNow.toLocaleString(),
-            teamJoinedLocal: teamJoinLocalTime.toLocaleString(),
             programStartLocal: programStartDate.toLocaleString(),
           },
         });
@@ -3039,8 +3036,6 @@ export const registerRoutes = async (
         timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
         utcNow: utcNow.toISOString(),
         userLocalNow: userLocalNow.toLocaleString(),
-        teamJoinedAt: user.teamJoinedAt,
-        teamJoinLocalTime: teamJoinLocalTime.toLocaleString(),
         programStartDate: programStartDate.toLocaleString(),
         daysSinceProgramStart,
         weekNumber,
@@ -3058,7 +3053,6 @@ export const registerRoutes = async (
         debug: {
           timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
           localTime: userLocalNow.toLocaleString(),
-          teamJoinedLocal: teamJoinLocalTime.toLocaleString(),
           programStartLocal: programStartDate.toLocaleString(),
         },
       });
