@@ -207,8 +207,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      groupId: currentUser?.isGroupAdmin && !currentUser?.isAdmin 
-        ? currentUser.adminGroupId || 0 
+      groupId: currentUser?.isGroupAdmin && !currentUser?.isAdmin
+        ? currentUser.adminGroupId || 0
         : 0,
       maxSize: 6,
     },
@@ -771,7 +771,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const sortedOrganizations = [...(organizations || [])].sort((a, b) =>
     a.name.localeCompare(b.name),
   );
-  
+
   // Filter groups based on the current user's role first
   const filteredGroups = currentUser?.isGroupAdmin && !currentUser?.isAdmin
     ? (() => {
@@ -788,12 +788,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   );
 
   // Debug logging
-  console.log('Groups data:', { 
-    groups, 
-    filteredGroups, 
+  console.log('Groups data:', {
+    groups,
+    filteredGroups,
     sortedGroups,
     isAdmin: currentUser?.isAdmin,
-    isGroupAdmin: currentUser?.isGroupAdmin 
+    isGroupAdmin: currentUser?.isGroupAdmin
   });
 
   // Filter teams based on user role
@@ -806,7 +806,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const sortedTeams = [...filteredTeams].sort((a, b) =>
     a.name.localeCompare(b.name),
   );
-  
+
   // Filter users based on user role
   const filteredUsers = currentUser?.isAdmin
     ? users || []
@@ -2234,7 +2234,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </div>
 
                     <div className="space-y-4">
-                      {(showInactiveUsers 
+                      {(showInactiveUsers
                         ? filteredUsersForDisplay
                         : filteredUsersForDisplay.filter((user) => user.status === 1)
                       ).map((user) => (
@@ -2244,34 +2244,34 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <div>
                                 {editingUser?.id === user.id ? (
                                   <form
-                                    onSubmit={(e) => {
-                                      e.preventDefault();
-                                      const formData = new FormData(
-                                        e.currentTarget,
-                                      );
-                                      const programStartDateValue = formData.get("programStartDate") as string;
-                                      updateUserMutation.mutate({
-                                        userId: user.id,
-                                        data: {
-                                          username: formData.get(
-                                            "username",
-                                          ) as string,
-                                          email: formData.get(
-                                            "email",
-                                          ) as string,
-                                          status: ((statusValue) => {
-                                            const parsed = statusValue
-                                              ? parseInt(statusValue)
-                                              : 1;
-                                            return parsed === 0 || parsed === 1
-                                              ? parsed
-                                              : 1;
-                                          })(formData.get("status") as string),
-                                          programStartDate: programStartDateValue ? new Date(programStartDateValue).toISOString() : null,
-                                        },
-                                      });
-                                    }}
-                                  >
+                                      onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const formData = new FormData(
+                                          e.currentTarget,
+                                        );
+                                        const programStartDateValue = formData.get("programStartDate") as string;
+                                        updateUserMutation.mutate({
+                                          userId: user.id,
+                                          data: {
+                                            username: formData.get(
+                                              "username",
+                                            ) as string,
+                                            email: formData.get(
+                                              "email",
+                                            ) as string,
+                                            status: ((statusValue) => {
+                                              const parsed = statusValue
+                                                ? parseInt(statusValue)
+                                                : 1;
+                                              return parsed === 0 || parsed === 1
+                                                ? parsed
+                                                : 1;
+                                            })(formData.get("status") as string),
+                                            programStartDate: programStartDateValue ? programStartDateValue : null,
+                                          },
+                                        });
+                                      }}
+                                    >
                                     <div className="space-y-2">
                                       <Input
                                         name="username"
