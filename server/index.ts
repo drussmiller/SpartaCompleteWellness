@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 
 // Increase body parser limits
 app.use(express.json({ limit: '150mb' }));
-app.use(express.urlencoded({ extended: true, limit: '150mb' }));
+app.use(express.urlendoded({ extended: true, limit: '150mb' }));
 
 // Body parser middleware already defined above
 
@@ -39,7 +39,23 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Setup auth first (includes session middleware)
+// Run migrations BEFORE setting up auth to ensure schema is ready
+async function runMigrations() {
+  console.log("Running database migrations...");
+  try {
+    const { runMigrations: executeMigrations } = await import("./db/migrations");
+    await executeMigrations();
+    console.log("Migrations complete.");
+  } catch (error) {
+    console.error("Error running migrations:", error);
+    throw error;
+  }
+}
+
+// Wait for migrations before continuing
+await runMigrations();
+
+// Setup auth after migrations complete (includes session middleware)
 setupAuth(app);
 
 // Add request logging middleware
@@ -166,13 +182,6 @@ server.listen(port, "0.0.0.0", () => {
         return res.redirect(302, objectStorageUrl);
       });
 
-      // Run migrations in background (non-blocking)
-      runMigrations().then(() => {
-        console.log("[Post-Startup] Database migrations completed successfully");
-      }).catch((error) => {
-        console.error("[Post-Startup] Migration failed (non-critical):", error);
-      });
-
       console.log("[Post-Startup] Initialization complete");
 
     } catch (error) {
@@ -180,15 +189,3 @@ server.listen(port, "0.0.0.0", () => {
     }
   });
 });
-
-async function runMigrations() {
-  console.log("Running database migrations...");
-  try {
-    const { runMigrations: executeMigrations } = await import("./db/migrations");
-    await executeMigrations();
-    console.log("Migrations complete.");
-  } catch (error) {
-    console.error("Error running migrations:", error);
-    throw error;
-  }
-}
