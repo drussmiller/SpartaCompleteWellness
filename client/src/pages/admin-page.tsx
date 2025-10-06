@@ -2262,7 +2262,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         const formData = new FormData(
                                           e.currentTarget,
                                         );
-                                        const programStartDateValue = formData.get("programStartDate") as string;
+                                        
+                                        // Get the program start date from state or hidden input
+                                        let programStartDateValue: string | null = null;
+                                        if (selectedProgramStartDate[user.id]) {
+                                          // Use the state value if available
+                                          const offset = selectedProgramStartDate[user.id]!.getTimezoneOffset();
+                                          const localDate = new Date(selectedProgramStartDate[user.id]!.getTime() - (offset * 60 * 1000));
+                                          programStartDateValue = localDate.toISOString().split("T")[0];
+                                        } else {
+                                          // Fall back to form data
+                                          programStartDateValue = formData.get("programStartDate") as string;
+                                        }
                                         
                                         updateUserMutation.mutate({
                                           userId: user.id,
