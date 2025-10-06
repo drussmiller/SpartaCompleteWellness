@@ -51,6 +51,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { BottomNav } from "@/components/bottom-nav";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -2297,11 +2299,53 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       />
                                       <div>
                                         <label className="text-sm font-medium">
-                                          Program Start Date
+                                          Program Start Date (Mondays only)
                                         </label>
-                                        <Input
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <Button
+                                              variant="outline"
+                                              className="w-full justify-start text-left font-normal text-sm"
+                                            >
+                                              {user.programStartDate
+                                                ? (() => {
+                                                    const date = new Date(user.programStartDate);
+                                                    const offset = date.getTimezoneOffset();
+                                                    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                                                    return localDate.toLocaleDateString();
+                                                  })()
+                                                : "Select a Monday"}
+                                            </Button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                              mode="single"
+                                              selected={user.programStartDate ? new Date(user.programStartDate) : undefined}
+                                              onSelect={(date) => {
+                                                if (date) {
+                                                  // Format date as YYYY-MM-DD for hidden input
+                                                  const offset = date.getTimezoneOffset();
+                                                  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                                                  const formattedDate = localDate.toISOString().split("T")[0];
+                                                  
+                                                  // Update hidden input value
+                                                  const hiddenInput = document.querySelector(`input[name="programStartDate"][data-user-id="${user.id}"]`) as HTMLInputElement;
+                                                  if (hiddenInput) {
+                                                    hiddenInput.value = formattedDate;
+                                                  }
+                                                }
+                                              }}
+                                              disabled={(date) => {
+                                                // Only allow Mondays (getDay() === 1)
+                                                return date.getDay() !== 1;
+                                              }}
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
+                                        <input
+                                          type="hidden"
                                           name="programStartDate"
-                                          type="date"
+                                          data-user-id={user.id}
                                           defaultValue={
                                             user.programStartDate
                                               ? (() => {
@@ -2312,7 +2356,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 })()
                                               : ""
                                           }
-                                          className="text-sm"
                                         />
                                       </div>
                                       <Select
