@@ -115,6 +115,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [showInactiveGroups, setShowInactiveGroups] = useState(false);
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
+  const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose(
     {
@@ -2307,22 +2308,33 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               variant="outline"
                                               className="w-full justify-start text-left font-normal text-sm"
                                             >
-                                              {user.programStartDate
-                                                ? (() => {
-                                                    const date = new Date(user.programStartDate);
-                                                    const offset = date.getTimezoneOffset();
-                                                    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-                                                    return localDate.toLocaleDateString();
-                                                  })()
-                                                : "Select a Monday"}
+                                              {selectedProgramStartDate[user.id]
+                                                ? selectedProgramStartDate[user.id]!.toLocaleDateString()
+                                                : user.programStartDate
+                                                  ? (() => {
+                                                      const date = new Date(user.programStartDate);
+                                                      const offset = date.getTimezoneOffset();
+                                                      const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                                                      return localDate.toLocaleDateString();
+                                                    })()
+                                                  : "Select a Monday"}
                                             </Button>
                                           </PopoverTrigger>
                                           <PopoverContent className="w-auto p-0" align="start">
                                             <Calendar
                                               mode="single"
-                                              selected={user.programStartDate ? new Date(user.programStartDate) : undefined}
+                                              selected={
+                                                selectedProgramStartDate[user.id] ||
+                                                (user.programStartDate ? new Date(user.programStartDate) : undefined)
+                                              }
                                               onSelect={(date) => {
                                                 if (date) {
+                                                  // Update state to show selected date in button
+                                                  setSelectedProgramStartDate(prev => ({
+                                                    ...prev,
+                                                    [user.id]: date
+                                                  }));
+                                                  
                                                   // Format date as YYYY-MM-DD for hidden input
                                                   const offset = date.getTimezoneOffset();
                                                   const localDate = new Date(date.getTime() - (offset * 60 * 1000));
