@@ -304,11 +304,8 @@ export default function ActivityPage() {
                               // Only convert if not already a link
                               if (!content.includes('<a href=')) {
                                 content = content.replace(bibleVerseRegex, (match) => {
-                                  // Use bible:// scheme for mobile, web URL for desktop
-                                  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                                  const bibleUrl = isMobile 
-                                    ? `bible://${encodeURIComponent(match)}`
-                                    : `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
+                                  // Use Bible.com universal link - opens app on mobile if installed, web otherwise
+                                  const bibleUrl = `https://www.bible.com/bible/111/${encodeURIComponent(match)}`;
                                   return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
                                 });
                               }
