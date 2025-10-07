@@ -304,9 +304,12 @@ export default function ActivityPage() {
                               // Only convert if not already a link
                               if (!content.includes('<a href=')) {
                                 content = content.replace(bibleVerseRegex, (match) => {
-                                  // Use bible:// scheme for mobile app deep linking
-                                  const bibleSchemeUrl = `bible://${encodeURIComponent(match)}`;
-                                  return `<a href="${bibleSchemeUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+                                  // Use bible:// scheme for mobile, web URL for desktop
+                                  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                                  const bibleUrl = isMobile 
+                                    ? `bible://${encodeURIComponent(match)}`
+                                    : `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
+                                  return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
                                 });
                               }
                               
