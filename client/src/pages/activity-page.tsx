@@ -304,9 +304,38 @@ export default function ActivityPage() {
                               // Only convert if not already a link
                               if (!content.includes('<a href=')) {
                                 content = content.replace(bibleVerseRegex, (match) => {
-                                  // Use Bible.com universal link - opens app on mobile if installed, web otherwise
-                                  const bibleUrl = `https://www.bible.com/bible/111/${encodeURIComponent(match)}`;
-                                  return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+                                  // Convert book name to 3-letter abbreviation
+                                  const bookMap: { [key: string]: string } = {
+                                    'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
+                                    'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
+                                    '1 Kings': '1KI', '2 Kings': '2KI', '1 Chronicles': '1CH', '2 Chronicles': '2CH',
+                                    'Ezra': 'EZR', 'Nehemiah': 'NEH', 'Esther': 'EST', 'Job': 'JOB', 'Psalm': 'PSA', 'Psalms': 'PSA',
+                                    'Proverbs': 'PRO', 'Ecclesiastes': 'ECC', 'Song of Songs': 'SNG', 'Isaiah': 'ISA',
+                                    'Jeremiah': 'JER', 'Lamentations': 'LAM', 'Ezekiel': 'EZK', 'Daniel': 'DAN',
+                                    'Hosea': 'HOS', 'Joel': 'JOL', 'Amos': 'AMO', 'Obadiah': 'OBA', 'Jonah': 'JON',
+                                    'Micah': 'MIC', 'Nahum': 'NAM', 'Habakkuk': 'HAB', 'Zephaniah': 'ZEP', 'Haggai': 'HAG',
+                                    'Zechariah': 'ZEC', 'Malachi': 'MAL', 'Matthew': 'MAT', 'Mark': 'MRK', 'Luke': 'LUK',
+                                    'John': 'JHN', 'Acts': 'ACT', 'Romans': 'ROM', '1 Corinthians': '1CO', '2 Corinthians': '2CO',
+                                    'Galatians': 'GAL', 'Galation': 'GAL', 'Ephesians': 'EPH', 'Philippians': 'PHP', 'Colossians': 'COL',
+                                    '1 Thessalonians': '1TH', '2 Thessalonians': '2TH', '1 Timothy': '1TI', '2 Timothy': '2TI',
+                                    'Titus': 'TIT', 'Philemon': 'PHM', 'Hebrews': 'HEB', 'James': 'JAS', '1 Peter': '1PE',
+                                    '2 Peter': '2PE', '1 John': '1JN', '2 John': '2JN', '3 John': '3JN', 'Jude': 'JUD', 'Revelation': 'REV'
+                                  };
+                                  
+                                  // Extract book name and reference (e.g., "John 3:16" -> book="John", ref="3:16")
+                                  const parts = match.match(/^(.+?)\s+(\d+.*)$/);
+                                  if (parts) {
+                                    const bookName = parts[1].trim();
+                                    const reference = parts[2].trim();
+                                    const bookAbbr = bookMap[bookName] || bookName;
+                                    
+                                    // Format: https://www.bible.com/bible/111/JHN.3.16.NIV
+                                    const formattedRef = reference.replace(/:/g, '.');
+                                    const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
+                                    return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+                                  }
+                                  
+                                  return match;
                                 });
                               }
                               
