@@ -617,6 +617,28 @@ export default function ActivityManagementPage() {
 
                           // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
                           contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
+
+                          // Remove consecutive duplicate YouTube videos
+                          const videoEmbedRegex = /<div class="video-wrapper"><iframe src="https:\/\/www\.youtube\.com\/embed\/([a-zA-Z0-9_-]{11})"[^>]*><\/iframe><\/div>/g;
+                          const videos: Array<{videoId: string, fullMatch: string, index: number}> = [];
+                          let match;
+                          
+                          // Find all video embeds
+                          while ((match = videoEmbedRegex.exec(contentHtml)) !== null) {
+                            videos.push({
+                              videoId: match[1],
+                              fullMatch: match[0],
+                              index: match.index
+                            });
+                          }
+                          
+                          // Remove consecutive duplicates (compare with previous video only)
+                          for (let i = videos.length - 1; i > 0; i--) {
+                            if (videos[i].videoId === videos[i - 1].videoId) {
+                              // Same video as the previous one - remove this duplicate
+                              contentHtml = contentHtml.substring(0, videos[i].index) + contentHtml.substring(videos[i].index + videos[i].fullMatch.length);
+                            }
+                          }
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);
                         }
