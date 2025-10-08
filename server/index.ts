@@ -136,11 +136,12 @@ server.listen(port, "0.0.0.0", () => {
       });
 
       // Setup static file serving based on environment
-      if (app.get("env") === "development") {
+      if (process.env.NODE_ENV === "production") {
+        console.log("[Post-Startup] Serving static files from production build...");
+        serveStatic(app);
+      } else {
         console.log("[Post-Startup] Setting up Vite...");
         await setupVite(app, server);
-      } else {
-        serveStatic(app);
       }
       
       // Setup simplified shared files handler (lazy loaded)
