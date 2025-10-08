@@ -34,16 +34,19 @@ export function useNotifications(suppressToasts = false) {
     refetchInterval: 60000, // Refetch every minute
   });
 
-  // Simple function to connect to WebSocket server - DISABLED
+  // Simple function to connect to WebSocket server
   const connectWebSocket = useCallback(() => {
     if (!user) return; // Ensure user is available
 
-    // WebSocket disabled - no server running
-    setConnectionStatus("disconnected");
-    return;
-
     setConnectionStatus("connecting");
-    socketRef.current = new WebSocket("ws://localhost:8080"); // Replace with your WebSocket server URL
+    
+    // Use the correct WebSocket URL for your server
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host;
+    const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+    
+    console.log('Connecting to WebSocket:', wsUrl);
+    socketRef.current = new WebSocket(wsUrl)
 
     socketRef.current.onopen = () => {
       console.log("WebSocket connected");
