@@ -327,8 +327,18 @@ export default function ActivityPage() {
                                     const reference = parts[2].trim();
                                     const bookAbbr = bookMap[bookName] || bookName;
                                     
-                                    // Format: https://www.bible.com/bible/111/GEN.33-34.NIV
-                                    // Replace colons with dots but preserve hyphens for chapter/verse ranges
+                                    // Check if this is a chapter range (e.g., "33-34")
+                                    const chapterRangeMatch = reference.match(/^(\d+)-(\d+)$/);
+                                    if (chapterRangeMatch) {
+                                      // Split into two separate links
+                                      const chapter1 = chapterRangeMatch[1];
+                                      const chapter2 = chapterRangeMatch[2];
+                                      const url1 = `https://www.bible.com/bible/111/${bookAbbr}.${chapter1}.NIV`;
+                                      const url2 = `https://www.bible.com/bible/111/${bookAbbr}.${chapter2}.NIV`;
+                                      return `${bookName} <a href="${url1}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter1}</a>-<a href="${url2}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter2}</a>`;
+                                    }
+                                    
+                                    // For verse references or single chapters, create a single link
                                     const formattedRef = reference.replace(/:/g, '.');
                                     const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
                                     return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
