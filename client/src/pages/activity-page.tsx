@@ -301,8 +301,8 @@ export default function ActivityPage() {
                               const hasLinks = content.includes('<a href=');
                               
                               if (!hasLinks) {
-                                // Match Bible verses with chapter:verse OR just chapter OR chapter ranges (e.g., "Genesis 33-34")
-                                const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*\b/gi;
+                                // Match Bible verses - prioritize comma-separated chapters, then ranges, then single chapters/verses
+                                const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+(?:\d+(?:\s*,\s*\d+)+|\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*)\b/gi;
                                 
                                 content = content.replace(bibleVerseRegex, (match) => {
                                   const bookMap: { [key: string]: string } = {
@@ -331,19 +331,14 @@ export default function ActivityPage() {
                                     
                                     // Check for comma-separated chapters: "30, 60, 90, 120"
                                     if (reference.includes(',') && !reference.includes(':')) {
-                                      // Extract just the numbers part from the reference
-                                      const numbersMatch = reference.match(/^[\d\s,]+/);
-                                      if (numbersMatch) {
-                                        const numbersText = numbersMatch[0].trim();
-                                        const chapters = numbersText.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
-                                        
-                                        if (chapters.length > 1) {
-                                          const links = chapters.map(chapter => {
-                                            const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
-                                            return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
-                                          });
-                                          return `${bookName} ${links.join(', ')}`;
-                                        }
+                                      const chapters = reference.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
+                                      
+                                      if (chapters.length > 1) {
+                                        const links = chapters.map(chapter => {
+                                          const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                                          return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
+                                        });
+                                        return `${bookName} ${links.join(', ')}`;
                                       }
                                     }
                                     
