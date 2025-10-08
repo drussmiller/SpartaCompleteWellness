@@ -21,7 +21,7 @@ const poolConfig = {
   keepAlive: true,
   keepAliveInitialDelayMillis: 500, // Faster initial delay
   application_name: 'app',
-  ssl: true,
+  ssl: { rejectUnauthorized: false },
   maxUses: 100, // Lower limit to prevent resource issues
   allowExitOnIdle: true // Allow connections to close when idle for deployment
 };
