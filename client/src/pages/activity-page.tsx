@@ -327,15 +327,20 @@ export default function ActivityPage() {
                                     const reference = parts[2].trim();
                                     const bookAbbr = bookMap[bookName] || bookName;
                                     
-                                    // Check if this is a comma-separated chapter list (e.g., "29, 59, 89, 149")
-                                    const commaChaptersMatch = reference.match(/^(\d+(?:\s*,\s*\d+)+)$/);
+                                    // Check if this is a comma-separated chapter list (e.g., "30, 60, 90, 120")
+                                    // The reference might be just numbers or include other text after
+                                    const commaChaptersMatch = reference.match(/^(\d+(?:\s*,\s*\d+)+)(?:\s|$)/);
                                     if (commaChaptersMatch) {
                                       const chapters = commaChaptersMatch[1].split(',').map(ch => ch.trim());
                                       const links = chapters.map(chapter => {
                                         const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
                                         return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
                                       });
-                                      return `${bookName} ${links.join(', ')}`;
+                                      
+                                      // Get any remaining text after the comma list
+                                      const remainingText = reference.substring(commaChaptersMatch[0].length).trim();
+                                      const result = `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
+                                      return result;
                                     }
                                     
                                     // Check if this is a chapter range (e.g., "33-34")
