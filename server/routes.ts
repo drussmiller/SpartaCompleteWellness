@@ -1066,7 +1066,7 @@ export const registerRoutes = async (
         const [userTeamData] = await db
           .select({ groupId: teams.groupId })
           .from(teams)
-          .where(eq(teams.id, req.user.teamId));
+          .where(eq(teams.teamId, req.user.teamId));
 
         if (!userTeamData?.groupId) {
           logger.info(`User ${req.user.id}'s team has no group, returning empty prayer posts array`);
@@ -2028,29 +2028,27 @@ export const registerRoutes = async (
                 };
 
                 // Extract book name and reference (e.g., "John 5:1-18" -> book="John", ref="5:1-18")
+                // Also handles chapter ranges like "Genesis 33-34"
                 const parts = match.match(/^(.+?)\s+(\d+.*)$/);
                 if (parts) {
                   const bookName = parts[1].trim();
                   const reference = parts[2].trim();
                   const bookAbbr = bookMap[bookName] || bookName;
 
-                  // Format: https://www.bible.com/bible/59/JHN.5.1-18.NIV
-                  // Replace colons with dots and preserve both chapter and verse ranges
-                  // Handle cases like "33-34" (chapter range) or "5:1-18" (verse range) or "33-34:5-10" (both)
+                  // Format: https://www.bible.com/bible/59/JHN.5.1-18.NIV or GEN.33-34.NIV
+                  // Replace colons with dots and preserve both verse and chapter ranges
                   const formattedRef = reference.replace(/:/g, '.');
                   const bibleUrl = `https://www.bible.com/bible/59/${bookAbbr}.${formattedRef}.NIV`;
                   return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
                 }
 
-                return match;
-              });
+                // Don't process YouTube embeds in Bible verse content
+                // YouTube embeds are already properly formatted from the client
 
-              // Don't process YouTube embeds in Bible verse content
-              // YouTube embeds are already properly formatted from the client
-
-              // Log if any Bible verses were converted
-              if (originalContent !== field.content) {
-                logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+                // Log if any Bible verses were converted
+                if (originalContent !== field.content) {
+                  logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+                }
               }
             }
             return field;
