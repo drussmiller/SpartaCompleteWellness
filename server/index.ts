@@ -117,8 +117,8 @@ server.listen(port, "0.0.0.0", () => {
     try {
       console.log("[Post-Startup] Beginning initialization...");
       
-      // Register API routes after server is listening
-      await registerRoutes(app);
+      // Register API routes after server is listening, pass server for WebSocket
+      await registerRoutes(app, server);
       
       // Global API error handlers
       app.use('/api', (err: any, _req: Request, res: Response, _next: NextFunction) => {

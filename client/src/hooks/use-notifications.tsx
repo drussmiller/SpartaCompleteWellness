@@ -101,33 +101,9 @@ export function useNotifications(suppressToasts = false) {
         pingIntervalRef.current = null;
       }
 
-      // Attempt to reconnect with longer delays to reduce spam
-      if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-        const delay = Math.min(10000 * Math.pow(2, reconnectAttemptsRef.current), 120000); // Start at 10s, max 2 min
-        console.log(`Will attempt to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
-
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-
-        reconnectTimeoutRef.current = setTimeout(() => {
-          // Check if user was recently active (within last 5 seconds)
-          const timeSinceActivity = Date.now() - lastUserActivityRef.current;
-          if (timeSinceActivity < 5000) {
-            // User is active, delay reconnection by another 10 seconds
-            console.log('User is active, delaying reconnection');
-            reconnectTimeoutRef.current = setTimeout(() => {
-              reconnectAttemptsRef.current++;
-              connectWebSocket();
-            }, 10000);
-          } else {
-            reconnectAttemptsRef.current++;
-            connectWebSocket();
-          }
-        }, delay);
-      } else {
-        console.error('Max reconnect attempts reached - use reconnect button to try again');
-      }
+      // Don't auto-reconnect to prevent keyboard focus stealing
+      console.log('WebSocket disconnected - use reconnect button to retry');
+      reconnectAttemptsRef.current++;
     };
 
     socketRef.current.onerror = (error) => {

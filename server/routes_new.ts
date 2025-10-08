@@ -82,7 +82,7 @@ const upload = multer({
   }
 });
 
-export const registerRoutes = async (app: express.Application): Promise<HttpServer> => {
+export async function registerRoutes(app: Express, server?: HttpServer): Promise<HttpServer> {
   const router = express.Router();
 
   // Helper function to calculate program start date (first Monday after team join date)
@@ -90,25 +90,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     const joinDate = new Date(teamJoinDate);
     // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
     const dayOfWeek = joinDate.getDay();
-    
+
     // Calculate days until next Monday: if already Monday (1), use that date, otherwise find next Monday
     const daysUntilMonday = dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7;
-    
+
     // Create program start date as the Monday on/after team join date
     const programStart = new Date(joinDate);
     programStart.setDate(joinDate.getDate() + daysUntilMonday);
     // Ensure we're at the start of the day
     programStart.setHours(0, 0, 0, 0);
-    
+
     return programStart;
   };
 
   // Add request logging middleware
   router.use(requestLogger);
-  
+
   // Register prayer routes
   router.use(prayerRoutes);
-  
+
   // Register message routes
   router.use(messageRouter);
 
@@ -330,31 +330,31 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
     });
   });
-  
+
   // WebSocket status endpoint to check real-time connections
   router.get("/api/ws-status", (req, res) => {
     // Count active WebSocket connections
     let totalConnections = 0;
     let activeUsers = 0;
     const userConnectionCounts = [];
-    
+
     // Analyze the clients map
     clients.forEach((userClients, userId) => {
       const openConnections = Array.from(userClients).filter(
         ws => ws.readyState === WebSocket.OPEN
       ).length;
-      
+
       if (openConnections > 0) {
         activeUsers++;
         totalConnections += openConnections;
-        
+
         userConnectionCounts.push({
           userId,
           connections: openConnections
         });
       }
     });
-    
+
     res.json({
       status: "ok",
       timestamp: new Date().toISOString(),
@@ -376,23 +376,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
     });
   });
-  
+
   // Add a test endpoint for triggering notification checks with manual time override
   router.get("/api/test-notification", async (req, res) => {
     // Set a longer timeout for this endpoint as it can be resource-intensive
     req.setTimeout(30000); // 30 seconds timeout
-    
+
     try {
       // Get specified time or use current time
       const hour = parseInt(req.query.hour as string) || new Date().getHours();
       const minute = parseInt(req.query.minute as string) || new Date().getMinutes();
-      
+
       logger.info(`Manual notification test triggered with time override: ${hour}:${minute}`);
-      
+
       // Optional userId parameter to limit test to a specific user if needed
       // This helps reduce load for targeted testing
       const specificUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
-      
+
       // Get users with optimized query, limiting to specific user if provided
       let userQuery = db.select().from(users);
       if (specificUserId) {
@@ -400,7 +400,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`Test limited to specific user ID: ${specificUserId}`);
       }
       const allUsers = await userQuery;
-      
+
       // Early return if no users found
       if (allUsers.length === 0) {
         logger.info("No matching users found for test notification");
@@ -409,16 +409,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           totalNotifications: 0
         });
       }
-      
+
       // Keep track of notifications sent
       const notificationsSent = [];
-      
+
       // Process in batches if needed for large user counts
       // Using Promise.all with a limited batch size prevents server overload
       const BATCH_SIZE = 10;
       for (let i = 0; i < allUsers.length; i += BATCH_SIZE) {
         const userBatch = allUsers.slice(i, i + BATCH_SIZE);
-        
+
         // Process users in parallel but in limited batches
         await Promise.all(userBatch.map(async (user) => {
           try {
@@ -427,10 +427,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               logger.info(`Skipping user ${user.id} - no notification time preference set`);
               return;
             }
-            
+
             // Parse user's notification time preference
             const [preferredHour, preferredMinute] = user.notificationTime.split(':').map(Number);
-            
+
             // Log detailed time comparison for debugging
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
@@ -438,7 +438,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               preferredTime: `${preferredHour}:${preferredMinute}`,
               notificationTime: user.notificationTime
             });
-            
+
             // Check if current time matches user's preferred notification time (with 10-minute window)
             const isPreferredTimeWindow = 
               (hour === preferredHour && 
@@ -447,7 +447,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               (hour === preferredHour + 1 && 
                 preferredMinute >= 50 && 
                 minute < (preferredMinute + 10) % 60);
-            
+
             if (isPreferredTimeWindow) {
               // Create a test notification with proper schema references
               const notification = {
@@ -459,13 +459,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 type: "test",
                 sound: "default"
               };
-              
+
               // Insert the notification
               const [createdNotification] = await db
                 .insert(notifications)
                 .values(notification)
                 .returning();
-              
+
               notificationsSent.push({
                 userId: user.id,
                 username: user.username || `User ${user.id}`,
@@ -473,7 +473,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 preferredTime: user.notificationTime,
                 currentTime: `${hour}:${minute}`
               });
-              
+
               // Send via WebSocket if user is connected
               const userClients = clients.get(user.id);
               if (userClients && userClients.size > 0) {
@@ -484,7 +484,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                   sound: notification.sound,
                   type: notification.type
                 });
-                
+
                 logger.info(`Real-time notification sent to user ${user.id} via WebSocket`);
               } else {
                 logger.info(`No active WebSocket connections for user ${user.id}`);
@@ -497,10 +497,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         }));
       }
-      
+
       // Set proper content type header
       res.setHeader('Content-Type', 'application/json');
-      
+
       // Return results - send before additional processing if needed
       res.json({
         message: `Test notification check completed for time ${hour}:${minute}`,
@@ -533,35 +533,35 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'Content-Type': 'application/json',
         'X-Content-Type-Options': 'nosniff'
       });
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).send(JSON.stringify({ message: "Invalid post ID" }));
       }
-      
+
       // Get the comments
       const comments = await storage.getPostComments(postId);
-      
+
       // Explicitly validate the response
       const validComments = Array.isArray(comments) ? comments : [];
-      
+
       // Log the response for debugging
       logger.info(`Sending comments for post ${postId}: ${validComments.length} comments`);
-      
+
       // Double-check we're still sending as JSON (just in case)
       res.set('Content-Type', 'application/json');
-      
+
       // Manually stringify the JSON to ensure it's not transformed in any way
       const jsonString = JSON.stringify(validComments);
-      
+
       // Send the manual JSON response
       return res.send(jsonString);
     } catch (error) {
       logger.error('Error getting comments:', error);
-      
+
       // Make sure we're still sending JSON on error
       res.set('Content-Type', 'application/json');
-      
+
       // Return the error as a manually stringified JSON
       return res.status(500).send(JSON.stringify({ 
         message: "Failed to get comments",
@@ -714,11 +714,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/debug/safe-id/:id", async (req, res) => {
     try {
       const id = req.params.id;
-      
+
       // Check for potentially problematic ID values (like JS timestamps)
       const originalId = parseInt(id);
       let safeId = originalId;
-      
+
       // Handle potential integer overflow from JavaScript timestamps
       if (safeId && !isNaN(safeId) && safeId > 2147483647) {
         // PostgreSQL integer type range is -2,147,483,648 to 2,147,483,647
@@ -728,7 +728,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           safeId = parseInt(idStr.substring(0, 9));
         }
       }
-      
+
       return res.json({
         originalId,
         safeId,
@@ -962,14 +962,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       logger.info(`Thumbnail repair process initiated by user ${req.user.id}`);
-      
+
       // Run the repair process asynchronously
       res.json({ 
         message: "Thumbnail repair process started",
         status: "running",
         startedAt: new Date().toISOString()
       });
-      
+
       // Execute the thumbnail repair after sending the response
       repairThumbnails().then(() => {
         logger.info('Thumbnail repair process completed successfully');
@@ -984,20 +984,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Debug endpoint to analyze comment structure
   router.get("/api/debug/comment-structure", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
-      
+
       // Get a sample post with its comments to analyze structure
       const postId = parseInt(req.query.postId as string) || 400;
-      
+
       const post = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
       const comments = await storage.getPostComments(postId);
-      
+
       // Return debug information about the comment structure
       return res.json({
         post: post[0] || null,
@@ -1025,7 +1025,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Endpoint to check thumbnail status
   router.get("/api/debug/check-thumbnails", authenticate, async (req, res) => {
     try {
@@ -1035,17 +1035,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       logger.info(`Thumbnail check process initiated by user ${req.user.id}`);
-      
+
       // Import the thumbnail check script
       const { checkThumbnails } = await import('./thumbnail-check');
-      
+
       // Run the check process asynchronously
       res.json({ 
         message: "Thumbnail check process started",
         status: "running",
         startedAt: new Date().toISOString()
       });
-      
+
       // Execute the thumbnail check after sending the response
       checkThumbnails().then(() => {
         logger.info('Thumbnail check process completed successfully');
@@ -1060,7 +1060,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Helper endpoint to fix memory verse thumbnails for existing videos
   router.post("/api/memory-verse/fix-thumbnails", authenticate, async (req, res) => {
     try {
@@ -1068,18 +1068,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user) {
         return res.status(403).json({ message: "Authentication required" });
       }
-      
+
       logger.info(`Fix memory verse thumbnails requested by user ${req.user.id}`);
-      
+
       // Import the repair module
       const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
-      
+
       // Run the repair asynchronously
       res.json({
         message: "Memory verse thumbnail repair started",
         status: "processing"
       });
-      
+
       // Process after sending the response
       repairMemoryVerseVideos()
         .then(() => {
@@ -1088,13 +1088,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .catch(error => {
           logger.error(`Memory verse thumbnail repair failed for user ${req.user.id}:`, error);
         });
-        
+
     } catch (error) {
       logger.error('Error starting memory verse repair:', error);
       res.status(500).json({ message: "Failed to start memory verse repair" });
     }
   });
-  
+
   // Endpoint to generate poster images for videos
   router.post("/api/video/generate-posters", authenticate, async (req, res) => {
     try {
@@ -1102,11 +1102,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user) {
         return res.status(403).json({ message: "Authentication required" });
       }
-      
+
       const { mediaUrl, postId } = req.body;
-      
+
       logger.info(`Video poster generation requested for ${mediaUrl || 'all videos'} by user ${req.user.id}`, { postId });
-      
+
       // Thumbnail generation is now handled during upload in sparta-object-storage.ts
       // No need for separate poster batch processing
       res.json({
@@ -1114,7 +1114,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         status: "complete",
         postId: postId || null
       });
-        
+
     } catch (error) {
       logger.error('Error starting video poster generation:', error);
       res.status(500).json({ message: "Failed to start video poster generation" });
@@ -1128,18 +1128,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user) {
         return res.status(403).json({ message: "Authentication required" });
       }
-      
+
       logger.info(`Fix all thumbnails requested by user ${req.user.id}`);
-      
+
       // Import the repair module
       const { repairThumbnails } = await import('./thumbnail-repair');
-      
+
       // Run the repair asynchronously
       res.json({
         message: "Thumbnail repair started",
         status: "processing"
       });
-      
+
       // Process after sending the response
       repairThumbnails()
         .then(() => {
@@ -1148,13 +1148,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .catch(error => {
           logger.error(`Thumbnail repair failed for user ${req.user.id}:`, error);
         });
-        
+
     } catch (error) {
       logger.error('Error starting thumbnail repair:', error);
       res.status(500).json({ message: "Failed to start thumbnail repair" });
     }
   });
-  
+
   // Admin endpoint to repair all memory verse videos
   router.get("/api/debug/repair-memory-verses", authenticate, async (req, res) => {
     try {
@@ -1164,17 +1164,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }
 
       logger.info(`Memory verse video repair process initiated by user ${req.user.id}`);
-      
+
       // Import the memory verse repair script
       const { repairMemoryVerseVideos } = await import('./memory-verse-repair');
-      
+
       // Run the repair process asynchronously
       res.json({ 
         message: "Memory verse repair process started",
         status: "running",
         startedAt: new Date().toISOString()
       });
-      
+
       // Execute the repair after sending the response
       repairMemoryVerseVideos().then(() => {
         logger.info('Memory verse repair process completed successfully');
@@ -1189,7 +1189,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Public route to check if a post exists and is accessible
   router.get("/api/check-post/:id", async (req, res) => {
     try {
@@ -1197,38 +1197,38 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
-      
+
       // Get post from the database
       const [post] = await db
         .select()
         .from(posts)
         .where(eq(posts.id, postId));
-        
+
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
-      
+
       // Also get author details
       const [author] = await db
         .select()
         .from(users)
         .where(eq(users.id, post.userId));
-        
+
       // Check if the image exists if there's a mediaUrl
       let imageExists = false;
       let imagePath = '';
       let imagePathFixed = '';
-      
+
       // Print full post object for debugging
       console.log('Post object:', JSON.stringify(post, null, 2));
-      
+
       if (post.mediaUrl) {
         // Try current working directory
         imagePath = `.${post.mediaUrl}`; // Remove leading slash
-        
+
         // Also try absolute path
         imagePathFixed = path.join(process.cwd(), post.mediaUrl.substring(1)); // Remove leading slash
-        
+
         try {
           imageExists = fs.existsSync(imagePath) || fs.existsSync(imagePathFixed);
           console.log(`Image check: original path ${imagePath} exists: ${fs.existsSync(imagePath)}`);
@@ -1240,40 +1240,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       } else {
         console.log("No mediaUrl found in the post:", post);
       }
-      
+
       // Check for thumbnail
       let thumbnailExists = false;
       let thumbnailPath = '';
       let thumbnailPathFixed = '';
       if (post.mediaUrl) {
         const filename = post.mediaUrl.split('/').pop() || '';
-        
+
         // Check both formats - with and without thumb- prefix
         const newFormatThumbnailPath = `./uploads/thumbnails/thumb-${filename}`;
         const oldFormatThumbnailPath = `./uploads/thumbnails/${filename}`;
-        
+
         // Also try absolute paths
         const newFormatPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', `thumb-${filename}`);
         const oldFormatPathFixed = path.join(process.cwd(), 'uploads', 'thumbnails', filename);
-        
+
         // Check if the filename matches the old format pattern
         const isOldFormatImage = /^\d+-\d+-image\.\w+$/.test(filename);
-        
+
         // For debugging purposes, set thumbnailPath to the actual path we're checking first
         thumbnailPath = isOldFormatImage ? oldFormatThumbnailPath : newFormatThumbnailPath;
         thumbnailPathFixed = isOldFormatImage ? oldFormatPathFixed : newFormatPathFixed;
-        
+
         try {
           // Check both paths regardless of the format
           const newFormatExists = fs.existsSync(newFormatThumbnailPath) || fs.existsSync(newFormatPathFixed);
           const oldFormatExists = fs.existsSync(oldFormatThumbnailPath) || fs.existsSync(oldFormatPathFixed);
-          
+
           thumbnailExists = newFormatExists || oldFormatExists;
-          
+
           // Log the results for debugging
           console.log(`Thumbnail check: original path ${thumbnailPath} exists: ${fs.existsSync(thumbnailPath)}`);
           console.log(`Thumbnail check: fixed path ${thumbnailPathFixed} exists: ${fs.existsSync(thumbnailPathFixed)}`);
-          
+
           if (isOldFormatImage) {
             console.log(`Old format image detected. Also checked new format: ${newFormatThumbnailPath} exists: ${fs.existsSync(newFormatThumbnailPath)}`);
           } else {
@@ -1284,7 +1284,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           logger.error(`Error checking if thumbnail exists at ${thumbnailPath}:`, err);
         }
       }
-      
+
       return res.json({
         post,
         author: author ? {
@@ -1352,7 +1352,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (postType && postType !== 'all') {
         conditions.push(eq(posts.type, postType));
       }
-      
+
       // Add exclude filter if specified
       if (excludeType) {
         conditions.push(not(eq(posts.type, excludeType)));
@@ -1410,12 +1410,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'Content-Type': 'application/json',
         'X-Content-Type-Options': 'nosniff'
       });
-      
+
       const postId = parseInt(req.params.id);
       if (isNaN(postId)) {
         return res.status(400).send(JSON.stringify({ message: "Invalid post ID" }));
       }
-      
+
       // Get the post with author info using a db query
       const result = await db
         .select({
@@ -1439,30 +1439,30 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .leftJoin(users, eq(posts.userId, users.id))
         .where(eq(posts.id, postId))
         .limit(1);
-      
+
       if (!result || result.length === 0) {
         return res.status(404).send(JSON.stringify({ message: "Post not found" }));
       }
-      
+
       const post = result[0];
-      
+
       // Log the response for debugging
       logger.info(`Sending post ${postId}`);
-      
+
       // Double-check we're still sending as JSON (just in case)
       res.set('Content-Type', 'application/json');
-      
+
       // Manually stringify the JSON to ensure it's not transformed in any way
       const jsonString = JSON.stringify(post);
-      
+
       // Send the manual JSON response
       return res.send(jsonString);
     } catch (error) {
       logger.error('Error getting post:', error);
-      
+
       // Make sure we're still sending JSON on error
       res.set('Content-Type', 'application/json');
-      
+
       // Return the error as a manually stringified JSON
       return res.status(500).send(JSON.stringify({ 
         message: "Failed to get post",
@@ -1470,7 +1470,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       }));
     }
   });
-  
+
   // Get reactions for a post
   router.get("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     try {
@@ -1481,12 +1481,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'Content-Type': 'application/json',
         'X-Content-Type-Options': 'nosniff'
       });
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
-      
+
       const reactions = await storage.getReactionsByPost(postId);
       return res.json(reactions);
     } catch (error) {
@@ -1499,7 +1499,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Add a reaction to a post
   router.post("/api/posts/:postId/reactions", authenticate, async (req, res) => {
     try {
@@ -1510,40 +1510,40 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'Content-Type': 'application/json',
         'X-Content-Type-Options': 'nosniff'
       });
-      
+
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
-      
+
       const { type } = req.body;
       if (!type) {
         return res.status(400).json({ message: "Reaction type is required" });
       }
-      
+
       // Check if reaction already exists
       const existingReactions = await storage.getReactionsByPost(postId);
       const existingReaction = existingReactions.find(
         r => r.userId === req.user!.id && r.type === type
       );
-      
+
       if (existingReaction) {
         // If reaction exists, remove it (toggle behavior)
         await storage.deleteReaction(req.user.id, postId, type);
         return res.json({ message: "Reaction removed" });
       }
-      
+
       // Create new reaction
       const reaction = await storage.createReaction({
         userId: req.user.id,
         postId,
         type
       });
-      
+
       return res.status(201).json(reaction);
     } catch (error) {
       logger.error('Error creating reaction:', error);
@@ -1555,7 +1555,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Delete a reaction
   router.delete("/api/posts/:postId/reactions/:type", authenticate, async (req, res) => {
     try {
@@ -1566,20 +1566,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'Content-Type': 'application/json',
         'X-Content-Type-Options': 'nosniff'
       });
-      
+
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const postId = parseInt(req.params.postId);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
-      
+
       const { type } = req.params;
-      
+
       await storage.deleteReaction(req.user.id, postId, type);
-      
+
       return res.json({ message: "Reaction deleted" });
     } catch (error) {
       logger.error('Error deleting reaction:', error);
@@ -1689,7 +1689,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
 
         logger.info(`Successfully extracted HTML from document: ${req.file.originalname}`);
-        
+
         // Return the processed content
         return res.json({ 
           message: "Document processed successfully",
@@ -1845,11 +1845,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/memory-verse-videos", authenticate, async (req, res) => {
     try {
       const userId = req.user?.id;
-      
+
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       // Fetch memory verse posts with videos
       const memoryVersePosts = await db
         .select({
@@ -1868,7 +1868,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
         )
         .orderBy(desc(posts.createdAt));
-      
+
       res.json(memoryVersePosts);
     } catch (error) {
       logger.error("Error fetching memory verse videos:", error);
@@ -1884,10 +1884,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       'Content-Type': 'application/json',
       'X-Content-Type-Options': 'nosniff'
     });
-    
+
     // Initialize isVideo variable to be used throughout the route handler
     let isVideo = false;
-    
+
     console.log("POST /api/posts - Request received", {
       hasFile: !!req.file,
       fileDetails: req.file ? {
@@ -1901,7 +1901,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       contentType: req.headers['content-type'],
       bodyKeys: Object.keys(req.body)
     });
-    
+
     // Check if this is a memory verse post based on the parsed data
     let isMemoryVersePost = false;
     if (req.body.data) {
@@ -1920,7 +1920,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         // Ignore parsing errors here, it will be handled later
       }
     }
-    
+
     // Extra logging for debugging
     if (req.file) {
       try {
@@ -1936,7 +1936,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         console.error("Error checking file:", statError);
       }
     }
-    
+
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
       let postData = req.body;
@@ -1991,29 +1991,29 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           logger.error("Missing parentId for comment");
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
-        
+
         // Comments should have 0 points
         const commentPoints = 0;
-        
+
         // Log the points assignment for comments
         console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
-        
+
         // Process media file if present for comments too
         let commentMediaUrl = null;
-        
+
         // Check if we have a file upload with the comment
         if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage } = await import('./sparta-object-storage');
-            
+
             // Verify the file exists before proceeding
             let filePath = req.file.path;
-            
+
             // Verify the file exists at the path reported by multer
             if (!fs.existsSync(filePath)) {
               logger.warn(`Comment file not found at the reported path: ${filePath}, will search for it`);
-              
+
               // Try to locate the file using alternative paths
               const fileName = path.basename(filePath);
               const possiblePaths = [
@@ -2023,7 +2023,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 path.join(path.dirname(filePath), path.basename(req.file.originalname)),
                 path.join('/tmp', fileName)
               ];
-              
+
               let foundPath = null;
               for (const altPath of possiblePaths) {
                 logger.info(`Checking alternative path: ${altPath}`);
@@ -2033,7 +2033,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                   break;
                 }
               }
-              
+
               if (foundPath) {
                 filePath = foundPath;
                 logger.info(`Using alternative file path: ${filePath}`);
@@ -2041,11 +2041,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 logger.error(`Could not find file at any alternative path for: ${filePath}`);
               }
             }
-            
+
             // Proceed if the file exists (either at original or alternative path)
             if (fs.existsSync(filePath)) {
               const originalFilename = req.file.originalname.toLowerCase();
-              
+
               // Check if this is a video upload based on multiple indicators
               const isVideoMimetype = req.file.mimetype.startsWith('video/');
               const isVideoExtension = originalFilename.endsWith('.mov') || 
@@ -2053,10 +2053,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                                      originalFilename.endsWith('.webm') ||
                                      originalFilename.endsWith('.avi') ||
                                      originalFilename.endsWith('.mkv');
-              
+
               // Final video determination
               const isVideo = isVideoMimetype || isVideoExtension;
-              
+
               // Store the file using SpartaObjectStorage
               console.log(`Processing comment media file:`, {
                 originalFilename: req.file.originalname,
@@ -2064,16 +2064,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 isVideo: isVideo,
                 fileSize: req.file.size
               });
-              
+
               logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
-              
+
               const fileInfo = await spartaStorage.storeFileFromBuffer(
                 req.file.buffer,
                 req.file.originalname,
                 req.file.mimetype,
                 isVideo
               );
-              
+
               commentMediaUrl = fileInfo.url;
               console.log(`Stored comment media file:`, { url: commentMediaUrl });
             }
@@ -2082,7 +2082,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             // Continue with comment creation even if media processing fails
           }
         }
-        
+
         const post = await storage.createComment({
           userId: req.user.id,
           content: postData.content.trim(),
@@ -2097,12 +2097,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Handle regular post creation
       let mediaUrl = null;
       let mediaProcessed = false;
-      
+
       // Check if we're using an existing memory verse video
       if (postData.type === 'memory_verse' && req.body.existing_video_id) {
         try {
           const existingVideoId = parseInt(req.body.existing_video_id);
-          
+
           // Get the existing post to find its media URL
           const [existingPost] = await db
             .select({
@@ -2116,7 +2116,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 eq(posts.type, 'memory_verse')
               )
             );
-          
+
           if (existingPost && existingPost.mediaUrl) {
             mediaUrl = existingPost.mediaUrl;
             logger.info(`Re-using existing memory verse video from post ${existingVideoId}`, { mediaUrl });
@@ -2138,14 +2138,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         try {
           // Use SpartaObjectStorage for file handling
           const { spartaStorage } = await import('./sparta-object-storage');
-          
+
           // Verify the file exists before proceeding
           let filePath = req.file.path;
-          
+
           // Verify the file exists at the path reported by multer
           if (!fs.existsSync(filePath)) {
             logger.warn(`File not found at the reported path: ${filePath}, will search for it`);
-            
+
             // Try to locate the file using alternative paths
             const fileName = path.basename(filePath);
             const possiblePaths = [
@@ -2155,7 +2155,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               path.join(path.dirname(filePath), path.basename(req.file.originalname)),
               path.join('/tmp', fileName)
             ];
-            
+
             let foundPath = null;
             for (const altPath of possiblePaths) {
               logger.info(`Checking alternative path: ${altPath}`);
@@ -2165,7 +2165,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 break;
               }
             }
-            
+
             if (foundPath) {
               filePath = foundPath;
               logger.info(`Using alternative file path: ${filePath}`);
@@ -2173,24 +2173,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               logger.error(`Could not find file at any alternative path for: ${filePath}`);
             }
           }
-          
+
           // Proceed if the file exists (either at original or alternative path)
           if (fs.existsSync(filePath)) {
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = req.file.originalname.toLowerCase();
-            
+
             // Simplified detection for memory verse posts - rely only on the post type
             const isMemoryVersePost = postData.type === 'memory_verse';
-            
+
             // Handle specialized types
             const isMiscellaneousPost = postData.type === 'miscellaneous';
-            
+
             console.log("Post type detection:", {
               isMemoryVersePost,
               isMiscellaneousPost,
               originalName: req.file.originalname
             });
-            
+
             // Check if this is a video upload based on multiple indicators
             const isVideoMimetype = req.file.mimetype.startsWith('video/');
             const isVideoExtension = originalFilename.endsWith('.mov') || 
@@ -2199,18 +2199,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                                    originalFilename.endsWith('.avi') ||
                                    originalFilename.endsWith('.mkv');
             const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
-            
+
             // For miscellaneous posts, check if explicitly marked as video from client
             const isMiscellaneousVideo = isMiscellaneousPost && 
                                        (req.body.is_video === "true" || 
                                         req.body.selected_media_type === "video" ||
                                         (req.file && (isVideoMimetype || isVideoExtension)));
-                                        
+
             // Combined video detection - for miscellaneous posts, only trust the explicit markers
             const isVideo = isMemoryVersePost || 
                           (isMiscellaneousPost ? isMiscellaneousVideo : 
                            (isVideoMimetype || hasVideoContentType || isVideoExtension));
-                          
+
             console.log("Video detection:", {
               isVideo,
               isMiscellaneousVideo,
@@ -2224,12 +2224,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               selectedMediaType: req.body.selected_media_type,
               isVideoFlag: req.body.is_video
             });
-            
+
             // We no longer need to create a separate file with prefix here.
             // SpartaObjectStorage will handle proper file placement based on post type.
             // This removes the creation of a redundant third file.
             console.log("Skipping redundant file creation - SpartaObjectStorage will handle file organization");
-            
+
             console.log(`Processing media file:`, {
               originalFilename: req.file.originalname,
               mimetype: req.file.mimetype,
@@ -2239,24 +2239,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               path: req.file.path,
               postType: postData.type || 'unknown'
             });
-            
+
             logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
-            
+
             // Store the file using SpartaObjectStorage (used for both images and videos)
             // For memory verse posts, if mimetype doesn't specify video, force it to video/mp4
             let effectiveMimeType = req.file.mimetype;
-            
+
             // If it's a memory verse post but mimetype doesn't indicate a video, override it
             if (isMemoryVersePost && !effectiveMimeType.startsWith('video/')) {
               effectiveMimeType = 'video/mp4'; // Default to mp4 for compatibility
             }
-            
+
             // Also handle miscellaneous post videos that might have wrong mime type
             if (isMiscellaneousPost && isVideo && !effectiveMimeType.startsWith('video/')) {
               console.log("Correcting miscellaneous video mime type from", effectiveMimeType, "to video/mp4");
               effectiveMimeType = 'video/mp4';
             }
-            
+
             console.log("Using effective mime type for storage:", {
               original: req.file.mimetype,
               effective: effectiveMimeType,
@@ -2267,24 +2267,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               fileSize: req.file.size,
               formDataKeys: Object.keys(req.body || {})
             });
-              
+
             const fileInfo = await spartaStorage.storeFileFromBuffer(
               req.file.buffer,
               req.file.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
               isVideo // Pass flag for video handling
             );
-            
+
             mediaUrl = fileInfo.url;
             mediaProcessed = true;
-            
+
             // Verify the stored file exists in the uploads directory
             const storedFilePath = path.join(process.cwd(), fileInfo.url);
             let fileExists = fs.existsSync(storedFilePath);
-            
+
             if (!fileExists) {
               logger.error(`Stored file not found at expected path: ${storedFilePath}. Original stored at ${fileInfo.path}`);
-              
+
               // Try to find the file in different paths
               const alternativePaths = [
                 fileInfo.path,
@@ -2293,9 +2293,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 path.join(process.cwd(), '..' + fileInfo.url),
                 path.join(process.cwd(), '..', 'uploads', path.basename(fileInfo.url))
               ];
-              
+
               let sourceFile = null;
-              
+
               // Check each alternative path
               for (const altPath of alternativePaths) {
                 if (fs.existsSync(altPath)) {
@@ -2304,14 +2304,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                   break;
                 }
               }
-              
+
               // Copy file to correct location if found
               if (sourceFile) {
                 const newDir = path.dirname(storedFilePath);
                 if (!fs.existsSync(newDir)) {
                   fs.mkdirSync(newDir, { recursive: true });
                 }
-                
+
                 try {
                   fs.copyFileSync(sourceFile, storedFilePath);
                   logger.info(`Copied file from ${sourceFile} to correct location ${storedFilePath}`);
@@ -2323,7 +2323,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 logger.error(`Could not find file in any alternative locations`);
               }
             }
-            
+
             if (isVideo) {
               logger.info(`Video file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
               logger.info(`Video URL: ${mediaUrl}, should be available at: ${storedFilePath}`);
@@ -2331,7 +2331,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
               logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
             }
-            
+
             // We can remove the original uploaded file as SpartaObjectStorage has copied it
             try {
               fs.unlinkSync(filePath);
@@ -2347,11 +2347,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          
+
           // Detailed error handling based on post type
           if (postData.type === 'memory_verse') {
             logger.error(`Memory verse video upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
-            
+
             // For memory verse, video is required, so return an error response
             return res.status(400).json({ 
               message: "Failed to process memory verse video. Please try again with a different video file.",
@@ -2359,7 +2359,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             });
           } else if (postData.type === 'food' || postData.type === 'workout') {
             logger.error(`${postData.type} image upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
-            
+
             // For food and workout posts, images are required
             return res.status(400).json({ 
               message: `Failed to process ${postData.type} image. Please try again with a different image.`,
@@ -2412,7 +2412,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       res.status(201).json(post);
     } catch (error) {
       logger.error("Error in post creation:", error);
-      
+
       // Ensure content type is still set on error
       res.set({
         'Cache-Control': 'no-store',
@@ -2420,7 +2420,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         'Content-Type': 'application/json',
         'X-Content-Type-Options': 'nosniff'
       });
-      
+
       res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to create post",
         error: error instanceof Error ? error.stack : "Unknown error"
@@ -2428,7 +2428,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Add this endpoint before the return httpServer statement with improved error handling
+  // Add this endpoint before the return statement with improved error handling
   router.patch("/api/posts/:id", authenticate, async (req, res) => {
     try {
       // Set content type early to prevent browser confusion
@@ -2441,7 +2441,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get the post ID as a number
       const postIdStr = req.params.id;
       const postId = parseInt(postIdStr);
-      
+
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID format" });
       }
@@ -2464,7 +2464,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       // Get the content from the request body
       const { content } = req.body;
-      
+
       if (!content || content.trim() === '') {
         return res.status(400).json({ message: "Content cannot be empty" });
       }
@@ -2509,7 +2509,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (/^\d+$/.test(postIdStr) && postIdStr.length < 10) {
         // Probably a regular numeric ID
         postId = parseInt(postIdStr);
-        
+
         // Get the post to check ownership
         [post] = await db
           .select()
@@ -2521,13 +2521,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!post && /^\d+$/.test(postIdStr) && postIdStr.length > 10) {
         // Timestamp-based ID, likely a newer style post
         console.log(`Handling timestamp-based ID: ${postIdStr}`);
-        
+
         // First try exact match in case it's stored directly
         [post] = await db
           .select()
           .from(posts)
           .where(sql`CAST(id AS TEXT) = ${postIdStr}`);
-        
+
         if (post) {
           postId = post.id;
           console.log(`Found post with exact timestamp ID: ${postId}`);
@@ -2535,7 +2535,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Try to find by created timestamp proximity
           const approxTimestamp = parseInt(postIdStr);
           console.log(`Trying to find post with approximate timestamp: ${approxTimestamp}`);
-          
+
           // SQL query to find a post created around the same time as the timestamp
           // Look for posts within 10 seconds of the timestamp
           // Note: Database column is "created_at" not "createdAt"
@@ -2549,7 +2549,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               )
             )
             .orderBy(sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${approxTimestamp})`);
-          
+
           if (postsAroundTime.length > 0) {
             // Use the closest post
             post = postsAroundTime[0];
@@ -2564,13 +2564,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         const timestampValue = parseInt(postIdStr);
         const approxTimestamp = new Date(timestampValue);
         const timestampThreshold = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        
+
         // Log the timestamp-based search approach
         console.log(`Attempting advanced search for post with timestamp ID: ${postIdStr}`);
         console.log(`Parsed timestamp: ${approxTimestamp.toISOString()}`);
         logger.info(`Attempting advanced search for post with timestamp ID: ${postIdStr}`);
         logger.info(`Parsed timestamp: ${approxTimestamp.toISOString()}`);
-        
+
         // First, try to find any post by this user with a created_at timestamp close to the ID value
         // This covers any post type (including miscellaneous posts)
         const recentPosts = await db
@@ -2585,7 +2585,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
           .orderBy(sql`ABS(EXTRACT(EPOCH FROM "created_at") * 1000 - ${timestampValue})`)
           .limit(5);
-        
+
         if (recentPosts.length > 0) {
           // Use the post with the closest timestamp to the ID
           post = recentPosts[0];
@@ -2593,11 +2593,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           console.log(`Found post by timestamp proximity: ${postId}, type: ${post.type}, created: ${post.createdAt}`);
           logger.info(`Found post by timestamp proximity: ${postId}, type: ${post.type}, created: ${post.createdAt}`);
         }
-        
+
         // If still not found, try specific handling for memory verse posts
         if (!post) {
           console.log(`No posts found by timestamp proximity, trying memory verse specific search`);
-          
+
           // Try to find memory verse posts by this user in the past 24 hours
           // and order by creation time to get the most recent one
           const recentMemoryVersePosts = await db
@@ -2613,7 +2613,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             )
             .orderBy(desc(posts.createdAt))
             .limit(5);
-          
+
           if (recentMemoryVersePosts.length > 0) {
             // Use the most recent memory verse post
             post = recentMemoryVersePosts[0];
@@ -2623,7 +2623,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         }
       }
-      
+
       // If still not found after all attempts, handle that
       if (!post) {
         console.log(`Post with ID ${postIdStr} not found during deletion attempt`);
@@ -2652,7 +2652,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           // Continue with post deletion even if file deletion fails
         }
       }
-      
+
       // Use a transaction to ensure all deletes succeed or none do
       await db.transaction(async (tx) => {
         try {
@@ -2740,23 +2740,23 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   const checkDailyScores = async (req: Request, res: Response) => {
     try {
       logger.info('Starting daily score check with request body:', req.body);
-      
+
       // Get current hour and minute from request body or use current time
       const currentHour = req.body?.currentHour !== undefined 
         ? parseInt(req.body.currentHour) 
         : new Date().getHours();
-      
+
       const currentMinute = req.body?.currentMinute !== undefined 
         ? parseInt(req.body.currentMinute) 
         : new Date().getMinutes();
-      
+
       // Get timezone offset from request if provided (in minutes)
       const tzOffset = req.body?.tzOffset !== undefined 
         ? parseInt(req.body.tzOffset) 
         : 0; // Default to UTC if not provided
-      
+
       logger.info(`Check daily scores at time: ${currentHour}:${currentMinute} with timezone offset: ${tzOffset}`);
-      
+
       // Get all users using a more explicit query to avoid type issues
       const allUsers = await db
         .select({
@@ -2770,7 +2770,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         .from(users);
 
       logger.info(`Found ${Array.isArray(allUsers) ? allUsers.length : 0} users to check`);
-      
+
       // Get yesterday's date with proper timezone handling
       const now = new Date();
       const yesterday = new Date(now);
@@ -2904,7 +2904,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             // Check if a reminder notification has already been sent today
             const startOfToday = new Date();
             startOfToday.setHours(0, 0, 0, 0);
-            
+
             const existingNotifications = await db
               .select()
               .from(notifications)
@@ -2921,26 +2921,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             const notificationTimeParts = user.notificationTime ? user.notificationTime.split(':') : ['9', '00'];
             const preferredHour = parseInt(notificationTimeParts[0]);
             const preferredMinute = parseInt(notificationTimeParts[1] || '0');
-            
+
             // Convert the server's current time to the user's local timezone
             // For rmiller@gmail.com (CDT), this would convert 4:00 AM UTC to 9:00 AM CDT
             // assuming a timezone offset of -300 minutes (-5 hours)
             // This allows us to match the user's preferred notification time
-            
+
             // This is a simplified implementation - in a perfect solution, we would store
             // the user's timezone preference and convert properly with full timezone support
             // For now, we'll use the correct offset for Central Daylight Time users
-            
+
             // Default offset for Central Time: 5 hours = 300 minutes
             // Note: Timezone offset for CDT is -5 hours from UTC, but the offset needs to be positive
             // to add hours to the UTC time
             const defaultTzOffsetMinutes = 300; // CDT is UTC-5, so we add 5 hours (300 mins) to get proper time 
-            
+
             // Adjust currentHour based on timezone offset
             let adjustedHour = currentHour + Math.floor(defaultTzOffsetMinutes / 60);
             // Handle day overflow
             adjustedHour = adjustedHour % 24;
-            
+
             // Check if we're within a 10-minute window of the user's preferred time
             const isPreferredTimeWindow = 
               (adjustedHour === preferredHour && 
@@ -2949,7 +2949,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               (adjustedHour === preferredHour + 1 && 
                 preferredMinute >= 50 && 
                 currentMinute < (preferredMinute + 10) % 60);
-                
+
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
               email: user.email,
@@ -2959,7 +2959,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               isPreferredTimeWindow,
               existingNotificationsToday: existingNotifications.length
             });
-            
+
             // Only send if within time window and no notifications sent today
             if (existingNotifications.length === 0 && isPreferredTimeWindow) {
               const notification = {
@@ -2982,7 +2982,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 userId: user.id,
                 message: notification.message
               });
-              
+
               // Send via WebSocket if user is connected
               const userClients = clients.get(user.id);
               if (userClients && userClients.size > 0) {
@@ -3021,7 +3021,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   };
 
-  // Add activity progress endpoint before the return httpServer statement
+  // Add activity progress endpoint before the return statement
   router.get("/api/activities/current", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -3227,637 +3227,6 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             eq(posts.userId, userId),
             gte(sql`posts.created_at`, startOfDay),
             lt(sql`posts.created_at`, endOfDay),
-            isNull(posts.parentId)
-          )
-        );
-
-      const totalPoints = result[0]?.points || 0;
-
-      // Log the response details
-      logger.info(`Daily points for user ${userId}: ${totalPoints}`, {
-        date: date.toISOString(),
-        startOfDay: startOfDay.toISOString(),
-        endOfDay: endOfDay.toISOString(),
-        postCount: postDetails.length,
-        posts: JSON.stringify(postDetails)
-      });
-
-      // Ensure content type is set
-      res.setHeader('Content-Type', 'application/json');
-      res.json({ points: totalPoints });
-    } catch (error) {
-      logger.error('Error calculating daily points:', error);
-      res.status(500).json({
-        message: "Failed to calculate daily points",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add notifications count endpoint
-  router.get("/api/notifications/unread", authenticate, async (req, res) => {    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const unreadCount = await db
-        .select({ count: sql<number>`count(*)::integer` })
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            eq(notifications.read, false)
-          )
-        );
-
-      res.json({ unreadCount: unreadCount[0].count });
-    } catch (error) {
-      logger.error('Error fetching unread notifications:', error);
-      res.status(500).json({
-        message: "Failed to fetch notification count",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Mark notifications as read
-  router.post("/api/notifications/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { notificationIds } = req.body;
-
-      if (!Array.isArray(notificationIds)) {
-        return res.status(400).json({ message: "Invalid notification IDs" });
-      }
-
-      await db
-        .update(notifications)
-        .set({ read: true })
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            sql`${notifications.id} = ANY(${notificationIds})`
-          )
-        );
-
-      res.json({ message: "Notifications marked as read" });
-    } catch (error) {
-      logger.error('Error marking notifications as read:', error);
-      res.status(500).json({
-        message: "Failed to mark notifications as read",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get user notifications
-  router.get("/api/notifications", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const userNotifications = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.userId, req.user.id))
-        .orderBy(desc(notifications.createdAt));
-
-      res.json(userNotifications);
-    } catch (error) {
-      logger.error('Error fetching notifications:', error);
-      res.status(500).json({
-        message: "Failed to fetch notifications",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  router.patch("/api/users/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID format" });
-      }
-
-      // Validate teamId if present
-      if (req.body.teamId !== undefined && req.body.teamId !== null) {
-        if (typeof req.body.teamId !== 'number') {
-          return res.status(400).json({ message: "Team ID must be a number" });
-        }
-        // Verify team exists
-        const [team] = await db
-          .select()
-          .from(teams)
-          .where(eq(teams.id, req.body.teamId))
-          .limit(1);
-
-        if (!team) {
-          return res.status(400).json({ message: "Team not found" });
-        }
-      }
-
-      // Prepare update data
-      const updateData = {
-        ...req.body,
-        teamJoinedAt: req.body.teamId ? new Date() : null
-      };
-
-      // Update user
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Return sanitized user data
-      res.setHeader('Content-Type', 'application/json');
-      res.json({
-        id: updatedUser.id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        teamId: updatedUser.teamId,
-        isAdmin: updatedUser.isAdmin,
-        isTeamLead: updatedUser.isTeamLead,
-        imageUrl: updatedUser.imageUrl,
-        teamJoinedAt: updatedUser.teamJoinedAt
-      });
-    } catch (error) {
-      logger.error('Error updating user:', error);
-      res.status(500).json({
-        message: "Failed to update user",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const notificationId = parseInt(req.params.notificationId);
-      if (isNaN(notificationId)) {
-        return res.status(400).json({ message: "Invalid notification ID" });
-      }
-
-      // Set content type before sending response
-      res.setHeader('Content-Type', 'application/json');
-
-      const [updatedNotification] = await db
-        .update(notifications)
-        .set({ read: true })
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            eq(notifications.id, notificationId)
-          )
-        )
-        .returning();
-
-      if (!updatedNotification) {
-        return res.status(404).json({ message: "Notification not found" });
-      }
-
-      res.json({ message: "Notification marked as read", notification: updatedNotification });
-    } catch (error) {
-      logger.error('Error marking notification as read:', error);
-      res.status(500).json({
-        message: "Failed to mark notification as read",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add messages endpoints before return statement
-  router.post("/api/messages", authenticate, upload.single('image'), async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { content, recipientId } = req.body;
-
-      // Validate recipient exists
-      const [recipient] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, parseInt(recipientId)))
-        .limit(1);
-
-      if (!recipient) {
-        return res.status(404).json({ message: "Recipient not found" });
-      }
-
-      // Create message
-      const [message] = await db
-        .insert(messages)
-        .values({
-          senderId: req.user.id,
-          recipientId: parseInt(recipientId),
-          content: content || null,
-          imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
-          isRead: false,
-        })
-        .returning();
-
-      // Create notification for recipient
-      await db.insert(notifications).values({
-        userId: parseInt(recipientId),
-        title: "New Message",
-        message: `You have a new message from ${req.user.username}`,
-        read: false,
-      });
-
-      res.status(201).json(message);
-    } catch (error) {
-      logger.error('Error creating message:', error);
-      res.status(500).json({
-        message: "Failed to create message",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get messages between users
-  router.get("/api/messages/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const otherUserId = parseInt(req.params.userId);
-      if (isNaN(otherUserId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      const userMessages = await db
-        .select({
-          id: messages.id,
-          content: messages.content,
-          imageUrl: messages.imageUrl,
-          createdAt: messages.createdAt,
-          isRead: messages.isRead,
-          sender: {
-            id: users.id,
-            username: users.username,
-            imageUrl: users.imageUrl,
-          },
-        })
-        .from(messages)
-        .innerJoin(users, eq(messages.senderId, users.id))
-        .where(
-          or(
-            and(
-              eq(messages.senderId, req.user.id),
-              eq(messages.recipientId, otherUserId)
-            ),
-            and(
-              eq(messages.senderId, otherUserId),
-              eq(messages.recipientId, req.user.id)
-            )
-          )
-        )
-        .orderBy(messages.createdAt);
-
-      res.json(userMessages);
-    } catch (error) {
-      logger.error('Error fetching messages:', error);
-      res.status(500).json({
-        message: "Failed to fetch messages",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Get unread messages count
-  router.get("/api/messages/unread/count", authenticate, async (req, res) => {try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const [result] = await db
-        .select({
-          count: sql<number>`count(*)::integer`,
-        })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.recipientId, req.user.id),
-            eq(messages.isRead, false)
-          )
-        );
-
-      res.json({ unreadCount: result.count });
-    } catch (error) {
-      logger.error('Error getting unread message count:', error);
-      res.status(500).json({
-        message: "Failed to get unread message count",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Mark messages as read
-  router.post("/api/messages/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { senderId } = req.body;
-      if (!senderId) {
-        return res.status(400).json({ message: "Sender ID is required" });
-      }
-
-      await db
-        .update(messages)
-        .set({ isRead: true })
-        .where(
-          and(
-            eq(messages.recipientId, req.user.id),
-            eq(messages.senderId, parseInt(senderId)),
-            eq(messages.isRead, false)
-          )
-        );
-
-      res.json({ message: "Messages marked as read" });
-    } catch (error) {
-      logger.error('Error marking messages as read:', error);
-      res.status(500).json({
-        message: "Failed to mark messages as read",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add messages endpoints before return statement
-  router.get("/api/messages/unread/by-sender", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      // Get all senders who have sent unread messages to the current user
-      const unreadBySender = await db
-        .select({
-          senderId: messages.senderId,
-          hasUnread: sql<boolean>`true`
-        })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.recipientId, req.user.id),
-            eq(messages.isRead, false)
-          )
-        )
-        .groupBy(messages.senderId);
-
-      // Convert to a map of senderId -> hasUnread
-      const unreadMap = Object.fromEntries(
-        unreadBySender.map(({ senderId }) => [senderId, true])
-      );
-
-      res.json(unreadMap);
-    } catch (error) {
-      logger.error('Error getting unread messages by sender:', error);
-      res.status(500).json({
-        message: "Failed to get unread messages by sender",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add this endpoint before the app.use(router) line
-  // This endpoint has been moved to line ~3116 to support achievement_notifications_enabled
-
-  router.post("/api/notifications/read-all", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const result = await db
-        .update(notifications)
-        .set({ read: true })
-        .where(eq(notifications.userId, req.user.id))
-        .returning();
-
-      logger.info(`Marked ${result.length} notifications as read for user ${req.user.id}`);
-
-      // Set content type and ensure proper JSON response
-      res.setHeader('Content-Type', 'application/json');
-      res.json({ 
-        message: "All notifications marked as read",
-        count: result.length
-      });
-    } catch (error) {
-      logger.error('Error marking all notifications as read:', error instanceof Error ? error : new Error(String(error)));
-      res.status(500).json({
-        message: "Failed to mark notifications as read",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add activity progress endpoint before the return httpServer statement
-  router.get("/api/activities/current", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      // Get timezone offset from query params (in minutes)
-      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-
-      // Helper function to convert UTC date to user's local time
-      const toUserLocalTime = (utcDate: Date): Date => {
-        const localDate = new Date(utcDate.getTime());
-        localDate.setMinutes(localDate.getMinutes() - tzOffset);
-        return localDate;
-      };
-
-      // Get user's team join date
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      if (!user?.teamJoinedAt) {
-        return res.status(400).json({ message: "User has no team join date" });
-      }
-
-      // Program start date (2/24/2025)
-      const programStart = calculateProgramStartDate(new Date(user.teamJoinedAt));
-
-      // Get current time in user's timezone
-      const utcNow = new Date();
-      const userLocalNow = toUserLocalTime(utcNow);
-
-      // Get start of day in user's timezone
-      const userStartOfDay = new Date(userLocalNow);
-      userStartOfDay.setHours(0, 0, 0, 0);
-
-      // Calculate days since program start in user's timezone
-      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
-      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
-
-      // Calculate current week and day in user's timezone
-      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
-      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
-
-      // Calculate user's progress based on their local time
-      const progressStart = toUserLocalTime(new Date(user.teamJoinedAt));
-      const progressDays = Math.floor((userLocalNow.getTime() - progressStart.getTime()) / (1000 * 60 * 60 * 24));
-
-      // Debug info
-      console.log('Date Calculations:', {
-        timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
-        utcNow: utcNow.toISOString(),
-        userLocalNow: userLocalNow.toLocaleString(),
-        daysSinceStart,
-        weekNumber,
-        dayNumber,
-        progressDays
-      });
-
-      res.json({
-        currentWeek: weekNumber,
-        currentDay: dayNumber,
-        daysSinceStart,
-        progressDays,
-        debug: {
-          timezone: `UTC${tzOffset >= 0 ? '+' : ''}${-tzOffset/60}`,
-          localTime: userLocalNow.toLocaleString()
-        }
-      });
-
-    } catch (error) {
-      logger.error('Error calculating activity dates:', error);
-      res.status(500).json({
-        message: "Failed to calculate activity dates",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Measurements endpoints
-  router.post("/api/measurements", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      logger.info('Creating measurement with data:', req.body);
-
-      const parsedData = insertMeasurementSchema.safeParse({
-        ...req.body,
-        userId: req.user.id,
-        date: new Date()
-      });
-
-      if (!parsedData.success) {
-        logger.error('Validation errors:', parsedData.error.errors);
-        return res.status(400).json({
-          message: "Invalid measurement data",
-          errors: parsedData.error.errors
-        });
-      }
-
-      const measurement = await db
-        .insert(measurements)
-        .values(parsedData.data)
-        .returning();
-
-      res.status(201).json(measurement[0]);
-    } catch (error) {
-      logger.error('Error creating measurement:', error);
-      res.status(500).json({
-        message: "Failed to create measurement",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  router.get("/api/measurements", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
-
-      if (req.user.id !== userId && !req.user.isAdmin) {
-        return res.status(403).json({ message: "Not authorized to view these measurements" });
-      }
-
-      const userMeasurements = await db
-        .select()
-        .from(measurements)
-        .where(eq(measurements.userId, userId))
-        .orderBy(desc(measurements.date));
-
-      res.json(userMeasurements);
-    } catch (error) {
-      logger.error('Error fetching measurements:', error);
-      res.status(500).json({
-        message: "Failed to fetch measurements",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Add daily points endpoint with corrected calculation and improved logging
-  router.get("/api/points/daily", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      // Parse the date more carefully to handle timezone issues
-      let dateStr = (req.query.date as string) || new Date().toISOString();
-
-      // If the date doesn't include time, add a default time
-      if (dateStr.indexOf('T') === -1) {
-        dateStr = `${dateStr}T00:00:00.000Z`;
-      }
-
-      const date = new Date(dateStr);
-      const userId = parseInt(req.query.userId as string);
-
-      if (isNaN(userId)) {
-        logger.error(`Invalid userId: ${req.query.userId}`);
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      // Normalize to beginning of day in UTC to ensure consistent date handling
-      const startOfDay = new Date(date);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-
-      // Log request parameters for debugging
-      logger.info(`Calculating points for user ${userId} on date ${date.toISOString()}`, {
-        requestedDate: dateStr,
-        normalizedStartDate: startOfDay.toISOString(),
-        normalizedEndDate: endOfDay.toISOString()
-      });
-
-      // Calculate total points for the day with detailed logging
-      const result = await db
-        .select({
-          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
-            isNull(posts.parentId) // Don't count comments in the total
-          )
-        );
-
-      // Get post details for debugging
-      const postDetails = await db
-        .select({
-          id: posts.id,
-          type: posts.type,
-          points: posts.points,
-          createdAt: posts.createdAt
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
             isNull(posts.parentId)
           )
         );
@@ -4259,17 +3628,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   router.get("/api/users/me", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
       // Query for user data including notification preferences
       const [userData] = await db
         .select()
         .from(users)
         .where(eq(users.id, req.user.id));
-      
+
       if (!userData) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       // Send back the user data
       res.json(userData);
     } catch (error) {
@@ -4340,12 +3709,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     logger.info('WebSocket client connected');
     let userId: number | null = null;
     let pingTimeout: NodeJS.Timeout | null = null;
-    
+
     // Set custom properties to track socket health
     (ws as any).isAlive = true;
     (ws as any).lastPingTime = Date.now();
     (ws as any).userId = null;
-    
+
     // Send an immediate connection confirmation
     if (ws.readyState === WebSocket.OPEN) {
       try {
@@ -4364,19 +3733,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     const heartbeat = () => {
       (ws as any).isAlive = true;
       (ws as any).lastPingTime = Date.now();
-      
+
       // Clear existing timeout
       if (pingTimeout) {
         clearTimeout(pingTimeout);
       }
-      
+
       // Set a timeout to terminate the connection if no pong is received
       pingTimeout = setTimeout(() => {
         logger.warn(`WebSocket connection timed out after no response for 30s, userId: ${userId || 'unauthenticated'}`);
         ws.terminate();
       }, 30000); // 30 seconds timeout
     };
-    
+
     // Start the heartbeat immediately on connection
     heartbeat();
 
@@ -4384,15 +3753,15 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       try {
         // Reset the heartbeat on any message
         heartbeat();
-        
+
         const data = JSON.parse(message.toString());
-        
+
         // Handle pong message (response to our ping)
         if (data.type === 'pong') {
           // Client responded to our ping, update alive status
           (ws as any).isAlive = true;
           (ws as any).lastPongTime = Date.now();
-          
+
           // Calculate round-trip time if we have both ping and pong timestamps
           if (data.pingTimestamp) {
             const roundTripTime = Date.now() - data.pingTimestamp;
@@ -4411,7 +3780,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             ws.send(JSON.stringify({ type: 'error', message: 'Invalid user ID' }));
             return;
           }
-          
+
           // Store userId on the socket for easier debugging
           (ws as any).userId = userId;
 
@@ -4419,19 +3788,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           if (!clients.has(userId)) {
             clients.set(userId, new Set());
           }
-          
+
           // Add to the clients map, but first check if there are too many connections
           const userClients = clients.get(userId);
           if (userClients && userClients.size >= 10) {
             // If there are too many connections for this user, close the oldest ones
             logger.warn(`User ${userId} has too many WebSocket connections (${userClients.size}), closing oldest`);
-            
+
             // Sort connections by last activity time and close the oldest ones
             const oldConnections = Array.from(userClients)
               .filter(client => (client as any).lastPingTime)
               .sort((a, b) => (a as any).lastPingTime - (b as any).lastPingTime)
               .slice(0, userClients.size - 8); // Keep the 8 newest connections
-              
+
             // Close the old connections
             for (const oldClient of oldConnections) {
               try {
@@ -4442,13 +3811,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               }
             }
           }
-          
+
           userClients?.add(ws);
 
           logger.info(`WebSocket user ${userId} authenticated with ${userClients?.size || 0} total connections`);
           ws.send(JSON.stringify({ type: 'auth_success', userId }));
         }
-        
+
         // Handle ping from client (different from our server-initiated ping)
         if (data.type === 'ping') {
           // Client is checking if we're still alive, respond with pong
@@ -4460,7 +3829,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       } catch (error) {
         logger.error('WebSocket message error:', error instanceof Error ? error : new Error(String(error)));
-        
+
         try {
           ws.send(JSON.stringify({ 
             type: 'error', 
@@ -4481,13 +3850,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         clearTimeout(pingTimeout);
         pingTimeout = null;
       }
-      
+
       if (userId) {
         const userClients = clients.get(userId);
         if (userClients) {
           userClients.delete(ws);
           logger.info(`WebSocket client disconnected for user ${userId}, remaining connections: ${userClients.size}`);
-          
+
           if (userClients.size === 0) {
             clients.delete(userId);
             logger.info(`No more connections for user ${userId}, removed from clients map`);
@@ -4497,24 +3866,24 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info('Unauthenticated WebSocket client disconnected');
       }
     });
-    
+
     // Handle connection errors
     ws.on('error', (err) => {
       logger.error(`WebSocket error for user ${userId || 'unauthenticated'}:`, err instanceof Error ? err : new Error(String(err)));
-      
+
       // Clear the ping timeout
       if (pingTimeout) {
         clearTimeout(pingTimeout);
         pingTimeout = null;
       }
-      
+
       // On error, terminate the connection
       try {
         ws.terminate();
       } catch (termErr) {
         logger.error('Error terminating WebSocket connection:', termErr instanceof Error ? termErr : new Error(String(termErr)));
       }
-      
+
       // Make sure to clean up client map
       if (userId) {
         const userClients = clients.get(userId);
@@ -4551,18 +3920,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
   // Expose the broadcast function to the global scope
   (app as any).broadcastNotification = broadcastNotification;
-  
+
   // Start WebSocket heartbeat monitoring
   // This helps detect and clean up stale connections
   const startHeartbeatMonitoring = () => {
     logger.info('Starting WebSocket heartbeat monitoring');
-    
+
     const HEARTBEAT_INTERVAL = 30000; // Check every 30 seconds
-    
+
     setInterval(() => {
       let activeConnections = 0;
       let closedConnections = 0;
-      
+
       // For each user in our clients map
       clients.forEach((userClients, userId) => {
         // For each connection for this user
@@ -4576,12 +3945,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               } catch (err) {
                 logger.error(`Error terminating stale connection: ${err}`, Error(String(err)));
               }
-              
+
               userClients.delete(ws);
               closedConnections++;
               return;
             }
-            
+
             // Check if the connection is stale by checking isAlive flag
             if (!(ws as any).isAlive) {
               logger.warn(`Terminating stale connection for user ${userId}`);
@@ -4590,26 +3959,26 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               } catch (err) {
                 logger.error(`Error terminating stale connection: ${err}`, Error(String(err)));
               }
-              
+
               userClients.delete(ws);
               closedConnections++;
               return;
             }
-            
+
             // Mark as not alive - will be marked alive when pong is received
             (ws as any).isAlive = false;
-            
+
             // Send ping
             try {
               ws.send(JSON.stringify({ 
                 type: 'ping',
                 timestamp: Date.now()
               }));
-              
+
               activeConnections++;
             } catch (err) {
               logger.error(`Error sending ping: ${err}`, Error(String(err)));
-              
+
               // Error sending ping, connection is probably dead
               try {
                 // Make sure socket's ping timeout is properly cleared through a custom attribute
@@ -4617,19 +3986,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                   clearTimeout((ws as any).pingTimeout);
                   (ws as any).pingTimeout = null;
                 }
-                
+
                 ws.terminate();
               } catch (termErr) {
                 // Ignore errors during terminate
                 logger.debug(`Error during terminate after ping failure: ${termErr}`);
               }
-              
+
               userClients.delete(ws);
               closedConnections++;
             }
           } catch (err) {
             logger.error(`Error in heartbeat: ${err}`, Error(String(err)));
-            
+
             // Error in heartbeat logic, close and remove the connection
             try {
               userClients.delete(ws);
@@ -4639,17 +4008,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             }
           }
         });
-        
+
         // Clean up user entry if no connections remain
         if (userClients.size === 0) {
           clients.delete(userId);
         }
       });
-      
+
       logger.info(`WebSocket heartbeat complete - active: ${activeConnections}, closed: ${closedConnections}`);
     }, HEARTBEAT_INTERVAL);
   };
-  
+
   // Start the heartbeat monitoring
   startHeartbeatMonitoring();
 
@@ -4854,12 +4223,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
 
       const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
       const now = new Date();
-      
+
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
       startOfWeek.setHours(0, 0, 0, 0);
-      
+
       // Get end of week (Sunday)
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -4894,19 +4263,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Get leaderboard data
   router.get("/api/leaderboard", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
       const now = new Date();
-      
+
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
       startOfWeek.setHours(0, 0, 0, 0);
-      
+
       // Get end of week (Sunday)
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -4982,19 +4351,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
     }
   });
 
-  // Log server startup
-  logger.info('Server routes and WebSocket registered successfully');
-
   // Achievement routes
   router.get("/api/achievements", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
       // Get all achievement types
       const allAchievementTypes = await db
         .select()
         .from(achievementTypes);
-        
+
       // Get user's earned achievements
       const userAchievementsData = await db
         .select({
@@ -5007,7 +4373,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           eq(userAchievements.achievementTypeId, achievementTypes.id)
         )
         .where(eq(userAchievements.userId, req.user.id));
-        
+
       // Format the response
       const earnedAchievements = userAchievementsData.map(item => ({
         id: item.userAchievement.id,
@@ -5019,7 +4385,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         earnedAt: item.userAchievement.earnedAt,
         viewed: item.userAchievement.viewed
       }));
-      
+
       res.json({
         allTypes: allAchievementTypes,
         earned: earnedAchievements
@@ -5032,17 +4398,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Mark achievement as viewed
   router.patch("/api/achievements/:id/viewed", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
       const achievementId = parseInt(req.params.id);
       if (isNaN(achievementId)) {
         return res.status(400).json({ message: "Invalid achievement ID" });
       }
-      
+
       // Get the achievement to verify ownership
       const [achievement] = await db
         .select()
@@ -5053,18 +4419,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             eq(userAchievements.userId, req.user.id)
           )
         );
-        
+
       if (!achievement) {
         return res.status(404).json({ message: "Achievement not found" });
       }
-      
+
       // Update the achievement viewed status
       const [updated] = await db
         .update(userAchievements)
         .set({ viewed: true })
         .where(eq(userAchievements.id, achievementId))
         .returning();
-        
+
       res.json(updated);
     } catch (error) {
       logger.error("Error marking achievement as viewed:", error);
@@ -5074,12 +4440,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Get unviewed achievements only
   router.get("/api/achievements/unviewed", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      
+
       // Get user's unviewed achievements
       const unviewedAchievements = await db
         .select({
@@ -5097,7 +4463,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             eq(userAchievements.viewed, false)
           )
         );
-        
+
       // Format the response
       const formattedAchievements = unviewedAchievements.map(item => ({
         id: item.userAchievement.id,
@@ -5108,7 +4474,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         pointValue: item.achievementType.pointValue,
         earnedAt: item.userAchievement.earnedAt
       }));
-      
+
       res.json(formattedAchievements);
     } catch (error) {
       logger.error("Error fetching unviewed achievements:", error);
@@ -5118,13 +4484,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
-  
+
   // Initialize achievement types
   const initializeAchievementTypes = async () => {
     try {
       // Check if achievement types exist
       const existingTypes = await db.select().from(achievementTypes);
-      
+
       if (existingTypes.length === 0) {
         // Insert default achievement types
         const defaultTypes = [
@@ -5157,7 +4523,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             pointValue: 10
           }
         ];
-        
+
         await db.insert(achievementTypes).values(defaultTypes);
         logger.info("Initialized default achievement types");
       }
@@ -5165,17 +4531,17 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error("Error initializing achievement types:", error);
     }
   };
-  
+
   // Call initialization when server starts
   initializeAchievementTypes();
-  
+
   // Function to check for achievements based on post type
   const checkForAchievements = async (userId: number, postType: string) => {
     try {
       // Get user's recent posts of this type to check for streaks
       const recentDate = new Date();
       recentDate.setDate(recentDate.getDate() - 10); // Look back 10 days to find streaks
-      
+
       const userPosts = await db
         .select({
           type: posts.type,
@@ -5191,12 +4557,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           )
         )
         .orderBy(desc(posts.createdAt));
-      
+
       // Get all achievement types
       const allAchievements = await db
         .select()
         .from(achievementTypes);
-      
+
       // Get user's already earned achievements
       const earnedAchievements = await db
         .select({
@@ -5209,9 +4575,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           eq(userAchievements.achievementTypeId, achievementTypes.id)
         )
         .where(eq(userAchievements.userId, userId));
-      
+
       const earnedTypes = new Set(earnedAchievements.map(a => a.achievementType.type));
-      
+
       // Check for streaks based on post type
       if (postType === 'food') {
         await checkFoodStreak(userId, userPosts, allAchievements, earnedTypes);
@@ -5227,7 +4593,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       throw error;
     }
   };
-  
+
   // Helper function to check food streaks
   const checkFoodStreak = async (
     userId: number, 
@@ -5237,7 +4603,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   ) => {
     try {
       if (userPosts.length < 3) return; // Need at least 3 posts for a streak
-      
+
       // Group posts by day to count as 1 per day
       const postsByDay = new Map<string, boolean>();
       userPosts.forEach(post => {
@@ -5245,19 +4611,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
         postsByDay.set(dateKey, true);
       });
-      
+
       // Check for consecutive days
       const sortedDays = Array.from(postsByDay.keys()).sort();
       let currentStreak = 1;
       let maxStreak = 1;
-      
+
       for (let i = 1; i < sortedDays.length; i++) {
         const prevDay = new Date(sortedDays[i-1]);
         const currDay = new Date(sortedDays[i]);
-        
+
         const diffTime = Math.abs(currDay.getTime() - prevDay.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 1) {
           currentStreak++;
           maxStreak = Math.max(maxStreak, currentStreak);
@@ -5265,7 +4631,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           currentStreak = 1;
         }
       }
-      
+
       // Award achievements based on streak length
       if (maxStreak >= 6 && !earnedTypes.has('food-streak-6')) {
         await awardAchievement(userId, 'food-streak-6', allAchievements);
@@ -5274,7 +4640,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error("Error checking food streak:", error);
     }
   };
-  
+
   // Helper function to check workout streaks
   const checkWorkoutStreak = async (
     userId: number, 
@@ -5284,7 +4650,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   ) => {
     try {
       if (userPosts.length < 3) return; // Need at least 3 posts for a streak
-      
+
       // Group posts by day to count as 1 per day
       const postsByDay = new Map<string, boolean>();
       userPosts.forEach(post => {
@@ -5292,19 +4658,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
         postsByDay.set(dateKey, true);
       });
-      
+
       // Check for consecutive days
       const sortedDays = Array.from(postsByDay.keys()).sort();
       let currentStreak = 1;
       let maxStreak = 1;
-      
+
       for (let i = 1; i < sortedDays.length; i++) {
         const prevDay = new Date(sortedDays[i-1]);
         const currDay = new Date(sortedDays[i]);
-        
+
         const diffTime = Math.abs(currDay.getTime() - prevDay.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 1) {
           currentStreak++;
           maxStreak = Math.max(maxStreak, currentStreak);
@@ -5312,7 +4678,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           currentStreak = 1;
         }
       }
-      
+
       // Award achievements based on streak length
       if (maxStreak >= 5 && !earnedTypes.has('workout-streak-5')) {
         await awardAchievement(userId, 'workout-streak-5', allAchievements);
@@ -5321,7 +4687,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error("Error checking workout streak:", error);
     }
   };
-  
+
   // Helper function to check scripture streaks
   const checkScriptureStreak = async (
     userId: number, 
@@ -5331,7 +4697,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   ) => {
     try {
       if (userPosts.length < 3) return; // Need at least 3 posts for a streak
-      
+
       // Group posts by day to count as 1 per day
       const postsByDay = new Map<string, boolean>();
       userPosts.forEach(post => {
@@ -5339,19 +4705,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
         postsByDay.set(dateKey, true);
       });
-      
+
       // Check for consecutive days
       const sortedDays = Array.from(postsByDay.keys()).sort();
       let currentStreak = 1;
       let maxStreak = 1;
-      
+
       for (let i = 1; i < sortedDays.length; i++) {
         const prevDay = new Date(sortedDays[i-1]);
         const currDay = new Date(sortedDays[i]);
-        
+
         const diffTime = Math.abs(currDay.getTime() - prevDay.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 1) {
           currentStreak++;
           maxStreak = Math.max(maxStreak, currentStreak);
@@ -5359,7 +4725,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           currentStreak = 1;
         }
       }
-      
+
       // Award achievements based on streak length
       if (maxStreak >= 7 && !earnedTypes.has('scripture-streak-7')) {
         await awardAchievement(userId, 'scripture-streak-7', allAchievements);
@@ -5368,7 +4734,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error("Error checking scripture streak:", error);
     }
   };
-  
+
   // Helper function to check memory verse streaks
   const checkMemoryVerseStreak = async (
     userId: number, 
@@ -5378,7 +4744,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
   ) => {
     try {
       if (userPosts.length < 4) return; // Need at least 4 posts for a 4-week streak
-      
+
       // Group posts by week to count as 1 per week
       const postsByWeek = new Map<string, boolean>();
       userPosts.forEach(post => {
@@ -5388,10 +4754,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         const weekKey = `${date.getFullYear()}-${date.getMonth() + 1}-week-${weekNum}`;
         postsByWeek.set(weekKey, true);
       });
-      
+
       // Check for consecutive weeks
       const sortedWeeks = Array.from(postsByWeek.keys()).sort();
-      
+
       // If we have at least 4 weeks of memory verses
       if (sortedWeeks.length >= 4 && !earnedTypes.has('memory-verse-streak-4')) {
         await awardAchievement(userId, 'memory-verse-streak-4', allAchievements);
@@ -5400,7 +4766,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       logger.error("Error checking memory verse streak:", error);
     }
   };
-  
+
   // Helper function to award an achievement
   const awardAchievement = async (userId: number, achievementType: string, allAchievements: any[]) => {
     try {
@@ -5410,7 +4776,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.error(`Achievement type not found: ${achievementType}`);
         return;
       }
-      
+
       // Check if user already has this achievement
       const existingAchievement = await db
         .select()
@@ -5425,12 +4791,12 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             eq(achievementTypes.type, achievementType)
           )
         );
-        
+
       if (existingAchievement.length > 0) {
         logger.info(`User ${userId} already has achievement ${achievementType}`);
         return;
       }
-      
+
       // Award the achievement
       const [newAchievement] = await db
         .insert(userAchievements)
@@ -5441,9 +4807,9 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           viewed: false
         })
         .returning();
-        
+
       logger.info(`Awarded achievement ${achievementType} to user ${userId}`);
-      
+
       // Add points to user
       await db
         .update(users)
@@ -5451,7 +4817,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           points: sql`${users.points} + ${achievementTypeObj.pointValue}`
         })
         .where(eq(users.id, userId));
-        
+
       // Notify the user about the achievement
       const userSockets = clients.get(userId);
       if (userSockets && userSockets.size > 0 && userSockets.values().next().value.readyState === WebSocket.OPEN) {
@@ -5467,7 +4833,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             pointValue: achievementTypeObj.pointValue
           }
         };
-        
+
         for (const client of userSockets) {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(achievementData));
@@ -5485,16 +4851,16 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      
+
       logger.info(`Video poster batch processing initiated by admin user ${req.user.id}`);
-      
+
       // Get batch parameters from request
       const batchSize = req.query.batch ? parseInt(req.query.batch as string, 10) : 20;
       const maxRunTime = req.query.timeout ? parseInt(req.query.timeout as string, 10) : 60000;
-      
+
       // Import the generator module
       const { processPosterBatch } = await import('./poster-generator');
-      
+
       // Send initial response that the process has started
       res.json({ 
         message: "Video poster processing started",
@@ -5503,7 +4869,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         maxRunTime,
         startedAt: new Date().toISOString()
       });
-      
+
       // Execute the process after sending the response
       processPosterBatch(batchSize, maxRunTime)
         .then((stats) => {
@@ -5520,6 +4886,25 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       });
     }
   });
+
+  // Attach the WebSocket server to the HTTP server
+  if (server) {
+    server.on('upgrade', (request: any, socket: any, head: any) => {
+      const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+
+      if (pathname === '/ws') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
+      } else {
+        socket.destroy();
+      }
+    });
+    logger.info('WebSocket upgrade handler attached to HTTP server');
+  }
+
+  // Log server startup
+  logger.info('Server routes and WebSocket registered successfully');
 
   return httpServer;
 };
