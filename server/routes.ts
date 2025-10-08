@@ -2003,9 +2003,9 @@ export const registerRoutes = async (
         if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
           parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
             if (field.type === 'text' && field.content) {
-              // Match Bible verses with chapter:verse OR just chapter (e.g., "Acts 1" or "Acts 1:1-5")
-              // This regex now handles both full chapters and specific verses
-              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*\b/gi;
+              // Match Bible verses with chapter:verse OR just chapter OR chapter ranges (e.g., "Acts 1", "Acts 1:1-5", or "Genesis 33-34")
+              // This regex now handles full chapters, specific verses, and chapter ranges
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*\b/gi;
 
               const originalContent = field.content;
               field.content = field.content.replace(bibleVerseRegex, (match) => {
@@ -2035,7 +2035,8 @@ export const registerRoutes = async (
                   const bookAbbr = bookMap[bookName] || bookName;
 
                   // Format: https://www.bible.com/bible/59/JHN.5.1-18.NIV
-                  // Replace colons with dots and preserve verse ranges
+                  // Replace colons with dots and preserve both chapter and verse ranges
+                  // Handle cases like "33-34" (chapter range) or "5:1-18" (verse range) or "33-34:5-10" (both)
                   const formattedRef = reference.replace(/:/g, '.');
                   const bibleUrl = `https://www.bible.com/bible/59/${bookAbbr}.${formattedRef}.NIV`;
                   return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
