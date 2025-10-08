@@ -331,19 +331,16 @@ export default function ActivityPage() {
                                     
                                     // Check for comma-separated chapters: "30, 60, 90, 120"
                                     if (reference.includes(',') && !reference.includes(':')) {
-                                      // Match the pattern at the start: numbers separated by commas
-                                      const commaMatch = reference.match(/^([\d\s,]+)/);
-                                      if (commaMatch) {
-                                        const chaptersText = commaMatch[1].trim();
-                                        const chapters = chaptersText.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
-                                        if (chapters.length > 1) {
-                                          const links = chapters.map(chapter => {
-                                            const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
-                                            return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
-                                          });
-                                          const remainingText = reference.substring(commaMatch[1].length).trim();
-                                          return `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
-                                        }
+                                      // Split by comma and check if we have multiple valid chapter numbers
+                                      const parts = reference.split(',').map(ch => ch.trim());
+                                      const chapters = parts.filter(ch => /^\d+$/.test(ch));
+                                      
+                                      if (chapters.length > 1) {
+                                        const links = chapters.map(chapter => {
+                                          const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                                          return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
+                                        });
+                                        return `${bookName} ${links.join(', ')}`;
                                       }
                                     }
                                     
