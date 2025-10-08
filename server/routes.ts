@@ -2035,10 +2035,10 @@ export const registerRoutes = async (
                   const reference = parts[2].trim();
                   const bookAbbr = bookMap[bookName] || bookName;
 
-                  // Format: https://www.bible.com/bible/59/JHN.5.1-18.NIV or GEN.33-34.NIV
-                  // Replace colons with dots and preserve both verse and chapter ranges
+                  // Format: https://www.bible.com/bible/111/JHN.5.1-18.NIV or GEN.33-34.NIV
+                  // Replace colons with dots but preserve hyphens for chapter/verse ranges
                   const formattedRef = reference.replace(/:/g, '.');
-                  const bibleUrl = `https://www.bible.com/bible/59/${bookAbbr}.${formattedRef}.NIV`;
+                  const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
                   return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
                 }
 
