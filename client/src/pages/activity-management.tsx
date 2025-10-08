@@ -244,7 +244,7 @@ export default function ActivityManagementPage() {
       // CRITICAL: Strip ALL inline styles from Word docs - they override our CSS
       content = content.replace(/\s*style="[^"]*"/gi, '');
       content = content.replace(/\s*style='[^']*'/gi, '');
-      
+
       // Strip margin/padding attributes
       content = content.replace(/\s*margin[^=]*="[^"]*"/gi, '');
       content = content.replace(/\s*padding[^=]*="[^"]*"/gi, '');
@@ -448,32 +448,23 @@ export default function ActivityManagementPage() {
 
                             if (!verseLine) continue;
 
-                            // Convert the verse to a clickable link - handles both full chapters and specific verses
-                            const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*\b/gi;
-
-                            const verseWithLink = verseLine.replace(bibleVerseRegex, (match) => {
-                              const cleanVerse = match
-                                .replace(/\s+/g, '')
-                                .replace(/Psalms/gi, 'Psalm')
-                                .replace(/Galation/gi, 'Galatians');
-                              const bibleUrl = `https://www.bible.com/search/bible?q=${encodeURIComponent(match)}`;
-                              return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
-                            });
-
-                            // Create the Bible verse section HTML
-                            const bibleVerseHTML = `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;"><h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3><p style="margin: 0; font-size: 16px; font-weight: 500;">${verseWithLink}</p></div>`;
+                            // Server will handle the Bible verse link conversion
+                            const contentFields = [
+                              {
+                                id: `bible-verse-${absoluteDay}`,
+                                type: "text",
+                                title: `Day ${absoluteDay} Bible Verse`,
+                                content: `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;">
+                                  <h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3>
+                                  <p style="margin: 0; font-size: 16px; font-weight: 500;">${verseLine}</p>
+                                </div>`
+                              }
+                            ];
 
                             // Check if a Bible verse activity already exists for this week/day
                             const existingBibleVerse = activities?.find(activity => 
                               activity.week === week && activity.day === day && activity.activityTypeId === 0
                             );
-
-                            const contentFields = [{
-                              id: Math.random().toString(36).substring(7),
-                              type: 'text',
-                              content: bibleVerseHTML,
-                              title: `Day ${absoluteDay} Bible Verse`
-                            }];
 
                             if (existingBibleVerse) {
                               // Update existing Bible verse activity
@@ -485,7 +476,7 @@ export default function ActivityManagementPage() {
                               });
 
                               if (!updateRes.ok) {
-                                const errorData = await updateRes.json();
+                                const errorData = await res.json();
                                 throw new Error(errorData.message || `Failed to update Bible verse for absolute day ${absoluteDay}`);
                               }
 
@@ -505,7 +496,7 @@ export default function ActivityManagementPage() {
 
                               const activityRes = await apiRequest("POST", "/api/activities", activityData);
                               if (!activityRes.ok) {
-                                const errorData = await activityRes.json();
+                                const errorData = await res.json();
                                 throw new Error(errorData.message || `Failed to save Bible verse activity for absolute day ${absoluteDay}`);
                               }
 
@@ -592,7 +583,7 @@ export default function ActivityManagementPage() {
                           const uploadRes = await apiRequest("POST", "/api/activities/upload-doc", formData);
 
                           if (!uploadRes.ok) {
-                            const errorData = await uploadRes.json();
+                            const errorData = await res.json();
                             throw new Error(errorData.message || `Failed to upload ${file.name}`);
                           }
 
@@ -602,7 +593,7 @@ export default function ActivityManagementPage() {
                           // CRITICAL: Strip ALL inline styles from Word docs - they override our CSS
                           contentHtml = contentHtml.replace(/\s*style="[^"]*"/gi, '');
                           contentHtml = contentHtml.replace(/\s*style='[^']*'/gi, '');
-                          
+
                           // Strip margin/padding attributes
                           contentHtml = contentHtml.replace(/\s*margin[^=]*="[^"]*"/gi, '');
                           contentHtml = contentHtml.replace(/\s*padding[^=]*="[^"]*"/gi, '');
@@ -622,7 +613,7 @@ export default function ActivityManagementPage() {
                           const videoEmbedRegex = /<div class="video-wrapper"><iframe src="https:\/\/www\.youtube\.com\/embed\/([a-zA-Z0-9_-]{11})"[^>]*><\/iframe><\/div>/g;
                           const videos: Array<{videoId: string, fullMatch: string, index: number}> = [];
                           let match;
-                          
+
                           // Find all video embeds
                           while ((match = videoEmbedRegex.exec(contentHtml)) !== null) {
                             videos.push({
@@ -631,7 +622,7 @@ export default function ActivityManagementPage() {
                               index: match.index
                             });
                           }
-                          
+
                           // Remove consecutive duplicates (compare with previous video only)
                           for (let i = videos.length - 1; i > 0; i--) {
                             if (videos[i].videoId === videos[i - 1].videoId) {
@@ -663,7 +654,7 @@ export default function ActivityManagementPage() {
                           // Create or update the activity
                           const activityRes = await apiRequest("POST", "/api/activities", activityData);
                           if (!activityRes.ok) {
-                            const errorData = await activityRes.json();
+                            const errorData = await res.json();
                             throw new Error(errorData.message || `Failed to save activity for ${file.name} Week ${weekNum}`);
                           }
 
