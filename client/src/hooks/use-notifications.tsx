@@ -19,6 +19,7 @@ export function useNotifications(suppressToasts = false) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef<number>(0); // Ref to track reconnect attempts
   const maxReconnectAttempts = 10; // Define max reconnect attempts
+  const lastUserActivityRef = useRef<number>(Date.now()); // Track user activity
 
   // Determine if we should show notification toasts
   // Don't show if explicitly suppressed or if we're on the notification-related pages
@@ -102,19 +103,30 @@ export function useNotifications(suppressToasts = false) {
 
       // Attempt to reconnect with longer delays to reduce spam
       if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-        const delay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current), 60000); // Start at 5s, max 60s
-        console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
+        const delay = Math.min(10000 * Math.pow(2, reconnectAttemptsRef.current), 120000); // Start at 10s, max 2 min
+        console.log(`Will attempt to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
 
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
         }
 
         reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectAttemptsRef.current++;
-          connectWebSocket();
+          // Check if user was recently active (within last 5 seconds)
+          const timeSinceActivity = Date.now() - lastUserActivityRef.current;
+          if (timeSinceActivity < 5000) {
+            // User is active, delay reconnection by another 10 seconds
+            console.log('User is active, delaying reconnection');
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectAttemptsRef.current++;
+              connectWebSocket();
+            }, 10000);
+          } else {
+            reconnectAttemptsRef.current++;
+            connectWebSocket();
+          }
         }, delay);
       } else {
-        console.error('Max reconnect attempts reached');
+        console.error('Max reconnect attempts reached - use reconnect button to try again');
       }
     };
 
@@ -125,6 +137,24 @@ export function useNotifications(suppressToasts = false) {
 
   }, [user, toast, shouldShowToasts]);
 
+
+  // Track user activity to prevent reconnection during typing
+  useEffect(() => {
+    const updateActivity = () => {
+      lastUserActivityRef.current = Date.now();
+    };
+
+    // Listen for keyboard and mouse activity
+    document.addEventListener('keydown', updateActivity);
+    document.addEventListener('mousedown', updateActivity);
+    document.addEventListener('touchstart', updateActivity);
+
+    return () => {
+      document.removeEventListener('keydown', updateActivity);
+      document.removeEventListener('mousedown', updateActivity);
+      document.removeEventListener('touchstart', updateActivity);
+    };
+  }, []);
 
   // Connect to WebSocket when user is available
   useEffect(() => {
