@@ -448,12 +448,7 @@ export default function ActivityManagementPage() {
 
                             if (!verseLine) continue;
 
-                            // Send Bible verse as plain text so server can convert it to proper links
-                            // Extract just the verse reference from any existing HTML
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = verseLine;
-                            const plainVerse = tempDiv.textContent || verseLine;
-                            
+                            // Server will handle the Bible verse link conversion
                             const contentFields = [
                               {
                                 id: `bible-verse-${absoluteDay}`,
@@ -461,7 +456,7 @@ export default function ActivityManagementPage() {
                                 title: `Day ${absoluteDay} Bible Verse`,
                                 content: `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;">
                                   <h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3>
-                                  <p style="margin: 0; font-size: 16px; font-weight: 500;">${plainVerse}</p>
+                                  <p style="margin: 0; font-size: 16px; font-weight: 500;">${verseLine}</p>
                                 </div>`
                               }
                             ];
