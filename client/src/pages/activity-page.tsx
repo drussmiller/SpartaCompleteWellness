@@ -297,8 +297,10 @@ export default function ActivityPage() {
                             if (item.type === 'text') {
                               let content = item.content || '';
                               
-                              // Only convert if not already a link
-                              if (!content.includes('<a href=')) {
+                              // Check if this content already has links from server-side processing
+                              const hasLinks = content.includes('<a href=');
+                              
+                              if (!hasLinks) {
                                 // Match Bible verses with chapter:verse OR just chapter OR chapter ranges (e.g., "Genesis 33-34")
                                 const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*\b/gi;
                                 
@@ -320,36 +322,28 @@ export default function ActivityPage() {
                                     '2 Peter': '2PE', '1 John': '1JN', '2 John': '2JN', '3 John': '3JN', 'Jude': 'JUD', 'Revelation': 'REV'
                                   };
                                   
-                                  // Extract book name and reference (e.g., "Genesis 33-34" -> book="Genesis", ref="33-34")
+                                  // Extract book name and reference
                                   const parts = match.match(/^(.+?)\s+(\d+.*)$/);
                                   if (parts) {
                                     const bookName = parts[1].trim();
                                     const reference = parts[2].trim();
                                     const bookAbbr = bookMap[bookName] || bookName;
                                     
-                                    // Check if this is a comma-separated chapter list (e.g., "29, 59, 89, 149" or "30, 60, 90, 120")
-                                    // Match if reference contains commas (indicating multiple chapters)
-                                    if (reference.includes(',') && /^\d+[\d\s,]*$/.test(reference.split(/\s+/)[0] + (reference.includes(',') ? reference : ''))) {
-                                      // Extract all numbers separated by commas
-                                      const commaMatch = reference.match(/^([\d\s,]+)/);
-                                      if (commaMatch) {
-                                        const chapters = commaMatch[1].split(',').map(ch => ch.trim()).filter(ch => ch);
-                                        const links = chapters.map(chapter => {
-                                          const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
-                                          return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
-                                        });
-                                        
-                                        // Get any remaining text after the comma list
-                                        const remainingText = reference.substring(commaMatch[0].length).trim();
-                                        const result = `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
-                                        return result;
-                                      }
+                                    // Check for comma-separated chapters: "30, 60, 90, 120"
+                                    const commaMatch = reference.match(/^(\d+(?:\s*,\s*\d+)+)(.*)$/);
+                                    if (commaMatch) {
+                                      const chapters = commaMatch[1].split(',').map(ch => ch.trim());
+                                      const links = chapters.map(chapter => {
+                                        const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
+                                      });
+                                      const remainingText = commaMatch[2].trim();
+                                      return `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
                                     }
                                     
-                                    // Check if this is a chapter range (e.g., "33-34")
+                                    // Check for chapter range: "33-34"
                                     const chapterRangeMatch = reference.match(/^(\d+)-(\d+)$/);
                                     if (chapterRangeMatch) {
-                                      // Split into two separate links
                                       const chapter1 = chapterRangeMatch[1];
                                       const chapter2 = chapterRangeMatch[2];
                                       const url1 = `https://www.bible.com/bible/111/${bookAbbr}.${chapter1}.NIV`;
@@ -357,7 +351,7 @@ export default function ActivityPage() {
                                       return `${bookName} <a href="${url1}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter1}</a>-<a href="${url2}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter2}</a>`;
                                     }
                                     
-                                    // For verse references or single chapters, create a single link
+                                    // Single chapter or verse reference
                                     const formattedRef = reference.replace(/:/g, '.');
                                     const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
                                     return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
