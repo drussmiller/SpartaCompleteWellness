@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import express, { type Request, Response, NextFunction } from "express";
 import { setupAuth } from "./auth";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes_new";
 import { setupVite, serveStatic, log } from "./vite";
 import { Server as HttpServer, createServer } from "http";
 import { db } from "./db";
