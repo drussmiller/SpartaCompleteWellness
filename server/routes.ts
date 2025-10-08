@@ -2028,12 +2028,23 @@ export const registerRoutes = async (
                 };
 
                 // Extract book name and reference (e.g., "John 5:1-18" -> book="John", ref="5:1-18")
-                // Also handles chapter ranges like "Genesis 33-34"
+                // Also handles chapter ranges like "Genesis 33-34" and comma lists like "Psalms 29, 59, 89, 149"
                 const parts = match.match(/^(.+?)\s+(\d+.*)$/);
                 if (parts) {
                   const bookName = parts[1].trim();
                   const reference = parts[2].trim();
                   const bookAbbr = bookMap[bookName] || bookName;
+
+                  // Check if this is a comma-separated chapter list (e.g., "29, 59, 89, 149")
+                  const commaChaptersMatch = reference.match(/^(\d+(?:\s*,\s*\d+)+)$/);
+                  if (commaChaptersMatch) {
+                    const chapters = commaChaptersMatch[1].split(',').map(ch => ch.trim());
+                    const links = chapters.map(chapter => {
+                      const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${chapter}</a>`;
+                    });
+                    return `${bookName} ${links.join(', ')}`;
+                  }
 
                   // Format: https://www.bible.com/bible/111/JHN.5.1-18.NIV or GEN.33-34.NIV
                   // Replace colons with dots but preserve hyphens for chapter/verse ranges

@@ -327,6 +327,17 @@ export default function ActivityPage() {
                                     const reference = parts[2].trim();
                                     const bookAbbr = bookMap[bookName] || bookName;
                                     
+                                    // Check if this is a comma-separated chapter list (e.g., "29, 59, 89, 149")
+                                    const commaChaptersMatch = reference.match(/^(\d+(?:\s*,\s*\d+)+)$/);
+                                    if (commaChaptersMatch) {
+                                      const chapters = commaChaptersMatch[1].split(',').map(ch => ch.trim());
+                                      const links = chapters.map(chapter => {
+                                        const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
+                                      });
+                                      return `${bookName} ${links.join(', ')}`;
+                                    }
+                                    
                                     // Check if this is a chapter range (e.g., "33-34")
                                     const chapterRangeMatch = reference.match(/^(\d+)-(\d+)$/);
                                     if (chapterRangeMatch) {
