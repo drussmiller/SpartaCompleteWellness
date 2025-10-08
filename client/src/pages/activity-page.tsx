@@ -330,18 +330,15 @@ export default function ActivityPage() {
                                     const bookAbbr = bookMap[bookName] || bookName;
                                     
                                     // Check for comma-separated chapters: "30, 60, 90, 120"
-                                    if (reference.includes(',')) {
-                                      // Extract just the numbers and commas part
-                                      const match = reference.match(/^([\d\s,]+)(.*)$/);
-                                      if (match) {
-                                        const chaptersText = match[1].trim();
-                                        const chapters = chaptersText.split(',').map(ch => ch.trim()).filter(ch => ch);
+                                    if (reference.includes(',') && !reference.includes(':')) {
+                                      // Split by comma and process each chapter number
+                                      const chapters = reference.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
+                                      if (chapters.length > 0) {
                                         const links = chapters.map(chapter => {
                                           const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
                                           return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
                                         });
-                                        const remainingText = match[2].trim();
-                                        return `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
+                                        return `${bookName} ${links.join(', ')}`;
                                       }
                                     }
                                     
