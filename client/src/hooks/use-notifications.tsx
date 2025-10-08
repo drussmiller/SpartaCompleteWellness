@@ -42,7 +42,8 @@ export function useNotifications(suppressToasts = false) {
     
     // Use the correct WebSocket URL for your server
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.host;
+    // Use hostname without port for production compatibility
+    const wsHost = window.location.hostname;
     const wsUrl = `${wsProtocol}//${wsHost}/ws`;
     
     console.log('Connecting to WebSocket:', wsUrl);
