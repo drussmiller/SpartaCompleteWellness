@@ -2027,16 +2027,17 @@ export const registerRoutes = async (
                   '2 Peter': '2PE', '1 John': '1JN', '2 John': '2JN', '3 John': '3JN', 'Jude': 'JUD', 'Revelation': 'REV'
                 };
 
-                // Extract book name and reference (e.g., "Mark 1" -> book="Mark", ref="1")
+                // Extract book name and reference (e.g., "John 5:1-18" -> book="John", ref="5:1-18")
                 const parts = match.match(/^(.+?)\s+(\d+.*)$/);
                 if (parts) {
                   const bookName = parts[1].trim();
                   const reference = parts[2].trim();
                   const bookAbbr = bookMap[bookName] || bookName;
 
-                  // Format: https://www.bible.com/bible/111/MRK.1.NIV
+                  // Format: https://www.bible.com/bible/59/JHN.5.1-18.NIV
+                  // Replace colons with dots and preserve verse ranges
                   const formattedRef = reference.replace(/:/g, '.');
-                  const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
+                  const bibleUrl = `https://www.bible.com/bible/59/${bookAbbr}.${formattedRef}.NIV`;
                   return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
                 }
 
