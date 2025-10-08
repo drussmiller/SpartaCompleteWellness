@@ -327,19 +327,23 @@ export default function ActivityPage() {
                                     const reference = parts[2].trim();
                                     const bookAbbr = bookMap[bookName] || bookName;
                                     
-                                    // Check if this is a comma-separated chapter list (e.g., "29, 59, 89, 149")
-                                    const commaChaptersMatch = reference.match(/^(\d+(?:\s*,\s*\d+)+)(?:\s|$)/);
-                                    if (commaChaptersMatch) {
-                                      const chapters = commaChaptersMatch[1].split(',').map(ch => ch.trim());
-                                      const links = chapters.map(chapter => {
-                                        const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
-                                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
-                                      });
-                                      
-                                      // Get any remaining text after the comma list
-                                      const remainingText = reference.substring(commaChaptersMatch[0].length).trim();
-                                      const result = `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
-                                      return result;
+                                    // Check if this is a comma-separated chapter list (e.g., "29, 59, 89, 149" or "30, 60, 90, 120")
+                                    // Match if reference contains commas (indicating multiple chapters)
+                                    if (reference.includes(',') && /^\d+[\d\s,]*$/.test(reference.split(/\s+/)[0] + (reference.includes(',') ? reference : ''))) {
+                                      // Extract all numbers separated by commas
+                                      const commaMatch = reference.match(/^([\d\s,]+)/);
+                                      if (commaMatch) {
+                                        const chapters = commaMatch[1].split(',').map(ch => ch.trim()).filter(ch => ch);
+                                        const links = chapters.map(chapter => {
+                                          const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                                          return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
+                                        });
+                                        
+                                        // Get any remaining text after the comma list
+                                        const remainingText = reference.substring(commaMatch[0].length).trim();
+                                        const result = `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
+                                        return result;
+                                      }
                                     }
                                     
                                     // Check if this is a chapter range (e.g., "33-34")
