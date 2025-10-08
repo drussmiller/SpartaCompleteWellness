@@ -164,29 +164,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     queryKey: ["/api/users"],
   });
 
-  useEffect(() => {
-    if (users) {
-      users.forEach(async (user) => {
-        try {
-          const response = await fetch(
-            `/api/activities/current?tzOffset=${tzOffset}`,
-          );
-          if (response.ok) {
-            const progress = await response.json();
-            setUserProgress((prev) => ({
-              ...prev,
-              [user.id]: {
-                week: progress.currentWeek,
-                day: progress.currentDay,
-              },
-            }));
-          }
-        } catch (error) {
-          console.error("Error fetching user progress:", error);
-        }
-      });
-    }
-  }, [users, tzOffset]);
+  // Note: User progress is now shown directly from user.currentWeek and user.currentDay
+  // No need to fetch separately for each user
 
   // Auto-set filters for Group Admins to their specific group
   useEffect(() => {
@@ -2292,7 +2271,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 ? parsed
                                                 : 1;
                                             })(formData.get("status") as string),
-                                            programStartDate: programStartDateValue || null,
+                                            programStartDate: programStartDateValue ? new Date(programStartDateValue) : null,
                                           },
                                         });
                                       }}
