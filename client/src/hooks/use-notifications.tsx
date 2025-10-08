@@ -19,7 +19,6 @@ export function useNotifications(suppressToasts = false) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef<number>(0); // Ref to track reconnect attempts
   const maxReconnectAttempts = 10; // Define max reconnect attempts
-  const lastUserActivityRef = useRef<number>(Date.now()); // Track user activity
 
   // Determine if we should show notification toasts
   // Don't show if explicitly suppressed or if we're on the notification-related pages
@@ -35,20 +34,16 @@ export function useNotifications(suppressToasts = false) {
     refetchInterval: 60000, // Refetch every minute
   });
 
-  // Simple function to connect to WebSocket server
+  // Simple function to connect to WebSocket server - DISABLED
   const connectWebSocket = useCallback(() => {
     if (!user) return; // Ensure user is available
 
+    // WebSocket disabled - no server running
+    setConnectionStatus("disconnected");
+    return;
+
     setConnectionStatus("connecting");
-    
-    // Use the correct WebSocket URL for your server
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use hostname without port for production compatibility
-    const wsHost = window.location.hostname;
-    const wsUrl = `${wsProtocol}//${wsHost}/ws`;
-    
-    console.log('Connecting to WebSocket:', wsUrl);
-    socketRef.current = new WebSocket(wsUrl)
+    socketRef.current = new WebSocket("ws://localhost:8080"); // Replace with your WebSocket server URL
 
     socketRef.current.onopen = () => {
       console.log("WebSocket connected");
@@ -101,9 +96,22 @@ export function useNotifications(suppressToasts = false) {
         pingIntervalRef.current = null;
       }
 
-      // Don't auto-reconnect to prevent keyboard focus stealing
-      console.log('WebSocket disconnected - use reconnect button to retry');
-      reconnectAttemptsRef.current++;
+      // Attempt to reconnect with longer delays to reduce spam
+      if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+        const delay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current), 60000); // Start at 5s, max 60s
+        console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
+
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectAttemptsRef.current++;
+          connectWebSocket();
+        }, delay);
+      } else {
+        console.error('Max reconnect attempts reached');
+      }
     };
 
     socketRef.current.onerror = (error) => {
@@ -113,24 +121,6 @@ export function useNotifications(suppressToasts = false) {
 
   }, [user, toast, shouldShowToasts]);
 
-
-  // Track user activity to prevent reconnection during typing
-  useEffect(() => {
-    const updateActivity = () => {
-      lastUserActivityRef.current = Date.now();
-    };
-
-    // Listen for keyboard and mouse activity
-    document.addEventListener('keydown', updateActivity);
-    document.addEventListener('mousedown', updateActivity);
-    document.addEventListener('touchstart', updateActivity);
-
-    return () => {
-      document.removeEventListener('keydown', updateActivity);
-      document.removeEventListener('mousedown', updateActivity);
-      document.removeEventListener('touchstart', updateActivity);
-    };
-  }, []);
 
   // Connect to WebSocket when user is available
   useEffect(() => {
