@@ -11,7 +11,7 @@ export default function HelpPage() {
         {/* This div is an empty spacer, which you can style as necessary */}
       </div>
       <div className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
-        <div className="p-4 px-4 md:px-44 md:pl-56">
+        <div className="p-4 px-4 md:px-44 md:pl-80">
           <h1 className="text-xl font-bold">Help</h1>
         </div>
       </div>
