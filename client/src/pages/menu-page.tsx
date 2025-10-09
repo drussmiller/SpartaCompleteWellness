@@ -36,7 +36,7 @@ export default function MenuPage() {
         </div>
 
         {/* Navigation Section */}
-        <div className="w-full space-y-2">
+        <div className="w-full space-y-2 pt-8 md:pt-28">
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
