@@ -214,7 +214,14 @@ export default function NotificationsPage() {
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
                         {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number' 
-  ? new Date(notification.createdAt).toLocaleString() 
+  ? new Date(notification.createdAt).toLocaleString('en-US', { 
+      month: 'numeric',
+      day: 'numeric', 
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
   : 'Unknown date'}
                       </p>
                     </div>
