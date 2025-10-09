@@ -30,7 +30,7 @@ export default function MenuPage() {
           {/* This div is an empty spacer, which you can style as necessary */}
         </div>
         <div className="fixed top-10 z-50 left-0 right-0 bg-background border-b border-border text-lg">
-          <div className="p-4">
+          <div className="p-4 px-4 md:px-44 md:pl-56">
             <h1 className="text-xl font-bold">Menu</h1>
           </div>
         </div>
