@@ -2744,6 +2744,7 @@ export const registerRoutes = async (
           isAdmin: users.isAdmin,
           teamId: users.teamId,
           notificationTime: users.notificationTime,
+          timezoneOffset: users.timezoneOffset,
         })
         .from(users);
 
@@ -2906,20 +2907,59 @@ export const registerRoutes = async (
             const preferredHour = parseInt(notificationTimeParts[0]);
             const preferredMinute = parseInt(notificationTimeParts[1] || "0");
 
+            // Convert UTC time to user's local time using their timezone offset
+            // timezoneOffset is stored in minutes (e.g., -300 for Central Time during standard time)
+            let userLocalHour = currentHour;
+            let userLocalMinute = currentMinute;
+            
+            if (user.timezoneOffset !== null && user.timezoneOffset !== undefined) {
+              // Convert offset from minutes to hours and minutes
+              const offsetHours = Math.floor(Math.abs(user.timezoneOffset) / 60);
+              const offsetMinutes = Math.abs(user.timezoneOffset) % 60;
+              
+              // Apply the offset (negative offset means behind UTC, so we subtract)
+              if (user.timezoneOffset < 0) {
+                // Timezone is behind UTC (e.g., Central Time)
+                userLocalHour -= offsetHours;
+                userLocalMinute -= offsetMinutes;
+              } else {
+                // Timezone is ahead of UTC
+                userLocalHour += offsetHours;
+                userLocalMinute += offsetMinutes;
+              }
+              
+              // Normalize hours and minutes
+              if (userLocalMinute < 0) {
+                userLocalMinute += 60;
+                userLocalHour -= 1;
+              } else if (userLocalMinute >= 60) {
+                userLocalMinute -= 60;
+                userLocalHour += 1;
+              }
+              
+              if (userLocalHour < 0) {
+                userLocalHour += 24;
+              } else if (userLocalHour >= 24) {
+                userLocalHour -= 24;
+              }
+            }
+
             // Check if we're within a 10-minute window of the user's preferred time
             const isPreferredTimeWindow =
-              (currentHour === preferredHour &&
-                currentMinute >= preferredMinute &&
-                currentMinute < preferredMinute + 10) ||
+              (userLocalHour === preferredHour &&
+                userLocalMinute >= preferredMinute &&
+                userLocalMinute < preferredMinute + 10) ||
               // Handle edge case where preferred time is near the end of an hour
-              (currentHour === preferredHour + 1 &&
+              (userLocalHour === preferredHour + 1 &&
                 preferredMinute >= 50 &&
-                currentMinute < (preferredMinute + 10) % 60);
+                userLocalMinute < (preferredMinute + 10) % 60);
 
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
-              currentTime: `${currentHour}:${currentMinute}`,
-              preferredTime: `${preferredHour}:${preferredMinute}`,
+              currentTimeUTC: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+              userLocalTime: `${userLocalHour}:${String(userLocalMinute).padStart(2, '0')}`,
+              preferredTime: `${preferredHour}:${String(preferredMinute).padStart(2, '0')}`,
+              timezoneOffset: user.timezoneOffset,
               isPreferredTimeWindow,
               existingNotificationsToday: existingNotifications.length,
             });
@@ -3899,11 +3939,12 @@ export const registerRoutes = async (
       try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-        const { notificationTime, achievementNotificationsEnabled } = req.body;
+        const { notificationTime, achievementNotificationsEnabled, timezoneOffset } = req.body;
         // Define update data with proper typing
         const updateData: {
           notificationTime?: string;
           achievementNotificationsEnabled?: boolean;
+          timezoneOffset?: number;
         } = {};
 
         // Add notification time if provided
@@ -3915,6 +3956,12 @@ export const registerRoutes = async (
               .json({ message: "Invalid time format. Use HH:mm format." });
           }
           updateData.notificationTime = notificationTime;
+        }
+
+        // Add timezone offset if provided (in minutes)
+        if (timezoneOffset !== undefined) {
+          updateData.timezoneOffset = parseInt(timezoneOffset);
+          logger.info(`Updating timezone offset for user ${req.user.id} to ${timezoneOffset} minutes`);
         }
 
         // Add achievement notifications enabled setting if provided

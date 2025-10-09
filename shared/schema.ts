@@ -24,6 +24,7 @@ export const users = pgTable("users", {
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
+  timezoneOffset: integer("timezone_offset"), // Timezone offset in minutes (e.g., -300 for Central Time)
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
   lastPrayerRequestView: timestamp("last_prayer_request_view"), // Track when user last viewed prayer requests
   waiverSigned: boolean("waiver_signed").default(false),

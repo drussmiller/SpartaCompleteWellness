@@ -28,11 +28,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
   const updateScheduleMutation = useMutation({
     mutationFn: async (time: string) => {
+      // Get user's timezone offset in minutes
+      const timezoneOffset = new Date().getTimezoneOffset();
+      
       const response = await apiRequest(
         "POST",
         "/api/users/notification-schedule",
         {
           notificationTime: time,
+          timezoneOffset: -timezoneOffset, // Negate because getTimezoneOffset returns opposite sign
         },
       );
       if (!response.ok) {

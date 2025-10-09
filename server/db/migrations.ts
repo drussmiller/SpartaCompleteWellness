@@ -169,6 +169,17 @@ export async function runMigrations() {
       console.error('Error adding notification_time column:', columnError);
     }
 
+    // Add timezone_offset column to users table
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS timezone_offset INTEGER
+      `);
+      console.log('Added timezone_offset column to users table');
+    } catch (columnError) {
+      console.error('Error adding timezone_offset column:', columnError);
+    }
+
     // Add program_start_date column to users table
     try {
       await db.execute(sql`
