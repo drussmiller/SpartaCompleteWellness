@@ -18,8 +18,10 @@ const server = createServer(app);
 // Use environment PORT for deployment compatibility
 const port = parseInt(process.env.PORT || "5000", 10);
 
-// Declare scheduleDailyScoreCheck function
+// Declare scheduleDailyScoreCheck function and interval
 let scheduleDailyScoreCheck: () => void;
+let notificationCheckInterval: NodeJS.Timeout | null = null;
+let isCheckingNotifications = false;
 
 // Basic connection settings for deployment compatibility
 app.use((req, res, next) => {
@@ -94,11 +96,91 @@ app.use((req, res, next) => {
   next();
 });
 
-// Define the scheduleDailyScoreCheck function (disabled automatic scheduling to prevent server overload)
+// Define the scheduleDailyScoreCheck function with proper safeguards
 scheduleDailyScoreCheck = () => {
-  logger.info('Daily score check scheduling is disabled to prevent server overload');
-  logger.info('Use the admin panel or API endpoints to manually trigger daily score checks');
+  // Clear any existing interval
+  if (notificationCheckInterval) {
+    clearInterval(notificationCheckInterval);
+    notificationCheckInterval = null;
+  }
+
+  logger.info('Starting automated daily notification scheduling');
+  logger.info('Checking every minute for users whose notification time matches');
+
+  // Function to check and send notifications
+  const checkNotifications = async () => {
+    // Prevent concurrent checks
+    if (isCheckingNotifications) {
+      logger.debug('Notification check already in progress, skipping');
+      return;
+    }
+
+    try {
+      isCheckingNotifications = true;
+      
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+
+      // Only log every 15 minutes to reduce noise
+      if (currentMinute % 15 === 0) {
+        logger.info(`Checking for notifications at ${currentHour}:${String(currentMinute).padStart(2, '0')}`);
+      }
+
+      // Make internal request to check-daily-scores endpoint
+      const response = await fetch(`http://localhost:${port}/api/check-daily-scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentHour,
+          currentMinute,
+        }),
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      });
+
+      if (!response.ok) {
+        logger.error(`Daily score check failed: ${response.status} ${response.statusText}`);
+      }
+
+    } catch (error) {
+      // Log errors but don't crash the server
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('Daily score check timed out after 30 seconds');
+      } else {
+        logger.error('Error in scheduled notification check:', error);
+      }
+    } finally {
+      isCheckingNotifications = false;
+    }
+  };
+
+  // Run check every minute (60000ms)
+  notificationCheckInterval = setInterval(checkNotifications, 60000);
+  
+  // Also run an immediate check on startup
+  checkNotifications();
+  
+  logger.info('Daily notification scheduler started successfully');
 };
+
+// Clean up interval on server shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, cleaning up notification scheduler');
+  if (notificationCheckInterval) {
+    clearInterval(notificationCheckInterval);
+    notificationCheckInterval = null;
+  }
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, cleaning up notification scheduler');
+  if (notificationCheckInterval) {
+    clearInterval(notificationCheckInterval);
+    notificationCheckInterval = null;
+  }
+});
 
 // Ensure API requests respond with JSON
 app.use('/api', (req, res, next) => {
@@ -183,6 +265,10 @@ server.listen(port, "0.0.0.0", () => {
       });
 
       console.log("[Post-Startup] Initialization complete");
+      
+      // Start the daily notification scheduler
+      logger.info("[Post-Startup] Starting daily notification scheduler...");
+      scheduleDailyScoreCheck();
 
     } catch (error) {
       console.error("[Post-Startup] Initialization error (non-critical):", error);
