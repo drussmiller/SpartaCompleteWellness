@@ -2051,17 +2051,8 @@ export const registerRoutes = async (
                     return result;
                   }
 
-                  // Handle verse ranges (e.g., "5:1-16" should become "5.1-5.16")
-                  const verseRangeMatch = reference.match(/^(\d+):(\d+)-(\d+)$/);
-                  if (verseRangeMatch) {
-                    const chapter = verseRangeMatch[1];
-                    const startVerse = verseRangeMatch[2];
-                    const endVerse = verseRangeMatch[3];
-                    const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.${startVerse}-${chapter}.${endVerse}.NIV`;
-                    return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
-                  }
-
-                  // Single chapter or verse reference
+                  // Format: https://www.bible.com/bible/111/JHN.5.1-18.NIV or GEN.33-34.NIV
+                  // Replace colons with dots but preserve hyphens for chapter/verse ranges
                   const formattedRef = reference.replace(/:/g, '.');
                   const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
                   return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
