@@ -539,7 +539,7 @@ export default function ActivityPage() {
                 <div className="space-y-4">
                   <div className="text-sm text-muted-foreground space-y-2">
                     <p>Select a week to restart the program today.</p>
-                    <p>(Resetting the current week to a previous week will clear all posts and points after that week.)</p>
+                    <p>(Resetting the current week to a previous week will clear all posts and points for that Week/Day and after.)</p>
                   </div>
                   
                   <div className="space-y-2">
