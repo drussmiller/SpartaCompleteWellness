@@ -118,11 +118,15 @@ export function useNotifications(suppressToasts = false) {
   }, [user, toast, shouldShowToasts]);
 
 
-  // Connect to WebSocket when user is available
+  // Connect to WebSocket when user is available - DISABLED until WebSocket server is set up
   useEffect(() => {
+    // WebSocket connection temporarily disabled to prevent reconnection loops
+    // Uncomment when WebSocket server is available
+    /*
     if (user && socketRef.current === null) {
       connectWebSocket();
     }
+    */
 
     // Clean up on unmount
     return () => {
