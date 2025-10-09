@@ -16,7 +16,7 @@ export default function HelpPage() {
         </div>
       </div>
 
-      <main className="p-4 pb-24 space-y-4 max-w-[1000px] mx-auto w-full text-lg md:px-44 md:pl-56">
+      <main className="p-4 pb-24 space-y-4 max-w-[1000px] mx-auto w-full text-lg md:px-44 md:pl-56 pt-8 md:pt-28">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
