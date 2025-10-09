@@ -151,6 +151,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
 
+      // Invalidate post counts to update limits in Create Post dialog
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/counts"],
+        exact: false 
+      });
+
       // If this was a prayer post, also invalidate the prayer requests cache
       if (post.type === "prayer") {
         queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
