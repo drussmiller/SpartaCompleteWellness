@@ -369,6 +369,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
+            {post.points !== null && post.points !== undefined && (
+              <>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs font-medium text-primary">{post.points} {post.points === 1 ? 'point' : 'points'}</span>
+              </>
+            )}
             <span className="text-xs text-muted-foreground">•</span>
             <div>
               <ReactionSummary postId={post.id} />
