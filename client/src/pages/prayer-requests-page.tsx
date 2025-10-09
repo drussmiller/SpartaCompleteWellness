@@ -104,11 +104,14 @@ export default function PrayerRequestsPage() {
     }
   }, [user, refetchLimits]);
 
-  const { data: prayerRequests = [], isLoading, error, refetch } = useQuery({
+  const { data: prayerRequests = [], isLoading, error, refetch, isSuccess } = useQuery({
     queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
     queryFn: async () => {
       try {
+        console.log('Fetching prayer requests...');
         const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
+        console.log('Prayer requests response status:', response.status);
+        
         if (!response.ok) {
           let errorMessage = `HTTP ${response.status}`;
           try {
@@ -119,7 +122,10 @@ export default function PrayerRequestsPage() {
           }
           throw new Error(errorMessage);
         }
-        return response.json();
+        
+        const data = await response.json();
+        console.log('Prayer requests fetched successfully:', data.length, 'posts');
+        return data;
       } catch (err) {
         console.error('Prayer requests fetch error:', err);
         throw err;
@@ -136,8 +142,8 @@ export default function PrayerRequestsPage() {
     navigate('/');
   };
 
-  // Show error state if there's an error
-  if (error) {
+  // Only show error if we have an error AND we're not currently loading AND the fetch wasn't successful
+  if (error && !isLoading && !isSuccess) {
     console.error('Rendering error state:', error);
     return (
       <AppLayout>
@@ -154,6 +160,13 @@ export default function PrayerRequestsPage() {
       </AppLayout>
     );
   }
+  
+  console.log('Prayer Requests Page State:', { 
+    isLoading, 
+    error: error ? error.message : null, 
+    isSuccess, 
+    prayerRequestsCount: prayerRequests?.length 
+  });
 
   return (
     <AppLayout isBottomNavVisible={isBottomNavVisible}>
