@@ -173,9 +173,10 @@ export default function ActivityPage() {
   return (
     <AppLayout>
       <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="flex items-center mb-6">
-          <h1 className="text-2xl font-bold">Daily Activity</h1>
-        </div>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center mb-6">
+            <h1 className="text-2xl font-bold">Daily Activity</h1>
+          </div>
 
         {/* Week Content Dropdown - Defaults to Closed */}
         <Collapsible open={weekContentOpen} onOpenChange={setWeekContentOpen}>
@@ -449,6 +450,7 @@ export default function ActivityPage() {
             </CollapsibleContent>
           </Card>
         </Collapsible>
+        </div>
       </div>
     </AppLayout>
   );
