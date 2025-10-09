@@ -182,7 +182,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         }
       }
     }
-  }, [currentUser, groups, organizations, selectedOrgFilter, selectedGroupFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, groups, organizations]);
 
   const form = useForm<TeamFormData>({
     resolver: zodResolver(insertTeamSchema),
