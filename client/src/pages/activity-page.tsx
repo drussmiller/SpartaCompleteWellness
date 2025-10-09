@@ -358,6 +358,16 @@ export default function ActivityPage() {
                                       return `${bookName} <a href="${url1}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter1}</a>-<a href="${url2}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter2}</a>`;
                                     }
                                     
+                                    // Handle verse ranges (e.g., "5:1-16" should become "5.1-5.16")
+                                    const verseRangeMatch = reference.match(/^(\d+):(\d+)-(\d+)$/);
+                                    if (verseRangeMatch) {
+                                      const chapter = verseRangeMatch[1];
+                                      const startVerse = verseRangeMatch[2];
+                                      const endVerse = verseRangeMatch[3];
+                                      const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.${startVerse}-${chapter}.${endVerse}.NIV`;
+                                      return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+                                    }
+                                    
                                     // Single chapter or verse reference
                                     const formattedRef = reference.replace(/:/g, '.');
                                     const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
