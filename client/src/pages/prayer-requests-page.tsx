@@ -104,16 +104,19 @@ export default function PrayerRequestsPage() {
     }
   }, [user, refetchLimits]);
 
-  const { data: prayerRequests = [], isLoading, error } = useQuery({
+  const { data: prayerRequests = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
     queryFn: async () => {
       const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch prayer requests: ${response.status}`);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`Failed to fetch prayer requests: ${response.status} - ${errorText}`);
       }
       return response.json();
     },
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
     refetchOnWindowFocus: true,
     staleTime: 1000 * 60, // Consider data stale after 1 minute
   });
@@ -128,10 +131,13 @@ export default function PrayerRequestsPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center p-4">
+          <div className="text-center p-4 max-w-md mx-auto">
             <h2 className="text-xl font-bold mb-2 text-destructive">Error loading prayer requests</h2>
             <p className="text-muted-foreground mb-4">{error instanceof Error ? error.message : 'Unknown error occurred'}</p>
-            <Button onClick={() => window.location.reload()}>Reload Page</Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => refetch()}>Try Again</Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>Reload Page</Button>
+            </div>
           </div>
         </div>
       </AppLayout>
