@@ -107,14 +107,24 @@ export default function PrayerRequestsPage() {
   const { data: prayerRequests = [], isLoading, error } = useQuery({
     queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch prayer requests: ${response.status}`);
+      try {
+        const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Prayer requests fetch error:', response.status, errorText);
+          throw new Error(`Failed to fetch prayer requests: ${response.status} - ${errorText}`);
+        }
+        const data = await response.json();
+        console.log('Prayer requests fetched:', data.length, 'posts');
+        return data;
+      } catch (err) {
+        console.error('Prayer requests query error:', err);
+        throw err;
       }
-      return response.json();
     },
     enabled: !!user,
-    refetchOnWindowFocus: true,
+    retry: 1,
+    refetchOnWindowFocus: false,
     staleTime: 1000 * 60, // Consider data stale after 1 minute
   });
 
@@ -122,13 +132,16 @@ export default function PrayerRequestsPage() {
     navigate('/');
   };
 
+  // Show error state if there's an error
   if (error) {
+    console.error('Rendering error state:', error);
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center text-destructive">
-            <h2 className="text-xl font-bold mb-2">Error loading prayer requests</h2>
-            <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
+          <div className="text-center p-4">
+            <h2 className="text-xl font-bold mb-2 text-destructive">Error loading prayer requests</h2>
+            <p className="text-muted-foreground mb-4">{error instanceof Error ? error.message : 'Unknown error occurred'}</p>
+            <Button onClick={() => window.location.reload()}>Reload Page</Button>
           </div>
         </div>
       </AppLayout>
