@@ -105,7 +105,7 @@ export default function PrayerRequestsPage() {
   }, [user, refetchLimits]);
 
   const { data: prayerRequests = [], isLoading, error } = useQuery({
-    queryKey: ["/api/posts/prayer-requests"],
+    queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
     queryFn: async () => {
       const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
       if (!response.ok) {
