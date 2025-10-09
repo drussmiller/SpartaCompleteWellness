@@ -172,12 +172,17 @@ export default function ActivityPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen w-full bg-background/95 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="max-w-4xl mx-auto px-4 md:px-44 md:pl-56 pt-6">
-          <div className="flex items-center mb-6">
-            <h1 className="text-2xl font-bold">Daily Activity</h1>
-          </div>
+      {/* Fixed title bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
+        {/* This div is an empty spacer, which you can style as necessary */}
+      </div>
+      <div className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
+        <div className="p-4 px-4 md:px-44 md:pl-56">
+          <h1 className="text-xl font-bold">Daily Activity</h1>
+        </div>
+      </div>
 
+      <main className="p-4 pb-24 space-y-4 max-w-[1000px] mx-auto w-full text-lg md:px-44 md:pl-56">
         {/* Week Content Dropdown - Defaults to Closed */}
         <Collapsible open={weekContentOpen} onOpenChange={setWeekContentOpen}>
           <Card className="mb-6">
@@ -450,8 +455,7 @@ export default function ActivityPage() {
             </CollapsibleContent>
           </Card>
         </Collapsible>
-        </div>
-      </div>
+      </main>
     </AppLayout>
   );
 }
