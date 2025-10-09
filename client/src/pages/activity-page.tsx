@@ -8,13 +8,20 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { YouTubePlayer } from "@/components/ui/youtube-player";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ActivityPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [weekContentOpen, setWeekContentOpen] = useState(false); // Week content defaults to closed
   const [weekDayContentOpen, setWeekDayContentOpen] = useState(true); // Week and Day content defaults to open
+  const [reengageOpen, setReengageOpen] = useState(false);
+  const [reengageWeek, setReengageWeek] = useState<string>("");
 
   const { data: activityStatus } = useQuery({
     queryKey: ["/api/activities/current"],
@@ -120,6 +127,62 @@ export default function ActivityPage() {
     const currentWeek = activityStatus?.currentWeek || 1;
     const currentDay = activityStatus?.currentDay || 1;
     return !(selectedWeek === currentWeek && selectedDay >= currentDay);
+  };
+
+  // Re-engage mutation
+  const reengageMutation = useMutation({
+    mutationFn: async (targetWeek: number) => {
+      const response = await apiRequest("POST", "/api/users/reengage", {
+        targetWeek,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to re-engage");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Program successfully reset. Your posts have been updated.",
+      });
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      setReengageWeek("");
+      setReengageOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleReengage = () => {
+    if (!reengageWeek) {
+      toast({
+        title: "Error",
+        description: "Please select a week to restart from",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const targetWeek = parseInt(reengageWeek);
+    if (targetWeek < 1 || targetWeek > (activityStatus?.currentWeek || 1)) {
+      toast({
+        title: "Error",
+        description: "Invalid week selection",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    reengageMutation.mutate(targetWeek);
   };
 
   if (activitiesLoading) {
@@ -451,6 +514,59 @@ export default function ActivityPage() {
                     Check with your coach if you think this is an error.
                   </p>
                 )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* Re-engage Section */}
+        <Collapsible open={reengageOpen} onOpenChange={setReengageOpen} className="mt-6">
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Re-engage</CardTitle>
+                  <ChevronDown
+                    className={`h-5 w-5 transition-transform ${
+                      reengageOpen ? "transform rotate-180" : ""
+                    }`}
+                  />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-4">
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p>Select a week to restart the program today.</p>
+                    <p>(Resetting the current week to a previous week will clear all posts and points after that week.)</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Week</label>
+                    <Select value={reengageWeek} onValueChange={setReengageWeek}>
+                      <SelectTrigger data-testid="select-reengage-week">
+                        <SelectValue placeholder="Choose a week" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: activityStatus?.currentWeek || 1 }, (_, i) => i + 1).map((week) => (
+                          <SelectItem key={week} value={week.toString()}>
+                            Week {week}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    onClick={handleReengage} 
+                    disabled={reengageMutation.isPending || !reengageWeek}
+                    className="w-full"
+                    data-testid="button-reengage-reset"
+                  >
+                    {reengageMutation.isPending ? "Resetting..." : "Reset Program"}
+                  </Button>
+                </div>
               </CardContent>
             </CollapsibleContent>
           </Card>

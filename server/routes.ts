@@ -3988,6 +3988,107 @@ export const registerRoutes = async (
     },
   );
 
+  // Re-engage endpoint - allows users to restart from a previous week
+  router.post("/api/users/reengage", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { targetWeek } = req.body;
+
+      if (!targetWeek || targetWeek < 1) {
+        return res.status(400).json({ message: "Invalid target week" });
+      }
+
+      // Get user's current program start date
+      const [currentUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!currentUser || !currentUser.programStartDate) {
+        return res.status(400).json({ message: "User program not initialized" });
+      }
+
+      // Calculate today's day of the week (1=Monday, 7=Sunday)
+      const today = new Date();
+      const todayDayOfWeek = today.getDay();
+      // Convert JavaScript's 0=Sunday to our 1=Monday system
+      const currentDayNumber = todayDayOfWeek === 0 ? 7 : todayDayOfWeek;
+
+      // Calculate new program_start_date
+      // Target: Week W Day D should be today
+      // Days from program start to target position: (W-1)*7 + (D-1)
+      const daysFromStart = (targetWeek - 1) * 7 + (currentDayNumber - 1);
+      
+      // new_start_date = today - daysFromStart
+      const newProgramStartDate = new Date(today);
+      newProgramStartDate.setDate(today.getDate() - daysFromStart);
+      // Set to midnight
+      newProgramStartDate.setHours(0, 0, 0, 0);
+
+      // Calculate the cutoff date for deleting posts
+      // This is the date that represents targetWeek, currentDayNumber
+      const cutoffDate = new Date(newProgramStartDate);
+      cutoffDate.setDate(newProgramStartDate.getDate() + daysFromStart);
+      cutoffDate.setHours(0, 0, 0, 0);
+
+      logger.info(`Re-engage: User ${req.user.id} restarting at Week ${targetWeek}`);
+      logger.info(`Today is day ${currentDayNumber} of the week`);
+      logger.info(`New program start date: ${newProgramStartDate.toISOString()}`);
+      logger.info(`Deleting posts from ${cutoffDate.toISOString()} onwards`);
+
+      // Delete posts from cutoff date onwards for this user
+      const deletedPosts = await db
+        .delete(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, cutoffDate)
+          )
+        )
+        .returning();
+
+      logger.info(`Deleted ${deletedPosts.length} posts for user ${req.user.id}`);
+
+      // Update user's program_start_date
+      await db
+        .update(users)
+        .set({ programStartDate: newProgramStartDate })
+        .where(eq(users.id, req.user.id));
+
+      // Recalculate points for the user
+      const userPosts = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.userId, req.user.id));
+
+      const totalPoints = userPosts.reduce((sum, post) => sum + (post.points || 0), 0);
+
+      await db
+        .update(users)
+        .set({ points: totalPoints })
+        .where(eq(users.id, req.user.id));
+
+      logger.info(`Recalculated points for user ${req.user.id}: ${totalPoints}`);
+
+      res.json({
+        message: "Program successfully reset",
+        newProgramStartDate,
+        deletedPostsCount: deletedPosts.length,
+        newPoints: totalPoints,
+        currentWeek: targetWeek,
+        currentDay: currentDayNumber,
+      });
+    } catch (error) {
+      logger.error("Error in re-engage:", error);
+      res.status(500).json({
+        message: "Failed to re-engage program",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Register message routes first (with Object Storage implementation)
   app.use(messageRouter);
 
