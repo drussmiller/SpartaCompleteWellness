@@ -142,8 +142,8 @@ export default function PrayerRequestsPage() {
     navigate('/');
   };
 
-  // Only show error if we have an error AND we're not currently loading AND the fetch wasn't successful
-  if (error && !isLoading && !isSuccess) {
+  // Only show error if loading failed and we have no data
+  if (error && !isLoading && prayerRequests.length === 0) {
     console.error('Rendering error state:', error);
     return (
       <AppLayout>
