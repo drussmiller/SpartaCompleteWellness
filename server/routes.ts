@@ -1066,7 +1066,7 @@ export const registerRoutes = async (
         const [userTeamData] = await db
           .select({ groupId: teams.groupId })
           .from(teams)
-          .where(eq(teams.teamId, req.user.teamId));
+          .where(eq(teams.id, req.user.teamId));
 
         if (!userTeamData?.groupId) {
           logger.info(`User ${req.user.id}'s team has no group, returning empty prayer posts array`);
