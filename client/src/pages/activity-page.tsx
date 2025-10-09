@@ -172,8 +172,8 @@ export default function ActivityPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen w-full bg-background/95 pb-24 shadow-lg animate-in slide-in-from-right">
+        <div className="max-w-4xl mx-auto px-4 md:px-44 md:pl-56 pt-6">
           <div className="flex items-center mb-6">
             <h1 className="text-2xl font-bold">Daily Activity</h1>
           </div>
