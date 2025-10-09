@@ -108,6 +108,37 @@ export default function NotificationsPage() {
     },
   });
 
+  const clearAllNotificationsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/notifications");
+      if (!res.ok) {
+        try {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to delete all notifications");
+        } catch (jsonError) {
+          console.error("Error parsing delete response:", jsonError);
+          throw new Error("Failed to parse server response");
+        }
+      }
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+      toast({
+        title: "Success",
+        description: `${data.count} notification${data.count !== 1 ? 's' : ''} deleted successfully`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -160,6 +191,18 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <div className="space-y-2 p-2">
+            <div className="flex justify-end mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => clearAllNotificationsMutation.mutate()}
+                disabled={clearAllNotificationsMutation.isPending}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All
+              </Button>
+            </div>
             {notifications.map((notification) => (
               <Card key={notification.id} className="relative">
                 <CardContent className="p-2">

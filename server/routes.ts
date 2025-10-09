@@ -4566,6 +4566,38 @@ export const registerRoutes = async (
     },
   );
 
+  // Delete all notifications for a user
+  router.delete("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Set content type before sending response
+      res.setHeader("Content-Type", "application/json");
+
+      // Delete all notifications for the user
+      const result = await db
+        .delete(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .returning();
+
+      logger.info(`Deleted ${result.length} notifications for user ${req.user.id}`);
+
+      res.json({
+        message: "All notifications deleted successfully",
+        count: result.length,
+      });
+    } catch (error) {
+      logger.error(
+        "Error deleting all notifications:",
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      res.status(500).json({
+        message: "Failed to delete all notifications",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Get weekly points for a user
   router.get("/api/points/weekly", authenticate, async (req, res) => {
     try {
