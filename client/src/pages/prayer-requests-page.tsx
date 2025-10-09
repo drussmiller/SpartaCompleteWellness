@@ -107,24 +107,14 @@ export default function PrayerRequestsPage() {
   const { data: prayerRequests = [], isLoading, error } = useQuery({
     queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
     queryFn: async () => {
-      try {
-        const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Prayer requests fetch error:', response.status, errorText);
-          throw new Error(`Failed to fetch prayer requests: ${response.status} - ${errorText}`);
-        }
-        const data = await response.json();
-        console.log('Prayer requests fetched:', data.length, 'posts');
-        return data;
-      } catch (err) {
-        console.error('Prayer requests query error:', err);
-        throw err;
+      const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch prayer requests: ${response.status}`);
       }
+      return response.json();
     },
     enabled: !!user,
-    retry: 1,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     staleTime: 1000 * 60, // Consider data stale after 1 minute
   });
 
