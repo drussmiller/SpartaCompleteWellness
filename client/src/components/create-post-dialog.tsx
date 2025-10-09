@@ -409,12 +409,10 @@ export function CreatePostDialog({
         exact: false // This will match all variations including different teamIds
       });
 
-      // Invalidate post limits only once with specific key
-      const today = new Date();
-      const tzOffset = today.getTimezoneOffset();
+      // Invalidate post limits - use exact: false to match all variations of the counts query
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/posts/counts", today.toISOString(), tzOffset],
-        exact: true 
+        queryKey: ["/api/posts/counts"],
+        exact: false 
       });
 
       // If this was a prayer post, also invalidate the prayer requests cache
