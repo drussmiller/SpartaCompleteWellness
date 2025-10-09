@@ -4,9 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ChevronLeft,
-  WifiOff,
-  Wifi,
-  RefreshCw,
   ImageIcon,
   Film,
 } from "lucide-react";
@@ -16,7 +13,6 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useAchievements } from "@/hooks/use-achievements";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
@@ -28,42 +24,16 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const {
-    connectionStatus,
-    reconnect,
     fixMemoryVerseThumbnails,
     fixAllThumbnails,
   } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [notificationTime, setNotificationTime] = useState("09:00");
-  const [isReconnecting, setIsReconnecting] = useState(false);
   const [isFixingThumbnails, setIsFixingThumbnails] = useState(false);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
   });
-
-  // Handler for manual reconnection
-  const handleReconnect = useCallback(() => {
-    if (connectionStatus === "connecting") {
-      toast({
-        description: "Connection attempt already in progress...",
-      });
-      return;
-    }
-
-    setIsReconnecting(true);
-    toast({
-      description: "Attempting to reconnect to notification service...",
-    });
-
-    // Attempt reconnection
-    reconnect();
-
-    // Reset reconnecting state after delay
-    setTimeout(() => {
-      setIsReconnecting(false);
-    }, 2000);
-  }, [connectionStatus, reconnect, toast]);
 
   const updateScheduleMutation = useMutation({
     mutationFn: async (time: string) => {
@@ -216,44 +186,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     retry: 0, // Don't retry - we'll handle errors directly
   });
 
-  // Generate the connection status badge
-  const renderConnectionStatus = () => {
-    switch (connectionStatus) {
-      case "connected":
-        return (
-          <Badge
-            variant="outline"
-            className="ml-auto flex items-center gap-1 bg-green-50 text-green-700 border-green-200 text-sm"
-          >
-            <Wifi className="h-3 w-3" />
-            <span>Connected</span>
-          </Badge>
-        );
-      case "connecting":
-        return (
-          <Badge
-            variant="outline"
-            className="ml-auto flex items-center gap-1 bg-yellow-50 text-yellow-700 border-yellow-200 text-sm"
-          >
-            <Wifi className="h-3 w-3" />
-            <span>Connecting...</span>
-          </Badge>
-        );
-      case "disconnected":
-        return (
-          <Badge
-            variant="outline"
-            className="ml-auto flex items-center gap-1 bg-red-50 text-red-700 border-red-200 text-sm"
-          >
-            <WifiOff className="h-3 w-3" />
-            <span>Offline</span>
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
     <div 
       className="flex flex-col h-full overflow-y-auto"
@@ -271,7 +203,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           <ChevronLeft className="h-8 w-8 scale-125" />
         </Button>
         <h2 className="text-lg font-semibold">Notification Settings</h2>
-        {renderConnectionStatus()}
       </div>
 
       <div 
@@ -332,36 +263,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         </div>
 
         <div className="space-y-4">
-          <div className="border rounded-md p-4 bg-muted/30">
-            <h3 className="text-lg font-medium mb-2">
-              Real-time notifications
-            </h3>
-            <div className="flex items-center justify-between">
-              <p className="text-base text-muted-foreground">
-                {connectionStatus === "connected"
-                  ? "You'll receive real-time notifications when you're online."
-                  : "Connect to receive real-time notifications."}
-              </p>
-
-              {connectionStatus !== "connected" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-2"
-                  onClick={handleReconnect}
-                  disabled={isReconnecting || connectionStatus === "connecting"}
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 mr-1 ${isReconnecting || connectionStatus === "connecting" ? "animate-spin" : ""}`}
-                  />
-                  {connectionStatus === "connecting"
-                    ? "Connecting..."
-                    : "Reconnect"}
-                </Button>
-              )}
-            </div>
-          </div>
-
           <Button
             className="w-full"
             onClick={handleSave}
