@@ -554,13 +554,14 @@ export default function ActivityManagementPage() {
                         }
 
                         // Extract week and day from filename
-                        const weekDayMatch = file.name.match(/Week\s*(\d+(?:-\d+)?)[,\s]*Day\s*(\d+)/i);
+                        // Support both "Week X Day Y" and "Week X" formats (Week only defaults to Day 0)
+                        const weekDayMatch = file.name.match(/Week\s*(\d+(?:-\d+)?)(?:[,\s]*Day\s*(\d+))?/i);
                         if (!weekDayMatch) {
-                          throw new Error(`Could not extract week and day from filename: ${file.name}`);
+                          throw new Error(`Could not extract week from filename: ${file.name}`);
                         }
 
                         const weekPart = weekDayMatch[1];
-                        const dayPart = parseInt(weekDayMatch[2]);
+                        const dayPart = weekDayMatch[2] ? parseInt(weekDayMatch[2]) : 0; // Default to Day 0 if not specified
 
                         // Parse week numbers (could be single number or range like 9-11)
                         const weekNumbers: number[] = [];
