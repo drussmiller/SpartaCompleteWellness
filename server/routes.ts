@@ -2571,6 +2571,19 @@ export const registerRoutes = async (
                 `Could not delete main media file ${filePath}: ${err}`,
               );
             }
+
+            // If it's a video, also delete the thumbnail
+            if (post.is_video) {
+              const baseName = filename.substring(0, filename.lastIndexOf('.'));
+              const thumbnailPath = `shared/uploads/${baseName}.jpg`;
+              
+              try {
+                await spartaObjectStorage.deleteFile(thumbnailPath);
+                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
+              } catch (err) {
+                logger.warn(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
+              }
+            }
           }
         } catch (fileError) {
           logger.error(
@@ -4064,7 +4077,71 @@ export const registerRoutes = async (
       logger.info(`New program start date: ${newProgramStartDate.toISOString()}`);
       logger.info(`Deleting posts from ${cutoffDate.toISOString()} onwards`);
 
-      // Delete posts from cutoff date onwards for this user
+      // First, get all posts that will be deleted to clean up their media
+      const postsToDelete = await db
+        .select({
+          id: posts.id,
+          mediaUrl: posts.mediaUrl,
+          is_video: posts.is_video
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, cutoffDate)
+          )
+        );
+
+      logger.info(`Found ${postsToDelete.length} posts to delete for user ${req.user.id}`);
+
+      // Delete media files for each post before deleting the posts
+      if (postsToDelete.length > 0) {
+        const { spartaStorage } = await import('./sparta-object-storage');
+        
+        for (const post of postsToDelete) {
+          if (post.mediaUrl) {
+            try {
+              // Extract filename from mediaUrl
+              let filename = '';
+              if (post.mediaUrl.includes('filename=')) {
+                const urlParams = new URLSearchParams(post.mediaUrl.split('?')[1]);
+                filename = urlParams.get('filename') || '';
+              } else {
+                filename = post.mediaUrl.split('/').pop() || '';
+              }
+
+              if (filename) {
+                const filePath = `shared/uploads/${filename}`;
+                
+                // Delete main media file
+                try {
+                  await spartaStorage.deleteFile(filePath);
+                  logger.info(`Deleted media file: ${filePath} for post ${post.id}`);
+                } catch (err) {
+                  logger.warn(`Could not delete media file ${filePath}: ${err}`);
+                }
+
+                // If it's a video, also delete the thumbnail
+                if (post.is_video) {
+                  const baseName = filename.substring(0, filename.lastIndexOf('.'));
+                  const thumbnailPath = `shared/uploads/${baseName}.jpg`;
+                  
+                  try {
+                    await spartaStorage.deleteFile(thumbnailPath);
+                    logger.info(`Deleted video thumbnail: ${thumbnailPath} for post ${post.id}`);
+                  } catch (err) {
+                    logger.warn(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
+                  }
+                }
+              }
+            } catch (err) {
+              logger.error(`Error deleting media for post ${post.id}:`, err);
+            }
+          }
+        }
+      }
+
+      // Now delete the posts from the database
       const deletedPosts = await db
         .delete(posts)
         .where(
@@ -4075,7 +4152,7 @@ export const registerRoutes = async (
         )
         .returning();
 
-      logger.info(`Deleted ${deletedPosts.length} posts for user ${req.user.id}`);
+      logger.info(`Deleted ${deletedPosts.length} posts from database for user ${req.user.id}`);
 
       // Update user's program_start_date
       await db
