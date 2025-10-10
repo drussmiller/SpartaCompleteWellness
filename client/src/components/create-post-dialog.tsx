@@ -89,8 +89,9 @@ export function CreatePostDialog({
   };
 
   // For users who haven't posted anything, default to miscellaneous (intro video)
+  // For users who have posted, default to food
   const shouldDefaultToMiscellaneous = !hasAnyPosts;
-  const actualType = shouldDefaultToMiscellaneous ? "miscellaneous" : (defaultType || initialType);
+  const actualType = shouldDefaultToMiscellaneous ? "miscellaneous" : (defaultType || "food");
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
