@@ -64,19 +64,19 @@ export function CreatePostDialog({
     staleTime: 300000, // 5 minutes
   });
 
-  // Check if user has posted an introduction (for users not in a team)
-  const { data: hasPostedIntroduction = false } = useQuery({
-    queryKey: ["/api/posts/has-introduction", user?.id],
+  // Check if user has any posts (all new users must post intro video first)
+  const { data: hasAnyPosts = false } = useQuery({
+    queryKey: ["/api/posts/has-any-posts", user?.id],
     queryFn: async () => {
       if (!user) return false;
-      const response = await fetch(`/api/posts/has-introduction`, {
+      const response = await fetch(`/api/posts/has-any-posts`, {
         credentials: 'include'
       });
       if (!response.ok) return false;
       const result = await response.json();
-      return result.hasIntroduction || false;
+      return result.hasAnyPosts || false;
     },
-    enabled: !!user && !user.teamId, // Only check for users not in a team
+    enabled: !!user, // Check for all users
     staleTime: 300000, // 5 minutes
   });
 
@@ -88,8 +88,8 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
-  // For users not in a team who haven't posted, default to miscellaneous
-  const shouldDefaultToMiscellaneous = !user?.teamId && !hasPostedIntroduction;
+  // For users who haven't posted anything, default to miscellaneous (intro video)
+  const shouldDefaultToMiscellaneous = !hasAnyPosts;
   const actualType = shouldDefaultToMiscellaneous ? "miscellaneous" : (defaultType || initialType);
 
   const form = useForm<CreatePostForm>({
@@ -569,21 +569,21 @@ export function CreatePostDialog({
                           setVideoThumbnail(null);
                         }}
                       >
-                        <option value="food" disabled={isPostTypeDisabled('food') || (!user?.teamId && !hasPostedIntroduction)}>
+                        <option value="food" disabled={isPostTypeDisabled('food') || !hasAnyPosts}>
                           Food {getRemainingMessage('food')}
                         </option>
-                        <option value="workout" disabled={isPostTypeDisabled('workout') || (!user?.teamId && !hasPostedIntroduction)}>
+                        <option value="workout" disabled={isPostTypeDisabled('workout') || !hasAnyPosts}>
                           Workout {getRemainingMessage('workout')}
                         </option>
-                        <option value="scripture" disabled={isPostTypeDisabled('scripture') || (!user?.teamId && !hasPostedIntroduction)}>
+                        <option value="scripture" disabled={isPostTypeDisabled('scripture') || !hasAnyPosts}>
                           Scripture {getRemainingMessage('scripture')}
                         </option>
-                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || (!user?.teamId && !hasPostedIntroduction)}>
+                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || !hasAnyPosts}>
                           Memory Verse {getRemainingMessage('memory_verse')}
                         </option>
                         {/* Remove Prayer Request option entirely - will be handled on its own page */}
                         <option value="miscellaneous">
-                          {(!user?.teamId && !hasPostedIntroduction) ? "Introduction" : "Miscellaneous"} {getRemainingMessage('miscellaneous')}
+                          {!hasAnyPosts ? "Intro Video" : "Miscellaneous"} {getRemainingMessage('miscellaneous')}
                         </option>
                       </select>
                     </FormControl>
@@ -601,6 +601,7 @@ export function CreatePostDialog({
                   <FormItem>
                     <FormLabel>
                       {(form.watch("type") === "memory_verse") ? "Video" : 
+                       (form.watch("type") === "miscellaneous" && !hasAnyPosts) ? "Intro Video" :
                        (form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") ? "Media" : "Image"}
                     </FormLabel>
                     <div className="space-y-4">
@@ -684,71 +685,75 @@ export function CreatePostDialog({
                       <FormControl>
                         {form.watch("type") !== "memory_verse" && (
                           <>
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                // If Miscellaneous post and video already selected, show warning
-                                if (form.watch("type") === "miscellaneous" && selectedMediaType === "video") {
-                                  toast({
-                                    title: "Cannot select both image and video",
-                                    description: "Please remove the video first before selecting an image.",
-                                    variant: "destructive"
-                                  });
-                                  return;
-                                }
-                                fileInputRef.current?.click();
-                              }}
-                              variant="outline"
-                              className="w-full"
-                              disabled={!user?.teamId && !hasPostedIntroduction}
-                            >
-                              Select Image
-                            </Button>
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              ref={fileInputRef}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const reader = new FileReader();
-                                  reader.onload = async () => {
-                                    try {
-                                      if (file.type.startsWith("video/")) {
-                                        setImagePreview(reader.result as string);
-                                      } else {
-                                        const compressed = await compressImage(reader.result as string);
-                                        setImagePreview(compressed);
-                                        field.onChange(compressed);
-
-                                        // Set media type to image
-                                        if (form.watch("type") === "miscellaneous") {
-                                          setSelectedMediaType("image");
-                                        }
-                                      }
-                                    } catch (error) {
-                                      console.error('Error compressing image:', error);
+                            {/* Hide image button for intro video (first post) */}
+                            {hasAnyPosts && (
+                              <>
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    // If Miscellaneous post and video already selected, show warning
+                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "video") {
                                       toast({
-                                        title: "Error",
-                                        description: "Failed to process image. Please try again.",
-                                        variant: "destructive",
+                                        title: "Cannot select both image and video",
+                                        description: "Please remove the video first before selecting an image.",
+                                        variant: "destructive"
                                       });
+                                      return;
                                     }
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
-                              className="hidden"
-                            />
+                                    fileInputRef.current?.click();
+                                  }}
+                                  variant="outline"
+                                  className="w-full"
+                                >
+                                  Select Image
+                                </Button>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  ref={fileInputRef}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onload = async () => {
+                                        try {
+                                          if (file.type.startsWith("video/")) {
+                                            setImagePreview(reader.result as string);
+                                          } else {
+                                            const compressed = await compressImage(reader.result as string);
+                                            setImagePreview(compressed);
+                                            field.onChange(compressed);
+
+                                            // Set media type to image
+                                            if (form.watch("type") === "miscellaneous") {
+                                              setSelectedMediaType("image");
+                                            }
+                                          }
+                                        } catch (error) {
+                                          console.error('Error compressing image:', error);
+                                          toast({
+                                            title: "Error",
+                                            description: "Failed to process image. Please try again.",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                              </>
+                            )}
 
                             {/* Add Select Video button for Miscellaneous and Prayer Request post types */}
                             {(form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
-                              <div className="mt-3">
+                              <div className={hasAnyPosts ? "mt-3" : ""}>
                                 <Button
                                   type="button"
                                   onClick={() => {
                                     // If Miscellaneous post and image already selected, show warning
-                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image") {
+                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image" && hasAnyPosts) {
                                       toast({
                                         title: "Cannot select both image and video",
                                         description: "Please remove the image first before selecting a video.",
@@ -761,7 +766,7 @@ export function CreatePostDialog({
                                   variant="outline"
                                   className="w-full"
                                 >
-                                  Select Video
+                                  {!hasAnyPosts ? "Select Intro Video" : "Select Video"}
                                 </Button>
 
                                 {/* Hidden video input field for miscellaneous posts */}

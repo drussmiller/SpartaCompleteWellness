@@ -265,6 +265,32 @@ export const registerRoutes = async (
     }
   });
 
+  // Check if user has any posts (used for intro video requirement)
+  router.get("/api/posts/has-any-posts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userPosts = await db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            isNull(posts.parentId) // Don't count comment posts
+          )
+        )
+        .limit(1);
+
+      res.json({ hasAnyPosts: userPosts.length > 0 });
+    } catch (error) {
+      logger.error("Error checking user posts:", error);
+      res.status(500).json({
+        message: "Failed to check user posts",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add JSON content type header for all API routes
   router.use("/api", (req, res, next) => {
     res.setHeader("Content-Type", "application/json");
