@@ -104,6 +104,16 @@ export function CreatePostDialog({
     }
   });
 
+  // Update form type when hasAnyPosts changes or dialog opens
+  useEffect(() => {
+    if (open && !defaultType) {
+      const newType = hasAnyPosts ? "food" : "miscellaneous";
+      form.setValue("type", newType);
+      const newPoints = newType === "prayer" ? 0 : newType === "memory_verse" ? 10 : 3;
+      form.setValue("points", newPoints);
+    }
+  }, [open, hasAnyPosts, defaultType, form]);
+
   // Fetch existing memory verse videos for reuse
   const { data: existingMemoryVerseVideos, isLoading: loadingVideos } = useQuery<MemoryVerseVideo[]>({
     queryKey: ['/api/memory-verse-videos'],
