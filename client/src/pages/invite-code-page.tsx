@@ -117,7 +117,18 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
     <AppLayout>
       <div className="flex flex-col items-center justify-center min-h-screen p-6">
         <Card className="w-full max-w-md">
-          <CardHeader>
+          <CardHeader className="relative">
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="absolute right-4 top-4 h-8 w-8"
+                data-testid="button-close-invite-code"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
             <CardTitle>Join with Invite Code</CardTitle>
             <CardDescription>
               Enter the invite code you received or scan a QR code to join a team or become an admin
