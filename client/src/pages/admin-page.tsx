@@ -365,14 +365,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedTeam) => {
       toast({
         title: "Success",
         description: "Team updated successfully",
       });
       setEditingTeam(null);
       setSelectedGroupId("");
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      // Optimistically update the teams list in the cache
+      queryClient.setQueryData(["/api/teams"], (oldTeams: Team[] | undefined) => {
+        if (!oldTeams) return oldTeams;
+        return oldTeams.map(team => 
+          team.id === updatedTeam.id ? updatedTeam : team
+        );
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -402,17 +408,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedOrg) => {
       toast({
         title: "Success",
         description: "Organization updated successfully",
       });
       setEditingOrganization(null);
-      // Invalidate all affected entities since organization status changes can cascade
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      // Optimistically update the organizations list in the cache
+      queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
+        if (!oldOrgs) return oldOrgs;
+        return oldOrgs.map(org => 
+          org.id === updatedOrg.id ? updatedOrg : org
+        );
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -439,16 +447,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedGroup) => {
       toast({
         title: "Success",
         description: "Group updated successfully",
       });
       setEditingGroup(null);
-      // Invalidate all affected entities since group status changes can cascade
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      // Optimistically update the groups list in the cache
+      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
+        if (!oldGroups) return oldGroups;
+        return oldGroups.map(group => 
+          group.id === updatedGroup.id ? updatedGroup : group
+        );
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -488,9 +499,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           user.id === updatedUser.id ? updatedUser : user
         );
       });
-
-      // Also invalidate to ensure we're in sync with server
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
