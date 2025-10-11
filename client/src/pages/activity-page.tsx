@@ -282,13 +282,11 @@ export default function ActivityPage() {
                 {/* Week Content Display */}
                 {weekContent ? (
                   <div className="mt-4">
-                    <h3 className="text-lg font-semibold mb-4">Week {selectedWeek} Information</h3>
                     <div className="space-y-4">
                       {weekContent.contentFields?.map((item: any, index: number) => (
                         <div key={index}>
                           {item.type === 'text' && (
                             <div>
-                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
                               <div 
                                 className="rich-text-content daily-content"
                                 style={{
