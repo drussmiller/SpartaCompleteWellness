@@ -476,7 +476,7 @@ export default function ActivityManagementPage() {
                               {
                                 id: `bible-verse-${absoluteDay}`,
                                 type: "text",
-                                title: `Day ${absoluteDay} Bible Verse`,
+                                title: "",
                                 content: `<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;">
                                   <h3 style="margin: 0 0 10px 0; color: #007bff;">Today's Bible Verse</h3>
                                   <p style="margin: 0; font-size: 16px; font-weight: 500;">${verseLine}</p>
