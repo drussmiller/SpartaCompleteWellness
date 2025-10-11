@@ -275,41 +275,39 @@ export default function ActivityManagementPage() {
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
-      // Amazon URL processing - detect if there's descriptive text before the URL
-      // Handle multiple formats: separate paragraphs, same paragraph, with various whitespace
-      
-      // Pattern 1: Description in one <p>, URL in next <p> (most common from Word docs)
+      // Amazon URL processing - handle text before URL on same or previous line
+      // Pattern 1: Text ending with colon, then Amazon URL (most common)
+      // Matches: <p>Text:</p><p>amazonurl</p> OR <p>Text:<br>amazonurl</p>
+      const amazonWithColonRegex = /<p>([^<]*?:)\s*<\/p>\s*<p>\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
+      content = content.replace(amazonWithColonRegex, (match: string, descText: string, url: string) => {
+        const cleanDesc = descText.trim().replace(/:$/, '').trim(); // Remove trailing colon
+        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p><p style="display:none;">`;
+      });
+
+      // Pattern 2: Text with colon and URL in same paragraph separated by <br>
+      const amazonWithColonBreakRegex = /<p>([^<]*?:)\s*<br\s*\/?>\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
+      content = content.replace(amazonWithColonBreakRegex, (match: string, descText: string, url: string) => {
+        const cleanDesc = descText.trim().replace(/:$/, '').trim();
+        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a>`;
+      });
+
+      // Pattern 3: Any text in one <p>, URL in next <p>
       const amazonSeparateParasRegex = /<p>([^<]+?)<\/p>\s*<p>\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)\s*<\/p>/gi;
       content = content.replace(amazonSeparateParasRegex, (match: string, descText: string, url: string) => {
         const cleanDesc = descText.trim();
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p>`;
-      });
-
-      // Pattern 2: Description and URL in same paragraph with line break
-      const amazonSameParaWithBreakRegex = /<p>([^<]+?)<br\s*\/?>\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)\s*<\/p>/gi;
-      content = content.replace(amazonSameParaWithBreakRegex, (match: string, descText: string, url: string) => {
-        const cleanDesc = descText.trim();
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p>`;
-      });
-
-      // Pattern 3: Description and URL in same paragraph separated by whitespace
-      const amazonSameParaRegex = /<p>([^<]+?)\s+(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)\s*<\/p>/gi;
-      content = content.replace(amazonSameParaRegex, (match: string, descText: string, url: string) => {
-        const cleanDesc = descText.trim();
-        // Make sure we have actual descriptive text (not just the URL)
-        if (cleanDesc.length > 0 && !cleanDesc.startsWith('http')) {
+        // Only use description if it's not already a URL
+        if (!cleanDesc.startsWith('http')) {
           return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p>`;
         }
-        // Just the URL, make it a link
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${url}</a></p>`;
+        return match;
       });
 
-      // Pattern 4: Standalone Amazon URLs (fallback)
-      const amazonStandaloneRegex = /(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
-      content = content.replace(amazonStandaloneRegex, (match: string) => {
+      // Pattern 4: Standalone Amazon URLs that weren't caught (fallback)
+      const amazonStandaloneRegex = /<p>\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)\s*<\/p>/gi;
+      content = content.replace(amazonStandaloneRegex, (match: string, url: string) => {
         // Only replace if it wasn't already converted to a link
-        if (!content.includes(`href="${match}"`)) {
-          return `<a href="${match}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+        if (!content.includes(`href="${url}"`)) {
+          return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${url}</a></p>`;
         }
         return match;
       });
