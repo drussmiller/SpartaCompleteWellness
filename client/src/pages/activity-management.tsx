@@ -275,12 +275,23 @@ export default function ActivityManagementPage() {
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
-      // Amazon URL regex - matches Amazon product URLs
-      const amazonRegex = /(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
+      // Amazon URL regex - matches text before Amazon URLs to use as link text
+      // Matches: "Description text\n" followed by Amazon URL on next line
+      const amazonWithTextRegex = /([^\n<]+)\s*\n\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
+      
+      // Replace Amazon URLs with descriptive text as link, hiding the URL
+      content = content.replace(amazonWithTextRegex, (match: string, descText: string, url: string) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${descText.trim()}</a>`;
+      });
 
-      // Replace Amazon URLs with clickable links, preserving any preceding text
+      // Also handle standalone Amazon URLs (without preceding text)
+      const amazonRegex = /(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
       content = content.replace(amazonRegex, (match: string) => {
-        return `<a href="${match}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+        // Only replace if it wasn't already replaced by the previous regex
+        if (!content.includes(`href="${match}"`)) {
+          return `<a href="${match}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+        }
+        return match;
       });
 
       // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
