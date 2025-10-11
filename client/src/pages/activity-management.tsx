@@ -231,6 +231,7 @@ export default function ActivityManagementPage() {
       }
 
       const data = await res.json();
+      let title = filename;
 
       let content = data.content;
 
@@ -267,7 +268,7 @@ export default function ActivityManagementPage() {
         id: Math.random().toString(36).substring(7),
         type: 'text',
         content: content.trim(),
-        title: ''
+        title: title
       }];
 
       setContentFields(newFields);
@@ -639,7 +640,7 @@ export default function ActivityManagementPage() {
                           id: crypto.randomUUID(),
                           type: 'text' as const,
                           content: contentHtml,
-                          title: ''
+                          title: `Week ${weekNumbers.join(', ')} - Day ${dayPart}`
                         }];
 
                         // Process each week in the range
