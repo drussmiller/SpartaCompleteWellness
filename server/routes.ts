@@ -4872,15 +4872,18 @@ export const registerRoutes = async (
           }
         }
 
-        // Check if user is changing teams (not just updating the same team)
+        // Check if user is changing teams or not on any team
         const [currentUser] = await db
           .select()
           .from(users)
           .where(eq(users.id, userId))
           .limit(1);
 
-        if (currentUser && currentUser.teamId !== req.body.teamId) {
-          // User is changing teams, check if new team has capacity
+        // Only skip capacity check if user is already on this specific team
+        const needsCapacityCheck = !currentUser || currentUser.teamId !== req.body.teamId;
+        
+        if (needsCapacityCheck) {
+          // Check if team has capacity
           const currentMemberCount = await storage.getTeamMemberCount(req.body.teamId);
           
           if (team.maxSize && currentMemberCount >= team.maxSize) {
