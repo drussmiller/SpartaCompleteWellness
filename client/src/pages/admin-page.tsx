@@ -446,7 +446,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "User updated successfully",
       });
       setEditingUser(null);
-      
+
       // Optimistically update the users list in the cache
       queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
         if (!oldUsers) return oldUsers;
@@ -454,7 +454,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           user.id === updatedUser.id ? updatedUser : user
         );
       });
-      
+
       // Also invalidate to ensure we're in sync with server
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
@@ -2310,7 +2310,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         const formData = new FormData(
                                           e.currentTarget,
                                         );
-                                        
+
                                         // Get the program start date from state or hidden input
                                         let programStartDateValue: string | null = null;
                                         if (selectedProgramStartDate[user.id]) {
@@ -2322,7 +2322,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           // Fall back to form data
                                           programStartDateValue = formData.get("programStartDate") as string;
                                         }
-                                        
+
                                         updateUserMutation.mutate({
                                           userId: user.id,
                                           data: {
@@ -2393,12 +2393,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                     ...prev,
                                                     [user.id]: date
                                                   }));
-                                                  
+
                                                   // Format date as YYYY-MM-DD for hidden input
                                                   const offset = date.getTimezoneOffset();
                                                   const localDate = new Date(date.getTime() - (offset * 60 * 1000));
                                                   const formattedDate = localDate.toISOString().split("T")[0];
-                                                  
+
                                                   // Update hidden input value
                                                   const hiddenInput = document.querySelector(`input[name="programStartDate"][data-user-id="${user.id}"]`) as HTMLInputElement;
                                                   if (hiddenInput) {
@@ -2642,17 +2642,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     }
                                     size="sm"
                                     className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                                    disabled={!user.teamId}
                                     onClick={() => {
-                                      if (!user.teamId) {
-                                        toast({
-                                          title: "Team Required",
-                                          description:
-                                            "User must be assigned to a team before becoming a Group Admin.",
-                                          variant: "destructive",
-                                        });
-                                        return;
-                                      }
                                       updateUserRoleMutation.mutate({
                                         userId: user.id,
                                         role: "isGroupAdmin",

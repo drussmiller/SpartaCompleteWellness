@@ -86,33 +86,31 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
         return res.status(403).json({ message: "Only Admins can assign Group Admin role" });
       }
 
-      // User must be in a team to be a Group Admin (only when adding the role)
       if (value) {
+        // When promoting to Group Admin, set adminGroupId based on their team if they have one
         const [targetUser] = await db
           .select()
           .from(users)
           .where(eq(users.id, userId))
           .limit(1);
 
-        if (!targetUser || !targetUser.teamId) {
-          return res.status(400).json({ message: "User must be in a team to be a Group Admin" });
-        }
+        if (targetUser?.teamId) {
+          const [team] = await db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, targetUser.teamId))
+            .limit(1);
 
-        // Set adminGroupId to the group of their team when promoting to Group Admin
-        const [team] = await db
-          .select()
-          .from(teams)
-          .where(eq(teams.id, targetUser.teamId))
-          .limit(1);
-
-        if (team) {
-          await db
-            .update(users)
-            .set({ adminGroupId: team.groupId })
-            .where(eq(users.id, userId));
+          if (team) {
+            await db
+              .update(users)
+              .set({ adminGroupId: team.groupId })
+              .where(eq(users.id, userId));
+          }
         }
+        // If no team, adminGroupId will remain null and can be set later
       } else {
-        // Clear adminGroupId when removing Group Admin role (no team required)
+        // Clear adminGroupId when removing Group Admin role
         await db
           .update(users)
           .set({ adminGroupId: null })
