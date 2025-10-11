@@ -59,7 +59,8 @@ export default function ActivityManagementPage() {
       }
       
       const data = await response.json();
-      return data;
+      // Filter out Bible verses (activityTypeId = 0) from management view
+      return data.filter((activity: Activity) => activity.activityTypeId !== 0);
     }
   });
 
