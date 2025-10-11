@@ -2581,7 +2581,7 @@ export const registerRoutes = async (
 
       // Get current date in user's timezone
       const now = new Date();
-      const userLocalNow = new Date(now.getTime() - tzOffset * 60 * 1000);
+      const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
 
       // Set to start of day
       const userStartOfDay = new Date(userLocalNow);
@@ -4836,6 +4836,82 @@ export const registerRoutes = async (
       }
     }
   );
+
+  // Update user endpoint
+  router.patch("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin && !req.user?.isGroupAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID format" });
+      }
+
+      // Validate teamId if present
+      if (req.body.teamId !== undefined && req.body.teamId !== null) {
+        if (typeof req.body.teamId !== 'number') {
+          return res.status(400).json({ message: "Team ID must be a number" });
+        }
+        // Verify team exists
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, req.body.teamId))
+          .limit(1);
+
+        if (!team) {
+          return res.status(400).json({ message: "Team not found" });
+        }
+
+        // For Group Admins, verify the team is in their group
+        if (req.user?.isGroupAdmin && !req.user?.isAdmin) {
+          if (team.groupId !== req.user.adminGroupId) {
+            return res.status(403).json({ message: "You can only assign users to teams in your group" });
+          }
+        }
+      }
+
+      // Prepare update data - only update teamJoinedAt and programStartDate if team is being changed
+      const updateData: any = { ...req.body };
+
+      // If team is being changed, update join date and program start date
+      if (req.body.teamId !== undefined) {
+        if (req.body.teamId) {
+          const now = new Date();
+          updateData.teamJoinedAt = now;
+          // Don't override programStartDate if it's explicitly provided
+          if (!req.body.programStartDate) {
+            updateData.programStartDate = now;
+          }
+        } else {
+          // If removing from team, clear join date but keep program start date
+          updateData.teamJoinedAt = null;
+        }
+      }
+
+      // Update user
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      logger.info(`User ${userId} updated successfully by admin ${req.user.id}`);
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      logger.error(`Error updating user ${req.params.userId}:`, error);
+      res.status(500).json({
+        message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
 
   return httpServer;
 };
