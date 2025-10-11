@@ -45,7 +45,7 @@ main img {
   .post-card {
     padding: 0 2rem;
   }
-  
+
   /* Target the image container div specifically */
   .post-content > div,
   .post-card > div {
@@ -53,7 +53,7 @@ main img {
     margin: 0 auto !important;
     padding: 0 2rem !important;
   }
-  
+
   /* Force image width constraints on desktop */
   .post-content img,
   .post-card img,
@@ -198,4 +198,26 @@ div[data-post-id] .video-container {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: auto;
   }
+
+  /* Activity Content Styles */
+.rich-text-content a {
+  word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  display: inline-block;
+  color: #1e90ff !important;
+  text-decoration: underline !important;
+  font-weight: 500 !important;
+}
+
+.rich-text-content a:hover {
+  color: #0066cc !important;
+  text-decoration: underline !important;
+}
+
+.rich-text-content p {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
 }
