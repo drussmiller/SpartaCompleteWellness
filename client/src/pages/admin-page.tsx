@@ -132,6 +132,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
+  const [organizationsOpen, setOrganizationsOpen] = useState(false);
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  const [teamsOpen, setTeamsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose(
     {
@@ -1011,7 +1015,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Organizations Section - Only show for full admins */}
               {currentUser?.isAdmin && (
-                <Collapsible className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible 
+                  className="w-full border rounded-lg p-4 min-h-[60px]"
+                  open={organizationsOpen}
+                  onOpenChange={setOrganizationsOpen}
+                >
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1307,7 +1315,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
               {/* Groups Section - Show for full admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <Collapsible className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible 
+                  className="w-full border rounded-lg p-4 min-h-[60px]"
+                  open={groupsOpen}
+                  onOpenChange={setGroupsOpen}
+                >
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1740,7 +1752,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
               {/* Teams Section - Show for admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <Collapsible className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible 
+                  className="w-full border rounded-lg p-4 min-h-[60px]"
+                  open={teamsOpen}
+                  onOpenChange={setTeamsOpen}
+                >
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
@@ -2176,7 +2192,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </Collapsible>
               )}
 
-              <Collapsible className="w-full border rounded-lg p-4 min-h-[60px]">
+              <Collapsible 
+                className="w-full border rounded-lg p-4 min-h-[60px]"
+                open={usersOpen}
+                onOpenChange={setUsersOpen}
+              >
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
