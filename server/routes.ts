@@ -8,6 +8,7 @@ import {
   eq,
   and,
   desc,
+  asc,
   sql,
   gte,
   lte,
@@ -3146,6 +3147,36 @@ export const registerRoutes = async (
   startHeartbeatMonitoring();
 
   // User stats endpoint for simplified My Stats section
+  router.get("/api/users", authenticate, async (req, res) => {
+    try {
+      // Allow both full admins and group admins
+      if (!req.user?.isAdmin && !req.user?.isGroupAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      let users = await storage.getAllUsers();
+      
+      // Filter users for group admins - only show users in their group's teams
+      if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
+        // Get teams in the admin's group
+        const groupTeams = await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.groupId, req.user.adminGroupId));
+        
+        const teamIds = groupTeams.map(team => team.id);
+        
+        // Filter users to only those in the group's teams
+        users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
+      }
+      
+      res.json(users);
+    } catch (error) {
+      logger.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   router.get("/api/user/stats", authenticate, async (req, res, next) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -3389,6 +3420,190 @@ export const registerRoutes = async (
       }
     },
   );
+
+  // Get all notifications for current user
+  router.get("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt));
+
+      res.json(userNotifications);
+    } catch (error) {
+      logger.error("Error fetching notifications:", error);
+      res.status(500).json({
+        message: "Failed to fetch notifications",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get unread notification count
+  router.get("/api/notifications/unread", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)::integer` })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.read, false),
+          ),
+        );
+
+      res.json({ unreadCount: unreadCount[0].count });
+    } catch (error) {
+      logger.error("Error fetching unread notifications:", error);
+      res.status(500).json({
+        message: "Failed to fetch notification count",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Mark notifications as read
+  router.post("/api/notifications/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationIds } = req.body;
+
+      if (!Array.isArray(notificationIds)) {
+        return res.status(400).json({ message: "Invalid notification IDs" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            inArray(notifications.id, notificationIds),
+          ),
+        );
+
+      res.json({ message: "Notifications marked as read" });
+    } catch (error) {
+      logger.error("Error marking notifications as read:", error);
+      res.status(500).json({
+        message: "Failed to mark notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get messages with a specific user
+  router.get("/api/messages/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const otherUserId = parseInt(req.params.userId);
+      if (isNaN(otherUserId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const userMessages = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          imageUrl: messages.imageUrl,
+          createdAt: messages.createdAt,
+          isRead: messages.isRead,
+          sender: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+          },
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(messages.senderId, req.user.id),
+              eq(messages.recipientId, otherUserId),
+            ),
+            and(
+              eq(messages.senderId, otherUserId),
+              eq(messages.recipientId, req.user.id),
+            ),
+          ),
+        )
+        .orderBy(asc(messages.createdAt));
+
+      res.json(userMessages);
+    } catch (error) {
+      logger.error("Error fetching messages:", error);
+      res.status(500).json({
+        message: "Failed to fetch messages",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get unread message count
+  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const [result] = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false),
+          ),
+        );
+
+      res.json({ unreadCount: result.count });
+    } catch (error) {
+      logger.error("Error getting unread message count:", error);
+      res.status(500).json({
+        message: "Failed to get unread message count",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Mark messages as read
+  router.post("/api/messages/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { messageIds } = req.body;
+
+      if (!Array.isArray(messageIds)) {
+        return res.status(400).json({ message: "Invalid message IDs" });
+      }
+
+      await db
+        .update(messages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            inArray(messages.id, messageIds),
+          ),
+        );
+
+      res.json({ message: "Messages marked as read" });
+    } catch (error) {
+      logger.error("Error marking messages as read:", error);
+      res.status(500).json({
+        message: "Failed to mark messages as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
 
   // Delete all notifications for a user
   router.delete("/api/notifications", authenticate, async (req, res) => {
