@@ -51,7 +51,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     { icon: Home, label: "Home", href: "/" },
     { icon: Calendar, label: "Activity", href: "/activity" },
     { icon: HelpCircle, label: "Help", href: "/help" },
-    { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount },
+    { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount, noTeamRequired: true },
   ];
 
   return (
@@ -77,9 +77,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {items.map(({ icon: Icon, label, href, count }) => {
+        {items.map(({ icon: Icon, label, href, count, noTeamRequired }) => {
           const isActivityLink = href === "/activity";
-          const isDisabled = !user?.teamId || (isActivityLink && activityStatus && !activityStatus.programHasStarted);
+          const isDisabled = !noTeamRequired && (!user?.teamId || (isActivityLink && activityStatus && !activityStatus.programHasStarted));
 
           return (
           <div
