@@ -281,14 +281,14 @@ export default function ActivityManagementPage() {
       const amazonWithColonRegex = /<p>([^<]*?:)\s*<\/p>\s*<p>\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
       content = content.replace(amazonWithColonRegex, (match: string, descText: string, url: string) => {
         const cleanDesc = descText.trim().replace(/:$/, '').trim(); // Remove trailing colon
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p><p style="display:none;">`;
+        return `<p><a href="${url}" target="_blank" rel="noopener" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p><p style="display:none;">`;
       });
 
       // Pattern 2: Text with colon and URL in same paragraph separated by <br>
       const amazonWithColonBreakRegex = /<p>([^<]*?:)\s*<br\s*\/?>\s*(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
       content = content.replace(amazonWithColonBreakRegex, (match: string, descText: string, url: string) => {
         const cleanDesc = descText.trim().replace(/:$/, '').trim();
-        return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a>`;
+        return `<p><a href="${url}" target="_blank" rel="noopener" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a>`;
       });
 
       // Pattern 3: Any text in one <p>, URL in next <p>
@@ -297,7 +297,7 @@ export default function ActivityManagementPage() {
         const cleanDesc = descText.trim();
         // Only use description if it's not already a URL
         if (!cleanDesc.startsWith('http')) {
-          return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p>`;
+          return `<p><a href="${url}" target="_blank" rel="noopener" style="color: #007bff; text-decoration: underline;">${cleanDesc}</a></p>`;
         }
         return match;
       });
@@ -307,7 +307,7 @@ export default function ActivityManagementPage() {
       content = content.replace(amazonStandaloneRegex, (match: string, url: string) => {
         // Only replace if it wasn't already converted to a link
         if (!content.includes(`href="${url}"`)) {
-          return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${url}</a></p>`;
+          return `<p><a href="${url}" target="_blank" rel="noopener" style="color: #007bff; text-decoration: underline;">${url}</a></p>`;
         }
         return match;
       });
