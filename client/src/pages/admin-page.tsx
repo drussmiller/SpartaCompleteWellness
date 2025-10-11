@@ -1735,7 +1735,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary"
+                      className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
                     >
                       Teams
                       <ChevronDown className="h-5 w-5 ml-2" />
