@@ -234,7 +234,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Team created successfully",
       });
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
     onError: (error: Error) => {
       toast({
@@ -259,7 +258,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Team deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
     onError: (error: Error) => {
       toast({
@@ -298,7 +296,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User's team updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -344,7 +341,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       // Only refetch current user data if we modified the logged-in user
       if (updatedUser.id === currentUser?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
       }
     },
     onError: (error: Error) => {
@@ -499,7 +495,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -584,7 +579,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Organization created successfully",
       });
       organizationForm.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
     },
     onError: (error: Error) => {
       toast({
@@ -612,7 +606,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Organization deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
     },
     onError: (error: Error) => {
       toast({
@@ -648,7 +641,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Group created successfully",
       });
       groupForm.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
     onError: (error: Error) => {
       toast({
@@ -673,7 +665,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Group deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
     onError: (error: Error) => {
       toast({
@@ -694,7 +685,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
     onError: (error: Error) => {
       toast({
@@ -715,7 +705,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
     onError: (error: Error) => {
       toast({
@@ -748,7 +737,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User's group updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -789,7 +777,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <Button
                 className="mt-4"
                 onClick={() =>
-                  queryClient.invalidateQueries({
                     queryKey: ["/api/activities"],
                   })
                 }
