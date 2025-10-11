@@ -2239,6 +2239,76 @@ export const registerRoutes = async (
     }
   });
 
+  // Get current activity week and day
+  router.get("/api/activities/current", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Get timezone offset from query params (in minutes)
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      // Get user with programStartDate
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has a program start date
+      if (!user.programStartDate) {
+        return res.status(400).json({ 
+          message: "User has no program start date",
+          currentWeek: 1,
+          currentDay: 1
+        });
+      }
+
+      // Get current date in user's timezone
+      const now = new Date();
+      const userLocalNow = new Date(now.getTime() - tzOffset * 60 * 1000);
+      
+      // Set to start of day
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Program start date (from database)
+      const programStart = new Date(user.programStartDate);
+      programStart.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week (1-based)
+      const currentWeek = Math.floor(daysSinceStart / 7) + 1;
+
+      // Calculate current day of week (1 = Monday, 7 = Sunday)
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const currentDay = rawDay === 0 ? 7 : rawDay;
+
+      // Don't allow negative weeks/days
+      const week = Math.max(1, currentWeek);
+      const day = Math.max(1, currentDay);
+
+      res.json({
+        currentWeek: week,
+        currentDay: day,
+        programStartDate: user.programStartDate,
+        daysSinceStart: Math.max(0, daysSinceStart)
+      });
+    } catch (error) {
+      logger.error("Error getting current activity:", error);
+      res.status(500).json({
+        message: "Failed to get current activity",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add messages endpoints before return statement
   router.get(
     "/api/messages/unread/by-sender",
