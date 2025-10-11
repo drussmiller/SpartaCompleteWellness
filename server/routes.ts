@@ -2079,102 +2079,93 @@ export const registerRoutes = async (
   });
 
   // Redeem/use an invite code
-  router.post("/api/invite-codes/redeem", authenticate, async (req, res) => {
+  router.post("/api/redeem-invite-code", authenticate, async (req, res) => {
     try {
-      const { code } = req.body;
-      if (!code) {
+      const { inviteCode } = req.body;
+      if (!inviteCode) {
         return res.status(400).json({ message: "Invite code is required" });
       }
 
-      // Find the invite code
-      const [inviteCode] = await db
+      const code = inviteCode.toUpperCase();
+
+      // Search for the code in groups table (group admin codes)
+      const [groupWithCode] = await db
         .select()
-        .from(inviteCodes)
-        .where(and(eq(inviteCodes.code, code.toUpperCase()), eq(inviteCodes.isActive, true)))
+        .from(groups)
+        .where(eq(groups.groupAdminInviteCode, code))
         .limit(1);
 
-      if (!inviteCode) {
-        return res.status(404).json({ message: "Invalid or expired invite code" });
-      }
-
-      // Check if max uses reached
-      if (inviteCode.maxUses && inviteCode.usedCount >= inviteCode.maxUses) {
-        return res.status(400).json({ message: "Invite code has reached maximum uses" });
-      }
-
-      // Check if expired
-      if (inviteCode.expiresAt && new Date(inviteCode.expiresAt) < new Date()) {
-        return res.status(400).json({ message: "Invite code has expired" });
-      }
-
-      // Apply the invite based on type
-      if (inviteCode.type === "group_admin" && inviteCode.groupId) {
+      if (groupWithCode) {
         // Make user a group admin
         await db
           .update(users)
           .set({
             isGroupAdmin: true,
-            adminGroupId: inviteCode.groupId,
+            adminGroupId: groupWithCode.id,
           })
           .where(eq(users.id, req.user.id));
 
-        // Increment used count
-        await db
-          .update(inviteCodes)
-          .set({ usedCount: inviteCode.usedCount + 1 })
-          .where(eq(inviteCodes.id, inviteCode.id));
-
         res.json({ 
-          message: "Successfully joined as Group Admin", 
-          role: "group_admin",
-          groupId: inviteCode.groupId 
+          role: "Group Admin", 
+          groupName: groupWithCode.name,
+          groupId: groupWithCode.id 
         });
-      } else if (inviteCode.type === "team_admin" && inviteCode.teamId) {
+        return;
+      }
+
+      // Search for the code in teams table (team admin codes)
+      const [teamWithAdminCode] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.teamAdminInviteCode, code))
+        .limit(1);
+
+      if (teamWithAdminCode) {
         // Make user a team admin (team lead)
         await db
           .update(users)
           .set({
             isTeamLead: true,
-            teamId: inviteCode.teamId,
+            teamId: teamWithAdminCode.id,
             teamJoinedAt: new Date(),
           })
           .where(eq(users.id, req.user.id));
 
-        // Increment used count
-        await db
-          .update(inviteCodes)
-          .set({ usedCount: inviteCode.usedCount + 1 })
-          .where(eq(inviteCodes.id, inviteCode.id));
-
         res.json({ 
-          message: "Successfully joined as Team Admin", 
-          role: "team_admin",
-          teamId: inviteCode.teamId 
+          role: "Team Admin", 
+          teamName: teamWithAdminCode.name,
+          teamId: teamWithAdminCode.id 
         });
-      } else if (inviteCode.type === "team_member" && inviteCode.teamId) {
+        return;
+      }
+
+      // Search for the code in teams table (team member codes)
+      const [teamWithMemberCode] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.teamMemberInviteCode, code))
+        .limit(1);
+
+      if (teamWithMemberCode) {
         // Make user a team member
         await db
           .update(users)
           .set({
-            teamId: inviteCode.teamId,
+            teamId: teamWithMemberCode.id,
             teamJoinedAt: new Date(),
           })
           .where(eq(users.id, req.user.id));
 
-        // Increment used count
-        await db
-          .update(inviteCodes)
-          .set({ usedCount: inviteCode.usedCount + 1 })
-          .where(eq(inviteCodes.id, inviteCode.id));
-
         res.json({ 
-          message: "Successfully joined team", 
-          role: "team_member",
-          teamId: inviteCode.teamId 
+          role: "Team Member", 
+          teamName: teamWithMemberCode.name,
+          teamId: teamWithMemberCode.id 
         });
-      } else {
-        return res.status(400).json({ message: "Invalid invite code configuration" });
+        return;
       }
+
+      // Code not found
+      return res.status(404).json({ message: "Invalid invite code" });
     } catch (error) {
       logger.error("Error redeeming invite code:", error);
       res.status(500).json({ message: "Failed to redeem invite code" });
