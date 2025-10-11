@@ -132,10 +132,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
-  const [organizationsOpen, setOrganizationsOpen] = useState(false);
-  const [groupsOpen, setGroupsOpen] = useState(false);
-  const [teamsOpen, setTeamsOpen] = useState(false);
-  const [usersOpen, setUsersOpen] = useState(false);
+  const [organizationsOpen, setOrganizationsOpen] = useState(true);
+  const [groupsOpen, setGroupsOpen] = useState(true);
+  const [teamsOpen, setTeamsOpen] = useState(true);
+  const [usersOpen, setUsersOpen] = useState(true);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose(
     {
