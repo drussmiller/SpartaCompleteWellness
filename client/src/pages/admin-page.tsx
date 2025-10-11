@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
@@ -992,7 +992,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Organizations Section - Only show for full admins */}
               {currentUser?.isAdmin && (
-                <Collapsible key="organizations-panel" className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible key="organizations-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1288,7 +1288,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
               {/* Groups Section - Show for full admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <Collapsible key="groups-panel" className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible key="groups-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1721,7 +1721,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
               {/* Teams Section - Show for admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <Collapsible key="teams-panel" className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible key="teams-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
@@ -2157,7 +2157,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </Collapsible>
               )}
 
-              <Collapsible key="users-panel" className="w-full border rounded-lg p-4 min-h-[60px]">
+              <Collapsible key="users-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
