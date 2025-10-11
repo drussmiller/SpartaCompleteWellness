@@ -51,6 +51,7 @@ export const groups = pgTable("groups", {
   organizationId: integer("organization_id").notNull(),
   status: integer("status").default(1), // 1 = active, 0 = inactive
   competitive: boolean("competitive").default(false), // Whether this group is competitive
+  groupAdminInviteCode: text("group_admin_invite_code").unique(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -62,6 +63,8 @@ export const teams = pgTable("teams", {
   groupId: integer("group_id").notNull(),
   maxSize: integer("max_size").default(6), // Maximum number of people allowed in the team
   status: integer("status").default(1), // 1 = active, 0 = inactive
+  teamAdminInviteCode: text("team_admin_invite_code").unique(),
+  teamMemberInviteCode: text("team_member_invite_code").unique(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -88,13 +91,47 @@ export const insertTeamSchema = createInsertSchema(teams).extend({
   status: z.number().min(0).max(1).default(1),
 });
 
+// Invite Codes table for QR code invites
+export const inviteCodes = pgTable("invite_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  type: text("type", { enum: ["group_admin", "team_admin", "team_member"] }).notNull(),
+  groupId: integer("group_id"),
+  teamId: integer("team_id"),
+  createdBy: integer("created_by").notNull(),
+  expiresAt: timestamp("expires_at"),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInviteCodeSchema = createInsertSchema(inviteCodes)
+  .omit({
+    id: true,
+    createdAt: true,
+    usedCount: true,
+  })
+  .extend({
+    code: z.string().min(6, "Invite code must be at least 6 characters"),
+    type: z.enum(["group_admin", "team_admin", "team_member"]),
+    groupId: z.number().optional(),
+    teamId: z.number().optional(),
+    createdBy: z.number(),
+    expiresAt: z.date().optional(),
+    maxUses: z.number().optional(),
+    isActive: z.boolean().default(true),
+  });
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type Team = typeof teams.$inferSelect;
+export type InviteCode = typeof inviteCodes.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type InsertInviteCode = z.infer<typeof insertInviteCodeSchema>;
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
