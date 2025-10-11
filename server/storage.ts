@@ -722,7 +722,8 @@ export const storage = {
         .select({ count: sql<number>`count(*)` })
         .from(users)
         .where(eq(users.teamId, teamId));
-      return result[0]?.count || 0;
+      // Ensure we return a proper number, not a string
+      return Number(result[0]?.count) || 0;
     } catch (error) {
       logger.error(`Failed to get team member count for team ${teamId}:`, error);
       throw error;

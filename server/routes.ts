@@ -4886,7 +4886,10 @@ export const registerRoutes = async (
           // Check if team has capacity
           const currentMemberCount = await storage.getTeamMemberCount(req.body.teamId);
           
+          logger.info(`Team capacity check - Team ${req.body.teamId}: ${currentMemberCount}/${team.maxSize || 'unlimited'} members`);
+          
           if (team.maxSize && currentMemberCount >= team.maxSize) {
+            logger.warn(`Team ${req.body.teamId} is full, rejecting user assignment`);
             return res.status(400).json({ 
               message: `Cannot assign user to this team. Team is full (${currentMemberCount}/${team.maxSize} members).`
             });
