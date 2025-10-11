@@ -84,15 +84,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { InviteQRCode } from "@/components/invite-qr-code";
 
-// Memoized Collapsible wrapper to prevent re-renders from parent state changes
-const MemoizedCollapsible = memo(
-  Collapsible,
-  (prevProps, nextProps) => {
-    // Only re-render if key changes
-    return prevProps.children === nextProps.children;
-  }
-);
-
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
 type OrganizationFormData = z.infer<typeof insertOrganizationSchema>;
@@ -141,6 +132,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
+  
+  // Collapsible panel states - controlled to persist across re-renders
+  const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
+  const [groupsPanelOpen, setGroupsPanelOpen] = useState(false);
+  const [teamsPanelOpen, setTeamsPanelOpen] = useState(false);
+  const [usersPanelOpen, setUsersPanelOpen] = useState(false);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose(
     {
@@ -1001,7 +998,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Organizations Section - Only show for full admins */}
               {currentUser?.isAdmin && (
-                <MemoizedCollapsible key="organizations-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible 
+                  open={organizationsPanelOpen} 
+                  onOpenChange={setOrganizationsPanelOpen}
+                  className="w-full border rounded-lg p-4 min-h-[60px]"
+                >
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1292,12 +1293,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         ))}
                       </div>
                     </CollapsibleContent>
-                  </MemoizedCollapsible>
+                  </Collapsible>
               )}
 
               {/* Groups Section - Show for full admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <MemoizedCollapsible key="groups-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible 
+                  open={groupsPanelOpen} 
+                  onOpenChange={setGroupsPanelOpen}
+                  className="w-full border rounded-lg p-4 min-h-[60px]"
+                >
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1725,12 +1730,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         ))}
                       </div>
                     </CollapsibleContent>
-                  </MemoizedCollapsible>
+                  </Collapsible>
               )}
 
               {/* Teams Section - Show for admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <MemoizedCollapsible key="teams-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+                <Collapsible 
+                  open={teamsPanelOpen} 
+                  onOpenChange={setTeamsPanelOpen}
+                  className="w-full border rounded-lg p-4 min-h-[60px]"
+                >
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
@@ -2163,10 +2172,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     ))}
                   </div>
                 </CollapsibleContent>
-              </MemoizedCollapsible>
+              </Collapsible>
               )}
 
-              <MemoizedCollapsible key="users-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+              <Collapsible 
+                open={usersPanelOpen} 
+                onOpenChange={setUsersPanelOpen}
+                className="w-full border rounded-lg p-4 min-h-[60px]"
+              >
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
@@ -2728,7 +2741,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       ))}
                     </div>
                 </CollapsibleContent>
-              </MemoizedCollapsible>
+              </Collapsible>
             </div>
           </div>
         </div>
