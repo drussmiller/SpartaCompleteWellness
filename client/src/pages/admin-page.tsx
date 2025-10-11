@@ -365,20 +365,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (updatedTeam) => {
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Team updated successfully",
       });
       setEditingTeam(null);
       setSelectedGroupId("");
-      // Optimistically update the teams list in the cache
-      queryClient.setQueryData(["/api/teams"], (oldTeams: Team[] | undefined) => {
-        if (!oldTeams) return oldTeams;
-        return oldTeams.map(team => 
-          team.id === updatedTeam.id ? updatedTeam : team
-        );
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -408,19 +401,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (updatedOrg) => {
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Organization updated successfully",
       });
       setEditingOrganization(null);
-      // Optimistically update the organizations list in the cache
-      queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
-        if (!oldOrgs) return oldOrgs;
-        return oldOrgs.map(org => 
-          org.id === updatedOrg.id ? updatedOrg : org
-        );
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -447,19 +433,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (updatedGroup) => {
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Group updated successfully",
       });
       setEditingGroup(null);
-      // Optimistically update the groups list in the cache
-      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
-        if (!oldGroups) return oldGroups;
-        return oldGroups.map(group => 
-          group.id === updatedGroup.id ? updatedGroup : group
-        );
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -485,20 +464,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (updatedUser) => {
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "User updated successfully",
       });
       setEditingUser(null);
-
-      // Optimistically update the users list in the cache
-      queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
-        if (!oldUsers) return oldUsers;
-        return oldUsers.map(user => 
-          user.id === updatedUser.id ? updatedUser : user
-        );
-      });
     },
     onError: (error: Error) => {
       toast({
