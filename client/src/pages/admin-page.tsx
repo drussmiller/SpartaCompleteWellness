@@ -367,7 +367,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedTeam) => {
+      // Manually update the cache with the new team data
+      queryClient.setQueryData(["/api/teams"], (oldTeams: Team[] | undefined) => {
+        if (!oldTeams) return oldTeams;
+        return oldTeams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
+      });
       toast({
         title: "Success",
         description: "Team updated successfully",
@@ -401,7 +406,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedOrganization) => {
+      // Manually update the cache with the new organization data
+      queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
+        if (!oldOrgs) return oldOrgs;
+        return oldOrgs.map(o => o.id === updatedOrganization.id ? updatedOrganization : o);
+      });
       toast({
         title: "Success",
         description: "Organization updated successfully",
@@ -432,7 +442,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedGroup) => {
+      // Manually update the cache with the new group data
+      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
+        if (!oldGroups) return oldGroups;
+        return oldGroups.map(g => g.id === updatedGroup.id ? updatedGroup : g);
+      });
       toast({
         title: "Success",
         description: "Group updated successfully",
@@ -462,7 +477,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
+      // Manually update the cache with the new user data
+      queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
+        if (!oldUsers) return oldUsers;
+        return oldUsers.map(u => u.id === updatedUser.id ? updatedUser : u);
+      });
       toast({
         title: "Success",
         description: "User updated successfully",
