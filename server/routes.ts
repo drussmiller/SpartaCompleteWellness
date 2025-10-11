@@ -467,7 +467,19 @@ export const registerRoutes = async (
                   preferredMinute >= 50 &&
                   minute < (preferredMinute + 10) % 60);
 
-              if (isPreferredTimeWindow) {
+              // Only send if within time window, no notifications sent today, AND user is in a team
+              const existingNotifications = await db
+                .select()
+                .from(notifications)
+                .where(
+                  and(
+                    eq(notifications.userId, user.id),
+                    eq(notifications.type, "reminder"), // Check for reminder type
+                    gte(notifications.createdAt, new Date(new Date().setHours(0, 0, 0, 0))), // Check if sent today
+                  ),
+                );
+
+              if (isPreferredTimeWindow && existingNotifications.length === 0 && user.teamId) {
                 // Create a test notification with proper schema references
                 const notification = {
                   userId: user.id,
@@ -514,9 +526,17 @@ export const registerRoutes = async (
                   );
                 }
               } else {
-                logger.info(
-                  `User ${user.id}'s preferred time ${preferredHour}:${preferredMinute} doesn't match test time ${hour}:${minute}`,
-                );
+                if (!isPreferredTimeWindow) {
+                  logger.info(
+                    `User ${user.id}'s preferred time ${preferredHour}:${preferredMinute} doesn't match test time ${hour}:${minute}`,
+                  );
+                } else if (existingNotifications.length > 0) {
+                  logger.info(
+                    `User ${user.id} already received a reminder today.`
+                  );
+                } else if (!user.teamId) {
+                  logger.info(`User ${user.id} is not in a team, skipping reminder.`);
+                }
               }
             } catch (userError) {
               logger.error(
@@ -1795,8 +1815,8 @@ export const registerRoutes = async (
             .limit(1);
 
           const groupName = authorizedGroup?.name || `Group ${req.user.adminGroupId}`;
-          return res.status(403).json({ 
-            message: `Not authorized to make changes to this group. You are Group Admin for ${groupName} only.` 
+          return res.status(403).json({
+            message: `Not authorized to make changes to this group. You are Group Admin for ${groupName} only.`
           });
         }
 
@@ -1894,7 +1914,7 @@ export const registerRoutes = async (
       // Check if user is admin or group admin for this group
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
-      
+
       if (!isAdmin && !isGroupAdminForThisGroup) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -1937,7 +1957,7 @@ export const registerRoutes = async (
       // Check if user is admin or group admin for this team's group
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
-      
+
       if (!isAdmin && !isGroupAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -1980,7 +2000,7 @@ export const registerRoutes = async (
       // Check if user is admin or group admin for this team's group
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
-      
+
       if (!isAdmin && !isGroupAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -2016,7 +2036,7 @@ export const registerRoutes = async (
 
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
-      
+
       if (!isAdmin && !isGroupAdminForThisGroup) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -2058,7 +2078,7 @@ export const registerRoutes = async (
 
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
-      
+
       if (!isAdmin && !isGroupAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -2105,10 +2125,10 @@ export const registerRoutes = async (
           })
           .where(eq(users.id, req.user.id));
 
-        res.json({ 
-          role: "Group Admin", 
+        res.json({
+          role: "Group Admin",
           groupName: groupWithCode.name,
-          groupId: groupWithCode.id 
+          groupId: groupWithCode.id
         });
         return;
       }
@@ -2131,10 +2151,10 @@ export const registerRoutes = async (
           })
           .where(eq(users.id, req.user.id));
 
-        res.json({ 
-          role: "Team Admin", 
+        res.json({
+          role: "Team Admin",
           teamName: teamWithAdminCode.name,
-          teamId: teamWithAdminCode.id 
+          teamId: teamWithAdminCode.id
         });
         return;
       }
@@ -2156,10 +2176,10 @@ export const registerRoutes = async (
           })
           .where(eq(users.id, req.user.id));
 
-        res.json({ 
-          role: "Team Member", 
+        res.json({
+          role: "Team Member",
           teamName: teamWithMemberCode.name,
-          teamId: teamWithMemberCode.id 
+          teamId: teamWithMemberCode.id
         });
         return;
       }
@@ -2552,7 +2572,7 @@ export const registerRoutes = async (
 
       // Check if user has a program start date
       if (!user.programStartDate) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "User has no program start date",
           currentWeek: 1,
           currentDay: 1
@@ -2562,7 +2582,7 @@ export const registerRoutes = async (
       // Get current date in user's timezone
       const now = new Date();
       const userLocalNow = new Date(now.getTime() - tzOffset * 60 * 1000);
-      
+
       // Set to start of day
       const userStartOfDay = new Date(userLocalNow);
       userStartOfDay.setHours(0, 0, 0, 0);
@@ -3449,9 +3469,9 @@ export const registerRoutes = async (
       if (!req.user?.isAdmin && !req.user?.isGroupAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      
+
       let users = await storage.getAllUsers();
-      
+
       // Filter users for group admins - only show users in their group's teams
       if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
         // Get teams in the admin's group
@@ -3459,13 +3479,13 @@ export const registerRoutes = async (
           .select({ id: teams.id })
           .from(teams)
           .where(eq(teams.groupId, req.user.adminGroupId));
-        
+
         const teamIds = groupTeams.map(team => team.id);
-        
+
         // Filter users to only those in the group's teams
         users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
       }
-      
+
       res.json(users);
     } catch (error) {
       logger.error("Error fetching users:", error);
@@ -4808,7 +4828,7 @@ export const registerRoutes = async (
           filename: req.file?.originalname
         });
 
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Failed to process document",
           error: error instanceof Error ? error.message : "Unknown error",
           details: error instanceof Error ? error.stack : undefined
