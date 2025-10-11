@@ -93,6 +93,21 @@ interface AdminPageProps {
   onClose?: () => void;
 }
 
+// Helper function to safely extract error messages from responses
+async function getErrorMessage(res: Response, defaultMessage: string): Promise<string> {
+  try {
+    const error = await res.json();
+    return error.message || defaultMessage;
+  } catch {
+    try {
+      const text = await res.text();
+      return text || defaultMessage;
+    } catch {
+      return defaultMessage;
+    }
+  }
+}
+
 export default function AdminPage({ onClose }: AdminPageProps) {
   const { user: currentUser } = useAuth(); // Renamed to currentUser to avoid conflict with the mapped user
   const { toast } = useToast();
@@ -202,8 +217,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     mutationFn: async (data: TeamFormData) => {
       const res = await apiRequest("POST", "/api/teams", data);
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create team");
+        const errorMessage = await getErrorMessage(res, "Failed to create team");
+        throw new Error(errorMessage);
       }
       return res.json();
     },
@@ -228,8 +243,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     mutationFn: async (teamId: number) => {
       const res = await apiRequest("DELETE", `/api/teams/${teamId}`);
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete team");
+        const errorMessage = await getErrorMessage(res, "Failed to delete team");
+        throw new Error(errorMessage);
       }
       return res.json();
     },
@@ -260,8 +275,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}`, { teamId });
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update user's team");
+        let errorMessage = "Failed to update user's team";
+        try {
+          const error = await res.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          const text = await res.text();
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       return res.json();
     },
@@ -326,8 +348,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     }) => {
       const res = await apiRequest("PATCH", `/api/teams/${teamId}`, data);
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update team");
+        const errorMessage = await getErrorMessage(res, "Failed to update team");
+        throw new Error(errorMessage);
       }
       return res.json();
     },
@@ -435,8 +457,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update user");
+        const errorMessage = await getErrorMessage(res, "Failed to update user");
+        throw new Error(errorMessage);
       }
       return res.json();
     },
