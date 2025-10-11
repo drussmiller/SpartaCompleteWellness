@@ -723,7 +723,9 @@ export default function ActivityManagementPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium">
-                              Week {activity.week}{activity.day !== 0 && ` - Day ${activity.day}`}
+                              {activity.day === 0
+                                ? `Week ${activity.week} Information`
+                                : `Week ${activity.week} - Day ${activity.day}`}
                             </p>
                           </div>
                           <div className="flex gap-2">
