@@ -658,12 +658,12 @@ export default function ActivityManagementPage() {
                           throw new Error(`Unsupported file type for ${file.name}`);
                         }
 
-                        // Create content fields
+                        // Create content fields without automatic titles
                         const contentFields = [{
                           id: crypto.randomUUID(),
                           type: 'text' as const,
                           content: contentHtml,
-                          title: `Week ${weekNumbers.join(', ')} - Day ${dayPart}`
+                          title: ""
                         }];
 
                         // Process each week in the range
