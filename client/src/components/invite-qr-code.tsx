@@ -28,7 +28,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const endpoint =
     type === "group_admin"
       ? `/api/invite-codes/group/${id}`
-      : `/api/invite-codes/team/${id}`;
+      : `/api/invite-codes/team/${id}?type=${type}`;
 
   const { data: inviteCodes, isLoading } = useQuery<{ inviteCode: string }>({
     queryKey: [endpoint],
