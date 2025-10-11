@@ -1882,6 +1882,292 @@ export const registerRoutes = async (
     }
   });
 
+  // Invite Code endpoints
+  // Generate invite code for Group Admin
+  router.post("/api/invite-codes/group-admin/:groupId", authenticate, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      // Check if user is admin or group admin for this group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+      
+      if (!isAdmin && !isGroupAdminForThisGroup) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `GA-${groupId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      const [inviteCode] = await db
+        .insert(inviteCodes)
+        .values({
+          code,
+          type: "group_admin",
+          groupId,
+          createdBy: req.user.id,
+          isActive: true,
+        })
+        .returning();
+
+      res.status(201).json(inviteCode);
+    } catch (error) {
+      logger.error("Error creating group admin invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Generate invite code for Team Admin
+  router.post("/api/invite-codes/team-admin/:teamId", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Get team to check group ownership
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Check if user is admin or group admin for this team's group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+      
+      if (!isAdmin && !isGroupAdminForThisTeam) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `TA-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      const [inviteCode] = await db
+        .insert(inviteCodes)
+        .values({
+          code,
+          type: "team_admin",
+          teamId,
+          createdBy: req.user.id,
+          isActive: true,
+        })
+        .returning();
+
+      res.status(201).json(inviteCode);
+    } catch (error) {
+      logger.error("Error creating team admin invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Generate invite code for Team Member
+  router.post("/api/invite-codes/team-member/:teamId", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Get team to check group ownership
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Check if user is admin or group admin for this team's group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+      
+      if (!isAdmin && !isGroupAdminForThisTeam) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `TM-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      const [inviteCode] = await db
+        .insert(inviteCodes)
+        .values({
+          code,
+          type: "team_member",
+          teamId,
+          createdBy: req.user.id,
+          isActive: true,
+        })
+        .returning();
+
+      res.status(201).json(inviteCode);
+    } catch (error) {
+      logger.error("Error creating team member invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Get invite codes for a group
+  router.get("/api/invite-codes/group/:groupId", authenticate, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+      
+      if (!isAdmin && !isGroupAdminForThisGroup) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const codes = await db
+        .select()
+        .from(inviteCodes)
+        .where(and(eq(inviteCodes.groupId, groupId), eq(inviteCodes.isActive, true)));
+
+      res.json(codes);
+    } catch (error) {
+      logger.error("Error fetching group invite codes:", error);
+      res.status(500).json({ message: "Failed to fetch invite codes" });
+    }
+  });
+
+  // Get invite codes for a team
+  router.get("/api/invite-codes/team/:teamId", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+      
+      if (!isAdmin && !isGroupAdminForThisTeam) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const codes = await db
+        .select()
+        .from(inviteCodes)
+        .where(and(eq(inviteCodes.teamId, teamId), eq(inviteCodes.isActive, true)));
+
+      res.json(codes);
+    } catch (error) {
+      logger.error("Error fetching team invite codes:", error);
+      res.status(500).json({ message: "Failed to fetch invite codes" });
+    }
+  });
+
+  // Redeem/use an invite code
+  router.post("/api/invite-codes/redeem", authenticate, async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) {
+        return res.status(400).json({ message: "Invite code is required" });
+      }
+
+      // Find the invite code
+      const [inviteCode] = await db
+        .select()
+        .from(inviteCodes)
+        .where(and(eq(inviteCodes.code, code.toUpperCase()), eq(inviteCodes.isActive, true)))
+        .limit(1);
+
+      if (!inviteCode) {
+        return res.status(404).json({ message: "Invalid or expired invite code" });
+      }
+
+      // Check if max uses reached
+      if (inviteCode.maxUses && inviteCode.usedCount >= inviteCode.maxUses) {
+        return res.status(400).json({ message: "Invite code has reached maximum uses" });
+      }
+
+      // Check if expired
+      if (inviteCode.expiresAt && new Date(inviteCode.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Invite code has expired" });
+      }
+
+      // Apply the invite based on type
+      if (inviteCode.type === "group_admin" && inviteCode.groupId) {
+        // Make user a group admin
+        await db
+          .update(users)
+          .set({
+            isGroupAdmin: true,
+            adminGroupId: inviteCode.groupId,
+          })
+          .where(eq(users.id, req.user.id));
+
+        // Increment used count
+        await db
+          .update(inviteCodes)
+          .set({ usedCount: inviteCode.usedCount + 1 })
+          .where(eq(inviteCodes.id, inviteCode.id));
+
+        res.json({ 
+          message: "Successfully joined as Group Admin", 
+          role: "group_admin",
+          groupId: inviteCode.groupId 
+        });
+      } else if (inviteCode.type === "team_admin" && inviteCode.teamId) {
+        // Make user a team admin (team lead)
+        await db
+          .update(users)
+          .set({
+            isTeamLead: true,
+            teamId: inviteCode.teamId,
+            teamJoinedAt: new Date(),
+          })
+          .where(eq(users.id, req.user.id));
+
+        // Increment used count
+        await db
+          .update(inviteCodes)
+          .set({ usedCount: inviteCode.usedCount + 1 })
+          .where(eq(inviteCodes.id, inviteCode.id));
+
+        res.json({ 
+          message: "Successfully joined as Team Admin", 
+          role: "team_admin",
+          teamId: inviteCode.teamId 
+        });
+      } else if (inviteCode.type === "team_member" && inviteCode.teamId) {
+        // Make user a team member
+        await db
+          .update(users)
+          .set({
+            teamId: inviteCode.teamId,
+            teamJoinedAt: new Date(),
+          })
+          .where(eq(users.id, req.user.id));
+
+        // Increment used count
+        await db
+          .update(inviteCodes)
+          .set({ usedCount: inviteCode.usedCount + 1 })
+          .where(eq(inviteCodes.id, inviteCode.id));
+
+        res.json({ 
+          message: "Successfully joined team", 
+          role: "team_member",
+          teamId: inviteCode.teamId 
+        });
+      } else {
+        return res.status(400).json({ message: "Invalid invite code configuration" });
+      }
+    } catch (error) {
+      logger.error("Error redeeming invite code:", error);
+      res.status(500).json({ message: "Failed to redeem invite code" });
+    }
+  });
+
   // Workout Types endpoints
   router.get("/api/workout-types", authenticate, async (req, res) => {
     try {
