@@ -372,8 +372,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Team updated successfully",
       });
-      setEditingTeam(null);
-      setSelectedGroupId("");
     },
     onError: (error: Error) => {
       toast({
@@ -408,7 +406,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Organization updated successfully",
       });
-      setEditingOrganization(null);
     },
     onError: (error: Error) => {
       toast({
@@ -440,7 +437,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Group updated successfully",
       });
-      setEditingGroup(null);
     },
     onError: (error: Error) => {
       toast({
@@ -471,7 +467,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User updated successfully",
       });
-      setEditingUser(null);
     },
     onError: (error: Error) => {
       toast({
