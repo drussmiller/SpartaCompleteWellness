@@ -275,6 +275,14 @@ export default function ActivityManagementPage() {
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
 
+      // Amazon URL regex - matches Amazon product URLs
+      const amazonRegex = /(https?:\/\/(?:www\.)?amazon\.com\/[^\s<)"']+)/gi;
+
+      // Replace Amazon URLs with clickable links, preserving any preceding text
+      content = content.replace(amazonRegex, (match: string) => {
+        return `<a href="${match}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+      });
+
       // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
       content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
 
