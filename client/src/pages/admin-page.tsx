@@ -339,6 +339,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           user.id === updatedUser.id ? updatedUser : user
         );
       });
+
+      // Only refetch current user data if we modified the logged-in user
+      if (updatedUser.id === currentUser?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      }
     },
     onError: (error: Error) => {
       toast({
