@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, QrCode, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -13,16 +15,58 @@ import {
 } from "@/components/ui/dialog";
 
 interface InviteQRCodeProps {
-  inviteCode: string;
-  role: string;
+  type: "group_admin" | "team_admin" | "team_member";
+  id: number;
   name: string;
 }
 
-export function InviteQRCode({ inviteCode, role, name }: InviteQRCodeProps) {
+export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const [copied, setCopied] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleCopy = async () => {
+  const endpoint =
+    type === "group_admin"
+      ? `/api/invite-codes/group/${id}`
+      : `/api/invite-codes/team/${id}`;
+
+  const { data: inviteCodes, isLoading } = useQuery({
+    queryKey: [endpoint],
+    enabled: isOpen,
+  });
+
+  const createCodeMutation = useMutation({
+    mutationFn: async () => {
+      const createEndpoint =
+        type === "group_admin"
+          ? `/api/invite-codes/group-admin/${id}`
+          : type === "team_admin"
+            ? `/api/invite-codes/team-admin/${id}`
+            : `/api/invite-codes/team-member/${id}`;
+
+      const res = await apiRequest("POST", createEndpoint, {});
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Invite code created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: [endpoint] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCopy = async (inviteCode: string) => {
     try {
       await navigator.clipboard.writeText(inviteCode);
       setCopied(true);
@@ -39,6 +83,15 @@ export function InviteQRCode({ inviteCode, role, name }: InviteQRCodeProps) {
       });
     }
   };
+
+  const roleLabel =
+    type === "group_admin"
+      ? "Group Admin"
+      : type === "team_admin"
+        ? "Team Admin"
+        : "Team Member";
+
+  const currentCode = inviteCodes?.find((c: any) => c.type === type)?.code;
 
   return (
     <Dialog>

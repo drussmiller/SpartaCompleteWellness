@@ -82,6 +82,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
+import { InviteQRCode } from "@/components/invite-qr-code";
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
@@ -654,6 +655,48 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Group deleted successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generateGroupInviteCodeMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      const res = await apiRequest("POST", `/api/groups/${groupId}/generate-invite-code`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to generate invite code");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generateTeamInviteCodesMutation = useMutation({
+    mutationFn: async (teamId: number) => {
+      const res = await apiRequest("POST", `/api/teams/${teamId}/generate-invite-codes`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to generate invite codes");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
     },
     onError: (error: Error) => {
       toast({
@@ -1645,6 +1688,31 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   (t) => t.groupId === group.id,
                                 ).length || 0}
                               </p>
+                              <div className="mt-4 pt-4 border-t">
+                                <p className="text-sm font-medium mb-2">Invite Codes:</p>
+                                <div className="space-y-2">
+                                  {group.groupAdminInviteCode ? (
+                                    <InviteQRCode
+                                      inviteCode={group.groupAdminInviteCode}
+                                      role="Group Admin"
+                                      name={group.name}
+                                    />
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => generateGroupInviteCodeMutation.mutate(group.id)}
+                                      disabled={generateGroupInviteCodeMutation.isPending}
+                                      data-testid="button-generate-group-admin-code"
+                                    >
+                                      {generateGroupInviteCodeMutation.isPending && (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      )}
+                                      Generate Group Admin Invite Code
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
                             </CardContent>
                           </Card>
                         ))}
@@ -2068,6 +2136,38 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               {team.status === 1 ? "Active" : "Inactive"}
                             </span>
                           </p>
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-sm font-medium mb-2">Invite Codes:</p>
+                            <div className="space-y-2">
+                              {team.teamAdminInviteCode && team.teamMemberInviteCode ? (
+                                <>
+                                  <InviteQRCode
+                                    inviteCode={team.teamAdminInviteCode}
+                                    role="Team Admin"
+                                    name={team.name}
+                                  />
+                                  <InviteQRCode
+                                    inviteCode={team.teamMemberInviteCode}
+                                    role="Team Member"
+                                    name={team.name}
+                                  />
+                                </>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => generateTeamInviteCodesMutation.mutate(team.id)}
+                                  disabled={generateTeamInviteCodesMutation.isPending}
+                                  data-testid="button-generate-team-codes"
+                                >
+                                  {generateTeamInviteCodesMutation.isPending && (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  )}
+                                  Generate Team Invite Codes
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
