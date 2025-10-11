@@ -1691,26 +1691,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <div className="mt-4 pt-4 border-t">
                                 <p className="text-sm font-medium mb-2">Invite Codes:</p>
                                 <div className="space-y-2">
-                                  {group.groupAdminInviteCode ? (
-                                    <InviteQRCode
-                                      inviteCode={group.groupAdminInviteCode}
-                                      role="Group Admin"
-                                      name={group.name}
-                                    />
-                                  ) : (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => generateGroupInviteCodeMutation.mutate(group.id)}
-                                      disabled={generateGroupInviteCodeMutation.isPending}
-                                      data-testid="button-generate-group-admin-code"
-                                    >
-                                      {generateGroupInviteCodeMutation.isPending && (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      )}
-                                      Generate Group Admin Invite Code
-                                    </Button>
-                                  )}
+                                  <InviteQRCode
+                                    type="group_admin"
+                                    id={group.id}
+                                    name={group.name}
+                                  />
                                 </div>
                               </div>
                             </CardContent>
@@ -2139,33 +2124,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <div className="mt-4 pt-4 border-t">
                             <p className="text-sm font-medium mb-2">Invite Codes:</p>
                             <div className="space-y-2">
-                              {team.teamAdminInviteCode && team.teamMemberInviteCode ? (
-                                <>
-                                  <InviteQRCode
-                                    inviteCode={team.teamAdminInviteCode}
-                                    role="Team Admin"
-                                    name={team.name}
-                                  />
-                                  <InviteQRCode
-                                    inviteCode={team.teamMemberInviteCode}
-                                    role="Team Member"
-                                    name={team.name}
-                                  />
-                                </>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => generateTeamInviteCodesMutation.mutate(team.id)}
-                                  disabled={generateTeamInviteCodesMutation.isPending}
-                                  data-testid="button-generate-team-codes"
-                                >
-                                  {generateTeamInviteCodesMutation.isPending && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  )}
-                                  Generate Team Invite Codes
-                                </Button>
-                              )}
+                              <InviteQRCode
+                                type="team_admin"
+                                id={team.id}
+                                name={team.name}
+                              />
+                              <InviteQRCode
+                                type="team_member"
+                                id={team.id}
+                                name={team.name}
+                              />
                             </div>
                           </div>
                         </CardContent>
