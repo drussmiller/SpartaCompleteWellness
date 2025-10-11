@@ -30,7 +30,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
       ? `/api/invite-codes/group/${id}`
       : `/api/invite-codes/team/${id}`;
 
-  const { data: inviteCodes, isLoading } = useQuery({
+  const { data: inviteCodes, isLoading } = useQuery<{ inviteCode: string }>({
     queryKey: [endpoint],
     enabled: isOpen,
   });
@@ -91,7 +91,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
         ? "Team Admin"
         : "Team Member";
 
-  const currentCode = inviteCodes?.find((c: any) => c.type === type)?.code;
+  const currentCode = inviteCodes?.inviteCode;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
