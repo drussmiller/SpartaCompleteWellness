@@ -4871,6 +4871,24 @@ export const registerRoutes = async (
             return res.status(403).json({ message: "You can only assign users to teams in your group" });
           }
         }
+
+        // Check if user is changing teams (not just updating the same team)
+        const [currentUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (currentUser && currentUser.teamId !== req.body.teamId) {
+          // User is changing teams, check if new team has capacity
+          const currentMemberCount = await storage.getTeamMemberCount(req.body.teamId);
+          
+          if (team.maxSize && currentMemberCount >= team.maxSize) {
+            return res.status(400).json({ 
+              message: `Cannot assign user to this team. Team is full (${currentMemberCount}/${team.maxSize} members).`
+            });
+          }
+        }
       }
 
       // Prepare update data - only update teamJoinedAt and programStartDate if team is being changed
