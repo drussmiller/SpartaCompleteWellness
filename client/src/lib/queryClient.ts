@@ -30,9 +30,10 @@ export async function apiRequest(
       credentials: 'include',
     });
 
-    // Log failed API requests for debugging
+    // Log failed API requests for debugging (clone response before reading)
     if (!response.ok) {
-      const errorText = await response.text();
+      const clonedResponse = response.clone();
+      const errorText = await clonedResponse.text();
       console.error(`API ${method} request to ${path} failed:`, {
         status: response.status,
         statusText: response.statusText,
