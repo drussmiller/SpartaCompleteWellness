@@ -102,9 +102,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
             <span className="text-xs">
               {label}
-              {isActivityLink && !user?.teamId && (
-                <span className="block text-[10px] text-muted-foreground">(Team Required)</span>
-              )}
               {isActivityLink && user?.teamId && activityStatus && !activityStatus.programHasStarted && (
                 <span className="block text-[10px] text-muted-foreground">(Starts Next Monday)</span>
               )}
