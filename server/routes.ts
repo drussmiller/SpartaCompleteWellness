@@ -1902,18 +1902,18 @@ export const registerRoutes = async (
       // Generate unique code
       const code = `GA-${groupId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
-      const [inviteCode] = await db
-        .insert(inviteCodes)
-        .values({
-          code,
-          type: "group_admin",
-          groupId,
-          createdBy: req.user.id,
-          isActive: true,
-        })
+      // Update the group with the new invite code
+      const [updatedGroup] = await db
+        .update(groups)
+        .set({ groupAdminInviteCode: code })
+        .where(eq(groups.id, groupId))
         .returning();
 
-      res.status(201).json(inviteCode);
+      if (!updatedGroup) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      res.status(201).json({ code, type: "group_admin" });
     } catch (error) {
       logger.error("Error creating group admin invite code:", error);
       res.status(500).json({ message: "Failed to create invite code" });
@@ -1945,18 +1945,18 @@ export const registerRoutes = async (
       // Generate unique code
       const code = `TA-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
-      const [inviteCode] = await db
-        .insert(inviteCodes)
-        .values({
-          code,
-          type: "team_admin",
-          teamId,
-          createdBy: req.user.id,
-          isActive: true,
-        })
+      // Update the team with the new invite code
+      const [updatedTeam] = await db
+        .update(teams)
+        .set({ teamAdminInviteCode: code })
+        .where(eq(teams.id, teamId))
         .returning();
 
-      res.status(201).json(inviteCode);
+      if (!updatedTeam) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      res.status(201).json({ code, type: "team_admin" });
     } catch (error) {
       logger.error("Error creating team admin invite code:", error);
       res.status(500).json({ message: "Failed to create invite code" });
@@ -1988,18 +1988,18 @@ export const registerRoutes = async (
       // Generate unique code
       const code = `TM-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
-      const [inviteCode] = await db
-        .insert(inviteCodes)
-        .values({
-          code,
-          type: "team_member",
-          teamId,
-          createdBy: req.user.id,
-          isActive: true,
-        })
+      // Update the team with the new invite code
+      const [updatedTeam] = await db
+        .update(teams)
+        .set({ teamMemberInviteCode: code })
+        .where(eq(teams.id, teamId))
         .returning();
 
-      res.status(201).json(inviteCode);
+      if (!updatedTeam) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      res.status(201).json({ code, type: "team_member" });
     } catch (error) {
       logger.error("Error creating team member invite code:", error);
       res.status(500).json({ message: "Failed to create invite code" });
@@ -2021,10 +2021,20 @@ export const registerRoutes = async (
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      const codes = await db
+      const [group] = await db
         .select()
-        .from(inviteCodes)
-        .where(and(eq(inviteCodes.groupId, groupId), eq(inviteCodes.isActive, true)));
+        .from(groups)
+        .where(eq(groups.id, groupId))
+        .limit(1);
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      const codes = [];
+      if (group.groupAdminInviteCode) {
+        codes.push({ code: group.groupAdminInviteCode, type: "group_admin" });
+      }
 
       res.json(codes);
     } catch (error) {
@@ -2053,10 +2063,13 @@ export const registerRoutes = async (
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      const codes = await db
-        .select()
-        .from(inviteCodes)
-        .where(and(eq(inviteCodes.teamId, teamId), eq(inviteCodes.isActive, true)));
+      const codes = [];
+      if (team.teamAdminInviteCode) {
+        codes.push({ code: team.teamAdminInviteCode, type: "team_admin" });
+      }
+      if (team.teamMemberInviteCode) {
+        codes.push({ code: team.teamMemberInviteCode, type: "team_member" });
+      }
 
       res.json(codes);
     } catch (error) {
