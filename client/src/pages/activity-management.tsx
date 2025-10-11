@@ -53,11 +53,11 @@ export default function ActivityManagementPage() {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch activities: ${response.status}`);
       }
-      
+
       const data = await response.json();
       // Filter out Bible verses (activityTypeId = 0) from management view
       return data.filter((activity: Activity) => activity.activityTypeId !== 0);
