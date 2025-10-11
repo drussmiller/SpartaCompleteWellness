@@ -80,30 +80,43 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
       return res.status(400).json({ message: "Cannot remove admin role from primary admin account" });
     }
 
-    // Special handling for Group Admin role
-    if (role === 'isGroupAdmin') {
+    // For Group Admin role, verify permissions
+    if (role === "isGroupAdmin") {
+      if (!req.user.isAdmin) {
+        return res.status(403).json({ message: "Only Admins can assign Group Admin role" });
+      }
+
+      // User must be in a team to be a Group Admin (only when adding the role)
       if (value) {
-        // Making user a Group Admin - they must have a team selected
-        if (!user.teamId) {
-          return res.status(400).json({ message: "User must be assigned to a team before becoming a Group Admin" });
+        const [targetUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (!targetUser || !targetUser.teamId) {
+          return res.status(400).json({ message: "User must be in a team to be a Group Admin" });
         }
 
-        // Get the user's team and its parent group
+        // Set adminGroupId to the group of their team when promoting to Group Admin
         const [team] = await db
           .select()
           .from(teams)
-          .where(eq(teams.id, user.teamId))
+          .where(eq(teams.id, targetUser.teamId))
           .limit(1);
 
-        if (!team) {
-          return res.status(400).json({ message: "User's team not found" });
+        if (team) {
+          await db
+            .update(users)
+            .set({ adminGroupId: team.groupId })
+            .where(eq(users.id, userId));
         }
-
-        // Make the user admin of their team's parent group
-        await storage.makeUserGroupAdmin(userId, team.groupId);
       } else {
-        // Removing Group Admin role
-        await storage.removeUserGroupAdmin(userId);
+        // Clear adminGroupId when removing Group Admin role (no team required)
+        await db
+          .update(users)
+          .set({ adminGroupId: null })
+          .where(eq(users.id, userId));
       }
     } else {
       // Update standard roles (isAdmin, isTeamLead)
