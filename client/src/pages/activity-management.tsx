@@ -44,7 +44,23 @@ export default function ActivityManagementPage() {
   const isMobile = useIsMobile();
 
   const { data: activities, isLoading, error } = useQuery<Activity[]>({
-    queryKey: ["/api/activities"]
+    queryKey: ["/api/activities"],
+    queryFn: async () => {
+      const response = await fetch("/api/activities", {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch activities: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    }
   });
 
   const { data: workoutTypes } = useQuery<WorkoutType[]>({
@@ -316,10 +332,16 @@ export default function ActivityManagementPage() {
           <Card className="w-full max-w-md">
             <CardContent className="p-6">
               <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Activities</h2>
-              <p className="text-gray-600">{error instanceof Error ? error.message : 'An error occurred'}</p>
+              <p className="text-gray-600 mb-2">{error instanceof Error ? error.message : 'An error occurred'}</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Please try refreshing the page or contact support if the issue persists.
+              </p>
               <Button
                 className="mt-4"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/activities"] })}
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+                  window.location.reload();
+                }}
               >
                 Retry
               </Button>
