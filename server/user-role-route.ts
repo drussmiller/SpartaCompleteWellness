@@ -104,16 +104,27 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
           if (team) {
             await db
               .update(users)
-              .set({ adminGroupId: team.groupId })
+              .set({ isGroupAdmin: true, adminGroupId: team.groupId })
+              .where(eq(users.id, userId));
+          } else {
+            // If team not found, just set the role
+            await db
+              .update(users)
+              .set({ isGroupAdmin: true })
               .where(eq(users.id, userId));
           }
+        } else {
+          // If no team, adminGroupId will remain null and can be set later
+          await db
+            .update(users)
+            .set({ isGroupAdmin: true })
+            .where(eq(users.id, userId));
         }
-        // If no team, adminGroupId will remain null and can be set later
       } else {
-        // Clear adminGroupId when removing Group Admin role
+        // Clear adminGroupId AND isGroupAdmin when removing Group Admin role
         await db
           .update(users)
-          .set({ adminGroupId: null })
+          .set({ isGroupAdmin: false, adminGroupId: null })
           .where(eq(users.id, userId));
       }
     } else {
