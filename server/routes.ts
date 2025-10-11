@@ -2291,6 +2291,9 @@ export const registerRoutes = async (
       const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const currentDay = rawDay === 0 ? 7 : rawDay;
 
+      // Check if program has started
+      const programHasStarted = daysSinceStart >= 0;
+
       // Don't allow negative weeks/days
       const week = Math.max(1, currentWeek);
       const day = Math.max(1, currentDay);
@@ -2299,7 +2302,8 @@ export const registerRoutes = async (
         currentWeek: week,
         currentDay: day,
         programStartDate: user.programStartDate,
-        daysSinceStart: Math.max(0, daysSinceStart)
+        daysSinceStart: Math.max(0, daysSinceStart),
+        programHasStarted
       });
     } catch (error) {
       logger.error("Error getting current activity:", error);

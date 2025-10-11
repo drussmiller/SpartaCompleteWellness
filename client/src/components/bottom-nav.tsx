@@ -108,6 +108,11 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
               {isActivityLink && user?.teamId && activityStatus && !activityStatus.programHasStarted && (
                 <span className="block text-[10px] text-muted-foreground">(Starts Next Monday)</span>
               )}
+              {isActivityLink && user?.teamId && activityStatus && activityStatus.programHasStarted && (
+                <span className="block text-[10px] text-muted-foreground">
+                  Week {activityStatus.currentWeek} Day {activityStatus.currentDay}
+                </span>
+              )}
             </span>
             {count > 0 && (
               <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
