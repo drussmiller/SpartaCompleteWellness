@@ -84,6 +84,15 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { InviteQRCode } from "@/components/invite-qr-code";
 
+// Memoized Collapsible wrapper to prevent re-renders from parent state changes
+const MemoizedCollapsible = memo(
+  Collapsible,
+  (prevProps, nextProps) => {
+    // Only re-render if key changes
+    return prevProps.children === nextProps.children;
+  }
+);
+
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
 type OrganizationFormData = z.infer<typeof insertOrganizationSchema>;
@@ -992,7 +1001,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Organizations Section - Only show for full admins */}
               {currentUser?.isAdmin && (
-                <Collapsible key="organizations-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+                <MemoizedCollapsible key="organizations-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1283,12 +1292,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         ))}
                       </div>
                     </CollapsibleContent>
-                  </Collapsible>
+                  </MemoizedCollapsible>
               )}
 
               {/* Groups Section - Show for full admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <Collapsible key="groups-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+                <MemoizedCollapsible key="groups-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                   <div className="mb-4">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1716,12 +1725,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         ))}
                       </div>
                     </CollapsibleContent>
-                  </Collapsible>
+                  </MemoizedCollapsible>
               )}
 
               {/* Teams Section - Show for admins and group admins */}
               {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                <Collapsible key="teams-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+                <MemoizedCollapsible key="teams-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
@@ -2154,10 +2163,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     ))}
                   </div>
                 </CollapsibleContent>
-              </Collapsible>
+              </MemoizedCollapsible>
               )}
 
-              <Collapsible key="users-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
+              <MemoizedCollapsible key="users-panel" defaultOpen={false} className="w-full border rounded-lg p-4 min-h-[60px]">
                 <div className="mb-4">
                   <CollapsibleTrigger asChild>
                     <Button
@@ -2719,7 +2728,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       ))}
                     </div>
                 </CollapsibleContent>
-              </Collapsible>
+              </MemoizedCollapsible>
             </div>
           </div>
         </div>
