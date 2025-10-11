@@ -776,10 +776,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </p>
               <Button
                 className="mt-4"
-                onClick={() =>
-                    queryKey: ["/api/activities"],
-                  })
-                }
+                onClick={() => {
+                  window.location.reload();
+                }}
               >
                 Retry
               </Button>
