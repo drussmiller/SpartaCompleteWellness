@@ -646,11 +646,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   // Group mutations
   const groupForm = useForm<GroupFormData>({
-    resolver: zodResolver(insertGroupSchema),
+    resolver: zodResolver(insertGroupSchema.omit({ organizationId: true })),
     defaultValues: {
       name: "",
       description: "",
-      organizationId: undefined,
     },
   });
 
@@ -1405,42 +1404,28 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   )}
                                 />
                                 {currentUser?.isAdmin && (
-                                  <FormField
-                                    control={groupForm.control}
-                                    name="organizationId"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Organization</FormLabel>
-                                        <Select
-                                          onValueChange={(value) =>
-                                            field.onChange(parseInt(value))
-                                          }
-                                          value={field.value !== undefined ? field.value.toString() : undefined}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select organization" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {sortedOrganizations?.length > 0 ? (
-                                              sortedOrganizations.map((org) => (
-                                                <SelectItem
-                                                  key={org.id}
-                                                  value={org.id.toString()}
-                                                >
-                                                  {org.name}
-                                                </SelectItem>
-                                              ))
-                                            ) : (
-                                              <div className="px-2 py-1 text-sm text-muted-foreground">
-                                                No organizations available
-                                              </div>
-                                            )}
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium">Organization</label>
+                                    <Select
+                                      onValueChange={(value) => {
+                                        groupForm.setValue('organizationId' as any, parseInt(value));
+                                      }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select organization" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {sortedOrganizations?.map((org) => (
+                                          <SelectItem
+                                            key={org.id}
+                                            value={org.id.toString()}
+                                          >
+                                            {org.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
                                 )}
                                 {currentUser?.isGroupAdmin && (
                                   <div className="text-sm text-muted-foreground">
