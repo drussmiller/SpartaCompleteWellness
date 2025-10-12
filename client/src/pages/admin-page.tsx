@@ -645,6 +645,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   // Group mutations
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<number | null>(null);
+  
   const groupForm = useForm<GroupFormData>({
     resolver: zodResolver(insertGroupSchema.omit({ organizationId: true })),
     defaultValues: {
