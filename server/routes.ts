@@ -5497,6 +5497,11 @@ export const registerRoutes = async (
       // Prepare update data - only update teamJoinedAt and programStartDate if team is being changed
       const updateData: any = { ...req.body };
 
+      // Convert programStartDate string to Date object if provided
+      if (updateData.programStartDate && typeof updateData.programStartDate === 'string') {
+        updateData.programStartDate = new Date(updateData.programStartDate);
+      }
+
       // If team is being changed, update join date and program start date
       if (req.body.teamId !== undefined) {
         if (req.body.teamId) {
