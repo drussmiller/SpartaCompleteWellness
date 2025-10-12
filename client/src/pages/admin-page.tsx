@@ -847,7 +847,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? teams || []
     : currentUser?.isGroupAdmin
       ? (teams || []).filter((team) => team.groupId === currentUser.adminGroupId)
-      : []; // Team Leads will filter users later
+      : currentUser?.isTeamLead
+        ? (teams || []).filter((team) => team.id === currentUser.teamId)
+        : [];
 
   const sortedTeams = [...filteredTeams].sort((a, b) =>
     a.name.localeCompare(b.name),
