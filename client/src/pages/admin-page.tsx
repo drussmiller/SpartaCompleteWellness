@@ -1418,7 +1418,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             <SelectValue placeholder="Select organization" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {mergedOrgs?.map((org) => (
+                                            {organizations?.map((org) => (
                                               <SelectItem
                                                 key={org.id}
                                                 value={org.id.toString()}
