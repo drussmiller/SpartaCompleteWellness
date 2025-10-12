@@ -303,10 +303,28 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Check if user is admin
-      const adminUser = await storage.getUser(req.user.id);
-      if (!adminUser?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
+      // Check authorization
+      const currentUser = await storage.getUser(req.user.id);
+      if (!currentUser) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Get target user first to check team membership
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Authorization: Admin, Group Admin, or Team Lead (for same team only)
+      if (!currentUser.isAdmin && !currentUser.isGroupAdmin && !currentUser.isTeamLead) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Team Leads can only reset passwords for users in their team
+      if (currentUser.isTeamLead && !currentUser.isAdmin && !currentUser.isGroupAdmin) {
+        if (targetUser.teamId !== currentUser.teamId) {
+          return res.status(403).json({ message: "You can only reset passwords for users in your team" });
+        }
       }
 
       if (!newPassword) {
@@ -317,19 +335,13 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "New password must be at least 8 characters long" });
       }
 
-      // Get target user
-      const targetUser = await storage.getUser(targetUserId);
-      if (!targetUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
       // Hash new password
       const hashedNewPassword = await hashPassword(newPassword);
 
       // Update password in database
       await storage.updateUser(targetUserId, { password: hashedNewPassword });
 
-      console.log(`Password reset by admin ${adminUser.username} for user: ${targetUser.username}`);
+      console.log(`Password reset by user ${currentUser.username} (${currentUser.isAdmin ? 'Admin' : currentUser.isGroupAdmin ? 'Group Admin' : 'Team Lead'}) for user: ${targetUser.username}`);
       res.json({ message: "Password reset successfully" });
       
     } catch (error) {
