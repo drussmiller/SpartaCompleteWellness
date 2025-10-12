@@ -1415,23 +1415,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           onValueChange={(value) =>
                                             field.onChange(parseInt(value))
                                           }
-                                          value={field.value ? field.value.toString() : ""}
+                                          value={field.value?.toString()}
                                         >
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select organization" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {(() => {
-                                              console.log('Organizations in Add Group dropdown:', sortedOrganizations);
-                                              return sortedOrganizations?.map((org) => (
-                                                <SelectItem
-                                                  key={org.id}
-                                                  value={org.id.toString()}
-                                                >
-                                                  {org.name}
-                                                </SelectItem>
-                                              ));
-                                            })()}
+                                            {sortedOrganizations?.map((org) => (
+                                              <SelectItem
+                                                key={org.id}
+                                                value={org.id.toString()}
+                                              >
+                                                {org.name}
+                                              </SelectItem>
+                                            ))}
                                           </SelectContent>
                                         </Select>
                                         <FormMessage />
