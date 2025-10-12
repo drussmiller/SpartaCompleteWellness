@@ -1647,8 +1647,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           id={`competitive-${group.id}`}
                                           checked={
                                             optimisticGroups[group.id]?.competitive !== undefined
-                                              ? optimisticGroups[group.id].competitive
-                                              : group.competitive || false
+                                              ? !!optimisticGroups[group.id].competitive
+                                              : !!group.competitive
                                           }
                                           onCheckedChange={(checked) => {
                                             updateGroupMutation.mutate({
