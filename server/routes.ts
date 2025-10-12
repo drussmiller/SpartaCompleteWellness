@@ -5417,7 +5417,10 @@ export const registerRoutes = async (
   // Update user endpoint
   router.patch("/api/users/:userId", authenticate, async (req, res) => {
     try {
+      logger.info(`[GENERAL USER UPDATE] Endpoint hit - path: ${req.path}, userId: ${req.params.userId}`);
+      
       if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
+        logger.warn(`[GENERAL USER UPDATE] Not authorized - user: ${req.user?.id}, isAdmin: ${req.user?.isAdmin}, isGroupAdmin: ${req.user?.isGroupAdmin}, isTeamLead: ${req.user?.isTeamLead}`);
         return res.status(403).json({ message: "Not authorized" });
       }
 
