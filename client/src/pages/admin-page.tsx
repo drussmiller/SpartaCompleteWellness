@@ -1421,14 +1421,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             <SelectValue placeholder="Select organization" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {sortedOrganizations?.map((org) => (
-                                              <SelectItem
-                                                key={org.id}
-                                                value={org.id.toString()}
-                                              >
-                                                {org.name}
-                                              </SelectItem>
-                                            ))}
+                                            {(() => {
+                                              console.log('Organizations in Add Group dropdown:', sortedOrganizations);
+                                              return sortedOrganizations?.map((org) => (
+                                                <SelectItem
+                                                  key={org.id}
+                                                  value={org.id.toString()}
+                                                >
+                                                  {org.name}
+                                                </SelectItem>
+                                              ));
+                                            })()}
                                           </SelectContent>
                                         </Select>
                                         <FormMessage />
