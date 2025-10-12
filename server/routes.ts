@@ -5332,6 +5332,7 @@ export const registerRoutes = async (
   );
 
   // Update user role endpoint
+  logger.info("[SERVER INIT] Registering PATCH /api/users/:userId/role endpoint");
   router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
     try {
       logger.info(`[ROLE UPDATE] Endpoint hit - userId: ${req.params.userId}, requestUser: ${req.user?.id}, role: ${req.body.role}, value: ${req.body.value}`);
@@ -5416,13 +5417,30 @@ export const registerRoutes = async (
   // Update user endpoint
   router.patch("/api/users/:userId", authenticate, async (req, res) => {
     try {
-      if (!req.user?.isAdmin && !req.user?.isGroupAdmin) {
+      if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
         return res.status(400).json({ message: "Invalid user ID format" });
+      }
+
+      // For Team Leads, check that they're updating a user in their own team
+      if (req.user?.isTeamLead && !req.user?.isAdmin && !req.user?.isGroupAdmin) {
+        const [targetUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (!targetUser) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (targetUser.teamId !== req.user.teamId) {
+          return res.status(403).json({ message: "You can only update users in your team" });
+        }
       }
 
       // Validate teamId if present
