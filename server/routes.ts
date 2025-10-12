@@ -3945,12 +3945,12 @@ export const registerRoutes = async (
   // User stats endpoint for simplified My Stats section
   router.get("/api/users", authenticate, async (req, res) => {
     try {
-      // Allow both full admins and group admins
-      if (!req.user?.isAdmin && !req.user?.isGroupAdmin) {
+      // Allow both full admins, group admins, and team leads
+      if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      let users = await storage.getAllUsers();
+      let users = await storage.getUsers();
 
       // Filter users for group admins - only show users in their group's teams
       if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
@@ -3964,6 +3964,10 @@ export const registerRoutes = async (
 
         // Filter users to only those in the group's teams
         users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
+      }
+      // Filter users for team leads - only show users in their team
+      else if (req.user.isTeamLead && !req.user.isAdmin && !req.user.isGroupAdmin && req.user.teamId) {
+        users = users.filter(user => user.teamId === req.user.teamId);
       }
 
       res.json(users);
