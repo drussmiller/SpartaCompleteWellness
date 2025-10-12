@@ -1488,48 +1488,15 @@ export const registerRoutes = async (
       else if (postData.type === 'scripture') {
         logger.info('Scripture post created with no media');
         mediaUrl = null;
-      } else if (uploadedFile) {
+      } else if (uploadedFile && uploadedFile.buffer) {
         try {
           // Use SpartaObjectStorage for file handling
           const { spartaStorage } = await import('./sparta-object-storage');
           
-          // Verify the file exists before proceeding
-          let filePath = uploadedFile.path;
+          // With memory storage, we work directly with the buffer
+          logger.info(`Processing file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
           
-          // Verify the file exists at the path reported by multer
-          if (!fs.existsSync(filePath)) {
-            logger.warn(`File not found at the reported path: ${filePath}, will search for it`);
-            
-            // Try to locate the file using alternative paths
-            const fileName = path.basename(filePath);
-            const possiblePaths = [
-              filePath,
-              path.join(process.cwd(), 'uploads', fileName),
-              path.join(process.cwd(), 'uploads', path.basename(uploadedFile.originalname)),
-              path.join(path.dirname(filePath), path.basename(uploadedFile.originalname)),
-              path.join('/tmp', fileName)
-            ];
-            
-            let foundPath = null;
-            for (const altPath of possiblePaths) {
-              logger.info(`Checking alternative path: ${altPath}`);
-              if (fs.existsSync(altPath)) {
-                logger.info(`Found file at alternative path: ${altPath}`);
-                foundPath = altPath;
-                break;
-              }
-            }
-            
-            if (foundPath) {
-              filePath = foundPath;
-              logger.info(`Using alternative file path: ${filePath}`);
-            } else {
-              logger.error(`Could not find file at any alternative path for: ${filePath}`);
-            }
-          }
-          
-          // Proceed if the file exists (either at original or alternative path)
-          if (fs.existsSync(filePath)) {
+          // Proceed with buffer-based processing
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = uploadedFile.originalname.toLowerCase();
             
@@ -1632,73 +1599,16 @@ export const registerRoutes = async (
             mediaUrl = fileInfo.url;
             mediaProcessed = true;
             
-            // Verify the stored file exists in the uploads directory
-            const storedFilePath = path.join(process.cwd(), fileInfo.url);
-            let fileExists = fs.existsSync(storedFilePath);
-            
-            if (!fileExists) {
-              logger.error(`Stored file not found at expected path: ${storedFilePath}. Original stored at ${fileInfo.path}`);
-              
-              // Try to find the file in different paths
-              const alternativePaths = [
-                fileInfo.path,
-                path.join(process.cwd(), 'uploads', path.basename(fileInfo.url)),
-                path.join(process.cwd(), fileInfo.url),
-                path.join(process.cwd(), '..' + fileInfo.url),
-                path.join(process.cwd(), '..', 'uploads', path.basename(fileInfo.url))
-              ];
-              
-              let sourceFile = null;
-              
-              // Check each alternative path
-              for (const altPath of alternativePaths) {
-                if (fs.existsSync(altPath)) {
-                  logger.info(`Found file at alternative path: ${altPath}`);
-                  sourceFile = altPath;
-                  break;
-                }
-              }
-              
-              // Copy file to correct location if found
-              if (sourceFile) {
-                const newDir = path.dirname(storedFilePath);
-                if (!fs.existsSync(newDir)) {
-                  fs.mkdirSync(newDir, { recursive: true });
-                }
-                
-                try {
-                  fs.copyFileSync(sourceFile, storedFilePath);
-                  logger.info(`Copied file from ${sourceFile} to correct location ${storedFilePath}`);
-                  fileExists = true;
-                } catch (copyErr) {
-                  logger.error(`Failed to copy file: ${copyErr instanceof Error ? copyErr.message : 'Unknown error'}`);
-                }
-              } else {
-                logger.error(`Could not find file in any alternative locations`);
-              }
-            }
-            
             if (isVideo) {
-              logger.info(`Video file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
-              logger.info(`Video URL: ${mediaUrl}, should be available at: ${storedFilePath}`);
+              logger.info(`Video file stored successfully using SpartaObjectStorage`);
+              logger.info(`Video URL: ${mediaUrl}`);
             } else {
-              logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
-              logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
+              logger.info(`Image file stored successfully using SpartaObjectStorage`);
+              logger.info(`Image URL: ${mediaUrl}`);
+              if (fileInfo.thumbnailUrl) {
+                logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
+              }
             }
-            
-            // We can remove the original uploaded file as SpartaObjectStorage has copied it
-            try {
-              fs.unlinkSync(filePath);
-              logger.info(`Removed original temporary file at ${filePath}`);
-            } catch (unlinkErr) {
-              logger.warn(`Could not remove temporary file: ${unlinkErr instanceof Error ? unlinkErr.message : 'Unknown error'}`);
-            }
-          } else {
-            logger.error(`Media file not found at expected path: ${filePath}`);
-            // Don't use any fallback image
-            mediaUrl = null;
-            logger.info(`No media found for post type: ${postData.type}`);
-          }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
           
