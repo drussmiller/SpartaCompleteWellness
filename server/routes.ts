@@ -3945,8 +3945,18 @@ export const registerRoutes = async (
   // User stats endpoint for simplified My Stats section
   router.get("/api/users", authenticate, async (req, res) => {
     try {
+      // Debug logging for authorization
+      console.log('GET /api/users - User authorization check:', {
+        userId: req.user?.id,
+        isAdmin: req.user?.isAdmin,
+        isGroupAdmin: req.user?.isGroupAdmin,
+        isTeamLead: req.user?.isTeamLead,
+        teamId: req.user?.teamId
+      });
+
       // Allow both full admins, group admins, and team leads
       if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
+        console.log('Access denied - not admin, group admin, or team lead');
         return res.status(403).json({ message: "Not authorized" });
       }
 
