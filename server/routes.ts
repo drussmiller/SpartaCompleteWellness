@@ -2088,6 +2088,7 @@ export const registerRoutes = async (
     }
   });
 
+  // Delete organization endpoint
   router.delete("/api/organizations/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -2099,8 +2100,42 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid organization ID" });
       }
 
-      await storage.deleteOrganization(organizationId);
-      logger.info(`Deleted organization ${organizationId} by user ${req.user.id}`);
+      // Use database transaction for atomic deletion with cascade
+      await db.transaction(async (tx) => {
+        // Get all groups in this organization
+        const orgGroups = await storage.getGroupsByOrganization(organizationId);
+        const groupIds = orgGroups.map(g => g.id);
+
+        if (groupIds.length > 0) {
+          // Get all teams in these groups
+          const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
+          const teamIds = teamsInGroups.map(t => t.id);
+
+          if (teamIds.length > 0) {
+            // Delete all users in these teams
+            const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+            const userIds = usersInTeams.map(u => u.id);
+
+            if (userIds.length > 0) {
+              await tx.delete(users).where(inArray(users.id, userIds));
+              logger.info(`Deleted ${userIds.length} users for organization ${organizationId}`);
+            }
+
+            // Delete all teams in these groups
+            await tx.delete(teams).where(inArray(teams.id, teamIds));
+            logger.info(`Deleted ${teamIds.length} teams for organization ${organizationId}`);
+          }
+
+          // Delete all groups in this organization
+          await tx.delete(groups).where(inArray(groups.id, groupIds));
+          logger.log(`Deleted ${groupIds.length} groups for organization ${organizationId}`);
+        }
+
+        // Finally delete the organization
+        await tx.delete(organizations).where(eq(organizations.id, organizationId));
+      });
+
+      logger.info(`Organization ${organizationId} deleted successfully by user ${req.user.id}`);
       res.status(200).json({ message: "Organization deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting organization ${req.params.id}:`, error);
@@ -5336,7 +5371,7 @@ export const registerRoutes = async (
   router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
     try {
       logger.info(`[ROLE UPDATE] Endpoint hit - userId: ${req.params.userId}, requestUser: ${req.user?.id}, role: ${req.body.role}, value: ${req.body.value}`);
-      
+
       if (!req.user) {
         logger.warn(`[ROLE UPDATE] No authenticated user`);
         return res.status(401).json({ message: "Unauthorized" });
@@ -5418,7 +5453,7 @@ export const registerRoutes = async (
   router.patch("/api/users/:userId", authenticate, async (req, res) => {
     try {
       logger.info(`[GENERAL USER UPDATE] Endpoint hit - path: ${req.path}, userId: ${req.params.userId}`);
-      
+
       if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
         logger.warn(`[GENERAL USER UPDATE] Not authorized - user: ${req.user?.id}, isAdmin: ${req.user?.isAdmin}, isGroupAdmin: ${req.user?.isGroupAdmin}, isTeamLead: ${req.user?.isTeamLead}`);
         return res.status(403).json({ message: "Not authorized" });
@@ -5499,7 +5534,7 @@ export const registerRoutes = async (
 
       // Convert programStartDate string to Date object if provided
       if (updateData.programStartDate && typeof updateData.programStartDate === 'string') {
-        updateData.programStartDate = new Date(updateData.programStartDate);
+        updateData.programStartDate = new Date(updateData(updateData.programStartDate);
       }
 
       // If team is being changed, update join date and program start date
