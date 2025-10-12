@@ -129,7 +129,7 @@ export default function MenuPage() {
           </Sheet>
 
           {/* Admin Sheet - Only shown for admin users */}
-          {(user.isAdmin || user.isGroupAdmin) && (
+          {(user.isAdmin || user.isGroupAdmin || user.isTeamLead) && (
             <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" className="w-full justify-start" size="lg">
