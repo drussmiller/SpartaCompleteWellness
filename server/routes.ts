@@ -1364,40 +1364,38 @@ export const registerRoutes = async (
             // With memory storage, work directly with the buffer
             logger.info(`Processing comment file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
             
-            // Proceed with buffer-based processing
-              const originalFilename = uploadedFile.originalname.toLowerCase();
-              
-              // Check if this is a video upload based on multiple indicators
-              const isVideoMimetype = uploadedFile.mimetype.startsWith('video/');
-              const isVideoExtension = originalFilename.endsWith('.mov') || 
-                                     originalFilename.endsWith('.mp4') ||
-                                     originalFilename.endsWith('.webm') ||
-                                     originalFilename.endsWith('.avi') ||
-                                     originalFilename.endsWith('.mkv');
-              
-              // Final video determination
-              const isVideo = isVideoMimetype || isVideoExtension;
-              
-              // Store the file using SpartaObjectStorage
-              console.log(`Processing comment media file:`, {
-                originalFilename: uploadedFile.originalname,
-                mimetype: uploadedFile.mimetype,
-                isVideo: isVideo,
-                fileSize: uploadedFile.size
-              });
-              
-              logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}, size: ${uploadedFile.size}`);
-              
-              const fileInfo = await spartaStorage.storeFile(
-                uploadedFile.buffer,
-                uploadedFile.originalname,
-                uploadedFile.mimetype,
-                isVideo
-              );
-              
-              commentMediaUrl = fileInfo.url;
-              console.log(`Stored comment media file:`, { url: commentMediaUrl });
-            }
+            const originalFilename = uploadedFile.originalname.toLowerCase();
+            
+            // Check if this is a video upload based on multiple indicators
+            const isVideoMimetype = uploadedFile.mimetype.startsWith('video/');
+            const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                   originalFilename.endsWith('.mp4') ||
+                                   originalFilename.endsWith('.webm') ||
+                                   originalFilename.endsWith('.avi') ||
+                                   originalFilename.endsWith('.mkv');
+            
+            // Final video determination
+            const isVideo = isVideoMimetype || isVideoExtension;
+            
+            // Store the file using SpartaObjectStorage
+            console.log(`Processing comment media file:`, {
+              originalFilename: uploadedFile.originalname,
+              mimetype: uploadedFile.mimetype,
+              isVideo: isVideo,
+              fileSize: uploadedFile.size
+            });
+            
+            logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}, size: ${uploadedFile.size}`);
+            
+            const fileInfo = await spartaStorage.storeFile(
+              uploadedFile.buffer,
+              uploadedFile.originalname,
+              uploadedFile.mimetype,
+              isVideo
+            );
+            
+            commentMediaUrl = fileInfo.url;
+            console.log(`Stored comment media file:`, { url: commentMediaUrl });
           } catch (error) {
             logger.error("Error processing comment media file:", error);
             // Continue with comment creation even if media processing fails

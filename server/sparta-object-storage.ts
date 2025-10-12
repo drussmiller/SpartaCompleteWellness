@@ -133,7 +133,12 @@ export class SpartaObjectStorage {
     const uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
     const filePath = path.join(this.baseDir, uniqueFilename);
 
-    // Write file to local filesystem
+    // Ensure upload directory exists
+    if (!fs.existsSync(this.baseDir)) {
+      fs.mkdirSync(this.baseDir, { recursive: true });
+    }
+
+    // Write file to local filesystem (temporary for thumbnail generation)
     fs.writeFileSync(filePath, fileBuffer);
 
     // Try to upload to Object Storage if available
