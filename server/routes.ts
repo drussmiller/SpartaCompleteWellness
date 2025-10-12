@@ -1227,7 +1227,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Get single post by ID - this must be placed after any more specific routes like /api/posts/comments
+  // POST endpoint for creating posts
   router.post("/api/posts", authenticate, upload.fields([
     { name: 'image', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 },
@@ -1241,13 +1241,13 @@ export const registerRoutes = async (
       'Content-Type': 'application/json',
       'X-Content-Type-Options': 'nosniff'
     });
-    
+
     // Initialize isVideo variable to be used throughout the route handler
     let isVideo = false;
-    
+
     // Extract the main file from upload.fields() - it could be in 'image' or 'thumbnail' field
     const uploadedFile = (req.files as any)?.image?.[0] || (req.files as any)?.thumbnail?.[0] || null;
-    
+
     console.log("POST /api/posts - Request received", {
       hasFile: !!uploadedFile,
       fileDetails: uploadedFile ? {
@@ -1262,7 +1262,7 @@ export const registerRoutes = async (
       bodyKeys: Object.keys(req.body),
       filesKeys: req.files ? Object.keys(req.files) : []
     });
-    
+
     // Check if this is a memory verse post based on the parsed data
     let isMemoryVersePost = false;
     if (req.body.data) {
@@ -1281,7 +1281,7 @@ export const registerRoutes = async (
         // Ignore parsing errors here, it will be handled later
       }
     }
-    
+
     // Memory storage: files are in buffer, not on disk
     if (uploadedFile && uploadedFile.buffer) {
       console.log("File buffer received:", {
@@ -1290,7 +1290,7 @@ export const registerRoutes = async (
         originalname: uploadedFile.originalname
       });
     }
-    
+
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
       let postData = req.body;
@@ -1345,27 +1345,27 @@ export const registerRoutes = async (
           logger.error("Missing parentId for comment");
           return res.status(400).json({ message: "Parent post ID is required for comments" });
         }
-        
+
         // Comments should have 0 points
         const commentPoints = 0;
-        
+
         // Log the points assignment for comments
         console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
-        
+
         // Process media file if present for comments too
         let commentMediaUrl = null;
-        
+
         // Check if we have a file upload with the comment
         if (uploadedFile && uploadedFile.buffer) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage } = await import('./sparta-object-storage');
-            
+
             // With memory storage, work directly with the buffer
             logger.info(`Processing comment file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
-            
+
             const originalFilename = uploadedFile.originalname.toLowerCase();
-            
+
             // Check if this is a video upload based on multiple indicators
             const isVideoMimetype = uploadedFile.mimetype.startsWith('video/');
             const isVideoExtension = originalFilename.endsWith('.mov') || 
@@ -1373,27 +1373,26 @@ export const registerRoutes = async (
                                    originalFilename.endsWith('.webm') ||
                                    originalFilename.endsWith('.avi') ||
                                    originalFilename.endsWith('.mkv');
-            
+
             // Final video determination
             const isVideo = isVideoMimetype || isVideoExtension;
-            
-            // Store the file using SpartaObjectStorage
+
             console.log(`Processing comment media file:`, {
               originalFilename: uploadedFile.originalname,
               mimetype: uploadedFile.mimetype,
               isVideo: isVideo,
               fileSize: uploadedFile.size
             });
-            
+
             logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}, size: ${uploadedFile.size}`);
-            
+
             const fileInfo = await spartaStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               uploadedFile.mimetype,
               isVideo
             );
-            
+
             commentMediaUrl = fileInfo.url;
             console.log(`Stored comment media file:`, { url: commentMediaUrl });
           } catch (error) {
@@ -1401,7 +1400,7 @@ export const registerRoutes = async (
             // Continue with comment creation even if media processing fails
           }
         }
-        
+
         const post = await storage.createComment({
           userId: req.user.id,
           content: postData.content.trim(),
@@ -1416,12 +1415,12 @@ export const registerRoutes = async (
       // Handle regular post creation
       let mediaUrl = null;
       let mediaProcessed = false;
-      
+
       // Check if we're using an existing memory verse video
       if (postData.type === 'memory_verse' && req.body.existing_video_id) {
         try {
           const existingVideoId = parseInt(req.body.existing_video_id);
-          
+
           // Get the existing post to find its media URL
           const [existingPost] = await db
             .select({
@@ -1435,7 +1434,7 @@ export const registerRoutes = async (
                 eq(posts.type, 'memory_verse')
               )
             );
-          
+
           if (existingPost && existingPost.mediaUrl) {
             mediaUrl = existingPost.mediaUrl;
             logger.info(`Re-using existing memory verse video from post ${existingVideoId}`, { mediaUrl });
@@ -1457,26 +1456,26 @@ export const registerRoutes = async (
         try {
           // Use SpartaObjectStorage for file handling
           const { spartaStorage } = await import('./sparta-object-storage');
-          
+
           // With memory storage, we work directly with the buffer
           logger.info(`Processing file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
-          
+
           // Proceed with buffer-based processing
             // Handle video files differently - check both mimetype and file extension
             const originalFilename = uploadedFile.originalname.toLowerCase();
-            
+
             // Simplified detection for memory verse posts - rely only on the post type
             const isMemoryVersePost = postData.type === 'memory_verse';
-            
+
             // Handle specialized types
             const isMiscellaneousPost = postData.type === 'miscellaneous';
-            
+
             console.log("Post type detection:", {
               isMemoryVersePost,
               isMiscellaneousPost,
               originalName: uploadedFile.originalname
             });
-            
+
             // Check if this is a video upload based on multiple indicators
             const isVideoMimetype = uploadedFile.mimetype.startsWith('video/');
             const isVideoExtension = originalFilename.endsWith('.mov') || 
@@ -1485,18 +1484,18 @@ export const registerRoutes = async (
                                    originalFilename.endsWith('.avi') ||
                                    originalFilename.endsWith('.mkv');
             const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
-            
+
             // For miscellaneous posts, check if explicitly marked as video from client
             const isMiscellaneousVideo = isMiscellaneousPost && 
                                        (req.body.is_video === "true" || 
                                         req.body.selected_media_type === "video" ||
                                         (uploadedFile && (isVideoMimetype || isVideoExtension)));
-                                        
+
             // Combined video detection - for miscellaneous posts, only trust the explicit markers
             const isVideo = isMemoryVersePost || 
                           (isMiscellaneousPost ? isMiscellaneousVideo : 
                            (isVideoMimetype || hasVideoContentType || isVideoExtension));
-                          
+
             console.log("Video detection:", {
               isVideo,
               isMiscellaneousVideo,
@@ -1510,12 +1509,12 @@ export const registerRoutes = async (
               selectedMediaType: req.body.selected_media_type,
               isVideoFlag: req.body.is_video
             });
-            
+
             // We no longer need to create a separate file with prefix here.
             // SpartaObjectStorage will handle proper file placement based on post type.
             // This removes the creation of a redundant third file.
             console.log("Skipping redundant file creation - SpartaObjectStorage will handle file organization");
-            
+
             console.log(`Processing media file:`, {
               originalFilename: uploadedFile.originalname,
               mimetype: uploadedFile.mimetype,
@@ -1525,24 +1524,24 @@ export const registerRoutes = async (
               path: uploadedFile.path,
               postType: postData.type || 'unknown'
             });
-            
+
             logger.info(`Processing media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}, size: ${uploadedFile.size}`);
-            
+
             // Store the file using SpartaObjectStorage (used for both images and videos)
             // For memory verse posts, if mimetype doesn't specify video, force it to video/mp4
             let effectiveMimeType = uploadedFile.mimetype;
-            
+
             // If it's a memory verse post but mimetype doesn't indicate a video, override it
             if (isMemoryVersePost && !effectiveMimeType.startsWith('video/')) {
               effectiveMimeType = 'video/mp4'; // Default to mp4 for compatibility
             }
-            
+
             // Also handle miscellaneous post videos that might have wrong mime type
             if (isMiscellaneousPost && isVideo && !effectiveMimeType.startsWith('video/')) {
               console.log("Correcting miscellaneous video mime type from", effectiveMimeType, "to video/mp4");
               effectiveMimeType = 'video/mp4';
             }
-            
+
             console.log("Using effective mime type for storage:", {
               original: uploadedFile.mimetype,
               effective: effectiveMimeType,
@@ -1553,17 +1552,17 @@ export const registerRoutes = async (
               fileSize: uploadedFile.size,
               formDataKeys: Object.keys(req.body || {})
             });
-              
+
             const fileInfo = await spartaStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
               isVideo // Pass flag for video handling
             );
-            
+
             mediaUrl = fileInfo.url;
             mediaProcessed = true;
-            
+
             if (isVideo) {
               logger.info(`Video file stored successfully using SpartaObjectStorage`);
               logger.info(`Video URL: ${mediaUrl}`);
@@ -1576,11 +1575,11 @@ export const registerRoutes = async (
             }
         } catch (fileErr) {
           logger.error('Error processing uploaded file:', fileErr);
-          
+
           // Detailed error handling based on post type
           if (postData.type === 'memory_verse') {
             logger.error(`Memory verse video upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
-            
+
             // For memory verse, video is required, so return an error response
             return res.status(400).json({ 
               message: "Failed to process memory verse video. Please try again with a different video file.",
@@ -1588,7 +1587,7 @@ export const registerRoutes = async (
             });
           } else if (postData.type === 'food' || postData.type === 'workout') {
             logger.error(`${postData.type} image upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
-            
+
             // For food and workout posts, images are required
             return res.status(400).json({ 
               message: `Failed to process ${postData.type} image. Please try again with a different image.`,
@@ -1641,7 +1640,7 @@ export const registerRoutes = async (
       res.status(201).json(post);
     } catch (error) {
       logger.error("Error in post creation:", error);
-      
+
       // Ensure content type is still set on error
       res.set({
         'Cache-Control': 'no-store',
@@ -1649,7 +1648,7 @@ export const registerRoutes = async (
         'Content-Type': 'application/json',
         'X-Content-Type-Options': 'nosniff'
       });
-      
+
       res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to create post",
         error: error instanceof Error ? error.stack : "Unknown error"
@@ -5362,13 +5361,13 @@ export const registerRoutes = async (
 
         // Only skip capacity check if user is already on this specific team
         const needsCapacityCheck = !currentUser || currentUser.teamId !== req.body.teamId;
-        
+
         if (needsCapacityCheck) {
           // Check if team has capacity
           const currentMemberCount = await storage.getTeamMemberCount(req.body.teamId);
-          
+
           logger.info(`Team capacity check - Team ${req.body.teamId}: ${currentMemberCount}/${team.maxSize || 'unlimited'} members`);
-          
+
           if (team.maxSize && currentMemberCount >= team.maxSize) {
             logger.warn(`Team ${req.body.teamId} is full, rejecting user assignment`);
             return res.status(400).json({ 
