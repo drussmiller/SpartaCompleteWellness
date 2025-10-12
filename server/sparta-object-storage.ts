@@ -251,7 +251,7 @@ export class SpartaObjectStorage {
    * @returns Promise that resolves when thumbnail is created
    */
   private async createThumbnail(sourcePath: string, targetPath: string): Promise<void> {
-    const sharp = require('sharp');
+    const sharp = (await import('sharp')).default;
     
     await sharp(sourcePath)
       .resize(300, 300, {
@@ -271,8 +271,8 @@ export class SpartaObjectStorage {
    * @returns Promise that resolves when thumbnail is created
    */
   private async createVideoThumbnail(videoPath: string, targetPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const ffmpeg = require('fluent-ffmpeg');
+    return new Promise(async (resolve, reject) => {
+      const ffmpeg = (await import('fluent-ffmpeg')).default;
       
       // Create a random ID for this process
       const processId = Math.random().toString(36).substring(2, 8);
