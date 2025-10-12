@@ -1415,20 +1415,26 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           onValueChange={(value) =>
                                             field.onChange(parseInt(value))
                                           }
-                                          value={field.value?.toString()}
+                                          value={field.value !== undefined ? field.value.toString() : undefined}
                                         >
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select organization" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {sortedOrganizations?.map((org) => (
-                                              <SelectItem
-                                                key={org.id}
-                                                value={org.id.toString()}
-                                              >
-                                                {org.name}
-                                              </SelectItem>
-                                            ))}
+                                            {sortedOrganizations?.length > 0 ? (
+                                              sortedOrganizations.map((org) => (
+                                                <SelectItem
+                                                  key={org.id}
+                                                  value={org.id.toString()}
+                                                >
+                                                  {org.name}
+                                                </SelectItem>
+                                              ))
+                                            ) : (
+                                              <div className="px-2 py-1 text-sm text-muted-foreground">
+                                                No organizations available
+                                              </div>
+                                            )}
                                           </SelectContent>
                                         </Select>
                                         <FormMessage />
