@@ -132,7 +132,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
-  
+
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
   const [groupsPanelOpen, setGroupsPanelOpen] = useState(false);
@@ -342,7 +342,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User's role updated successfully",
       });
-      
+
       // Update the users list in the cache without refetching
       queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
         if (!oldUsers) return oldUsers;
@@ -435,7 +435,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         ...prev,
         [groupId]: { ...prev[groupId], ...data }
       }));
-      
+
       const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
       if (!res.ok) {
         let errorMessage = "Failed to update group";
@@ -802,7 +802,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     );
   }
 
-  if (!currentUser?.isAdmin && !currentUser?.isGroupAdmin) {
+  // Access control: Only Admins and Group Admins can access the dashboard. Team Leads can see their team's users.
+  if (!currentUser?.isAdmin && !currentUser?.isGroupAdmin && !currentUser?.isTeamLead) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -841,21 +842,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     a.name.localeCompare(b.name),
   );
 
-  // Debug logging
-  console.log('Groups data:', {
-    groups,
-    filteredGroups,
-    sortedGroups,
-    isAdmin: currentUser?.isAdmin,
-    isGroupAdmin: currentUser?.isGroupAdmin
-  });
-
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || []
     : currentUser?.isGroupAdmin
       ? (teams || []).filter((team) => team.groupId === currentUser.adminGroupId)
-      : [];
+      : []; // Team Leads will filter users later
 
   const sortedTeams = [...filteredTeams].sort((a, b) =>
     a.name.localeCompare(b.name),
@@ -873,6 +865,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           const groupTeams = (teams || []).filter((team) => team.groupId === adminGroupId);
           const groupTeamIds = groupTeams.map((team) => team.id);
           return (users || []).filter((u) => {
+            // Include users in the admin's groups' teams, or users not assigned to any team
             if (u.teamId && groupTeamIds.includes(u.teamId)) {
               return true;
             }
@@ -882,7 +875,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             return false;
           });
         })()
-      : [];
+      : currentUser?.isTeamLead
+        ? // Team Leads see only users in their own team
+          (users || []).filter((u) => u.teamId === currentUser.teamId)
+        : []; // Default case, should not be reached if access control is correct
 
   const sortedUsers = [...filteredUsers].sort((a, b) =>
     (a.username || "").localeCompare(b.username || ""),
@@ -950,8 +946,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? sortedTeams
     : sortedTeams.filter((team) => team.status === 1);
   const visibleUsers = showInactiveUsers
-    ? sortedUsers
-    : sortedUsers.filter((user) => user.status === 1);
+    ? filteredUsersForDisplay
+    : filteredUsersForDisplay.filter((user) => user.status === 1);
 
   return (
     <AppLayout sidebarWidth="80">
@@ -996,7 +992,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Organizations Section - Only show for full admins */}
-              {currentUser?.isAdmin && (
+              {currentUser?.isAdmin && !currentUser?.isTeamLead && (
                 <Collapsible 
                   open={organizationsPanelOpen} 
                   onOpenChange={setOrganizationsPanelOpen}
@@ -1296,7 +1292,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               )}
 
               {/* Groups Section - Show for full admins and group admins */}
-              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
                 <Collapsible 
                   open={groupsPanelOpen} 
                   onOpenChange={setGroupsPanelOpen}
@@ -1737,7 +1733,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               )}
 
               {/* Teams Section - Show for admins and group admins */}
-              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
                 <Collapsible 
                   open={teamsPanelOpen} 
                   onOpenChange={setTeamsPanelOpen}
@@ -2304,8 +2300,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-4">
                             <div className="text-sm text-gray-600">
-                              Showing {filteredUsersForDisplay?.length || 0} of{" "}
-                              {sortedUsers?.length || 0} users
+                              Showing {visibleUsers?.length || 0} of{" "}
+                              {filteredUsersForDisplay?.length || 0} users
                             </div>
                             <Button
                               variant="outline"
@@ -2333,10 +2329,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </div>
 
                     <div className="space-y-4">
-                      {(showInactiveUsers
-                        ? filteredUsersForDisplay
-                        : filteredUsersForDisplay.filter((user) => user.status === 1)
-                      ).map((user) => (
+                      {visibleUsers.map((user) => (
                         <Card key={user.id}>
                           <CardHeader className="pb-2">
                             <div className="flex justify-between items-start">
