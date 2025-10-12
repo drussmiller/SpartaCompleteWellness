@@ -58,6 +58,8 @@ import { requestLogger } from "./middleware/request-logger";
 import { errorHandler } from "./middleware/error-handler";
 import { logger } from "./logger";
 import { WebSocketServer, WebSocket } from "ws";
+import fs from "fs";
+import path from "path";
 // Object Storage routes removed - not needed
 import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
@@ -1226,6 +1228,558 @@ export const registerRoutes = async (
   });
 
   // Get single post by ID - this must be placed after any more specific routes like /api/posts/comments
+  router.post("/api/posts", authenticate, upload.single('image'), async (req, res) => {
+    // Set content type early to prevent browser confusion
+    res.set({
+      'Cache-Control': 'no-store',
+      'Pragma': 'no-cache',
+      'Content-Type': 'application/json',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    
+    // Initialize isVideo variable to be used throughout the route handler
+    let isVideo = false;
+    
+    console.log("POST /api/posts - Request received", {
+      hasFile: !!req.file,
+      fileDetails: req.file ? {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        path: req.file.path,
+        destination: req.file.destination,
+        size: req.file.size
+      } : 'No file uploaded',
+      contentType: req.headers['content-type'],
+      bodyKeys: Object.keys(req.body)
+    });
+    
+    // Check if this is a memory verse post based on the parsed data
+    let isMemoryVersePost = false;
+    if (req.body.data) {
+      try {
+        const parsedData = JSON.parse(req.body.data);
+        isMemoryVersePost = parsedData.type === 'memory_verse';
+        if (isMemoryVersePost) {
+          console.log("Memory verse post detected:", {
+            originalname: req.file?.originalname || 'No file',
+            mimetype: req.file?.mimetype || 'No mimetype',
+            fileSize: req.file?.size || 0,
+            path: req.file?.path || 'No path'
+          });
+        }
+      } catch (e) {
+        // Ignore parsing errors here, it will be handled later
+      }
+    }
+    
+    // Extra logging for debugging
+    if (req.file) {
+      try {
+        const stats = fs.statSync(req.file.path);
+        console.log("File stats:", {
+          exists: fs.existsSync(req.file.path),
+          size: stats.size,
+          isFile: stats.isFile(),
+          path: req.file.path,
+          absolutePath: path.resolve(req.file.path)
+        });
+      } catch (statError) {
+        console.error("Error checking file:", statError);
+      }
+    }
+    
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      let postData = req.body;
+      if (typeof postData.data === 'string') {
+        try {
+          console.log("Parsing JSON from postData.data", { raw: postData.data.substring(0, 100) + '...' });
+          postData = JSON.parse(postData.data);
+          console.log("Successfully parsed post data:", { postType: postData.type });
+        } catch (parseError) {
+          console.error("Error parsing post data:", parseError);
+          logger.error("Error parsing post data:", parseError);
+          return res.status(400).json({ message: "Invalid post data format" });
+        }
+      }
+
+      // Calculate points based on post type
+      let points = 0;
+      const type = postData.type?.toLowerCase();
+      switch (type) {
+        case 'food':
+          points = 3; // 3 points per meal
+          break;
+        case 'workout':
+          points = 3; // 3 points per workout
+          break;
+        case 'scripture':
+          points = 3; // 3 points per scripture
+          break;
+        case 'memory_verse':
+          points = 10; // 10 points for memory verse
+          break;
+        case 'prayer':
+          points = 0; // 0 points for prayer requests
+          break;
+        case 'miscellaneous':
+        default:
+          points = 0;
+      }
+
+      // Log point assignment for verification
+      console.log('Assigning points:', { type, points });
+
+      // Log point calculation for verification
+      logger.info('Post points calculation:', {
+        type: postData.type,
+        assignedPoints: points
+      });
+
+      // For comments, handle separately
+      if (postData.type === "comment") {
+        if (!postData.parentId) {
+          logger.error("Missing parentId for comment");
+          return res.status(400).json({ message: "Parent post ID is required for comments" });
+        }
+        
+        // Comments should have 0 points
+        const commentPoints = 0;
+        
+        // Log the points assignment for comments
+        console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
+        
+        // Process media file if present for comments too
+        let commentMediaUrl = null;
+        
+        // Check if we have a file upload with the comment
+        if (req.file) {
+          try {
+            // Use SpartaObjectStorage for file handling
+            const { spartaStorage } = await import('./sparta-object-storage');
+            
+            // Verify the file exists before proceeding
+            let filePath = req.file.path;
+            
+            // Verify the file exists at the path reported by multer
+            if (!fs.existsSync(filePath)) {
+              logger.warn(`Comment file not found at the reported path: ${filePath}, will search for it`);
+              
+              // Try to locate the file using alternative paths
+              const fileName = path.basename(filePath);
+              const possiblePaths = [
+                filePath,
+                path.join(process.cwd(), 'uploads', fileName),
+                path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
+                path.join(path.dirname(filePath), path.basename(req.file.originalname)),
+                path.join('/tmp', fileName)
+              ];
+              
+              let foundPath = null;
+              for (const altPath of possiblePaths) {
+                logger.info(`Checking alternative path: ${altPath}`);
+                if (fs.existsSync(altPath)) {
+                  logger.info(`Found file at alternative path: ${altPath}`);
+                  foundPath = altPath;
+                  break;
+                }
+              }
+              
+              if (foundPath) {
+                filePath = foundPath;
+                logger.info(`Using alternative file path: ${filePath}`);
+              } else {
+                logger.error(`Could not find file at any alternative path for: ${filePath}`);
+              }
+            }
+            
+            // Proceed if the file exists (either at original or alternative path)
+            if (fs.existsSync(filePath)) {
+              const originalFilename = req.file.originalname.toLowerCase();
+              
+              // Check if this is a video upload based on multiple indicators
+              const isVideoMimetype = req.file.mimetype.startsWith('video/');
+              const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                     originalFilename.endsWith('.mp4') ||
+                                     originalFilename.endsWith('.webm') ||
+                                     originalFilename.endsWith('.avi') ||
+                                     originalFilename.endsWith('.mkv');
+              
+              // Final video determination
+              const isVideo = isVideoMimetype || isVideoExtension;
+              
+              // Store the file using SpartaObjectStorage
+              console.log(`Processing comment media file:`, {
+                originalFilename: req.file.originalname,
+                mimetype: req.file.mimetype,
+                isVideo: isVideo,
+                fileSize: req.file.size
+              });
+              
+              logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
+              
+              const fileInfo = await spartaStorage.storeFileFromBuffer(
+                req.file.buffer,
+                req.file.originalname,
+                req.file.mimetype,
+                isVideo
+              );
+              
+              commentMediaUrl = fileInfo.url;
+              console.log(`Stored comment media file:`, { url: commentMediaUrl });
+            }
+          } catch (error) {
+            logger.error("Error processing comment media file:", error);
+            // Continue with comment creation even if media processing fails
+          }
+        }
+        
+        const post = await storage.createComment({
+          userId: req.user.id,
+          content: postData.content.trim(),
+          parentId: postData.parentId,
+          depth: postData.depth || 0,
+          points: commentPoints, // Always set to 0 points for comments
+          mediaUrl: commentMediaUrl // Add the media URL if a file was uploaded
+        });
+        return res.status(201).json(post);
+      }
+
+      // Handle regular post creation
+      let mediaUrl = null;
+      let mediaProcessed = false;
+      
+      // Check if we're using an existing memory verse video
+      if (postData.type === 'memory_verse' && req.body.existing_video_id) {
+        try {
+          const existingVideoId = parseInt(req.body.existing_video_id);
+          
+          // Get the existing post to find its media URL
+          const [existingPost] = await db
+            .select({
+              mediaUrl: posts.mediaUrl
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.id, existingVideoId),
+                eq(posts.userId, req.user.id),
+                eq(posts.type, 'memory_verse')
+              )
+            );
+          
+          if (existingPost && existingPost.mediaUrl) {
+            mediaUrl = existingPost.mediaUrl;
+            logger.info(`Re-using existing memory verse video from post ${existingVideoId}`, { mediaUrl });
+          } else {
+            logger.error(`Could not find existing memory verse video with ID ${existingVideoId}`);
+            return res.status(404).json({ message: "The selected memory verse video could not be found" });
+          }
+        } catch (error) {
+          logger.error("Error processing existing video reference:", error);
+          return res.status(500).json({ message: "Error processing the selected memory verse video" });
+        }
+      }
+      // Scripture posts shouldn't have images/videos
+      // Miscellaneous posts may or may not have images/videos
+      else if (postData.type === 'scripture') {
+        logger.info('Scripture post created with no media');
+        mediaUrl = null;
+      } else if (req.file) {
+        try {
+          // Use SpartaObjectStorage for file handling
+          const { spartaStorage } = await import('./sparta-object-storage');
+          
+          // Verify the file exists before proceeding
+          let filePath = req.file.path;
+          
+          // Verify the file exists at the path reported by multer
+          if (!fs.existsSync(filePath)) {
+            logger.warn(`File not found at the reported path: ${filePath}, will search for it`);
+            
+            // Try to locate the file using alternative paths
+            const fileName = path.basename(filePath);
+            const possiblePaths = [
+              filePath,
+              path.join(process.cwd(), 'uploads', fileName),
+              path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
+              path.join(path.dirname(filePath), path.basename(req.file.originalname)),
+              path.join('/tmp', fileName)
+            ];
+            
+            let foundPath = null;
+            for (const altPath of possiblePaths) {
+              logger.info(`Checking alternative path: ${altPath}`);
+              if (fs.existsSync(altPath)) {
+                logger.info(`Found file at alternative path: ${altPath}`);
+                foundPath = altPath;
+                break;
+              }
+            }
+            
+            if (foundPath) {
+              filePath = foundPath;
+              logger.info(`Using alternative file path: ${filePath}`);
+            } else {
+              logger.error(`Could not find file at any alternative path for: ${filePath}`);
+            }
+          }
+          
+          // Proceed if the file exists (either at original or alternative path)
+          if (fs.existsSync(filePath)) {
+            // Handle video files differently - check both mimetype and file extension
+            const originalFilename = req.file.originalname.toLowerCase();
+            
+            // Simplified detection for memory verse posts - rely only on the post type
+            const isMemoryVersePost = postData.type === 'memory_verse';
+            
+            // Handle specialized types
+            const isMiscellaneousPost = postData.type === 'miscellaneous';
+            
+            console.log("Post type detection:", {
+              isMemoryVersePost,
+              isMiscellaneousPost,
+              originalName: req.file.originalname
+            });
+            
+            // Check if this is a video upload based on multiple indicators
+            const isVideoMimetype = req.file.mimetype.startsWith('video/');
+            const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                   originalFilename.endsWith('.mp4') ||
+                                   originalFilename.endsWith('.webm') ||
+                                   originalFilename.endsWith('.avi') ||
+                                   originalFilename.endsWith('.mkv');
+            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
+            
+            // For miscellaneous posts, check if explicitly marked as video from client
+            const isMiscellaneousVideo = isMiscellaneousPost && 
+                                       (req.body.is_video === "true" || 
+                                        req.body.selected_media_type === "video" ||
+                                        (req.file && (isVideoMimetype || isVideoExtension)));
+                                        
+            // Combined video detection - for miscellaneous posts, only trust the explicit markers
+            const isVideo = isMemoryVersePost || 
+                          (isMiscellaneousPost ? isMiscellaneousVideo : 
+                           (isVideoMimetype || hasVideoContentType || isVideoExtension));
+                          
+            console.log("Video detection:", {
+              isVideo,
+              isMiscellaneousVideo,
+              isMiscellaneousPost,
+              postType: postData.type,
+              isVideoMimetype,
+              isVideoExtension,
+              hasVideoContentType,
+              mimetype: req.file.mimetype,
+              originalFilename: req.file.originalname,
+              selectedMediaType: req.body.selected_media_type,
+              isVideoFlag: req.body.is_video
+            });
+            
+            // We no longer need to create a separate file with prefix here.
+            // SpartaObjectStorage will handle proper file placement based on post type.
+            // This removes the creation of a redundant third file.
+            console.log("Skipping redundant file creation - SpartaObjectStorage will handle file organization");
+            
+            console.log(`Processing media file:`, {
+              originalFilename: req.file.originalname,
+              mimetype: req.file.mimetype,
+              isVideo: isVideo,
+              isMemoryVerse: isMemoryVersePost,
+              fileSize: req.file.size,
+              path: req.file.path,
+              postType: postData.type || 'unknown'
+            });
+            
+            logger.info(`Processing media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
+            
+            // Store the file using SpartaObjectStorage (used for both images and videos)
+            // For memory verse posts, if mimetype doesn't specify video, force it to video/mp4
+            let effectiveMimeType = req.file.mimetype;
+            
+            // If it's a memory verse post but mimetype doesn't indicate a video, override it
+            if (isMemoryVersePost && !effectiveMimeType.startsWith('video/')) {
+              effectiveMimeType = 'video/mp4'; // Default to mp4 for compatibility
+            }
+            
+            // Also handle miscellaneous post videos that might have wrong mime type
+            if (isMiscellaneousPost && isVideo && !effectiveMimeType.startsWith('video/')) {
+              console.log("Correcting miscellaneous video mime type from", effectiveMimeType, "to video/mp4");
+              effectiveMimeType = 'video/mp4';
+            }
+            
+            console.log("Using effective mime type for storage:", {
+              original: req.file.mimetype,
+              effective: effectiveMimeType,
+              isMemoryVerse: isMemoryVersePost,
+              isMiscellaneous: isMiscellaneousPost,
+              isVideo: isVideo,
+              wasOverridden: effectiveMimeType !== req.file.mimetype,
+              fileSize: req.file.size,
+              formDataKeys: Object.keys(req.body || {})
+            });
+              
+            const fileInfo = await spartaStorage.storeFileFromBuffer(
+              req.file.buffer,
+              req.file.originalname,
+              effectiveMimeType, // Use potentially corrected mimetype
+              isVideo // Pass flag for video handling
+            );
+            
+            mediaUrl = fileInfo.url;
+            mediaProcessed = true;
+            
+            // Verify the stored file exists in the uploads directory
+            const storedFilePath = path.join(process.cwd(), fileInfo.url);
+            let fileExists = fs.existsSync(storedFilePath);
+            
+            if (!fileExists) {
+              logger.error(`Stored file not found at expected path: ${storedFilePath}. Original stored at ${fileInfo.path}`);
+              
+              // Try to find the file in different paths
+              const alternativePaths = [
+                fileInfo.path,
+                path.join(process.cwd(), 'uploads', path.basename(fileInfo.url)),
+                path.join(process.cwd(), fileInfo.url),
+                path.join(process.cwd(), '..' + fileInfo.url),
+                path.join(process.cwd(), '..', 'uploads', path.basename(fileInfo.url))
+              ];
+              
+              let sourceFile = null;
+              
+              // Check each alternative path
+              for (const altPath of alternativePaths) {
+                if (fs.existsSync(altPath)) {
+                  logger.info(`Found file at alternative path: ${altPath}`);
+                  sourceFile = altPath;
+                  break;
+                }
+              }
+              
+              // Copy file to correct location if found
+              if (sourceFile) {
+                const newDir = path.dirname(storedFilePath);
+                if (!fs.existsSync(newDir)) {
+                  fs.mkdirSync(newDir, { recursive: true });
+                }
+                
+                try {
+                  fs.copyFileSync(sourceFile, storedFilePath);
+                  logger.info(`Copied file from ${sourceFile} to correct location ${storedFilePath}`);
+                  fileExists = true;
+                } catch (copyErr) {
+                  logger.error(`Failed to copy file: ${copyErr instanceof Error ? copyErr.message : 'Unknown error'}`);
+                }
+              } else {
+                logger.error(`Could not find file in any alternative locations`);
+              }
+            }
+            
+            if (isVideo) {
+              logger.info(`Video file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
+              logger.info(`Video URL: ${mediaUrl}, should be available at: ${storedFilePath}`);
+            } else {
+              logger.info(`Image file stored successfully at ${fileInfo.path} using SpartaObjectStorage`);
+              logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
+            }
+            
+            // We can remove the original uploaded file as SpartaObjectStorage has copied it
+            try {
+              fs.unlinkSync(filePath);
+              logger.info(`Removed original temporary file at ${filePath}`);
+            } catch (unlinkErr) {
+              logger.warn(`Could not remove temporary file: ${unlinkErr instanceof Error ? unlinkErr.message : 'Unknown error'}`);
+            }
+          } else {
+            logger.error(`Media file not found at expected path: ${filePath}`);
+            // Don't use any fallback image
+            mediaUrl = null;
+            logger.info(`No media found for post type: ${postData.type}`);
+          }
+        } catch (fileErr) {
+          logger.error('Error processing uploaded file:', fileErr);
+          
+          // Detailed error handling based on post type
+          if (postData.type === 'memory_verse') {
+            logger.error(`Memory verse video upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
+            
+            // For memory verse, video is required, so return an error response
+            return res.status(400).json({ 
+              message: "Failed to process memory verse video. Please try again with a different video file.",
+              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing video'
+            });
+          } else if (postData.type === 'food' || postData.type === 'workout') {
+            logger.error(`${postData.type} image upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
+            
+            // For food and workout posts, images are required
+            return res.status(400).json({ 
+              message: `Failed to process ${postData.type} image. Please try again with a different image.`,
+              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing image'
+            });
+          } else {
+            // For other post types, we can continue without media
+            mediaUrl = null;
+            logger.info(`Error with uploaded file for post type: ${postData.type} - continuing without media`);
+          }
+        }
+      } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
+        // For miscellaneous posts, media is optional
+        // For scripture posts, no media
+        // Memory verse posts REQUIRE a video
+        if (postData.type === 'memory_verse') {
+          logger.error(`Memory verse post requires a video but none was uploaded`);
+          return res.status(400).json({ message: "Memory verse posts require a video file." });
+        }
+        // For other posts, we previously would use fallbacks, but now we leave them blank
+        mediaUrl = null;
+        logger.info(`No media uploaded for ${postData.type} post`);
+      }
+
+      const post = await db
+        .insert(posts)
+        .values({
+          userId: req.user.id,
+          type: postData.type,
+          content: postData.content?.trim() || '',
+          mediaUrl: mediaUrl,
+          is_video: isVideo || false, // Set is_video flag based on our detection logic
+          points: points,
+          createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
+        })
+        .returning()
+        .then(posts => posts[0]);
+
+      // Log the created post for verification
+      logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
+
+      // Check for achievements based on post type
+      try {
+        await checkForAchievements(req.user.id, post.type);
+      } catch (achievementError) {
+        logger.error("Error checking achievements:", achievementError);
+        // Non-fatal error, continue without blocking post creation
+      }
+
+      res.status(201).json(post);
+    } catch (error) {
+      logger.error("Error in post creation:", error);
+      
+      // Ensure content type is still set on error
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to create post",
+        error: error instanceof Error ? error.stack : "Unknown error"
+      });
+    }
+  });
+
   router.get("/api/posts/:id", authenticate, async (req, res) => {
     try {
       // Force JSON content type header immediately to prevent any potential HTML response
