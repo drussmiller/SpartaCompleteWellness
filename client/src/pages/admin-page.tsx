@@ -1364,20 +1364,50 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             <Form {...groupForm}>
                               <form
                                 onSubmit={groupForm.handleSubmit((data) => {
-                                  // If Group Admin, auto-set their organization
-                                  if (
+                                  // Set organizationId based on user role
+                                  let orgId: number;
+                                  
+                                  if (currentUser?.isAdmin) {
+                                    // Admin must select an organization
+                                    if (!selectedOrganizationId) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Please select an organization",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    orgId = selectedOrganizationId;
+                                  } else if (
                                     currentUser?.isGroupAdmin &&
                                     currentUser?.adminGroupId
                                   ) {
+                                    // Group Admin uses their group's organization
                                     const adminGroup = groups?.find(
                                       (g) => g.id === currentUser.adminGroupId,
                                     );
-                                    if (adminGroup) {
-                                      data.organizationId =
-                                        adminGroup.organizationId;
+                                    if (!adminGroup) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Could not find your organization",
+                                        variant: "destructive",
+                                      });
+                                      return;
                                     }
+                                    orgId = adminGroup.organizationId;
+                                  } else {
+                                    toast({
+                                      title: "Error",
+                                      description: "Not authorized to create groups",
+                                      variant: "destructive",
+                                    });
+                                    return;
                                   }
-                                  createGroupMutation.mutate(data);
+                                  
+                                  createGroupMutation.mutate({
+                                    ...data,
+                                    organizationId: orgId,
+                                  });
                                 })}
                                 className="space-y-4"
                               >
@@ -1409,8 +1439,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <div className="space-y-2">
                                     <label className="text-sm font-medium">Organization</label>
                                     <Select
+                                      value={selectedOrganizationId?.toString()}
                                       onValueChange={(value) => {
-                                        groupForm.setValue('organizationId' as any, parseInt(value));
+                                        setSelectedOrganizationId(parseInt(value));
                                       }}
                                     >
                                       <SelectTrigger>

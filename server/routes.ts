@@ -5534,7 +5534,7 @@ export const registerRoutes = async (
 
       // Convert programStartDate string to Date object if provided
       if (updateData.programStartDate && typeof updateData.programStartDate === 'string') {
-        updateData.programStartDate = new Date(updateData(updateData.programStartDate);
+        updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
       // If team is being changed, update join date and program start date
