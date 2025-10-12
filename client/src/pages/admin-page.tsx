@@ -664,12 +664,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (newGroup) => {
       toast({
         title: "Success",
         description: "Group created successfully",
       });
       groupForm.reset();
+      
+      // Update cache manually to add the new group
+      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
+        if (!oldGroups) return [newGroup];
+        return [...oldGroups, newGroup];
+      });
+      
+      // Also invalidate to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
     onError: (error: Error) => {
       toast({
@@ -689,11 +698,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, groupId) => {
       toast({
         title: "Success",
         description: "Group deleted successfully",
       });
+      
+      // Update cache manually to remove the deleted group
+      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
+        if (!oldGroups) return [];
+        return oldGroups.filter(group => group.id !== groupId);
+      });
+      
+      // Also invalidate to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
     onError: (error: Error) => {
       toast({
