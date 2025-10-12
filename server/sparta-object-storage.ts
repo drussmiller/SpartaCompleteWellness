@@ -86,8 +86,8 @@ export class SpartaObjectStorage {
         const key = `shared/uploads/${uniqueFilename}`;
         await this.objectStorage.uploadFromBytes(key, buffer);
         console.log(`Successfully uploaded ${uniqueFilename} to Object Storage with key: ${key}`);
-        // Return URL that points to Object Storage direct access
-        return `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`;
+        // Return the raw storage key
+        return key;
       } catch (error) {
         console.error(`Object Storage upload failed for ${uniqueFilename}, using local storage:`, error.message);
         // Fall through to local storage
@@ -160,12 +160,12 @@ export class SpartaObjectStorage {
         
         const result = {
           filename: uniqueFilename,
-          url: `/api/object-storage/direct-download?storageKey=${key}`,
+          url: key,
         } as any;
         
         // Create thumbnail if it's an image or video
         if (mimeType.startsWith('image/') || isVideo) {
-          result.thumbnailUrl = result.url;
+          result.thumbnailUrl = key;
         }
         
         return result;
