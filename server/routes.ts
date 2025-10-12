@@ -1388,7 +1388,7 @@ export const registerRoutes = async (
               
               logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}, size: ${uploadedFile.size}`);
               
-              const fileInfo = await spartaStorage.storeFileFromBuffer(
+              const fileInfo = await spartaStorage.storeFile(
                 uploadedFile.buffer,
                 uploadedFile.originalname,
                 uploadedFile.mimetype,
@@ -1556,7 +1556,7 @@ export const registerRoutes = async (
               formDataKeys: Object.keys(req.body || {})
             });
               
-            const fileInfo = await spartaStorage.storeFileFromBuffer(
+            const fileInfo = await spartaStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
