@@ -66,9 +66,21 @@ import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
 import { inviteCodeRouter } from "./invite-code-routes";
 
-// Configure multer for memory storage (no local files)
+// Configure multer for disk storage
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+  }),
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB limit for video uploads
     fieldSize: 25 * 1024 * 1024, // 25MB per field
