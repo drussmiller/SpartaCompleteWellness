@@ -5334,17 +5334,22 @@ export const registerRoutes = async (
   // Update user role endpoint
   router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
     try {
+      logger.info(`[ROLE UPDATE] Endpoint hit - userId: ${req.params.userId}, requestUser: ${req.user?.id}, role: ${req.body.role}, value: ${req.body.value}`);
+      
       if (!req.user) {
+        logger.warn(`[ROLE UPDATE] No authenticated user`);
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
+        logger.warn(`[ROLE UPDATE] Invalid user ID: ${req.params.userId}`);
         return res.status(400).json({ message: "Invalid user ID format" });
       }
 
       const { role, value } = req.body;
       if (!role || typeof value !== 'boolean') {
+        logger.warn(`[ROLE UPDATE] Invalid role or value: role=${role}, value=${value}`);
         return res.status(400).json({ message: "Invalid role or value" });
       }
 
