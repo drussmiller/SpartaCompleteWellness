@@ -650,7 +650,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      organizationId: 0,
+      organizationId: undefined,
     },
   });
 
@@ -1415,7 +1415,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           onValueChange={(value) =>
                                             field.onChange(parseInt(value))
                                           }
-                                          value={field.value?.toString()}
+                                          value={field.value ? field.value.toString() : ""}
                                         >
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select organization" />
