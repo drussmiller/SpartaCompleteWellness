@@ -1862,6 +1862,48 @@ export const registerRoutes = async (
     },
   );
 
+  // Delete a post
+  router.delete("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      res.set({
+        "Cache-Control": "no-store",
+        Pragma: "no-cache",
+        "Content-Type": "application/json",
+        "X-Content-Type-Options": "nosniff",
+      });
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      // Check if user owns the post or is admin
+      const post = await storage.getPost(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      await storage.deletePost(postId);
+
+      return res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      logger.error("Error deleting post:", error);
+      res.set("Content-Type", "application/json");
+      return res.status(500).json({
+        message: "Failed to delete post",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
     try {
