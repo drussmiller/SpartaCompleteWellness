@@ -620,10 +620,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, organizationId) => {
       toast({
         title: "Success",
         description: "Organization deleted successfully",
+      });
+      
+      // Update cache manually to remove deleted organization
+      queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
+        if (!oldOrgs) return [];
+        return oldOrgs.filter(org => org.id !== organizationId);
       });
     },
     onError: (error: Error) => {
