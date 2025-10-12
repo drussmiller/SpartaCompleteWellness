@@ -5377,10 +5377,13 @@ export const registerRoutes = async (
         }
       } else if (req.user.isTeamLead) {
         // Team Leads can only update isTeamLead role for users in their own team
+        logger.info(`Team Lead authorization check: role=${role}, targetUserTeamId=${targetUser.teamId}, teamLeadTeamId=${req.user.teamId}`);
         if (role !== 'isTeamLead') {
+          logger.warn(`Team Lead tried to update non-TeamLead role: ${role}`);
           return res.status(403).json({ message: "Team Leads can only update Team Lead role" });
         }
         if (targetUser.teamId !== req.user.teamId) {
+          logger.warn(`Team Lead tried to update user in different team: targetTeam=${targetUser.teamId}, teamLeadTeam=${req.user.teamId}`);
           return res.status(403).json({ message: "You can only update users in your team" });
         }
       } else {
