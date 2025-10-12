@@ -1438,21 +1438,26 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 {currentUser?.isAdmin && (
                                   <div className="space-y-2">
                                     <label className="text-sm font-medium">Organization</label>
-                                    <select
-                                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                      value={selectedOrganizationId ?? ""}
-                                      onChange={(e) => {
-                                        const value = e.target.value;
-                                        setSelectedOrganizationId(value ? parseInt(value) : null);
+                                    <Select
+                                      value={selectedOrganizationId !== null ? selectedOrganizationId.toString() : undefined}
+                                      onValueChange={(value) => {
+                                        setSelectedOrganizationId(parseInt(value));
                                       }}
                                     >
-                                      <option value="">Select organization</option>
-                                      {sortedOrganizations?.map((org) => (
-                                        <option key={org.id} value={org.id}>
-                                          {org.name}
-                                        </option>
-                                      ))}
-                                    </select>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select organization" />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-[9999]">
+                                        {sortedOrganizations?.map((org) => (
+                                          <SelectItem
+                                            key={org.id}
+                                            value={org.id.toString()}
+                                          >
+                                            {org.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                 )}
                                 {currentUser?.isGroupAdmin && (
