@@ -139,6 +139,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [teamsPanelOpen, setTeamsPanelOpen] = useState(false);
   const [usersPanelOpen, setUsersPanelOpen] = useState(false);
 
+  // Optimistic updates - track local changes without touching React Query cache
+  const [optimisticGroups, setOptimisticGroups] = useState<Record<number, Partial<Group>>>({});
+  const [optimisticTeams, setOptimisticTeams] = useState<Record<number, Partial<Team>>>({});
+  const [optimisticUsers, setOptimisticUsers] = useState<Record<number, Partial<User>>>({});
+  const [optimisticOrgs, setOptimisticOrgs] = useState<Record<number, Partial<Organization>>>({});
+
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose(
     {
       onSwipeRight: () => {
@@ -185,6 +191,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
+
+  // Merge cached data with optimistic updates
+  const mergedGroups = groups?.map(g => ({ ...g, ...optimisticGroups[g.id] }));
+  const mergedTeams = teams?.map(t => ({ ...t, ...optimisticTeams[t.id] }));
+  const mergedUsers = users?.map(u => ({ ...u, ...optimisticUsers[u.id] }));
+  const mergedOrgs = organizations?.map(o => ({ ...o, ...optimisticOrgs[o.id] }));
 
   // Note: User progress is now shown directly from user.currentWeek and user.currentDay
   // No need to fetch separately for each user
@@ -418,6 +430,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const updateGroupMutation = useMutation({
     mutationFn: async ({ groupId, data }: { groupId: number; data: any }) => {
+      // Optimistically update local state immediately
+      setOptimisticGroups(prev => ({
+        ...prev,
+        [groupId]: { ...prev[groupId], ...data }
+      }));
+      
       const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
       if (!res.ok) {
         let errorMessage = "Failed to update group";
@@ -1627,7 +1645,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <div className="flex items-center space-x-2 mt-2">
                                         <Checkbox
                                           id={`competitive-${group.id}`}
-                                          checked={group.competitive || false}
+                                          checked={
+                                            optimisticGroups[group.id]?.competitive !== undefined
+                                              ? optimisticGroups[group.id].competitive
+                                              : group.competitive || false
+                                          }
                                           onCheckedChange={(checked) => {
                                             updateGroupMutation.mutate({
                                               groupId: group.id,
