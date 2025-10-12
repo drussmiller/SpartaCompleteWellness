@@ -165,7 +165,37 @@ export class SpartaObjectStorage {
         
         // Create thumbnail if it's an image or video
         if (mimeType.startsWith('image/') || isVideo) {
-          result.thumbnailUrl = key;
+          try {
+            const thumbnailFilename = `${uniqueFilename.replace(fileExt, '.jpg')}`;
+            const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
+
+            if (isVideo) {
+              await this.createVideoThumbnail(filePath, thumbnailPath);
+            } else {
+              await this.createThumbnail(filePath, thumbnailPath);
+            }
+
+            // Upload thumbnail to Object Storage
+            if (fs.existsSync(thumbnailPath)) {
+              const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+              const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
+              await this.objectStorage.uploadFromBytes(thumbnailKey, thumbnailBuffer);
+              console.log(`Successfully uploaded thumbnail ${thumbnailFilename} to Object Storage at ${thumbnailKey}`);
+              result.thumbnailUrl = thumbnailKey;
+              
+              // Clean up local thumbnail file
+              fs.unlinkSync(thumbnailPath);
+            }
+          } catch (error) {
+            console.error('Error creating/uploading thumbnail:', error);
+            logger.error('Error creating/uploading thumbnail:', error instanceof Error ? error : new Error(String(error)));
+          }
+        }
+        
+        // Clean up local video file after successful upload
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log(`Cleaned up local file: ${filePath}`);
         }
         
         return result;
