@@ -5331,6 +5331,80 @@ export const registerRoutes = async (
     }
   );
 
+  // Update user role endpoint
+  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID format" });
+      }
+
+      const { role, value } = req.body;
+      if (!role || typeof value !== 'boolean') {
+        return res.status(400).json({ message: "Invalid role or value" });
+      }
+
+      // Get the user being updated
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Authorization checks
+      if (req.user.isAdmin) {
+        // Admins can update any role
+      } else if (req.user.isGroupAdmin) {
+        // Group Admins can update roles for users in their group
+        if (targetUser.teamId) {
+          const [team] = await db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, targetUser.teamId))
+            .limit(1);
+
+          if (!team || team.groupId !== req.user.adminGroupId) {
+            return res.status(403).json({ message: "Not authorized" });
+          }
+        }
+      } else if (req.user.isTeamLead) {
+        // Team Leads can only update isTeamLead role for users in their own team
+        if (role !== 'isTeamLead') {
+          return res.status(403).json({ message: "Team Leads can only update Team Lead role" });
+        }
+        if (targetUser.teamId !== req.user.teamId) {
+          return res.status(403).json({ message: "You can only update users in your team" });
+        }
+      } else {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Update the role
+      const [updatedUser] = await db
+        .update(users)
+        .set({ [role]: value })
+        .where(eq(users.id, userId))
+        .returning();
+
+      logger.info(`User ${userId} role ${role} updated to ${value} by user ${req.user.id}`);
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      logger.error(`Error updating user role:`, error);
+      res.status(500).json({
+        message: "Failed to update user role",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Update user endpoint
   router.patch("/api/users/:userId", authenticate, async (req, res) => {
     try {
