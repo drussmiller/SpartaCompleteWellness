@@ -463,6 +463,8 @@ export function CreatePostDialog({
   });
 
   const onSubmit = (data: CreatePostForm) => {
+    console.log("🔥 onSubmit called with data:", { type: data.type, hasMediaUrl: !!data.mediaUrl, content: data.content?.substring(0, 50) });
+    console.log("🔥 Form errors:", form.formState.errors);
     data.postDate = selectedDate;
     createPostMutation.mutate(data);
   };
