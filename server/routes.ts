@@ -1282,20 +1282,13 @@ export const registerRoutes = async (
       }
     }
     
-    // Extra logging for debugging
-    if (uploadedFile) {
-      try {
-        const stats = fs.statSync(uploadedFile.path);
-        console.log("File stats:", {
-          exists: fs.existsSync(uploadedFile.path),
-          size: stats.size,
-          isFile: stats.isFile(),
-          path: uploadedFile.path,
-          absolutePath: path.resolve(uploadedFile.path)
-        });
-      } catch (statError) {
-        console.error("Error checking file:", statError);
-      }
+    // Memory storage: files are in buffer, not on disk
+    if (uploadedFile && uploadedFile.buffer) {
+      console.log("File buffer received:", {
+        size: uploadedFile.buffer.length,
+        mimetype: uploadedFile.mimetype,
+        originalname: uploadedFile.originalname
+      });
     }
     
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
