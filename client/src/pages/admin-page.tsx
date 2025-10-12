@@ -1439,7 +1439,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <div className="space-y-2">
                                     <label className="text-sm font-medium">Organization</label>
                                     <Select
-                                      value={selectedOrganizationId?.toString()}
+                                      value={selectedOrganizationId !== null ? selectedOrganizationId.toString() : undefined}
                                       onValueChange={(value) => {
                                         setSelectedOrganizationId(parseInt(value));
                                       }}
