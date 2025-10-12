@@ -3950,7 +3950,7 @@ export const registerRoutes = async (
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      let users = await storage.getUsers();
+      let users = await storage.getAllUsers();
 
       // Filter users for group admins - only show users in their group's teams
       if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
