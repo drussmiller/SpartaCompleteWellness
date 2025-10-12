@@ -1509,7 +1509,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Dialog>
                       </div>
                       <div className="space-y-4">
-                        {(showInactiveGroups ? filteredGroups : filteredGroups.filter(g => g.status === 1))?.map((group, index) => (
+                        {(showInactiveGroups ? sortedGroups : sortedGroups.filter(g => g.status === 1))?.map((group, index) => (
                           <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
