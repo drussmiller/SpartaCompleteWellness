@@ -319,7 +319,9 @@ export class SpartaObjectStorage {
         })
         .seekInput(1)           // Seek to 1 second
         .frames(1)              // Extract 1 frame
-        .size('640x360')        // Fixed size to avoid invalid parameters
+        .outputOptions([
+          '-vf', 'scale=640:360:force_original_aspect_ratio=increase,crop=640:360'  // Scale and crop to center
+        ])
         .output(targetPath)
         .run();
       
