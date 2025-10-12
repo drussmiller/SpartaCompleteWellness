@@ -1246,7 +1246,7 @@ export const registerRoutes = async (
     let isVideo = false;
     
     // Extract the main file from upload.fields() - it could be in 'image' or 'thumbnail' field
-    const uploadedFile = (uploadedFiles as any)?.image?.[0] || (uploadedFiles as any)?.thumbnail?.[0] || null;
+    const uploadedFile = (req.files as any)?.image?.[0] || (req.files as any)?.thumbnail?.[0] || null;
     
     console.log("POST /api/posts - Request received", {
       hasFile: !!uploadedFile,
@@ -1260,7 +1260,7 @@ export const registerRoutes = async (
       } : 'No file uploaded',
       contentType: req.headers['content-type'],
       bodyKeys: Object.keys(req.body),
-      filesKeys: uploadedFiles ? Object.keys(uploadedFiles) : []
+      filesKeys: req.files ? Object.keys(req.files) : []
     });
     
     // Check if this is a memory verse post based on the parsed data
