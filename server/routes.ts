@@ -1940,7 +1940,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Generate invite code for Team Admin
+  // Generate invite code for Team Lead
   router.post("/api/invite-codes/team-admin/:teamId", authenticate, async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);
@@ -2152,7 +2152,7 @@ export const registerRoutes = async (
           .where(eq(users.id, req.user.id));
 
         res.json({
-          role: "Team Admin",
+          role: "Team Lead",
           teamName: teamWithAdminCode.name,
           teamId: teamWithAdminCode.id
         });

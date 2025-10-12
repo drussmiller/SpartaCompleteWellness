@@ -88,7 +88,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
     type === "group_admin"
       ? "Group Admin"
       : type === "team_admin"
-        ? "Team Admin"
+        ? "Team Lead"
         : "Team Member";
 
   const currentCode = inviteCodes?.inviteCode;

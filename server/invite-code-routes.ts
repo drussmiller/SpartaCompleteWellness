@@ -227,7 +227,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       const [group] = await db.select().from(groups).where(eq(groups.id, teamAdmin.groupId)).limit(1);
       
       if (req.user!.isGroupAdmin) {
-        return res.status(400).json({ message: "You cannot join a team as a Team Admin while you are a Group Admin" });
+        return res.status(400).json({ message: "You cannot join a team as a Team Lead while you are a Group Admin" });
       }
 
       const teamMemberCount = await db
@@ -252,7 +252,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       return res.json({ 
         success: true, 
-        role: "Team Admin",
+        role: "Team Lead",
         teamId: teamAdmin.id,
         teamName: teamAdmin.name,
         groupName: group?.name 
