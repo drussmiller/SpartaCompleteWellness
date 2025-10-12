@@ -1038,23 +1038,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
-                            <div className="flex items-center mb-2 relative">
-                              <DialogPrimitive.Close asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 rounded-full absolute right-2 top-2"
-                                >
-                                  <span className="sr-only">Close</span>
-                                  <span className="text-lg font-semibold">
-                                    ×
-                                  </span>
-                                </Button>
-                              </DialogPrimitive.Close>
-                              <DialogTitle className="w-full text-center">
-                                Create New Organization
-                              </DialogTitle>
-                            </div>
+                            <DialogHeader>
+                              <DialogTitle>Create New Organization</DialogTitle>
+                            </DialogHeader>
                             <Form {...organizationForm}>
                               <form
                                 onSubmit={organizationForm.handleSubmit(
@@ -1075,6 +1061,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           {...field}
                                         />
                                       </FormControl>
+                                      <FormMessage />
                                     </FormItem>
                                   )}
                                 />
@@ -1090,20 +1077,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           {...field}
                                         />
                                       </FormControl>
+                                      <FormMessage />
                                     </FormItem>
                                   )}
                                 />
-                                <Button
-                                  type="submit"
-                                  disabled={
-                                    createOrganizationMutation.isPending
-                                  }
-                                >
-                                  {createOrganizationMutation.isPending && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  )}
-                                  Create Organization
-                                </Button>
+                                <DialogFooter>
+                                  <Button
+                                    type="submit"
+                                    disabled={
+                                      createOrganizationMutation.isPending
+                                    }
+                                  >
+                                    {createOrganizationMutation.isPending && (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Create Organization
+                                  </Button>
+                                </DialogFooter>
                               </form>
                             </Form>
                           </DialogContent>
