@@ -29,15 +29,20 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
     // Check authorization based on role being modified
     const isFullAdmin = req.user?.isAdmin;
     const isGroupAdmin = req.user?.isGroupAdmin;
+    const isTeamLead = req.user?.isTeamLead;
 
     // Full admins can do anything
     if (!isFullAdmin) {
-      // Group admins can only manage Team Lead roles
-      if (role !== 'isTeamLead' || !isGroupAdmin) {
+      // Group admins and Team Leads can only manage Team Lead roles
+      if (role !== 'isTeamLead') {
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      // Verify the target user is in the Group Admin's group
+      if (!isGroupAdmin && !isTeamLead) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Get the target user
       const [targetUser] = await db
         .select()
         .from(users)
@@ -48,20 +53,30 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
         return res.status(400).json({ message: "User must be in a team" });
       }
 
-      // Get the target user's team to find their group
-      const [targetTeam] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, targetUser.teamId))
-        .limit(1);
-
-      if (!targetTeam) {
-        return res.status(400).json({ message: "User's team not found" });
+      // Team Leads can only manage users in their own team
+      if (isTeamLead && !isFullAdmin && !isGroupAdmin) {
+        if (targetUser.teamId !== req.user.teamId) {
+          return res.status(403).json({ message: "You can only manage Team Leads in your own team" });
+        }
       }
 
-      // Verify the Group Admin has authority over this group
-      if (targetTeam.groupId !== req.user.adminGroupId) {
-        return res.status(403).json({ message: "You can only manage Team Leads in your own group" });
+      // Group Admins can only manage users in their group
+      if (isGroupAdmin && !isFullAdmin) {
+        // Get the target user's team to find their group
+        const [targetTeam] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, targetUser.teamId))
+          .limit(1);
+
+        if (!targetTeam) {
+          return res.status(400).json({ message: "User's team not found" });
+        }
+
+        // Verify the Group Admin has authority over this group
+        if (targetTeam.groupId !== req.user.adminGroupId) {
+          return res.status(403).json({ message: "You can only manage Team Leads in your own group" });
+        }
       }
     }
 
