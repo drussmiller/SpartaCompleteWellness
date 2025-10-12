@@ -631,6 +631,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         if (!oldOrgs) return [];
         return oldOrgs.filter(org => org.id !== organizationId);
       });
+      
+      // Force re-fetch to ensure UI is in sync with database
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
     },
     onError: (error: Error) => {
       toast({
