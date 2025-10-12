@@ -1356,48 +1356,15 @@ export const registerRoutes = async (
         let commentMediaUrl = null;
         
         // Check if we have a file upload with the comment
-        if (uploadedFile) {
+        if (uploadedFile && uploadedFile.buffer) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage } = await import('./sparta-object-storage');
             
-            // Verify the file exists before proceeding
-            let filePath = uploadedFile.path;
+            // With memory storage, work directly with the buffer
+            logger.info(`Processing comment file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
             
-            // Verify the file exists at the path reported by multer
-            if (!fs.existsSync(filePath)) {
-              logger.warn(`Comment file not found at the reported path: ${filePath}, will search for it`);
-              
-              // Try to locate the file using alternative paths
-              const fileName = path.basename(filePath);
-              const possiblePaths = [
-                filePath,
-                path.join(process.cwd(), 'uploads', fileName),
-                path.join(process.cwd(), 'uploads', path.basename(uploadedFile.originalname)),
-                path.join(path.dirname(filePath), path.basename(uploadedFile.originalname)),
-                path.join('/tmp', fileName)
-              ];
-              
-              let foundPath = null;
-              for (const altPath of possiblePaths) {
-                logger.info(`Checking alternative path: ${altPath}`);
-                if (fs.existsSync(altPath)) {
-                  logger.info(`Found file at alternative path: ${altPath}`);
-                  foundPath = altPath;
-                  break;
-                }
-              }
-              
-              if (foundPath) {
-                filePath = foundPath;
-                logger.info(`Using alternative file path: ${filePath}`);
-              } else {
-                logger.error(`Could not find file at any alternative path for: ${filePath}`);
-              }
-            }
-            
-            // Proceed if the file exists (either at original or alternative path)
-            if (fs.existsSync(filePath)) {
+            // Proceed with buffer-based processing
               const originalFilename = uploadedFile.originalname.toLowerCase();
               
               // Check if this is a video upload based on multiple indicators
