@@ -586,12 +586,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (newOrganization) => {
       toast({
         title: "Success",
         description: "Organization created successfully",
       });
       organizationForm.reset();
+      
+      // Update cache manually instead of invalidating to prevent panel collapse
+      queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
+        if (!oldOrgs) return [newOrganization];
+        return [...oldOrgs, newOrganization];
+      });
     },
     onError: (error: Error) => {
       toast({
