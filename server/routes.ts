@@ -1882,7 +1882,15 @@ export const registerRoutes = async (
       }
 
       // Check if user owns the post or is admin
-      const post = await storage.getPost(postId);
+      const [post] = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+        })
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
