@@ -255,13 +255,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     isLoading: measurementsLoading,
     error: measurementsError,
   } = useQuery<Measurement[]>({
-    queryKey: ["/api/measurements", user?.id],
+    queryKey: ["/api/measurements"],
     queryFn: async () => {
-      const response = await fetch(`/api/measurements?userId=${user?.id}`);
+      const response = await fetch(`/api/measurements`);
       if (!response.ok) throw new Error("Failed to fetch measurements");
       return response.json();
     },
-    enabled: !!user?.id,
+    enabled: !!authUser,
   });
 
   // Add workout types query
