@@ -17,11 +17,15 @@ export function useRestoreScroll() {
       const scrollY = parseInt(savedScroll, 10);
       console.log('Restoring scroll position:', scrollY, 'for path:', location);
 
-      // Use requestAnimationFrame to ensure DOM is ready
+      // Wait for DOM to be fully ready, then restore scroll
+      // Use multiple animation frames to ensure all content has rendered
       requestAnimationFrame(() => {
-        window.scrollTo(0, scrollY);
-        document.documentElement.scrollTop = scrollY;
-        document.body.scrollTop = scrollY;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            window.scrollTo({ top: scrollY, behavior: 'instant' });
+            console.log('Scroll restored to:', scrollY, 'actual position:', window.scrollY);
+          }, 50);
+        });
       });
 
       // Clear the saved scroll position after restoring
