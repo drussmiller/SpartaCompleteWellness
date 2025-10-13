@@ -542,7 +542,7 @@ export function MessageSlideCard() {
               <ScrollArea
                 className="flex-1 bg-white"
                 style={{
-                  paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))',
+                  paddingBottom: 'calc(10rem + env(safe-area-inset-bottom))',
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
                 }}
