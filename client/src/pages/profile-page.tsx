@@ -116,14 +116,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       console.log("Preferred name update successful:", data);
       setIsEditingPreferredName(false);
       
-      // Update the local user data directly without refetching
-      queryClient.setQueryData(["/api/user"], (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          preferredName: preferredNameValue
-        };
-      });
+      // Invalidate and refetch user data to get fresh data from server
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await refetchUser();
       
       toast({
         title: "Success",
@@ -163,14 +158,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       console.log("Email update successful:", data);
       setIsEditingEmail(false);
       
-      // Update the local user data directly without refetching
-      queryClient.setQueryData(["/api/user"], (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          email: emailValue
-        };
-      });
+      // Invalidate and refetch user data to get fresh data from server
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await refetchUser();
       
       toast({
         title: "Success",
