@@ -1195,37 +1195,46 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       }}
                                       className="space-y-2"
                                     >
-                                      <Input
-                                        name="name"
-                                        defaultValue={organization.name}
-                                        placeholder="Organization name"
-                                        required
-                                      />
-                                      <Input
-                                        name="description"
-                                        defaultValue={
-                                          organization.description || ""
-                                        }
-                                        placeholder="Description"
-                                      />
-                                      <Select
-                                        name="status"
-                                        defaultValue={
-                                          organization.status?.toString() || "1"
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="1">
-                                            Active
-                                          </SelectItem>
-                                          <SelectItem value="0">
-                                            Inactive
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Organization Name</Label>
+                                        <Input
+                                          name="name"
+                                          defaultValue={organization.name}
+                                          placeholder="Organization name"
+                                          required
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Description</Label>
+                                        <Input
+                                          name="description"
+                                          defaultValue={
+                                            organization.description || ""
+                                          }
+                                          placeholder="Description"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                        <Select
+                                          name="status"
+                                          defaultValue={
+                                            organization.status?.toString() || "1"
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="1">
+                                              Active
+                                            </SelectItem>
+                                            <SelectItem value="0">
+                                              Inactive
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                       <div className="flex gap-2">
                                         <Button
                                           type="submit"
@@ -1578,37 +1587,46 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       }}
                                       className="space-y-2"
                                     >
-                                      <Input
-                                        name="name"
-                                        defaultValue={group.name}
-                                        placeholder="Group name"
-                                        required
-                                      />
-                                      <Input
-                                        name="description"
-                                        defaultValue={group.description || ""}
-                                        placeholder="Description"
-                                      />
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Group Name</Label>
+                                        <Input
+                                          name="name"
+                                          defaultValue={group.name}
+                                          placeholder="Group name"
+                                          required
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Description</Label>
+                                        <Input
+                                          name="description"
+                                          defaultValue={group.description || ""}
+                                          placeholder="Description"
+                                        />
+                                      </div>
                                       {/* Only show organization selector for Full Admins */}
                                       {currentUser?.isAdmin ? (
-                                        <Select
-                                          name="organizationId"
-                                          defaultValue={group.organizationId.toString()}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select organization" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {sortedOrganizations?.map((org) => (
-                                              <SelectItem
-                                                key={org.id}
-                                                value={org.id.toString()}
-                                              >
-                                                {org.name}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                        <div>
+                                          <Label className="text-sm font-medium mb-1 block">Organization</Label>
+                                          <Select
+                                            name="organizationId"
+                                            defaultValue={group.organizationId.toString()}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select organization" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {sortedOrganizations?.map((org) => (
+                                                <SelectItem
+                                                  key={org.id}
+                                                  value={org.id.toString()}
+                                                >
+                                                  {org.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
                                       ) : (
                                         <input
                                           type="hidden"
@@ -1616,24 +1634,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           value={group.organizationId.toString()}
                                         />
                                       )}
-                                      <Select
-                                        name="status"
-                                        defaultValue={
-                                          group.status?.toString() || "1"
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="1">
-                                            Active
-                                          </SelectItem>
-                                          <SelectItem value="0">
-                                            Inactive
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                        <Select
+                                          name="status"
+                                          defaultValue={
+                                            group.status?.toString() || "1"
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="1">
+                                              Active
+                                            </SelectItem>
+                                            <SelectItem value="0">
+                                              Inactive
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                       <div className="flex items-center space-x-2">
                                         <Checkbox
                                           id={`edit-competitive-${group.id}`}
@@ -2017,62 +2038,77 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   }}
                                 >
                                   <div className="space-y-2">
-                                    <Input
-                                      name="name"
-                                      defaultValue={team.name}
-                                      className="font-semibold"
-                                    />
-                                    <Textarea
-                                      name="description"
-                                      defaultValue={team.description || ""}
-                                      className="text-sm"
-                                    />
-                                    <Select
-                                      value={selectedGroupId}
-                                      onValueChange={setSelectedGroupId}
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select a group" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {filteredGroups?.map((group) => (
-                                          <SelectItem
-                                            key={group.id}
-                                            value={group.id.toString()}
-                                          >
-                                            {group.name}
+                                    <div>
+                                      <Label className="text-sm font-medium mb-1 block">Team Name</Label>
+                                      <Input
+                                        name="name"
+                                        defaultValue={team.name}
+                                        className="font-semibold"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium mb-1 block">Description</Label>
+                                      <Textarea
+                                        name="description"
+                                        defaultValue={team.description || ""}
+                                        className="text-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium mb-1 block">Group</Label>
+                                      <Select
+                                        value={selectedGroupId}
+                                        onValueChange={setSelectedGroupId}
+                                      >
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="Select a group" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {filteredGroups?.map((group) => (
+                                            <SelectItem
+                                              key={group.id}
+                                              value={group.id.toString()}
+                                            >
+                                              {group.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium mb-1 block">Maximum Team Size</Label>
+                                      <Input
+                                        name="maxSize"
+                                        type="number"
+                                        min="1"
+                                        defaultValue={
+                                          team.maxSize?.toString() || "6"
+                                        }
+                                        placeholder="Maximum team size"
+                                        className="text-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                      <Select
+                                        name="status"
+                                        defaultValue={
+                                          team.status?.toString() || "1"
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="1">
+                                            Active
                                           </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <Input
-                                      name="maxSize"
-                                      type="number"
-                                      min="1"
-                                      defaultValue={
-                                        team.maxSize?.toString() || "6"
-                                      }
-                                      placeholder="Maximum team size"
-                                      className="text-sm"
-                                    />
-                                    <Select
-                                      name="status"
-                                      defaultValue={
-                                        team.status?.toString() || "1"
-                                      }
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select status" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="1">
-                                          Active
-                                        </SelectItem>
-                                        <SelectItem value="0">
-                                          Inactive
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                          <SelectItem value="0">
+                                            Inactive
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                     <div className="flex gap-2">
                                       <Button type="submit" size="sm">
                                         Save
