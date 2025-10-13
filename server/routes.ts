@@ -3683,6 +3683,32 @@ export const registerRoutes = async (
     }
   });
 
+  // Add GET endpoint for measurements
+  router.get("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
+      // Get all measurements for the user, ordered by date descending
+      const userMeasurements = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, userId))
+        .orderBy(desc(measurements.date));
+
+      res.json(userMeasurements);
+    } catch (error) {
+      logger.error("Error fetching measurements:", error);
+      res.status(500).json({
+        message: "Failed to fetch measurements",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add measurements POST route directly on app to ensure it executes
   app.post("/api/measurements", authenticate, async (req, res) => {
     try {
