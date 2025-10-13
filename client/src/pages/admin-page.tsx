@@ -1054,21 +1054,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </Button>
                     </CollapsibleTrigger>
                   </div>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Checkbox
+                      id="show-inactive-orgs"
+                      checked={showInactiveOrgs}
+                      onCheckedChange={(checked) => setShowInactiveOrgs(checked === true)}
+                    />
+                    <Label htmlFor="show-inactive-orgs">
+                      Show inactive organizations
+                    </Label>
+                  </div>
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Checkbox
-                            id="show-inactive-orgs"
-                            checked={showInactiveOrgs}
-                            onCheckedChange={(checked) => setShowInactiveOrgs(checked === true)}
-                          />
-                          <Label
-                            htmlFor="show-inactive-orgs"
-                          >
-                            Show inactive organizations
-                          </Label>
-                        </div>
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button
@@ -1343,21 +1341,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </Button>
                     </CollapsibleTrigger>
                   </div>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Checkbox
+                      id="show-inactive-groups"
+                      checked={showInactiveGroups}
+                      onCheckedChange={(checked) => setShowInactiveGroups(checked === true)}
+                    />
+                    <Label htmlFor="show-inactive-groups">
+                      Show inactive groups
+                    </Label>
+                  </div>
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Checkbox
-                            id="show-inactive-groups"
-                            checked={showInactiveGroups}
-                            onCheckedChange={(checked) => setShowInactiveGroups(checked === true)}
-                          />
-                          <Label
-                            htmlFor="show-inactive-groups"
-                          >
-                            Show inactive groups
-                          </Label>
-                        </div>
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button
@@ -1806,20 +1802,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     </Button>
                   </CollapsibleTrigger>
                 </div>
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox
+                    id="show-inactive-teams"
+                    checked={showInactiveTeams}
+                    onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
+                  />
+                  <Label htmlFor="show-inactive-teams">
+                    Show inactive teams
+                  </Label>
+                </div>
                 <CollapsibleContent>
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Checkbox
-                        id="show-inactive-teams"
-                        checked={showInactiveTeams}
-                        onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
-                      />
-                      <Label
-                        htmlFor="show-inactive-teams"
-                      >
-                        Show inactive teams
-                      </Label>
-                    </div>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
