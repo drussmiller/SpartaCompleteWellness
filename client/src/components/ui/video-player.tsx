@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play } from 'lucide-react';
+import { Play, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
-import { useLocation } from 'wouter';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import './video-player.css'; // Import the custom CSS
 
 interface VideoPlayerProps {
@@ -79,7 +80,7 @@ export function VideoPlayer({
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(false);
-  const [location, setLocation] = useLocation();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -95,22 +96,21 @@ export function VideoPlayer({
     // If we have a poster, thumbnailLoaded will be set by onLoad event
   }, [simplifiedPoster]);
 
-  // Handle thumbnail click - navigate to video player page
+  // Handle thumbnail click - open video dialog overlay
   const handleThumbnailClick = () => {
-    console.log("Thumbnail clicked, navigating to video player page");
+    console.log("Thumbnail clicked, opening video player dialog");
+    setIsDialogOpen(true);
+  };
 
-    // Save current scroll position before navigating
-    const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-    sessionStorage.setItem('videoPlayerReturnScroll', scrollY.toString());
-    sessionStorage.setItem('videoPlayerReturnPath', location);
-    console.log('Saved scroll position:', scrollY, 'for path:', location);
-
-    // Navigate to video player page with video URL and return path as parameters
-    const videoUrl = encodeURIComponent(src);
-    const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
-    const returnPath = encodeURIComponent(location);
-
-    setLocation(`/video-player?src=${videoUrl}&poster=${posterUrl}&returnTo=${returnPath}`);
+  // Handle dialog close
+  const handleDialogClose = () => {
+    console.log("Video player dialog closed");
+    setIsDialogOpen(false);
+    
+    // Pause video when closing dialog
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
   };
 
 
@@ -204,75 +204,128 @@ export function VideoPlayer({
 
 
   return (
-    <div 
-      ref={containerRef}
-      className={cn("relative", className)}
-      style={{ margin: 0, padding: 0, lineHeight: 0 }}
-    >
-      {/* Show content based on current state */}
-      {!showVideo && (
-        <div className="relative w-full h-full min-h-[200px]">
-          {/* No blank placeholder - removed per user request */}
+    <>
+      <div 
+        ref={containerRef}
+        className={cn("relative", className)}
+        style={{ margin: 0, padding: 0, lineHeight: 0 }}
+      >
+        {/* Show content based on current state */}
+        {!showVideo && (
+          <div className="relative w-full h-full min-h-[200px]">
+            {/* No blank placeholder - removed per user request */}
 
-          {/* Show thumbnail after placeholder, only when loaded */}
-          {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
-            <>
-              <div 
-                className="w-full cursor-pointer video-thumbnail-container"
-                onClick={handleThumbnailClick}
-                style={{ 
-                  width: '100%',
-                  maxWidth: '600px',
-                  aspectRatio: '3/2',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  margin: '0 auto'
-                }}
-              >
-                <img 
-                  src={simplifiedPoster} 
-                  alt="Video thumbnail" 
-                  className="w-full h-full object-cover"
-                  style={{ 
-                    display: 'block',
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: 'center'
-                  }}
-                />
-              </div>
-              {/* Play button overlay on thumbnail */}
-              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
+            {/* Show thumbnail after placeholder, only when loaded */}
+            {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
+              <>
                 <div 
-                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
+                  className="w-full cursor-pointer video-thumbnail-container"
                   onClick={handleThumbnailClick}
-                  style={{ transition: 'none' }}
+                  style={{ 
+                    width: '100%',
+                    maxWidth: '600px',
+                    aspectRatio: '3/2',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    margin: '0 auto'
+                  }}
                 >
-                  <Play size={24} className="text-white" fill="white" />
+                  <img 
+                    src={simplifiedPoster} 
+                    alt="Video thumbnail" 
+                    className="w-full h-full object-cover"
+                    style={{ 
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center'
+                    }}
+                  />
                 </div>
-              </div>
-            </>
-          )}
+                {/* Play button overlay on thumbnail */}
+                <div className="absolute inset-0 flex items-end justify-start bg-black/10">
+                  <div 
+                    className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
+                    onClick={handleThumbnailClick}
+                    style={{ transition: 'none' }}
+                  >
+                    <Play size={24} className="text-white" fill="white" />
+                  </div>
+                </div>
+              </>
+            )}
 
-          {/* No fallback - if poster fails, show nothing */}
+            {/* No fallback - if poster fails, show nothing */}
 
-          {/* Loading thumbnail (hidden image to trigger load) */}
-          {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
-            <img 
-              src={simplifiedPoster} 
-              alt="Video thumbnail" 
-              onLoad={handlePosterLoad}
-              onError={handlePosterError}
-              style={{ display: 'none' }}
+            {/* Loading thumbnail (hidden image to trigger load) */}
+            {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
+              <img 
+                src={simplifiedPoster} 
+                alt="Video thumbnail" 
+                onLoad={handlePosterLoad}
+                onError={handlePosterError}
+                style={{ display: 'none' }}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Video Player Dialog Overlay */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 bg-black border-0">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Close button */}
+            <Button
+              onClick={handleDialogClose}
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 left-4 z-50 text-white hover:bg-white/20 !h-10 !w-10"
+              data-testid="button-close-video"
+            >
+              <X className="!h-8 !w-8" />
+            </Button>
+
+            {/* Video player */}
+            <video
+              ref={videoRef}
+              src={src}
+              controls
+              autoPlay
+              preload="auto"
+              controlsList="nodownload noremoteplayback"
+              disablePictureInPicture
+              disableRemotePlayback
+              className="max-w-full max-h-full object-contain"
+              style={{
+                width: 'auto',
+                height: 'auto',
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                console.error('Video playback error:', e);
+                if (onError) onError(new Error('Video failed to play'));
+              }}
+              onLoadedData={() => {
+                console.log('Video loaded successfully');
+                if (onLoad) onLoad();
+              }}
+              onCanPlay={() => {
+                console.log('Video can play');
+                // Ensure autoplay starts when video is ready
+                if (videoRef.current) {
+                  videoRef.current.play().catch(error => {
+                    console.log('Autoplay was prevented:', error);
+                  });
+                }
+              }}
             />
-          )}
-        </div>
-      )}
-
-
-
-
-    </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
