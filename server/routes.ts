@@ -89,6 +89,7 @@ const upload = multer({
 export const registerRoutes = async (
   app: express.Application,
 ): Promise<HttpServer> => {
+  console.log("=== REGISTER ROUTES CALLED ===");
   const router = express.Router();
 
   // Add request logging middleware
