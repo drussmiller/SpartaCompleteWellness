@@ -3464,12 +3464,15 @@ export const registerRoutes = async (
   // Add or update measurement
   router.post("/api/measurements", authenticate, async (req, res) => {
     try {
+      console.log("[MEASUREMENTS POST] Route hit, user:", req.user?.id, "body:", req.body);
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const parsed = insertMeasurementSchema.safeParse({
         ...req.body,
         userId: req.user.id,
       });
+      
+      console.log("[MEASUREMENTS POST] Validation result:", parsed.success ? "SUCCESS" : "FAILED", parsed.success ? "" : parsed.error.errors);
 
       if (!parsed.success) {
         return res.status(400).json({
