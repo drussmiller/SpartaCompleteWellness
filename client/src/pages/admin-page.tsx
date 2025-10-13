@@ -1063,12 +1063,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             checked={showInactiveOrgs}
                             onCheckedChange={(checked) => setShowInactiveOrgs(checked === true)}
                           />
-                          <label
+                          <Label
                             htmlFor="show-inactive-orgs"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                           >
                             Show inactive organizations
-                          </label>
+                          </Label>
                         </div>
                         <Dialog>
                           <DialogTrigger asChild>
@@ -1353,12 +1352,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             checked={showInactiveGroups}
                             onCheckedChange={(checked) => setShowInactiveGroups(checked === true)}
                           />
-                          <label
+                          <Label
                             htmlFor="show-inactive-groups"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                           >
                             Show inactive groups
-                          </label>
+                          </Label>
                         </div>
                         <Dialog>
                           <DialogTrigger asChild>
@@ -1816,12 +1814,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         checked={showInactiveTeams}
                         onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
                       />
-                      <label
+                      <Label
                         htmlFor="show-inactive-teams"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         Show inactive teams
-                      </label>
+                      </Label>
                     </div>
                     <Dialog>
                       <DialogTrigger asChild>
@@ -2256,12 +2253,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           checked={showInactiveUsers}
                           onCheckedChange={(checked) => setShowInactiveUsers(checked === true)}
                         />
-                        <label
+                        <Label
                           htmlFor="show-inactive-users"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
                           Show inactive users
-                        </label>
+                        </Label>
                       </div>
                       {/* Search and Filter Section */}
                       <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4">
