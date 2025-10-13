@@ -359,7 +359,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/measurements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/measurements", user?.id] });
       form.reset();
       toast({
         title: "Success",
