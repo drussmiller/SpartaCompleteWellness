@@ -171,7 +171,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         throw new Error("Comment content cannot be empty");
       }
 
-      const res = await fetch(`/api/posts/${id}`, {
+      const res = await fetch(`/api/posts/comments/${id}`, {
         method: "PATCH",
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +183,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update comment");
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to update comment");
       }
 
       return res.json();
