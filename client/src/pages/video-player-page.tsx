@@ -10,18 +10,23 @@ export function VideoPlayerPage() {
   const [videoSrc, setVideoSrc] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [videoError, setVideoError] = useState(false);
+  const [returnTo, setReturnTo] = useState<string>('/');
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
-    onSwipeRight: () => setLocation('/')
+    onSwipeRight: () => setLocation(returnTo)
   });
 
   useEffect(() => {
-    // Extract video source from URL parameters
+    // Extract video source and return path from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const src = urlParams.get('src');
+    const returnPath = urlParams.get('returnTo') || '/';
 
     console.log('Video player page - extracted src from URL:', src);
+    console.log('Video player page - return path:', returnPath);
+    
+    setReturnTo(returnPath);
 
     if (src) {
       const decodedSrc = decodeURIComponent(src);
@@ -39,8 +44,7 @@ export function VideoPlayerPage() {
   }, []);
 
   const handleGoBack = () => {
-    // Go back to home page since wouter doesn't have navigate(-1)
-    setLocation('/');
+    setLocation(returnTo);
   };
 
   const handleVideoError = (e: any) => {

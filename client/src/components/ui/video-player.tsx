@@ -99,11 +99,12 @@ export function VideoPlayer({
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, navigating to video player page");
 
-    // Navigate to video player page with video URL as parameter
+    // Navigate to video player page with video URL and return path as parameters
     const videoUrl = encodeURIComponent(src);
     const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
+    const returnPath = encodeURIComponent(location);
 
-    setLocation(`/video-player?src=${videoUrl}&poster=${posterUrl}`);
+    setLocation(`/video-player?src=${videoUrl}&poster=${posterUrl}&returnTo=${returnPath}`);
   };
 
 
