@@ -988,43 +988,6 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       </ResponsiveContainer>
                     </div>
                   </div>
-
-                  <div className="space-y-4">
-                    {measurements.map((measurement) => (
-                      <div
-                        key={measurement.id}
-                        className="p-4 rounded-lg bg-muted/50"
-                      >
-                        <div className="space-y-2">
-                          {measurement.weight !== null && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">
-                                Weight
-                              </span>
-                              <span className="text-sm font-medium">
-                                {measurement.weight} lbs
-                              </span>
-                            </div>
-                          )}
-                          {measurement.waist !== null && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-muted-foreground">
-                                Waist
-                              </span>
-                              <span className="text-sm font-medium">
-                                {measurement.waist} inches
-                              </span>
-                            </div>
-                          )}
-                          <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                            {measurement.date
-                              ? new Date(measurement.date).toLocaleDateString()
-                              : "Date not recorded"}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </>
               )}
             </CardContent>
