@@ -8,7 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Loader2, QrCode, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import QrScanner from "qr-scanner";
 import { useAuth } from "@/hooks/use-auth";
 
 interface InviteCodePageProps {
@@ -20,8 +20,8 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const scannerDivRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<QrScanner | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { user } = useAuth();
 
   // If user is already a Group Admin, Team Lead, or in a team, redirect them
@@ -74,42 +74,40 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   });
 
   useEffect(() => {
-    if (isScanning && scannerDivRef.current) {
-      scannerRef.current = new Html5QrcodeScanner(
-        "qr-reader",
-        { 
-          fps: 10, 
-          qrbox: { width: 200, height: 200 },
-          aspectRatio: 1.0,
-          videoConstraints: {
-            width: { ideal: 300 },
-            height: { ideal: 300 }
-          }
-        },
-        false
-      );
-
-      scannerRef.current.render(
-        (decodedText) => {
-          setInviteCode(decodedText.toUpperCase());
+    if (isScanning && videoRef.current) {
+      scannerRef.current = new QrScanner(
+        videoRef.current,
+        (result) => {
+          setInviteCode(result.data.toUpperCase());
           setIsScanning(false);
           if (scannerRef.current) {
-            scannerRef.current.clear();
+            scannerRef.current.stop();
           }
           toast({
             title: "QR Code Scanned",
             description: "Code captured successfully",
           });
         },
-        (error) => {
-          console.log("QR scan error:", error);
+        {
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
         }
       );
+
+      scannerRef.current.start().catch((error) => {
+        console.error("QR scan error:", error);
+        toast({
+          title: "Camera Error",
+          description: "Failed to access camera",
+          variant: "destructive",
+        });
+      });
     }
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
+        scannerRef.current.stop();
+        scannerRef.current.destroy();
       }
     };
   }, [isScanning, toast]);
@@ -129,7 +127,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
 
   const toggleScanner = () => {
     if (isScanning && scannerRef.current) {
-      scannerRef.current.clear();
+      scannerRef.current.stop();
     }
     setIsScanning(!isScanning);
   };
@@ -212,7 +210,9 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <div id="qr-reader" ref={scannerDivRef} className="w-full max-w-sm mx-auto overflow-hidden"></div>
+                <div className="w-full max-w-sm mx-auto overflow-hidden rounded-lg bg-black">
+                  <video ref={videoRef} className="w-full h-auto"></video>
+                </div>
                 {inviteCode && (
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-2">Scanned code:</p>
