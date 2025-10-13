@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, QrCode, Camera, X } from "lucide-react";
+import { Loader2, QrCode, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
