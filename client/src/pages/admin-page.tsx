@@ -592,7 +592,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Organization created successfully",
       });
       organizationForm.reset();
-      
+
       // Update cache manually instead of invalidating to prevent panel collapse
       queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
         if (!oldOrgs) return [newOrganization];
@@ -625,13 +625,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Organization deleted successfully",
       });
-      
+
       // Update cache manually to remove deleted organization
       queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
         if (!oldOrgs) return [];
         return oldOrgs.filter(org => org.id !== organizationId);
       });
-      
+
       // Force re-fetch to ensure UI is in sync with database
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
     },
@@ -646,7 +646,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   // Group mutations
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<number | null>(null);
-  
+
   const groupForm = useForm<GroupFormData>({
     resolver: zodResolver(insertGroupSchema.omit({ organizationId: true })),
     defaultValues: {
@@ -670,13 +670,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Group created successfully",
       });
       groupForm.reset();
-      
+
       // Update cache manually to add the new group
       queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
         if (!oldGroups) return [newGroup];
         return [...oldGroups, newGroup];
       });
-      
+
       // Also invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
@@ -703,13 +703,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Group deleted successfully",
       });
-      
+
       // Update cache manually to remove the deleted group
       queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
         if (!oldGroups) return [];
         return oldGroups.filter(group => group.id !== groupId);
       });
-      
+
       // Also invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
     },
@@ -1384,7 +1384,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 onSubmit={groupForm.handleSubmit((data) => {
                                   // Set organizationId based on user role
                                   let orgId: number;
-                                  
+
                                   if (currentUser?.isAdmin) {
                                     // Admin must select an organization
                                     if (!selectedOrganizationId) {
@@ -1421,7 +1421,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     });
                                     return;
                                   }
-                                  
+
                                   createGroupMutation.mutate({
                                     ...data,
                                     organizationId: orgId,
@@ -2406,12 +2406,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         updateUserMutation.mutate({
                                           userId: user.id,
                                           data: {
-                                            username: formData.get(
-                                              "username",
-                                            ) as string,
-                                            email: formData.get(
-                                              "email",
-                                            ) as string,
+                                            preferredName: formData.get('preferredName') as string,
+                                            email: formData.get('email') as string,
                                             status: ((statusValue) => {
                                               const parsed = statusValue
                                                 ? parseInt(statusValue)
@@ -2427,8 +2423,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     >
                                     <div className="space-y-2">
                                       <Input
-                                        name="username"
-                                        defaultValue={user.username}
+                                        name="preferredName" // Changed from username to preferredName
+                                        defaultValue={user.preferredName || user.username} // Use preferredName or username as fallback
                                         className="font-semibold"
                                       />
                                       <Input
