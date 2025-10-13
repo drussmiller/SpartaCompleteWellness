@@ -9,6 +9,7 @@ import { Loader2, QrCode, Camera, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { useAuth } from "@/hooks/use-auth";
 
 interface InviteCodePageProps {
   onClose?: () => void;
@@ -21,6 +22,22 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   const [, setLocation] = useLocation();
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const scannerDivRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+
+  // If user is already a Group Admin, Team Lead, or in a team, redirect them
+  useEffect(() => {
+    if (user && (user.isGroupAdmin || user.isTeamLead || user.teamId)) {
+      toast({
+        title: "Already Assigned",
+        description: "You are already a Group Admin, Team Lead, or part of a team.",
+      });
+      if (onClose) {
+        onClose();
+      } else {
+        setLocation("/");
+      }
+    }
+  }, [user, onClose, setLocation, toast]);
 
   const redeemCodeMutation = useMutation({
     mutationFn: async (code: string) => {

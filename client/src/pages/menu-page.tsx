@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings, Trophy, Heart, Key } from "lucide-react";
+import { Menu, Bell, Settings, Trophy, Heart, Key, QrCode } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
@@ -21,7 +21,7 @@ export default function MenuPage() {
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false);
-  const [, navigate] = useLocation();
+  const [location, setLocation] = useLocation();
 
   if (!user) return null;
 
@@ -67,8 +67,8 @@ export default function MenuPage() {
           {/* Notification Settings */}
           <Sheet open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
             <SheetTrigger asChild>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
                 size="lg"
                 disabled={!user?.teamId}
@@ -86,8 +86,8 @@ export default function MenuPage() {
           {/* Leaderboard - Changed to slide in from right */}
           <Sheet open={leaderboardOpen} onOpenChange={setLeaderboardOpen}>
             <SheetTrigger asChild>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
                 size="lg"
                 disabled={!user?.teamId}
@@ -101,7 +101,7 @@ export default function MenuPage() {
               {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
             </SheetContent>
           </Sheet>
-          
+
           {/* Support Sparta */}
           <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
             <SheetTrigger asChild>
