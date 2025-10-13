@@ -14,6 +14,7 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
+import { useRestoreScroll } from "@/hooks/use-restore-scroll";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -43,6 +44,9 @@ export default function HomePage() {
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const [scrollOffset, setScrollOffset] = useState(0);
   const lastScrollY = useRef(0);
+  
+  // Restore scroll position when returning from video player
+  useRestoreScroll();
 
   // Only refetch post limits when needed
   useEffect(() => {

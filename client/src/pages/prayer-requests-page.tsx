@@ -14,6 +14,7 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
+import { useRestoreScroll } from "@/hooks/use-restore-scroll";
 
 export default function PrayerRequestsPage() {
   const isMobile = useIsMobile();
@@ -25,6 +26,9 @@ export default function PrayerRequestsPage() {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const lastScrollY = useRef(0);
+  
+  // Restore scroll position when returning from video player
+  useRestoreScroll();
 
   // Mark prayer requests as viewed when page loads
   useEffect(() => {

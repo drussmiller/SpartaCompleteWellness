@@ -99,6 +99,12 @@ export function VideoPlayer({
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, navigating to video player page");
 
+    // Save current scroll position before navigating
+    const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+    sessionStorage.setItem('videoPlayerReturnScroll', scrollY.toString());
+    sessionStorage.setItem('videoPlayerReturnPath', location);
+    console.log('Saved scroll position:', scrollY, 'for path:', location);
+
     // Navigate to video player page with video URL and return path as parameters
     const videoUrl = encodeURIComponent(src);
     const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
