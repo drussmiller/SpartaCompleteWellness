@@ -97,6 +97,23 @@ div[data-post-id] .video-container {
 }
 
 .video-wrapper iframe {
+
+
+/* QR Scanner size constraints */
+#qr-reader {
+  max-width: 100% !important;
+}
+
+#qr-reader video {
+  max-width: 100% !important;
+  max-height: 300px !important;
+  object-fit: contain !important;
+}
+
+#qr-reader__dashboard_section {
+  max-width: 100% !important;
+}
+
   position: absolute;
   top: 0;
   left: 0;

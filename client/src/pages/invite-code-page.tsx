@@ -79,8 +79,12 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
         "qr-reader",
         { 
           fps: 10, 
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
+          qrbox: { width: 200, height: 200 },
+          aspectRatio: 1.0,
+          videoConstraints: {
+            width: { ideal: 300 },
+            height: { ideal: 300 }
+          }
         },
         false
       );
@@ -209,7 +213,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <div id="qr-reader" ref={scannerDivRef} className="w-full max-h-[50vh] overflow-auto"></div>
+                <div id="qr-reader" ref={scannerDivRef} className="w-full max-w-sm mx-auto overflow-hidden"></div>
                 {inviteCode && (
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-2">Scanned code:</p>
