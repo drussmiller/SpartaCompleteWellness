@@ -110,6 +110,11 @@ div[data-post-id] .video-container {
   object-fit: contain !important;
 }
 
+/* Hide duplicate camera preview - only show the first one */
+#qr-reader video:nth-of-type(2) {
+  display: none !important;
+}
+
 #qr-reader__dashboard_section {
   max-width: 100% !important;
 }
