@@ -67,7 +67,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
     },
   });
 
-  const handleCopy = async (inviteCode: string) => {
+  const handleCopyText = async (inviteCode: string) => {
     try {
       await navigator.clipboard.writeText(inviteCode);
       setCopied(true);
@@ -80,6 +80,52 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
       toast({
         title: "Error",
         description: "Failed to copy invite code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyQR = async () => {
+    try {
+      if (!qrRef.current) return;
+      
+      const svg = qrRef.current.querySelector('svg');
+      if (!svg) return;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const img = new Image();
+      
+      img.onload = async () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            setCopied(true);
+            toast({
+              title: "Copied!",
+              description: "QR code copied as image",
+            });
+            setTimeout(() => setCopied(false), 2000);
+          }
+        });
+      };
+      
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy QR code image",
         variant: "destructive",
       });
     }
@@ -126,7 +172,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleCopy(currentCode)}
+                  onClick={handleCopyQR}
                   data-testid={`button-copy-qr-${type}`}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -139,7 +185,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleCopy(currentCode)}
+                  onClick={() => handleCopyText(currentCode)}
                   data-testid={`button-copy-${type}`}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
