@@ -1373,11 +1373,14 @@ export const registerRoutes = async (
                                    originalFilename.endsWith('.webm') ||
                                    originalFilename.endsWith('.avi') ||
                                    originalFilename.endsWith('.mkv');
+            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
 
-            // Final video determination
-            const isVideo = isVideoMimetype || isVideoExtension;
 
-            console.log(`Processing comment media file:`, {
+            // Combined video detection - for miscellaneous posts, only trust the explicit markers
+            const isVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
+
+
+            console.log("Processing comment media file:", {
               originalFilename: uploadedFile.originalname,
               mimetype: uploadedFile.mimetype,
               isVideo: isVideo,
