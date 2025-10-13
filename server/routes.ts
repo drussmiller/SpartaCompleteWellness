@@ -3707,37 +3707,14 @@ export const registerRoutes = async (
         });
       }
 
-      // Check if a measurement already exists for this user
-      const [existingMeasurement] = await db
-        .select()
-        .from(measurements)
-        .where(eq(measurements.userId, req.user.id))
-        .limit(1);
-
-      let measurement;
-      if (existingMeasurement) {
-        // Update existing measurement
-        [measurement] = await db
-          .update(measurements)
-          .set({
-            weight: parsed.data.weight,
-            waist: parsed.data.waist,
-          })
-          .where(eq(measurements.userId, req.user.id))
-          .returning();
-        
-        console.log("[APP.POST MEASUREMENTS] Updated measurement:", measurement);
-        logger.info(`User ${req.user.id} updated measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
-      } else {
-        // Create new measurement
-        [measurement] = await db
-          .insert(measurements)
-          .values(parsed.data)
-          .returning();
-        
-        console.log("[APP.POST MEASUREMENTS] Created measurement:", measurement);
-        logger.info(`User ${req.user.id} created new measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
-      }
+      // Always create a new measurement (historical log)
+      const [measurement] = await db
+        .insert(measurements)
+        .values(parsed.data)
+        .returning();
+      
+      console.log("[APP.POST MEASUREMENTS] Created measurement:", measurement);
+      logger.info(`User ${req.user.id} created new measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
 
       console.log("[APP.POST MEASUREMENTS] Sending response:", measurement);
       res.json(measurement);
