@@ -3375,6 +3375,35 @@ export const registerRoutes = async (
     }
   });
 
+  // Update user preferred name
+  router.patch("/api/user/preferred-name", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { preferredName } = req.body;
+
+      // Update user's preferred name
+      const [updatedUser] = await db
+        .update(users)
+        .set({ preferredName })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      logger.info(`User ${req.user.id} updated preferred name to ${preferredName}`);
+
+      res.json({
+        message: "Preferred name updated successfully",
+        preferredName: updatedUser.preferredName,
+      });
+    } catch (error) {
+      logger.error("Error updating preferred name:", error);
+      res.status(500).json({
+        message: "Failed to update preferred name",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Update user email
   router.patch("/api/user/email", authenticate, async (req, res) => {
     try {
