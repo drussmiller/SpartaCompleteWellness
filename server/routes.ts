@@ -3686,11 +3686,14 @@ export const registerRoutes = async (
   // Add GET endpoint for measurements
   router.get("/api/measurements", authenticate, async (req, res) => {
     try {
+      console.log("[ROUTER.GET MEASUREMENTS] Route hit, user:", req.user?.id, "query:", req.query);
       if (!req.user) {
+        console.log("[ROUTER.GET MEASUREMENTS] Unauthorized");
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      console.log("[ROUTER.GET MEASUREMENTS] Fetching measurements for userId:", userId);
 
       // Get all measurements for the user, ordered by date descending
       const userMeasurements = await db
@@ -3699,8 +3702,11 @@ export const registerRoutes = async (
         .where(eq(measurements.userId, userId))
         .orderBy(desc(measurements.date));
 
+      console.log("[ROUTER.GET MEASUREMENTS] Found measurements:", userMeasurements.length, "records");
+      console.log("[ROUTER.GET MEASUREMENTS] Data:", JSON.stringify(userMeasurements));
       res.json(userMeasurements);
     } catch (error) {
+      console.error("[ROUTER.GET MEASUREMENTS] Error:", error);
       logger.error("Error fetching measurements:", error);
       res.status(500).json({
         message: "Failed to fetch measurements",
