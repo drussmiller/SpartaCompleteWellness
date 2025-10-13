@@ -3378,9 +3378,11 @@ export const registerRoutes = async (
   // Update user preferred name
   router.patch("/api/user/preferred-name", authenticate, async (req, res) => {
     try {
+      console.log("[ROUTE HIT] PATCH /api/user/preferred-name", req.body);
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const { preferredName } = req.body;
+      console.log("[UPDATING] preferredName for user", req.user.id, "to", preferredName);
 
       // Update user's preferred name
       const [updatedUser] = await db
@@ -3389,6 +3391,7 @@ export const registerRoutes = async (
         .where(eq(users.id, req.user.id))
         .returning();
 
+      console.log("[UPDATE RESULT]", updatedUser);
       logger.info(`User ${req.user.id} updated preferred name to ${preferredName}`);
 
       res.json({
@@ -3396,6 +3399,7 @@ export const registerRoutes = async (
         preferredName: updatedUser.preferredName,
       });
     } catch (error) {
+      console.error("[ERROR] updating preferred name:", error);
       logger.error("Error updating preferred name:", error);
       res.status(500).json({
         message: "Failed to update preferred name",
