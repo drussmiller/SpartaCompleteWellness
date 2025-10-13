@@ -77,10 +77,16 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const [preferredNameValue, setPreferredNameValue] = useState(
     user?.preferredName || "",
   );
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [emailValue, setEmailValue] = useState(user?.email || "");
 
   useEffect(() => {
     setPreferredNameValue(user?.preferredName || "");
   }, [user?.preferredName]);
+
+  useEffect(() => {
+    setEmailValue(user?.email || "");
+  }, [user?.email]);
 
   useEffect(() => {
     setSelectedActivityTypeId(user?.preferredActivityTypeId || 1);
@@ -129,6 +135,53 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to update preferred name",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateEmailMutation = useMutation({
+    mutationFn: async (email: string) => {
+      console.log("Updating email to:", email);
+      const res = await apiRequest("PATCH", "/api/user/email", {
+        email,
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to update email:", errorText);
+        throw new Error("Failed to update email");
+      }
+      
+      try {
+        return await res.json();
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        return { success: true };
+      }
+    },
+    onSuccess: async (data) => {
+      console.log("Email update successful:", data);
+      setIsEditingEmail(false);
+      
+      // Update the local user data directly without refetching
+      queryClient.setQueryData(["/api/user"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          email: emailValue
+        };
+      });
+      
+      toast({
+        title: "Success",
+        description: "Email updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Email update error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update email",
         variant: "destructive",
       });
     },
@@ -511,9 +564,67 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     </div>
                   )}
                 </div>
-                <p className="text-lg text-muted-foreground mt-1">
-                  {user?.email}
-                </p>
+                <div className="mt-2">
+                  {isEditingEmail ? (
+                    <div className="space-y-2">
+                      <Input
+                        type="email"
+                        value={emailValue}
+                        onChange={(e) => setEmailValue(e.target.value)}
+                        placeholder="Enter email"
+                        className="text-base w-full"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updateEmailMutation.mutate(emailValue);
+                          } else if (e.key === "Escape") {
+                            setEmailValue(user?.email || "");
+                            setIsEditingEmail(false);
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            updateEmailMutation.mutate(emailValue)
+                          }
+                          disabled={updateEmailMutation.isPending}
+                        >
+                          {updateEmailMutation.isPending
+                            ? "Saving..."
+                            : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEmailValue(user?.email || "");
+                            setIsEditingEmail(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-lg text-muted-foreground">
+                        {user?.email}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEmailValue(user?.email || "");
+                          setIsEditingEmail(true);
+                        }}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

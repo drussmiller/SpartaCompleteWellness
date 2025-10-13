@@ -3375,6 +3375,56 @@ export const registerRoutes = async (
     }
   });
 
+  // Update user email
+  router.patch("/api/user/email", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if email is already in use by another user
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.email, email), ne(users.id, req.user.id)))
+        .limit(1);
+
+      if (existingUser) {
+        return res.status(400).json({ message: "Email is already in use" });
+      }
+
+      // Update user's email
+      const [updatedUser] = await db
+        .update(users)
+        .set({ email })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      logger.info(`User ${req.user.id} updated email to ${email}`);
+
+      res.json({
+        message: "Email updated successfully",
+        email: updatedUser.email,
+      });
+    } catch (error) {
+      logger.error("Error updating email:", error);
+      res.status(500).json({
+        message: "Failed to update email",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   router.post(
     "/api/users/notification-schedule",
     authenticate,
