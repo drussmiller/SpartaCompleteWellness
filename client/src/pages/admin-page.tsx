@@ -83,6 +83,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InviteQRCode } from "@/components/invite-qr-code";
+import { Label } from "@/components/ui/label";
 
 // Type definition for form data
 type TeamFormData = z.infer<typeof insertTeamSchema>;
@@ -485,7 +486,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User updated successfully",
       });
-      
+
       // Update the users list in the cache
       queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
         if (!oldUsers) return oldUsers;
@@ -2439,21 +2440,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       }}
                                     >
                                     <div className="space-y-2">
-                                      <Input
-                                        name="preferredName" // Changed from username to preferredName
-                                        defaultValue={user.preferredName || user.username} // Use preferredName or username as fallback
-                                        className="font-semibold"
-                                      />
-                                      <Input
-                                        name="email"
-                                        defaultValue={user.email}
-                                        type="email"
-                                        className="text-sm"
-                                      />
                                       <div>
-                                        <label className="text-sm font-medium">
+                                        <Label className="text-sm font-medium mb-1 block">Preferred Name</Label>
+                                        <Input
+                                          name="preferredName" // Changed from username to preferredName
+                                          defaultValue={user.preferredName || user.username} // Use preferredName or username as fallback
+                                          className="font-semibold"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Email</Label>
+                                        <Input
+                                          name="email"
+                                          defaultValue={user.email}
+                                          type="email"
+                                          className="text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">
                                           Program Start Date (Mondays only)
-                                        </label>
+                                        </Label>
                                         <Popover>
                                           <PopoverTrigger asChild>
                                             <Button
@@ -2522,24 +2529,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           }
                                         />
                                       </div>
-                                      <Select
-                                        name="status"
-                                        defaultValue={
-                                          user.status?.toString() || "1"
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="1">
-                                            Active
-                                          </SelectItem>
-                                          <SelectItem value="0">
-                                            Inactive
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                        <Select
+                                          name="status"
+                                          defaultValue={
+                                            user.status?.toString() || "1"
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="1">
+                                              Active
+                                            </SelectItem>
+                                            <SelectItem value="0">
+                                              Inactive
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                       <div className="flex gap-2">
                                         <Button type="submit" size="sm">
                                           Save
@@ -2548,7 +2558,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           type="button"
                                           variant="ghost"
                                           size="sm"
-                                          onClick={() => setEditingUser(null)}
+                                          onClick={() => {
+                                            setEditingUser(null);
+                                            setSelectedProgramStartDate(prev => {
+                                              const newState = { ...prev };
+                                              delete newState[user.id];
+                                              return newState;
+                                            });
+                                          }}
                                         >
                                           Cancel
                                         </Button>
