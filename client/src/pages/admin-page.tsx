@@ -1050,7 +1050,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
                       >
                         Organizations
-                        <ChevronDown className="h-5 w-5 ml-2" />
+                        <ChevronDown className={`h-5 w-5 ml-2 transition-transform ${organizationsPanelOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
                   </div>
@@ -1340,7 +1340,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
                       >
                         Groups
-                        <ChevronDown className="h-5 w-5 ml-2" />
+                        <ChevronDown className={`h-5 w-5 ml-2 transition-transform ${groupsPanelOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
                   </div>
@@ -1804,7 +1804,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
                     >
                       Teams
-                      <ChevronDown className="h-5 w-5 ml-2" />
+                      <ChevronDown className={`h-5 w-5 ml-2 transition-transform ${teamsPanelOpen ? 'rotate-180' : ''}`} />
                     </Button>
                   </CollapsibleTrigger>
                 </div>
@@ -2244,7 +2244,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
                     >
                       Users
-                      <ChevronDown className="h-5 w-5 ml-2" />
+                      <ChevronDown className={`h-5 w-5 ml-2 transition-transform ${usersPanelOpen ? 'rotate-180' : ''}`} />
                     </Button>
                   </CollapsibleTrigger>
                 </div>
