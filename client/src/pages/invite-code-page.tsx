@@ -191,7 +191,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                     onClick={toggleScanner}
                     data-testid="button-scan-qr"
                   >
-                    <Camera className="mr-2 h-4 w-4" />
+                    <Camera className="mr-2 h-3 w-3" />
                     Scan QR Code
                   </Button>
                 </div>
