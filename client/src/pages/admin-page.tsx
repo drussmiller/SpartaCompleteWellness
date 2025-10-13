@@ -480,10 +480,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       toast({
         title: "Success",
         description: "User updated successfully",
+      });
+      
+      // Update the users list in the cache
+      queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
+        if (!oldUsers) return oldUsers;
+        return oldUsers.map(user => 
+          user.id === updatedUser.id ? updatedUser : user
+        );
       });
     },
     onError: (error: Error) => {
@@ -2418,6 +2426,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             })(formData.get("status") as string),
                                             programStartDate: programStartDateValue ? new Date(programStartDateValue) : null,
                                           },
+                                        }, {
+                                          onSuccess: () => {
+                                            setEditingUser(null);
+                                            setSelectedProgramStartDate(prev => {
+                                              const newState = { ...prev };
+                                              delete newState[user.id];
+                                              return newState;
+                                            });
+                                          }
                                         });
                                       }}
                                     >
