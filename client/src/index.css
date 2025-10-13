@@ -110,8 +110,17 @@ div[data-post-id] .video-container {
   object-fit: contain !important;
 }
 
-/* Hide duplicate camera preview - only show the first one */
-#qr-reader video:nth-of-type(2) {
+/* Hide all but the first video element in QR scanner */
+#qr-reader video:not(:first-of-type) {
+  display: none !important;
+}
+
+/* Hide the scanner region div that might be duplicating */
+#qr-reader__scan_region {
+  max-height: 300px !important;
+}
+
+#qr-reader__scan_region > div:not(:first-child) {
   display: none !important;
 }
 
