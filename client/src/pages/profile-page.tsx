@@ -97,13 +97,28 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         console.error("Failed to update preferred name:", errorText);
         throw new Error("Failed to update preferred name");
       }
-      return res.json();
+      
+      try {
+        return await res.json();
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        // If parsing fails but the request was successful, return a simple success object
+        return { success: true };
+      }
     },
     onSuccess: async (data) => {
       console.log("Preferred name update successful:", data);
       setIsEditingPreferredName(false);
-      // Invalidate user cache to trigger refetch
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      // Update the local user data directly without refetching
+      queryClient.setQueryData(["/api/user"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          preferredName: preferredNameValue
+        };
+      });
+      
       toast({
         title: "Success",
         description: "Preferred name updated successfully",
