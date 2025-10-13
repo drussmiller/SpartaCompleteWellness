@@ -3461,6 +3461,63 @@ export const registerRoutes = async (
     }
   });
 
+  // Add or update measurement
+  router.post("/api/measurements", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const parsed = insertMeasurementSchema.safeParse({
+        ...req.body,
+        userId: req.user.id,
+      });
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid measurement data",
+          errors: parsed.error.errors,
+        });
+      }
+
+      // Check if a measurement already exists for this user
+      const [existingMeasurement] = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, req.user.id))
+        .limit(1);
+
+      let measurement;
+      if (existingMeasurement) {
+        // Update existing measurement
+        [measurement] = await db
+          .update(measurements)
+          .set({
+            weight: parsed.data.weight,
+            waist: parsed.data.waist,
+          })
+          .where(eq(measurements.userId, req.user.id))
+          .returning();
+        
+        logger.info(`User ${req.user.id} updated measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
+      } else {
+        // Create new measurement
+        [measurement] = await db
+          .insert(measurements)
+          .values(parsed.data)
+          .returning();
+        
+        logger.info(`User ${req.user.id} created new measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
+      }
+
+      res.json(measurement);
+    } catch (error) {
+      logger.error("Error adding/updating measurement:", error);
+      res.status(500).json({
+        message: "Failed to add/update measurement",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   router.post(
     "/api/users/notification-schedule",
     authenticate,
