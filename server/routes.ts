@@ -3522,7 +3522,7 @@ export const registerRoutes = async (
                   await spartaStorage.deleteFile(filePath);
                   logger.info(`Deleted media file: ${filePath} for post ${post.id}`);
                 } catch (err) {
-                  logger.warn(`Could not delete media file ${filePath}: ${err}`);
+                  logger.error(`Could not delete media file ${filePath}: ${err}`);
                 }
 
                 // If it's a video, also delete the thumbnail
@@ -3534,7 +3534,7 @@ export const registerRoutes = async (
                     await spartaStorage.deleteFile(thumbnailPath);
                     logger.info(`Deleted video thumbnail: ${thumbnailPath} for post ${post.id}`);
                   } catch (err) {
-                    logger.warn(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
+                    logger.error(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
                   }
                 }
               }

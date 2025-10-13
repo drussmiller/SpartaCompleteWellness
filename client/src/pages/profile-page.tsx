@@ -101,10 +101,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     },
     onSuccess: async (data) => {
       console.log("Preferred name update successful:", data);
-      // Invalidate and refetch user data
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      await refetchUser();
       setIsEditingPreferredName(false);
+      // Invalidate user cache to trigger refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Success",
         description: "Preferred name updated successfully",
