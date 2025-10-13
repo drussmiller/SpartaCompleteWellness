@@ -224,12 +224,14 @@ export default function PrayerRequestsPage() {
         <div className="w-full">
           <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : 'w-full'}`}>
             <main className="p-4 pt-40">
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
-                <p className="text-muted-foreground">
-                  Share your prayer requests and pray for others
-                </p>
-              </div>
+              {prayerRequests?.length === 0 && (
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
+                  <p className="text-muted-foreground">
+                    Share your prayer requests and pray for others
+                  </p>
+                </div>
+              )}
 
                 <div className="space-y-2">
                   {prayerRequests?.length > 0 ? (
