@@ -3742,6 +3742,74 @@ export const registerRoutes = async (
     }
   });
 
+  // Add measurements POST route directly on app to ensure it executes
+  app.post("/api/measurements", authenticate, async (req, res) => {
+    try {
+      console.log("[APP.POST MEASUREMENTS] Route hit, user:", req.user?.id, "body:", req.body);
+      if (!req.user) {
+        console.log("[APP.POST MEASUREMENTS] Unauthorized");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const parsed = insertMeasurementSchema.safeParse({
+        ...req.body,
+        userId: req.user.id,
+      });
+      
+      console.log("[APP.POST MEASUREMENTS] Validation result:", parsed.success ? "SUCCESS" : "FAILED", parsed.success ? "" : parsed.error.errors);
+
+      if (!parsed.success) {
+        console.log("[APP.POST MEASUREMENTS] Validation failed:", parsed.error.errors);
+        return res.status(400).json({
+          message: "Invalid measurement data",
+          errors: parsed.error.errors,
+        });
+      }
+
+      // Check if a measurement already exists for this user
+      const [existingMeasurement] = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, req.user.id))
+        .limit(1);
+
+      let measurement;
+      if (existingMeasurement) {
+        // Update existing measurement
+        [measurement] = await db
+          .update(measurements)
+          .set({
+            weight: parsed.data.weight,
+            waist: parsed.data.waist,
+          })
+          .where(eq(measurements.userId, req.user.id))
+          .returning();
+        
+        console.log("[APP.POST MEASUREMENTS] Updated measurement:", measurement);
+        logger.info(`User ${req.user.id} updated measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
+      } else {
+        // Create new measurement
+        [measurement] = await db
+          .insert(measurements)
+          .values(parsed.data)
+          .returning();
+        
+        console.log("[APP.POST MEASUREMENTS] Created measurement:", measurement);
+        logger.info(`User ${req.user.id} created new measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
+      }
+
+      console.log("[APP.POST MEASUREMENTS] Sending response:", measurement);
+      res.json(measurement);
+    } catch (error) {
+      console.error("[APP.POST MEASUREMENTS] Error:", error);
+      logger.error("Error adding/updating measurement:", error);
+      res.status(500).json({
+        message: "Failed to add/update measurement",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Register message routes first (with Object Storage implementation)
   app.use(messageRouter);
 
