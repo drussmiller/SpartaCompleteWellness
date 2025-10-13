@@ -221,8 +221,8 @@ export function CreatePostDialog({
           });
 
           try {
-            // Handle memory verse and miscellaneous post video uploads
-            if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video')) && 
+            // Handle memory verse, miscellaneous, and prayer post video uploads
+            if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || (data.type === 'prayer' && selectedMediaType === 'video')) && 
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
 
@@ -840,8 +840,8 @@ export function CreatePostDialog({
                       </FormControl>
                       {(imagePreview || videoThumbnail) && (
                         <div className="mt-2">
-                          {/* Display video thumbnails for memory verse posts or miscellaneous video posts */}
-                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video")) && (
+                          {/* Display video thumbnails for memory verse posts, miscellaneous video posts, or prayer video posts */}
+                          {(form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video") || (form.watch("type") === "prayer" && selectedMediaType === "video")) && (
                             <div className="mt-2">
                               {videoThumbnail ? (
                                 <div>
@@ -883,7 +883,7 @@ export function CreatePostDialog({
                               }
                             }}
                           >
-                            Remove {form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && videoThumbnail) ? "Video" : "Image"}
+                            Remove {form.watch("type") === "memory_verse" || (form.watch("type") === "miscellaneous" && videoThumbnail) || (form.watch("type") === "prayer" && videoThumbnail) ? "Video" : "Image"}
                           </Button>
                         </div>
                       )}
