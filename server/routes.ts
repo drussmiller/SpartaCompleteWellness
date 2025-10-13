@@ -5208,7 +5208,7 @@ export const registerRoutes = async (
           currentStreak++;
           maxStreak = Math.max(maxStreak, currentStreak);
         } else {
-          current          currentStreak = 1;
+          currentStreak = 1;
         }
       }
 
