@@ -21,7 +21,8 @@ interface InviteQRCodeProps {
 }
 
 export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
-  const [copied, setCopied] = useState(false);
+  const [copiedQR, setCopiedQR] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -70,12 +71,12 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const handleCopyText = async (inviteCode: string) => {
     try {
       await navigator.clipboard.writeText(inviteCode);
-      setCopied(true);
+      setCopiedText(true);
       toast({
         title: "Copied!",
         description: "Invite code copied to clipboard",
       });
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopiedText(false), 2000);
     } catch (error) {
       toast({
         title: "Error",
@@ -111,12 +112,12 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
             await navigator.clipboard.write([
               new ClipboardItem({ 'image/png': blob })
             ]);
-            setCopied(true);
+            setCopiedQR(true);
             toast({
               title: "Copied!",
               description: "QR code copied as image",
             });
-            setTimeout(() => setCopied(false), 2000);
+            setTimeout(() => setCopiedQR(false), 2000);
           }
         });
       };
@@ -175,7 +176,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
                   onClick={handleCopyQR}
                   data-testid={`button-copy-qr-${type}`}
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copiedQR ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
               <div className="flex items-center space-x-2 w-full">
@@ -188,7 +189,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
                   onClick={() => handleCopyText(currentCode)}
                   data-testid={`button-copy-${type}`}
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copiedText ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground text-center">
