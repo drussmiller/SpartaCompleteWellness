@@ -132,7 +132,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
 
   return (
     <AppLayout>
-      <div className="flex flex-col items-center p-6 pt-4">
+      <div className="flex flex-col items-center p-4 pt-2">
         <Card className="w-full max-w-md">
           <CardHeader className="relative pb-4">
             {onClose && (
@@ -197,8 +197,8 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                 </div>
               </>
             ) : (
-              <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-2">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Scan QR Code</h3>
                   <Button
                     variant="ghost"
@@ -209,7 +209,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <div id="qr-reader" ref={scannerDivRef} className="w-full"></div>
+                <div id="qr-reader" ref={scannerDivRef} className="w-full max-h-[50vh] overflow-auto"></div>
                 {inviteCode && (
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-2">Scanned code:</p>
