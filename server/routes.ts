@@ -2147,8 +2147,10 @@ export const registerRoutes = async (
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
 
       if (!isAdmin && !isGroupAdminForThisTeam) {
-        logger.warn(`Unauthorized team edit attempt by user ${req.user?.id} on team ${teamId}`);
-        return res.status(403).json({ message: "Not authorized" });
+        logger.warn(`Unauthorized team edit attempt by user ${req.user?.id} (Group Admin for group ${req.user?.adminGroupId}) on team ${teamId} (in group ${team.groupId})`);
+        return res.status(403).json({ 
+          message: `Not authorized. You can only edit teams in your group (Group ID: ${req.user?.adminGroupId})` 
+        });
       }
 
       logger.info(`Updating team ${teamId} with data:`, req.body);
