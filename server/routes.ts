@@ -3105,7 +3105,8 @@ export const registerRoutes = async (
         return res.status(400).json({
           message: "User has no program start date",
           currentWeek: 1,
-          currentDay: 1
+          currentDay: 1,
+          programHasStarted: false
         });
       }
 
@@ -3117,7 +3118,7 @@ export const registerRoutes = async (
       const userStartOfDay = new Date(userLocalNow);
       userStartOfDay.setHours(0, 0, 0, 0);
 
-      // Program start date (from database)
+      // Program start date (from database) - ensure it's at start of day
       const programStart = new Date(user.programStartDate);
       programStart.setHours(0, 0, 0, 0);
 
@@ -3132,8 +3133,8 @@ export const registerRoutes = async (
       const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const currentDay = rawDay === 0 ? 7 : rawDay;
 
-      // Check if program has started
-      const programHasStarted = daysSinceStart >= 0;
+      // Check if program has started - true if start date is today or earlier
+      const programHasStarted = user.programStartDate && daysSinceStart >= 0;
 
       // Don't allow negative weeks/days
       const week = Math.max(1, currentWeek);
@@ -3144,7 +3145,7 @@ export const registerRoutes = async (
         currentDay: day,
         programStartDate: user.programStartDate,
         daysSinceStart: Math.max(0, daysSinceStart),
-        programHasStarted
+        programHasStarted: !!programHasStarted
       });
     } catch (error) {
       logger.error("Error getting current activity:", error);
