@@ -3133,8 +3133,8 @@ export const registerRoutes = async (
       const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const currentDay = rawDay === 0 ? 7 : rawDay;
 
-      // Check if program has started - true if program start date exists and is today or earlier
-      const programHasStarted = user.programStartDate && userStartOfDay.getTime() >= programStart.getTime();
+      // Check if program has started - true if daysSinceStart is 0 or positive
+      const programHasStarted = !!(user.programStartDate && daysSinceStart >= 0);
 
       // Don't allow negative weeks/days
       const week = Math.max(1, currentWeek);
