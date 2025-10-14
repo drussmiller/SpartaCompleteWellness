@@ -385,7 +385,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Team updated successfully",
       });
-      
+
       // Update the teams cache with the new data
       queryClient.setQueryData(["/api/teams"], (oldTeams: Team[] | undefined) => {
         if (!oldTeams) return [updatedTeam];
@@ -393,7 +393,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           team.id === updatedTeam.id ? updatedTeam : team
         );
       });
-      
+
       setEditingTeam(null);
       setSelectedGroupId("");
     },
@@ -1688,7 +1688,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 selected={(() => {
                                                   const dateToUse = selectedProgramStartDate[group.id] !== undefined 
                                                     ? selectedProgramStartDate[group.id] 
-                                                    : group.programStartDate;
+                                                    : (editingGroup?.id === group.id ? editingGroup.programStartDate : group.programStartDate);
                                                   if (!dateToUse) return undefined;
                                                   const isoStr = typeof dateToUse === 'string' 
                                                     ? dateToUse 
@@ -1706,6 +1706,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                   const input = document.getElementById(`programStartDate-${group.id}`) as HTMLInputElement;
                                                   if (input) {
                                                     input.value = isoString;
+                                                  }
+
+                                                  // Also update editingGroup to reflect the change immediately
+                                                  if (editingGroup?.id === group.id) {
+                                                    setEditingGroup({ ...editingGroup, programStartDate: date || null });
                                                   }
                                                 }}
                                                 disabled={(date) => {
@@ -1725,13 +1730,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                   ...prev,
                                                   [group.id]: undefined
                                                 }));
-                                                
+
                                                 // Update the hidden input
                                                 const input = document.getElementById(`programStartDate-${group.id}`) as HTMLInputElement;
                                                 if (input) {
                                                   input.value = '';
                                                 }
-                                                
+
                                                 // Update the group object and force re-render
                                                 const updatedGroup = { ...group, programStartDate: null };
                                                 setEditingGroup(updatedGroup);
