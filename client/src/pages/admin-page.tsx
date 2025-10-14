@@ -1646,6 +1646,69 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         />
                                       )}
                                       <div>
+                                        <Label className="text-sm font-medium mb-1 block">Program Start Date (Mondays only)</Label>
+                                        <div className="flex gap-2">
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                variant="outline"
+                                                className="flex-1 justify-start text-left font-normal"
+                                                type="button"
+                                                data-testid="button-admin-edit-group-program-start-date"
+                                              >
+                                                {group.programStartDate
+                                                  ? new Date(group.programStartDate).toLocaleDateString()
+                                                  : "Select a Monday"}
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                              <Calendar
+                                                mode="single"
+                                                selected={group.programStartDate ? (() => {
+                                                  const isoStr = typeof group.programStartDate === 'string' 
+                                                    ? group.programStartDate 
+                                                    : (group.programStartDate as any)?.toISOString?.() || '';
+                                                  const dateStr = isoStr.split('T')[0];
+                                                  const [year, month, day] = dateStr.split('-').map(Number);
+                                                  return new Date(year, month - 1, day);
+                                                })() : undefined}
+                                                onSelect={(date) => {
+                                                  group.programStartDate = date || null;
+                                                  updateGroupMutation.mutate({
+                                                    groupId: group.id,
+                                                    data: {
+                                                      programStartDate: date || null,
+                                                    },
+                                                  });
+                                                }}
+                                                disabled={(date) => {
+                                                  return date.getDay() !== 1;
+                                                }}
+                                              />
+                                            </PopoverContent>
+                                          </Popover>
+                                          {group.programStartDate && (
+                                            <Button
+                                              variant="outline"
+                                              size="icon"
+                                              type="button"
+                                              onClick={() => {
+                                                group.programStartDate = null;
+                                                updateGroupMutation.mutate({
+                                                  groupId: group.id,
+                                                  data: {
+                                                    programStartDate: null,
+                                                  },
+                                                });
+                                              }}
+                                              data-testid="button-clear-group-program-start-date"
+                                            >
+                                              ×
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div>
                                         <Label className="text-sm font-medium mb-1 block">Status</Label>
                                         <Select
                                           name="status"
