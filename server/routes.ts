@@ -2138,7 +2138,14 @@ export const registerRoutes = async (
       logger.info(`Updating team ${teamId} with data:`, req.body);
 
       // Validate the data using a partial team schema
-      const updateData = req.body;
+      const updateData = { ...req.body };
+      
+      // Handle programStartDate conversion if it exists
+      if (updateData.programStartDate !== undefined) {
+        updateData.programStartDate = updateData.programStartDate 
+          ? new Date(updateData.programStartDate) 
+          : null;
+      }
 
       // Update the team in the database
       const [updatedTeam] = await db
