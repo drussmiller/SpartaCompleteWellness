@@ -438,11 +438,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const org = sortedOrganizations?.find((o) => o.id === organizationId);
       if (data.status === 0 && org && org.status === 1) {
         // Count active children before inactivating
-        const orgGroups = groupsQuery.data?.filter((g) => g.organizationId === organizationId && g.status === 1) || [];
+        const orgGroups = groups?.filter((g) => g.organizationId === organizationId && g.status === 1) || [];
         const groupIds = orgGroups.map((g) => g.id);
         const activeTeams = sortedTeams?.filter((t) => groupIds.includes(t.groupId) && t.status === 1) || [];
         const teamIds = activeTeams.map((t) => t.id);
-        const activeUsers = usersQuery.data?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
+        const activeUsers = users?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
         
         if (orgGroups.length > 0 || activeTeams.length > 0 || activeUsers.length > 0) {
           // Store the pending update and show confirmation
@@ -504,12 +504,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const updateGroupMutation = useMutation({
     mutationFn: async ({ groupId, data }: { groupId: number; data: any }) => {
       // Check if group is being set to inactive
-      const group = groupsQuery.data?.find((g) => g.id === groupId);
+      const group = groups?.find((g) => g.id === groupId);
       if (data.status === 0 && group && group.status === 1) {
         // Count active children before inactivating
         const activeTeams = sortedTeams?.filter((t) => t.groupId === groupId && t.status === 1) || [];
         const teamIds = activeTeams.map((t) => t.id);
-        const activeUsers = usersQuery.data?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
+        const activeUsers = users?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
         
         if (activeTeams.length > 0 || activeUsers.length > 0) {
           // Store the pending update and show confirmation
@@ -3365,7 +3365,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               {groupToInactivate && (
                 <>
                   Making the group "
-                  {groupsQuery.data?.find(g => g.id === groupToInactivate.id)?.name}" inactive will also make:
+                  {groups?.find(g => g.id === groupToInactivate.id)?.name}" inactive will also make:
                   <ul className="list-disc list-inside mt-2">
                     {groupToInactivate.activeTeamCount > 0 && <li>{groupToInactivate.activeTeamCount} active team(s) inactive</li>}
                     {groupToInactivate.activeUserCount > 0 && <li>{groupToInactivate.activeUserCount} active user(s) inactive</li>}
