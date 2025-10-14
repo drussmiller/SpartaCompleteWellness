@@ -2090,27 +2090,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       />
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium mb-1 block">Status</Label>
-                                      <Select
-                                        name="status"
-                                        defaultValue={
-                                          team.status?.toString() || "1"
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="1">
-                                            Active
-                                          </SelectItem>
-                                          <SelectItem value="0">
-                                            Inactive
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div>
                                       <Label className="text-sm font-medium mb-1 block">Program Start Date (Mondays only)</Label>
                                       <Popover>
                                         <PopoverTrigger asChild>
@@ -2145,6 +2124,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <p className="text-xs text-muted-foreground mt-1">
                                         When set, new members will inherit this date as their program start date (if it hasn't passed)
                                       </p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                      <Select
+                                        name="status"
+                                        defaultValue={
+                                          team.status?.toString() || "1"
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="1">
+                                            Active
+                                          </SelectItem>
+                                          <SelectItem value="0">
+                                            Inactive
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                     </div>
                                     <div className="flex gap-2">
                                       <Button type="submit" size="sm">
