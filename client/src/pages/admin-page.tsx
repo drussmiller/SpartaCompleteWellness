@@ -2027,16 +2027,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       return;
                                     }
 
-                                    // Prepare programStartDate value
-                                    let programStartDateValue = null;
-                                    if (team.programStartDate) {
-                                      if (team.programStartDate instanceof Date) {
-                                        programStartDateValue = team.programStartDate.toISOString();
-                                      } else if (typeof team.programStartDate === 'string' && team.programStartDate.trim() !== '') {
-                                        programStartDateValue = team.programStartDate;
-                                      }
-                                    }
-
                                     updateTeamMutation.mutate({
                                       teamId: team.id,
                                       data: {
@@ -2045,7 +2035,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         groupId,
                                         maxSize,
                                         status: Number(status),
-                                        programStartDate: programStartDateValue,
+                                        programStartDate: team.programStartDate 
+                                          ? (typeof team.programStartDate === 'string' 
+                                              ? team.programStartDate 
+                                              : team.programStartDate.toISOString()) 
+                                          : null,
                                       },
                                     });
                                   }}
@@ -2103,61 +2097,44 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Program Start Date (Mondays only)</Label>
-                                      <div className="flex gap-2">
-                                        <Popover>
-                                          <PopoverTrigger asChild>
-                                            <Button
-                                              variant="outline"
-                                              className="flex-1 justify-start text-left font-normal"
-                                              type="button"
-                                              data-testid="button-admin-edit-team-program-start-date"
-                                            >
-                                              {team.programStartDate
-                                                ? new Date(team.programStartDate).toLocaleDateString()
-                                                : "Select a Monday"}
-                                            </Button>
-                                          </PopoverTrigger>
-                                          <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                              mode="single"
-                                              selected={team.programStartDate ? (() => {
-                                                // Parse as local date by extracting YYYY-MM-DD
-                                                const isoStr = typeof team.programStartDate === 'string' 
-                                                  ? team.programStartDate 
-                                                  : (team.programStartDate as any)?.toISOString?.() || '';
-                                                const dateStr = isoStr.split('T')[0];
-                                                const [year, month, day] = dateStr.split('-').map(Number);
-                                                return new Date(year, month - 1, day);
-                                              })() : undefined}
-                                              onSelect={(date) => {
-                                                // Update team object directly for display
-                                                team.programStartDate = date || null;
-                                                // Force re-render
-                                                setEditingTeam({...team});
-                                              }}
-                                              disabled={(date) => {
-                                                // Only allow Mondays (getDay() === 1)
-                                                return date.getDay() !== 1;
-                                              }}
-                                            />
-                                          </PopoverContent>
-                                        </Popover>
-                                        {team.programStartDate && (
+                                      <Popover>
+                                        <PopoverTrigger asChild>
                                           <Button
                                             variant="outline"
-                                            size="sm"
+                                            className="w-full justify-start text-left font-normal"
                                             type="button"
-                                            onClick={() => {
-                                              // Set to null for both UI and backend
-                                              team.programStartDate = null;
+                                            data-testid="button-admin-edit-team-program-start-date"
+                                          >
+                                            {team.programStartDate
+                                              ? new Date(team.programStartDate).toLocaleDateString()
+                                              : "Select a Monday"}
+                                          </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                          <Calendar
+                                            mode="single"
+                                            selected={team.programStartDate ? (() => {
+                                              // Parse as local date by extracting YYYY-MM-DD
+                                              const isoStr = typeof team.programStartDate === 'string' 
+                                                ? team.programStartDate 
+                                                : (team.programStartDate as any)?.toISOString?.() || '';
+                                              const dateStr = isoStr.split('T')[0];
+                                              const [year, month, day] = dateStr.split('-').map(Number);
+                                              return new Date(year, month - 1, day);
+                                            })() : undefined}
+                                            onSelect={(date) => {
+                                              // Update team object directly for display
+                                              team.programStartDate = date || null;
+                                              // Force re-render
                                               setEditingTeam({...team});
                                             }}
-                                            className="px-3"
-                                          >
-                                            Clear
-                                          </Button>
-                                        )}
-                                      </div>
+                                            disabled={(date) => {
+                                              // Only allow Mondays (getDay() === 1)
+                                              return date.getDay() !== 1;
+                                            }}
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
                                       <p className="text-xs text-muted-foreground mt-1">
                                         When set, new members will inherit this date as their program start date (if it hasn't passed)
                                       </p>
