@@ -1584,13 +1584,22 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           return;
                                         }
 
-                                        // Prepare programStartDate value from editingGroup
+                                        // Prepare programStartDate value from editingGroup state
                                         let programStartDateValue = null;
-                                        if (editingGroup?.programStartDate) {
-                                          if (editingGroup.programStartDate instanceof Date) {
-                                            programStartDateValue = editingGroup.programStartDate.toISOString();
-                                          } else if (typeof editingGroup.programStartDate === 'string' && editingGroup.programStartDate.trim() !== '') {
-                                            programStartDateValue = editingGroup.programStartDate;
+                                        if (editingGroup && editingGroup.id === group.id) {
+                                          if (editingGroup.programStartDate) {
+                                            if (editingGroup.programStartDate instanceof Date) {
+                                              programStartDateValue = editingGroup.programStartDate.toISOString();
+                                            } else if (typeof editingGroup.programStartDate === 'string' && editingGroup.programStartDate.trim() !== '') {
+                                              programStartDateValue = editingGroup.programStartDate;
+                                            }
+                                          }
+                                        } else {
+                                          // Fallback to group.programStartDate if editingGroup doesn't match
+                                          if (group.programStartDate) {
+                                            programStartDateValue = typeof group.programStartDate === 'string' 
+                                              ? group.programStartDate 
+                                              : group.programStartDate.toISOString();
                                           }
                                         }
 
