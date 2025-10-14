@@ -2036,9 +2036,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         maxSize,
                                         status: Number(status),
                                         programStartDate: team.programStartDate 
-                                          ? (typeof team.programStartDate === 'string' 
-                                              ? (team.programStartDate.trim() === '' ? null : team.programStartDate)
-                                              : team.programStartDate.toISOString()) 
+                                          ? (typeof team.programStartDate === 'string' && team.programStartDate.trim() !== ''
+                                              ? team.programStartDate
+                                              : team.programStartDate instanceof Date
+                                                ? team.programStartDate.toISOString()
+                                                : null)
                                           : null,
                                       },
                                     });
@@ -2142,12 +2144,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             size="sm"
                                             type="button"
                                             onClick={() => {
-                                              // Explicitly set to null, not empty string
-                                              const updatedTeam = {
-                                                ...team,
-                                                programStartDate: null
-                                              };
-                                              setEditingTeam(updatedTeam);
+                                              // Set to null for both UI and backend
+                                              team.programStartDate = null;
+                                              setEditingTeam({...team});
                                             }}
                                             className="px-3"
                                           >
