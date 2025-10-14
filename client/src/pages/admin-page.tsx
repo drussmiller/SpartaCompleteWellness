@@ -147,6 +147,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [groupToDelete, setGroupToDelete] = useState<{ id: number, name: string, teamCount: number, userCount: number, postCount: number, mediaCount: number } | null>(null);
   const [orgToDelete, setOrgToDelete] = useState<{ id: number, name: string, groupCount: number, teamCount: number, userCount: number, postCount: number, mediaCount: number } | null>(null);
 
+  // Dialog states
+  const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
+  const [createGroupDialogOpen, setCreateGroupDialogOpen] = useState(false);
+  const [createTeamDialogOpen, setCreateTeamDialogOpen] = useState(false);
+
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
   const [groupsPanelOpen, setGroupsPanelOpen] = useState(false);
@@ -260,6 +265,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "Team created successfully",
       });
       form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setCreateTeamDialogOpen(false);
     },
     onError: (error: Error) => {
       toast({
@@ -679,6 +686,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       });
       organizationForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      setCreateOrgDialogOpen(false);
     },
     onError: (error: Error) => {
       toast({
@@ -779,6 +787,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       // Also invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      setCreateGroupDialogOpen(false);
+      setSelectedOrganizationId(null);
     },
     onError: (error: Error) => {
       toast({
@@ -1347,7 +1357,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Show inactive organizations
                           </Label>
                         </div>
-                        <Dialog>
+                        <Dialog open={createOrgDialogOpen} onOpenChange={setCreateOrgDialogOpen}>
                           <DialogTrigger asChild>
                             <Button
                               size="sm"
@@ -1645,7 +1655,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Show inactive groups
                           </Label>
                         </div>
-                        <Dialog>
+                        <Dialog open={createGroupDialogOpen} onOpenChange={setCreateGroupDialogOpen}>
                           <DialogTrigger asChild>
                             <Button
                               size="sm"
@@ -2209,7 +2219,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         Show inactive teams
                       </Label>
                     </div>
-                    <Dialog>
+                    <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
                           size="sm"
