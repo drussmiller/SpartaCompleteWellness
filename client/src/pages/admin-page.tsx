@@ -2033,7 +2033,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         groupId,
                                         maxSize,
                                         status: Number(status),
-                                        programStartDate: team.programStartDate ? new Date(team.programStartDate).toISOString() : null,
+                                        programStartDate: team.programStartDate 
+                                          ? (typeof team.programStartDate === 'string' 
+                                              ? team.programStartDate 
+                                              : team.programStartDate.toISOString()) 
+                                          : null,
                                       },
                                     });
                                   }}
@@ -2108,9 +2112,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <Calendar
                                             mode="single"
                                             selected={team.programStartDate ? (() => {
-                                              const date = new Date(team.programStartDate);
-                                              const offset = date.getTimezoneOffset();
-                                              return new Date(date.getTime() - (offset * 60 * 1000));
+                                              // Parse as local date by extracting YYYY-MM-DD
+                                              const isoStr = typeof team.programStartDate === 'string' 
+                                                ? team.programStartDate 
+                                                : (team.programStartDate as any)?.toISOString?.() || '';
+                                              const dateStr = isoStr.split('T')[0];
+                                              const [year, month, day] = dateStr.split('-').map(Number);
+                                              return new Date(year, month - 1, day);
                                             })() : undefined}
                                             onSelect={(date) => {
                                               // Update team object directly for display
@@ -2558,9 +2566,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               selected={
                                                 selectedProgramStartDate[user.id] ||
                                                 (user.programStartDate ? (() => {
-                                                  const date = new Date(user.programStartDate);
-                                                  const offset = date.getTimezoneOffset();
-                                                  return new Date(date.getTime() - (offset * 60 * 1000));
+                                                  // Parse as local date by extracting YYYY-MM-DD
+                                                  const isoStr = typeof user.programStartDate === 'string' 
+                                                    ? user.programStartDate 
+                                                    : (user.programStartDate as any)?.toISOString?.() || '';
+                                                  const dateStr = isoStr.split('T')[0];
+                                                  const [year, month, day] = dateStr.split('-').map(Number);
+                                                  return new Date(year, month - 1, day);
                                                 })() : undefined)
                                               }
                                               onSelect={(date) => {
