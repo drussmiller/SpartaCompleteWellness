@@ -2349,6 +2349,10 @@ export const registerRoutes = async (
           .where(eq(organizations.id, organizationId))
           .returning();
 
+        let groupsUpdated = 0;
+        let teamsUpdated = 0;
+        let usersUpdated = 0;
+
         // If organization status is being set to inactive (0), cascade to all groups, teams, and users
         if (req.body.status === 0) {
           logger.info(`Organization ${organizationId} set to inactive, cascading status updates...`);
@@ -2360,6 +2364,7 @@ export const registerRoutes = async (
           if (groupIds.length > 0) {
             // Update all groups in this organization to inactive
             await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
+            groupsUpdated = groupIds.length;
             logger.log(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
 
             // Get all teams in these groups
@@ -2369,6 +2374,7 @@ export const registerRoutes = async (
             if (teamIds.length > 0) {
               // Update all teams in these groups to inactive
               await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+              teamsUpdated = teamIds.length;
               logger.info(`Set ${teamIds.length} teams to inactive for organization ${organizationId}`);
 
               // Get all users in these teams and update them to inactive
@@ -2377,13 +2383,19 @@ export const registerRoutes = async (
 
               if (userIds.length > 0) {
                 await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+                usersUpdated = userIds.length;
                 logger.info(`Set ${userIds.length} users to inactive for organization ${organizationId}`);
               }
             }
           }
         }
 
-        return updatedOrganization;
+        return { 
+          ...updatedOrganization, 
+          groupsUpdated, 
+          teamsUpdated, 
+          usersUpdated 
+        };
       });
 
       logger.info(`Organization ${organizationId} updated successfully by user ${req.user.id}`);
@@ -2555,6 +2567,9 @@ export const registerRoutes = async (
           .where(eq(groups.id, groupId))
           .returning();
 
+        let teamsUpdated = 0;
+        let usersUpdated = 0;
+
         // If group status is being set to inactive (0), cascade to all teams and users
         if (req.body.status === 0) {
           logger.info(`Group ${groupId} set to inactive, cascading status updates...`);
@@ -2566,6 +2581,7 @@ export const registerRoutes = async (
           if (teamIds.length > 0) {
             // Update all teams in this group to inactive
             await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+            teamsUpdated = teamIds.length;
             logger.info(`Set ${teamIds.length} teams to inactive for group ${groupId}`);
 
             // Get all users in these teams and update them to inactive
@@ -2574,12 +2590,17 @@ export const registerRoutes = async (
 
             if (userIds.length > 0) {
               await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+              usersUpdated = userIds.length;
               logger.info(`Set ${userIds.length} users to inactive for group ${groupId}`);
             }
           }
         }
 
-        return updatedGroup;
+        return { 
+          ...updatedGroup, 
+          teamsUpdated, 
+          usersUpdated 
+        };
       });
 
       logger.info(`Group ${groupId} updated successfully by user ${req.user.id}`);
