@@ -2033,7 +2033,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         groupId,
                                         maxSize,
                                         status: Number(status),
-                                        programStartDate: team.programStartDate || null,
+                                        programStartDate: team.programStartDate ? new Date(team.programStartDate).toISOString() : null,
                                       },
                                     });
                                   }}
