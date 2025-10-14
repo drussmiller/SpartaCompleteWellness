@@ -2485,11 +2485,12 @@ export const registerRoutes = async (
       // Group Admins can only update certain fields (not organizationId or status)
       let updateData: any = {};
       if (isGroupAdminForThisGroup && !isFullAdmin) {
-        // Group admins can only update name, description, and competitive status
-        const { name, description, competitive } = req.body;
+        // Group admins can only update name, description, competitive status, and program start date
+        const { name, description, competitive, programStartDate } = req.body;
         if (name !== undefined) updateData.name = name;
         if (description !== undefined) updateData.description = description;
         if (competitive !== undefined) updateData.competitive = competitive;
+        if (programStartDate !== undefined) updateData.programStartDate = programStartDate ? new Date(programStartDate) : null;
 
         logger.info(`Group Admin filtered update data for group ${groupId}:`, updateData);
       } else {
