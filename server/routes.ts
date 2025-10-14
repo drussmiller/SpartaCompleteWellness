@@ -2175,7 +2175,20 @@ export const registerRoutes = async (
       // If team is being set to inactive and makeUsersInactive is true, update users
       let usersUpdated = 0;
       if (updateData.status === 0 && makeUsersInactive) {
-        logger.info(`Making users inactive for team ${teamId}`);
+        logger.info(`Making users inactive for team ${teamId}, makeUsersInactive flag: ${makeUsersInactive}`);
+        
+        // First, check how many active users are in the team
+        const activeUsersCheck = await db
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.teamId, teamId),
+              eq(users.status, 1)
+            )
+          );
+        
+        logger.info(`Found ${activeUsersCheck.length} active user(s) in team ${teamId} before update`);
         
         const updatedUsers = await db
           .update(users)
@@ -2190,6 +2203,7 @@ export const registerRoutes = async (
         
         usersUpdated = updatedUsers.length;
         logger.info(`Set ${usersUpdated} user(s) to inactive for team ${teamId}`);
+        logger.info(`Updated user IDs: ${updatedUsers.map(u => u.id).join(', ')}`);
       }
 
       logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);

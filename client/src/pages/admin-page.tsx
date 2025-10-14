@@ -402,9 +402,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         );
       });
 
-      // If users were made inactive, invalidate the users cache to reflect changes
+      // If users were made inactive, invalidate and refetch the users cache to reflect changes
       if (usersWereUpdated) {
-        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/users"], refetchType: 'active' });
+        // Force an immediate refetch
+        queryClient.refetchQueries({ queryKey: ["/api/users"] });
       }
 
       setEditingTeam(null);
