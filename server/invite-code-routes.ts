@@ -271,19 +271,35 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       const now = new Date();
       
-      // Determine program start date based on team settings
+      // Determine program start date with cascading logic: Group → Team → next Monday
       let userProgramStartDate: Date;
-      if (teamAdmin.programStartDate) {
+      
+      // Check if group has a program start date
+      if (group?.programStartDate) {
+        const groupStartDate = new Date(group.programStartDate);
+        if (groupStartDate > now) {
+          userProgramStartDate = groupStartDate;
+        } else if (teamAdmin.programStartDate) {
+          // Group date has passed, check team date
+          const teamStartDate = new Date(teamAdmin.programStartDate);
+          if (teamStartDate > now) {
+            userProgramStartDate = teamStartDate;
+          } else {
+            userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+          }
+        } else {
+          userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+        }
+      } else if (teamAdmin.programStartDate) {
+        // No group date, check team date
         const teamStartDate = new Date(teamAdmin.programStartDate);
-        // Use team's program start date if it hasn't passed yet
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
         } else {
-          // Team start date has passed, calculate next Monday in user's timezone
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else {
-        // No team program start date, calculate next Monday (or today if today is Monday) in user's timezone
+        // No group or team date, calculate next Monday in user's timezone
         userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
@@ -333,19 +349,35 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       const now = new Date();
       
-      // Determine program start date based on team settings
+      // Determine program start date with cascading logic: Group → Team → next Monday
       let userProgramStartDate: Date;
-      if (teamMember.programStartDate) {
+      
+      // Check if group has a program start date
+      if (group?.programStartDate) {
+        const groupStartDate = new Date(group.programStartDate);
+        if (groupStartDate > now) {
+          userProgramStartDate = groupStartDate;
+        } else if (teamMember.programStartDate) {
+          // Group date has passed, check team date
+          const teamStartDate = new Date(teamMember.programStartDate);
+          if (teamStartDate > now) {
+            userProgramStartDate = teamStartDate;
+          } else {
+            userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+          }
+        } else {
+          userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+        }
+      } else if (teamMember.programStartDate) {
+        // No group date, check team date
         const teamStartDate = new Date(teamMember.programStartDate);
-        // Use team's program start date if it hasn't passed yet
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
         } else {
-          // Team start date has passed, calculate next Monday in user's timezone
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else {
-        // No team program start date, calculate next Monday (or today if today is Monday) in user's timezone
+        // No group or team date, calculate next Monday in user's timezone
         userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
