@@ -3114,7 +3114,7 @@ export const registerRoutes = async (
       const now = new Date();
       const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
 
-      // Set to start of day
+      // Set to start of day in user's timezone
       const userStartOfDay = new Date(userLocalNow);
       userStartOfDay.setHours(0, 0, 0, 0);
 
@@ -3133,8 +3133,8 @@ export const registerRoutes = async (
       const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
       const currentDay = rawDay === 0 ? 7 : rawDay;
 
-      // Check if program has started - true if start date is today or earlier
-      const programHasStarted = user.programStartDate && daysSinceStart >= 0;
+      // Check if program has started - true if program start date is today or in the past
+      const programHasStarted = !!(user.programStartDate && daysSinceStart >= 0);
 
       // Don't allow negative weeks/days
       const week = Math.max(1, currentWeek);
