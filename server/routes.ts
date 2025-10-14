@@ -2126,13 +2126,29 @@ export const registerRoutes = async (
   // Update team endpoint
   router.patch("/api/teams/:id", authenticate, async (req, res) => {
     try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
       const teamId = parseInt(req.params.id);
       if (isNaN(teamId)) {
         return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Get the team first to check authorization
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Check authorization: Admin or Group Admin for this team's group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+
+      if (!isAdmin && !isGroupAdminForThisTeam) {
+        logger.warn(`Unauthorized team edit attempt by user ${req.user?.id} on team ${teamId}`);
+        return res.status(403).json({ message: "Not authorized" });
       }
 
       logger.info(`Updating team ${teamId} with data:`, req.body);
