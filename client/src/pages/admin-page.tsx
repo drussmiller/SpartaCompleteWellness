@@ -2664,7 +2664,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <SelectContent>
                                 <SelectItem value="all">All Teams</SelectItem>
                                 <SelectItem value="none">No Team</SelectItem>
-                                {filteredTeamsForFilter?.map((team) => (
+                                {filteredTeamsForFilter?.filter(team => team.status === 1).map((team) => (
                                   <SelectItem
                                     key={team.id}
                                     value={team.id.toString()}
