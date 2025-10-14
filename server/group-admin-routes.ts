@@ -92,7 +92,7 @@ groupAdminRouter.patch("/api/group-admin/teams/:teamId", authenticate, requireGr
     }
     
     // Validate update data
-    const { name, description, maxSize } = req.body;
+    const { name, description, maxSize, programStartDate } = req.body;
     const updateData: any = {};
     
     if (name !== undefined) {
@@ -120,6 +120,14 @@ groupAdminRouter.patch("/api/group-admin/teams/:teamId", authenticate, requireGr
       }
       
       updateData.maxSize = maxSize;
+    }
+    
+    if (programStartDate !== undefined) {
+      if (programStartDate === null || programStartDate === '') {
+        updateData.programStartDate = null;
+      } else {
+        updateData.programStartDate = new Date(programStartDate);
+      }
     }
     
     if (Object.keys(updateData).length === 0) {

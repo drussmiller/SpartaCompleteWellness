@@ -56,7 +56,8 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      maxSize: 6
+      maxSize: 6,
+      programStartDate: undefined
     }
   });
 
@@ -66,7 +67,8 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      maxSize: 6
+      maxSize: 6,
+      programStartDate: undefined
     }
   });
 
@@ -155,7 +157,8 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     editForm.reset({
       name: team.name,
       description: team.description || "",
-      maxSize: team.maxSize || 6
+      maxSize: team.maxSize || 6,
+      programStartDate: team.programStartDate ? new Date(team.programStartDate) : undefined
     });
     setEditTeamOpen(true);
   };
@@ -278,6 +281,27 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={createForm.control}
+                      name="programStartDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Program Start Date (Optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                              onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                              data-testid="input-team-program-start-date"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          <p className="text-xs text-muted-foreground">
+                            When set, new members will inherit this date as their program start date (if it hasn't passed)
+                          </p>
+                        </FormItem>
+                      )}
+                    />
                     <DialogFooter>
                       <Button
                         type="button"
@@ -326,8 +350,11 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                             {team.description}
                           </p>
                         )}
-                        <div className="text-xs text-muted-foreground">
-                          Max Size: {team.maxSize || 6} members
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div>Max Size: {team.maxSize || 6} members</div>
+                          {team.programStartDate && (
+                            <div>Program Start: {new Date(team.programStartDate).toLocaleDateString()}</div>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -453,6 +480,27 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                             New max size must be at least {editingTeam.memberCount}.
                           </p>
                         )}
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="programStartDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Program Start Date (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                            data-testid="input-edit-team-program-start-date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-xs text-muted-foreground">
+                          When set, new members will inherit this date as their program start date (if it hasn't passed)
+                        </p>
                       </FormItem>
                     )}
                   />

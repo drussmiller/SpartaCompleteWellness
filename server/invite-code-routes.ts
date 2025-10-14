@@ -240,13 +240,24 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       }
 
       const now = new Date();
+      
+      // Determine program start date based on team settings
+      let userProgramStartDate = now;
+      if (teamAdmin.programStartDate) {
+        const teamStartDate = new Date(teamAdmin.programStartDate);
+        // Use team's program start date if it hasn't passed yet
+        if (teamStartDate > now) {
+          userProgramStartDate = teamStartDate;
+        }
+      }
+      
       await db
         .update(users)
         .set({ 
           isTeamLead: true,
           teamId: teamAdmin.id,
           teamJoinedAt: now,
-          programStartDate: now
+          programStartDate: userProgramStartDate
         })
         .where(eq(users.id, userId));
 
@@ -282,12 +293,23 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       }
 
       const now = new Date();
+      
+      // Determine program start date based on team settings
+      let userProgramStartDate = now;
+      if (teamMember.programStartDate) {
+        const teamStartDate = new Date(teamMember.programStartDate);
+        // Use team's program start date if it hasn't passed yet
+        if (teamStartDate > now) {
+          userProgramStartDate = teamStartDate;
+        }
+      }
+      
       await db
         .update(users)
         .set({ 
           teamId: teamMember.id,
           teamJoinedAt: now,
-          programStartDate: now,
+          programStartDate: userProgramStartDate,
           isTeamLead: false
         })
         .where(eq(users.id, userId));
