@@ -3315,6 +3315,89 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Confirmation dialog for inactivating organization */}
+        <AlertDialog open={!!orgToInactivate} onOpenChange={(open) => { if (!open) setOrgToInactivate(null); }}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Confirm Inactivation</AlertDialogTitle>
+            <AlertDialogDescription>
+              {orgToInactivate && (
+                <>
+                  Making the organization "
+                  {sortedOrganizations?.find(o => o.id === orgToInactivate.id)?.name}" inactive will also make:
+                  <ul className="list-disc list-inside mt-2">
+                    {orgToInactivate.activeGroupCount > 0 && <li>{orgToInactivate.activeGroupCount} active group(s) inactive</li>}
+                    {orgToInactivate.activeTeamCount > 0 && <li>{orgToInactivate.activeTeamCount} active team(s) inactive</li>}
+                    {orgToInactivate.activeUserCount > 0 && <li>{orgToInactivate.activeUserCount} active user(s) inactive</li>}
+                  </ul>
+                  <br />
+                  Do you want to continue?
+                </>
+              )}
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setOrgToInactivate(null);
+                setPendingOrgUpdate(null);
+              }}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (pendingOrgUpdate) {
+                    // Execute the organization update
+                    updateOrganizationMutation.mutate({
+                      organizationId: pendingOrgUpdate.orgId,
+                      data: pendingOrgUpdate.data
+                    });
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirmation dialog for inactivating group */}
+        <AlertDialog open={!!groupToInactivate} onOpenChange={(open) => { if (!open) setGroupToInactivate(null); }}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Confirm Inactivation</AlertDialogTitle>
+            <AlertDialogDescription>
+              {groupToInactivate && (
+                <>
+                  Making the group "
+                  {groupsQuery.data?.find(g => g.id === groupToInactivate.id)?.name}" inactive will also make:
+                  <ul className="list-disc list-inside mt-2">
+                    {groupToInactivate.activeTeamCount > 0 && <li>{groupToInactivate.activeTeamCount} active team(s) inactive</li>}
+                    {groupToInactivate.activeUserCount > 0 && <li>{groupToInactivate.activeUserCount} active user(s) inactive</li>}
+                  </ul>
+                  <br />
+                  Do you want to continue?
+                </>
+              )}
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setGroupToInactivate(null);
+                setPendingGroupUpdate(null);
+              }}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (pendingGroupUpdate) {
+                    // Execute the group update
+                    updateGroupMutation.mutate({
+                      groupId: pendingGroupUpdate.groupId,
+                      data: pendingGroupUpdate.data
+                    });
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-background">
           <BottomNav />
         </div>
