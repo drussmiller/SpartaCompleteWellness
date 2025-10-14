@@ -2690,7 +2690,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <SelectItem value="all">
                                     All Organizations
                                   </SelectItem>
-                                  {sortedOrganizations?.map((org) => (
+                                  {sortedOrganizations?.filter(org => showInactiveOrgs ? true : org.status === 1).map((org) => (
                                     <SelectItem
                                       key={org.id}
                                       value={org.id.toString()}
@@ -2721,7 +2721,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="all">All Groups</SelectItem>
-                                  {sortedGroups?.map((group) => (
+                                  {sortedGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                     <SelectItem
                                       key={group.id}
                                       value={group.id.toString()}
