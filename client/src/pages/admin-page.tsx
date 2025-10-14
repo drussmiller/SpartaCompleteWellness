@@ -141,6 +141,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [pendingOrgUpdate, setPendingOrgUpdate] = useState<{ orgId: number, data: Partial<Organization> } | null>(null);
   const [groupToInactivate, setGroupToInactivate] = useState<{ id: number, activeTeamCount: number, activeUserCount: number } | null>(null);
   const [pendingGroupUpdate, setPendingGroupUpdate] = useState<{ groupId: number, data: Partial<Group> } | null>(null);
+  
+  // Delete confirmation states
+  const [teamToDelete, setTeamToDelete] = useState<{ id: number, name: string, userCount: number, postCount: number, mediaCount: number } | null>(null);
+  const [groupToDelete, setGroupToDelete] = useState<{ id: number, name: string, teamCount: number, userCount: number, postCount: number, mediaCount: number } | null>(null);
+  const [orgToDelete, setOrgToDelete] = useState<{ id: number, name: string, groupCount: number, teamCount: number, userCount: number, postCount: number, mediaCount: number } | null>(null);
 
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
@@ -267,6 +272,34 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const deleteTeamMutation = useMutation({
     mutationFn: async (teamId: number) => {
+      // Only proceed if we have confirmation (teamToDelete is set)
+      if (!teamToDelete) {
+        // First fetch delete info to show in confirmation
+        const infoRes = await apiRequest("GET", `/api/teams/${teamId}/delete-info`);
+        if (!infoRes.ok) {
+          throw new Error("Failed to get deletion info");
+        }
+        const deleteInfo = await infoRes.json();
+        
+        const team = teams?.find(t => t.id === teamId);
+        if (!team) {
+          throw new Error("Team not found");
+        }
+
+        // Show confirmation dialog
+        setTeamToDelete({
+          id: teamId,
+          name: team.name,
+          userCount: deleteInfo.userCount,
+          postCount: deleteInfo.postCount,
+          mediaCount: deleteInfo.mediaCount,
+        });
+        
+        // Don't proceed with deletion yet
+        return null;
+      }
+      
+      // User confirmed, proceed with deletion
       const res = await apiRequest("DELETE", `/api/teams/${teamId}`);
       if (!res.ok) {
         const errorMessage = await getErrorMessage(res, "Failed to delete team");
@@ -274,11 +307,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (!data) return; // No success message if we're just showing confirmation
+      
       toast({
         title: "Success",
         description: "Team deleted successfully",
       });
+      
+      // Clear confirmation state
+      setTeamToDelete(null);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -286,6 +328,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+      setTeamToDelete(null);
     },
   });
 
@@ -738,6 +781,36 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const deleteOrganizationMutation = useMutation({
     mutationFn: async (organizationId: number) => {
+      // Only proceed if we have confirmation (orgToDelete is set)
+      if (!orgToDelete) {
+        // First fetch delete info to show in confirmation
+        const infoRes = await apiRequest("GET", `/api/organizations/${organizationId}/delete-info`);
+        if (!infoRes.ok) {
+          throw new Error("Failed to get deletion info");
+        }
+        const deleteInfo = await infoRes.json();
+        
+        const org = organizations?.find(o => o.id === organizationId);
+        if (!org) {
+          throw new Error("Organization not found");
+        }
+
+        // Show confirmation dialog
+        setOrgToDelete({
+          id: organizationId,
+          name: org.name,
+          groupCount: deleteInfo.groupCount,
+          teamCount: deleteInfo.teamCount,
+          userCount: deleteInfo.userCount,
+          postCount: deleteInfo.postCount,
+          mediaCount: deleteInfo.mediaCount,
+        });
+        
+        // Don't proceed with deletion yet
+        return null;
+      }
+      
+      // User confirmed, proceed with deletion
       const res = await apiRequest(
         "DELETE",
         `/api/organizations/${organizationId}`,
@@ -748,11 +821,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (_, organizationId) => {
+    onSuccess: (data, organizationId) => {
+      if (!data) return; // No success message if we're just showing confirmation
+      
       toast({
         title: "Success",
         description: "Organization deleted successfully",
       });
+
+      // Clear confirmation state
+      setOrgToDelete(null);
 
       // Update cache manually to remove deleted organization
       queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
@@ -762,6 +840,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       // Force re-fetch to ensure UI is in sync with database
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -769,6 +850,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+      setOrgToDelete(null);
     },
   });
 
@@ -819,6 +901,35 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const deleteGroupMutation = useMutation({
     mutationFn: async (groupId: number) => {
+      // Only proceed if we have confirmation (groupToDelete is set)
+      if (!groupToDelete) {
+        // First fetch delete info to show in confirmation
+        const infoRes = await apiRequest("GET", `/api/groups/${groupId}/delete-info`);
+        if (!infoRes.ok) {
+          throw new Error("Failed to get deletion info");
+        }
+        const deleteInfo = await infoRes.json();
+        
+        const group = groups?.find(g => g.id === groupId);
+        if (!group) {
+          throw new Error("Group not found");
+        }
+
+        // Show confirmation dialog
+        setGroupToDelete({
+          id: groupId,
+          name: group.name,
+          teamCount: deleteInfo.teamCount,
+          userCount: deleteInfo.userCount,
+          postCount: deleteInfo.postCount,
+          mediaCount: deleteInfo.mediaCount,
+        });
+        
+        // Don't proceed with deletion yet
+        return null;
+      }
+      
+      // User confirmed, proceed with deletion
       const res = await apiRequest("DELETE", `/api/groups/${groupId}`);
       if (!res.ok) {
         const error = await res.json();
@@ -826,11 +937,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (_, groupId) => {
+    onSuccess: (data, groupId) => {
+      if (!data) return; // No success message if we're just showing confirmation
+      
       toast({
         title: "Success",
         description: "Group deleted successfully",
       });
+
+      // Clear confirmation state
+      setGroupToDelete(null);
 
       // Update cache manually to remove the deleted group
       queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
@@ -840,6 +956,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       // Also invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -847,6 +965,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+      setGroupToDelete(null);
     },
   });
 
@@ -3395,6 +3514,111 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
                 Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirmation dialog for deleting team */}
+        <AlertDialog open={!!teamToDelete} onOpenChange={(open) => { if (!open) setTeamToDelete(null); }}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Confirm Team Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              {teamToDelete && (
+                <>
+                  Deleting the team "{teamToDelete.name}" will also delete:
+                  <ul className="list-disc list-inside mt-2">
+                    {teamToDelete.userCount > 0 && <li>{teamToDelete.userCount} user(s)</li>}
+                    {teamToDelete.postCount > 0 && <li>{teamToDelete.postCount} post(s)</li>}
+                    {teamToDelete.mediaCount > 0 && <li>{teamToDelete.mediaCount} media file(s)</li>}
+                  </ul>
+                  <br />
+                  <strong className="text-red-600">This action cannot be undone.</strong>
+                </>
+              )}
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setTeamToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (teamToDelete) {
+                    deleteTeamMutation.mutate(teamToDelete.id);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Team
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirmation dialog for deleting group */}
+        <AlertDialog open={!!groupToDelete} onOpenChange={(open) => { if (!open) setGroupToDelete(null); }}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Confirm Group Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              {groupToDelete && (
+                <>
+                  Deleting the group "{groupToDelete.name}" will also delete:
+                  <ul className="list-disc list-inside mt-2">
+                    {groupToDelete.teamCount > 0 && <li>{groupToDelete.teamCount} team(s)</li>}
+                    {groupToDelete.userCount > 0 && <li>{groupToDelete.userCount} user(s)</li>}
+                    {groupToDelete.postCount > 0 && <li>{groupToDelete.postCount} post(s)</li>}
+                    {groupToDelete.mediaCount > 0 && <li>{groupToDelete.mediaCount} media file(s)</li>}
+                  </ul>
+                  <br />
+                  <strong className="text-red-600">This action cannot be undone.</strong>
+                </>
+              )}
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setGroupToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (groupToDelete) {
+                    deleteGroupMutation.mutate(groupToDelete.id);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Group
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirmation dialog for deleting organization */}
+        <AlertDialog open={!!orgToDelete} onOpenChange={(open) => { if (!open) setOrgToDelete(null); }}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Confirm Organization Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              {orgToDelete && (
+                <>
+                  Deleting the organization "{orgToDelete.name}" will also delete:
+                  <ul className="list-disc list-inside mt-2">
+                    {orgToDelete.groupCount > 0 && <li>{orgToDelete.groupCount} group(s)</li>}
+                    {orgToDelete.teamCount > 0 && <li>{orgToDelete.teamCount} team(s)</li>}
+                    {orgToDelete.userCount > 0 && <li>{orgToDelete.userCount} user(s)</li>}
+                    {orgToDelete.postCount > 0 && <li>{orgToDelete.postCount} post(s)</li>}
+                    {orgToDelete.mediaCount > 0 && <li>{orgToDelete.mediaCount} media file(s)</li>}
+                  </ul>
+                  <br />
+                  <strong className="text-red-600">This action cannot be undone.</strong>
+                </>
+              )}
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setOrgToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (orgToDelete) {
+                    deleteOrganizationMutation.mutate(orgToDelete.id);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Organization
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
