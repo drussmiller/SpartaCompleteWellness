@@ -6,26 +6,33 @@ import { authenticate } from "./auth";
 import { generateInviteCode } from "./invite-code-utils";
 import { logger } from "./logger";
 
-// Helper function to get next Monday (or today if today is Monday)
-function getNextMonday(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
+// Helper function to get next Monday (or today if today is Monday) in user's timezone
+function getNextMondayLocal(utcDate: Date, timezoneOffsetMinutes: number): Date {
+  // Convert UTC time to user's local time
+  const localTime = new Date(utcDate.getTime() - (timezoneOffsetMinutes * 60000));
   
-  const dayOfWeek = result.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  // Get day of week in user's timezone
+  const dayOfWeek = localTime.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  
+  // Calculate the target date
+  let targetDate = new Date(localTime);
+  targetDate.setHours(0, 0, 0, 0);
   
   if (dayOfWeek === 1) {
-    // Today is Monday, return today
-    return result;
+    // Today is Monday in user's timezone, use today
+    // Keep targetDate as is
   } else if (dayOfWeek === 0) {
     // Today is Sunday, next Monday is tomorrow
-    result.setDate(result.getDate() + 1);
+    targetDate.setDate(targetDate.getDate() + 1);
   } else {
     // Today is Tue-Sat, calculate days until next Monday
     const daysUntilMonday = 8 - dayOfWeek;
-    result.setDate(result.getDate() + daysUntilMonday);
+    targetDate.setDate(targetDate.getDate() + daysUntilMonday);
   }
   
-  return result;
+  // Convert back to UTC by adding the timezone offset
+  const utcResult = new Date(targetDate.getTime() + (timezoneOffsetMinutes * 60000));
+  return utcResult;
 }
 
 export const inviteCodeRouter = Router();
@@ -203,7 +210,8 @@ inviteCodeRouter.post("/api/teams/:teamId/generate-invite-codes", authenticate, 
 
 inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Request, res: Response) => {
   try {
-    const { inviteCode } = req.body;
+    const { inviteCode, tzOffset } = req.body;
+    const timezoneOffset = parseInt(tzOffset) || 0; // Get timezone offset in minutes
     
     if (!inviteCode || typeof inviteCode !== "string") {
       return res.status(400).json({ message: "Invalid invite code" });
@@ -271,12 +279,12 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
         } else {
-          // Team start date has passed, calculate next Monday
-          userProgramStartDate = getNextMonday(now);
+          // Team start date has passed, calculate next Monday in user's timezone
+          userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else {
-        // No team program start date, calculate next Monday (or today if today is Monday)
-        userProgramStartDate = getNextMonday(now);
+        // No team program start date, calculate next Monday (or today if today is Monday) in user's timezone
+        userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
       const updateData: any = { 
@@ -332,12 +340,12 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
         } else {
-          // Team start date has passed, calculate next Monday
-          userProgramStartDate = getNextMonday(now);
+          // Team start date has passed, calculate next Monday in user's timezone
+          userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else {
-        // No team program start date, calculate next Monday (or today if today is Monday)
-        userProgramStartDate = getNextMonday(now);
+        // No team program start date, calculate next Monday (or today if today is Monday) in user's timezone
+        userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
       const updateData: any = { 

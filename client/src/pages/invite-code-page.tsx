@@ -43,6 +43,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
     mutationFn: async (code: string) => {
       const res = await apiRequest("POST", "/api/redeem-invite-code", {
         inviteCode: code.trim().toUpperCase(),
+        tzOffset: new Date().getTimezoneOffset(), // Send user's timezone offset in minutes
       });
       if (!res.ok) {
         const error = await res.json();
