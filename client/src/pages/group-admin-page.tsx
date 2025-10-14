@@ -10,7 +10,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { insertTeamSchema, type Team, type Group } from "@shared/schema";
+import { insertTeamSchema, insertGroupSchema, type Team, type Group } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -20,6 +20,7 @@ import { z } from "zod";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
 
 interface TeamWithCount extends Team {
   memberCount: number;
@@ -32,6 +33,9 @@ interface GroupAdminPageProps {
 const teamFormSchema = insertTeamSchema.omit({ groupId: true });
 type TeamFormData = z.infer<typeof teamFormSchema>;
 
+const groupFormSchema = insertGroupSchema.omit({ organizationId: true });
+type GroupFormData = z.infer<typeof groupFormSchema>;
+
 export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -40,6 +44,8 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
   const [editTeamOpen, setEditTeamOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamWithCount | null>(null);
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Date | undefined>(undefined);
+  const [editGroupOpen, setEditGroupOpen] = useState(false);
+  const [groupProgramStartDate, setGroupProgramStartDate] = useState<Date | undefined>(undefined);
 
   // Get group information
   const { data: group } = useQuery<Group>({
@@ -72,6 +78,17 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
       description: "",
       maxSize: 6,
       programStartDate: undefined
+    }
+  });
+
+  // Edit group form
+  const editGroupForm = useForm<GroupFormData>({
+    resolver: zodResolver(groupFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      programStartDate: undefined,
+      competitive: false
     }
   });
 
@@ -165,6 +182,32 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     }
   });
 
+  // Update group mutation
+  const updateGroupMutation = useMutation({
+    mutationFn: async (data: Partial<GroupFormData>) => {
+      if (!group?.id) throw new Error("No group ID");
+      const res = await apiRequest("PATCH", `/api/groups/${group.id}`, data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update group");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Group updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/group"] });
+      setEditGroupOpen(false);
+      setGroupProgramStartDate(undefined);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleEditTeam = (team: TeamWithCount) => {
     setEditingTeam(team);
     editForm.reset({
@@ -187,6 +230,23 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
       teamId: editingTeam.id,
       data
     });
+  };
+
+  const handleEditGroup = () => {
+    if (group) {
+      editGroupForm.reset({
+        name: group.name,
+        description: group.description || "",
+        competitive: group.competitive || false,
+        programStartDate: group.programStartDate ? new Date(group.programStartDate) : undefined
+      });
+      setGroupProgramStartDate(group.programStartDate ? new Date(group.programStartDate) : undefined);
+      setEditGroupOpen(true);
+    }
+  };
+
+  const onEditGroupSubmit = (data: GroupFormData) => {
+    updateGroupMutation.mutate(data);
   };
 
   // Check if user is a group admin
@@ -237,6 +297,15 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
             </div>
 
             <div className="flex gap-2 mt-4 justify-center">
+              <Button 
+                size="default" 
+                variant="outline"
+                onClick={handleEditGroup}
+                data-testid="button-group-settings"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Group Settings
+              </Button>
               <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
                 <DialogTrigger asChild>
                   <Button size="default" className="px-4 bg-purple-700 text-white hover:bg-purple-800" data-testid="button-add-team">
@@ -573,6 +642,103 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                       data-testid="button-update-team"
                     >
                       Update Team
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Group Dialog */}
+          <Dialog open={editGroupOpen} onOpenChange={setEditGroupOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Group Settings</DialogTitle>
+              </DialogHeader>
+              <Form {...editGroupForm}>
+                <form onSubmit={editGroupForm.handleSubmit(onEditGroupSubmit)} className="space-y-4">
+                  <FormField
+                    control={editGroupForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Group Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-edit-group-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editGroupForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} data-testid="input-edit-group-description" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editGroupForm.control}
+                    name="programStartDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Program Start Date (Mondays only)</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start text-left font-normal"
+                                data-testid="button-edit-group-program-start-date"
+                              >
+                                {field.value
+                                  ? new Date(field.value).toLocaleDateString()
+                                  : "Select a Monday"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => {
+                                field.onChange(date);
+                              }}
+                              disabled={(date) => {
+                                // Only allow Mondays (getDay() === 1)
+                                return date.getDay() !== 1;
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                        <p className="text-xs text-muted-foreground">
+                          When set, this date will be inherited by all new members in teams that don't have their own program start date
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEditGroupOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={updateGroupMutation.isPending}
+                      className="bg-purple-700 text-white hover:bg-purple-800"
+                      data-testid="button-update-group"
+                    >
+                      Update Group
                     </Button>
                   </DialogFooter>
                 </form>
