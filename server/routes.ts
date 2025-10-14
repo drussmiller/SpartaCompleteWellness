@@ -2157,7 +2157,7 @@ export const registerRoutes = async (
 
       // Validate the data using a partial team schema
       const updateData = { ...req.body };
-      
+
       // Handle programStartDate conversion if it exists
       if (updateData.programStartDate !== undefined) {
         updateData.programStartDate = updateData.programStartDate 
@@ -3136,27 +3136,27 @@ export const registerRoutes = async (
         // Get current date in user's timezone
         const now = new Date();
         const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
-        
+
         // Get current day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
         const currentDayOfWeek = userLocalNow.getDay();
-        
+
         // Calculate the "next Monday" (or today if today is Monday)
         const daysUntilMonday = currentDayOfWeek === 0 ? 1 : currentDayOfWeek === 1 ? 0 : 8 - currentDayOfWeek;
         const nextMonday = new Date(userLocalNow);
         nextMonday.setDate(userLocalNow.getDate() + daysUntilMonday);
         nextMonday.setHours(0, 0, 0, 0);
-        
+
         // Set to start of day in user's timezone
         const userStartOfDay = new Date(userLocalNow);
         userStartOfDay.setHours(0, 0, 0, 0);
-        
+
         // Program has started if today is Monday or later (nextMonday <= today)
         const programHasStarted = nextMonday.getTime() <= userStartOfDay.getTime();
-        
+
         // Calculate current day of week (1 = Monday, 7 = Sunday)
         const rawDay = userLocalNow.getDay();
         const currentDay = rawDay === 0 ? 7 : rawDay;
-        
+
         return res.json({
           currentWeek: 1,
           currentDay: currentDay,
@@ -3750,7 +3750,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Add GET endpoint for measurements
+  // Add endpoint for measurements
   router.get("/api/measurements", authenticate, async (req, res) => {
     try {
       console.log("[ROUTER.GET MEASUREMENTS] Route hit, user:", req.user?.id, "query:", req.query);

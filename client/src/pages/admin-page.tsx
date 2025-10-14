@@ -134,6 +134,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
+  const [teamToInactivate, setTeamToInactivate] = useState<{ id: number, activeUserCount: number } | null>(null); // State to hold team details for confirmation
 
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
@@ -813,6 +814,62 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User's group updated successfully",
       });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation to update team status, with option to make users inactive
+  const updateTeamStatusMutation = useMutation({
+    mutationFn: async ({
+      teamId,
+      status,
+      makeUsersInactive,
+    }: {
+      teamId: number;
+      status: number;
+      makeUsersInactive?: boolean;
+    }) => {
+      const res = await apiRequest("PATCH", `/api/teams/${teamId}`, {
+        status,
+        makeUsersInactive,
+      });
+      if (!res.ok) {
+        let errorMessage = "Failed to update team status";
+        try {
+          const error = await res.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          const text = await res.text();
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: data.usersUpdated 
+          ? `Team status updated. ${data.usersUpdated} user(s) made inactive.`
+          : "Team status updated successfully",
+      });
+      // Update teams cache
+      queryClient.setQueryData(["/api/teams"], (oldTeams: any) => {
+        if (!oldTeams) return oldTeams;
+        return oldTeams.map((team: any) =>
+          team.id === data.id ? data : team
+        );
+      });
+      // Update users cache if users were modified
+      if (data.usersUpdated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -3092,6 +3149,43 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Confirmation dialog for inactivating team */}
+        <AlertDialog open={!!teamToInactivate} onOpenChange={(open) => { if (!open) setTeamToInactivate(null); }}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Confirm Inactivation</AlertDialogTitle>
+            <AlertDialogDescription>
+              {teamToInactivate && (
+                <>
+                  Making the team "
+                  {sortedTeams?.find(t => t.id === teamToInactivate.id)?.name}" inactive will also make its{" "}
+                  {teamToInactivate.activeUserCount} active user(s) inactive.
+                  <br />
+                  <br />
+                  Do you want to continue?
+                </>
+              )}
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setTeamToInactivate(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (teamToInactivate) {
+                    updateTeamStatusMutation.mutate({
+                      teamId: teamToInactivate.id,
+                      status: 0, // 0 for inactive
+                      makeUsersInactive: true,
+                    });
+                    setTeamToInactivate(null); // Close the dialog
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-background">
           <BottomNav />
