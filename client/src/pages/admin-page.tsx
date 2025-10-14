@@ -1673,11 +1673,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                   return new Date(year, month - 1, day);
                                                 })() : undefined}
                                                 onSelect={(date) => {
-                                                  group.programStartDate = date || null;
                                                   updateGroupMutation.mutate({
                                                     groupId: group.id,
                                                     data: {
-                                                      programStartDate: date || null,
+                                                      programStartDate: date ? date.toISOString() : null,
                                                     },
                                                   });
                                                 }}
@@ -1693,7 +1692,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               size="icon"
                                               type="button"
                                               onClick={() => {
-                                                group.programStartDate = null;
                                                 updateGroupMutation.mutate({
                                                   groupId: group.id,
                                                   data: {
