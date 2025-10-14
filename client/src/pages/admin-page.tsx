@@ -2188,6 +2188,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <CardDescription className="line-clamp-2 text-sm">
                                     {team.description}
                                   </CardDescription>
+                                  {team.programStartDate && (
+                                    <p className="text-sm mt-2">
+                                      <span className="font-medium">
+                                        Program Start Date:{" "}
+                                      </span>
+                                      {new Date(team.programStartDate).toLocaleDateString()}
+                                    </p>
+                                  )}
                                   <p className="text-sm mt-2">
                                     <span className="font-medium">
                                       Status:{" "}
