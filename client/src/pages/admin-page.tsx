@@ -2037,7 +2037,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         status: Number(status),
                                         programStartDate: team.programStartDate 
                                           ? (typeof team.programStartDate === 'string' 
-                                              ? team.programStartDate 
+                                              ? (team.programStartDate.trim() === '' ? null : team.programStartDate)
                                               : team.programStartDate.toISOString()) 
                                           : null,
                                       },
@@ -2142,8 +2142,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             size="sm"
                                             type="button"
                                             onClick={() => {
-                                              team.programStartDate = null;
-                                              setEditingTeam({...team});
+                                              // Explicitly set to null, not empty string
+                                              const updatedTeam = {
+                                                ...team,
+                                                programStartDate: null
+                                              };
+                                              setEditingTeam(updatedTeam);
                                             }}
                                             className="px-3"
                                           >
