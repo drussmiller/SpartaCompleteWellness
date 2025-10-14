@@ -1719,7 +1719,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               />
                                             </PopoverContent>
                                           </Popover>
-                                          {(selectedProgramStartDate[group.id] !== undefined ? selectedProgramStartDate[group.id] : group.programStartDate) && (
+                                          {(selectedProgramStartDate[group.id] !== undefined ? selectedProgramStartDate[group.id] : (editingGroup?.id === group.id ? editingGroup.programStartDate : group.programStartDate)) && (
                                             <Button
                                               variant="outline"
                                               size="sm"
@@ -1738,8 +1738,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 }
 
                                                 // Update the group object and force re-render
-                                                const updatedGroup = { ...group, programStartDate: null };
-                                                setEditingGroup(updatedGroup);
+                                                if (editingGroup?.id === group.id) {
+                                                  setEditingGroup({ ...editingGroup, programStartDate: null });
+                                                }
                                               }}
                                               data-testid="button-clear-group-program-start-date"
                                               className="px-3"
