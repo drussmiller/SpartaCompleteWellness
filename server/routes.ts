@@ -3127,11 +3127,36 @@ export const registerRoutes = async (
 
       // Check if user has a program start date
       if (!user.programStartDate) {
-        return res.status(400).json({
-          message: "User has no program start date",
+        // If no program start date, use "next Monday" logic
+        // Get current date in user's timezone
+        const now = new Date();
+        const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
+        
+        // Get current day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+        const currentDayOfWeek = userLocalNow.getDay();
+        
+        // Calculate the "next Monday" (or today if today is Monday)
+        const daysUntilMonday = currentDayOfWeek === 0 ? 1 : currentDayOfWeek === 1 ? 0 : 8 - currentDayOfWeek;
+        const nextMonday = new Date(userLocalNow);
+        nextMonday.setDate(userLocalNow.getDate() + daysUntilMonday);
+        nextMonday.setHours(0, 0, 0, 0);
+        
+        // Set to start of day in user's timezone
+        const userStartOfDay = new Date(userLocalNow);
+        userStartOfDay.setHours(0, 0, 0, 0);
+        
+        // Program has started if today is Monday or later (nextMonday <= today)
+        const programHasStarted = nextMonday.getTime() <= userStartOfDay.getTime();
+        
+        // Calculate current day of week (1 = Monday, 7 = Sunday)
+        const rawDay = userLocalNow.getDay();
+        const currentDay = rawDay === 0 ? 7 : rawDay;
+        
+        return res.json({
           currentWeek: 1,
-          currentDay: 1,
-          programHasStarted: false
+          currentDay: currentDay,
+          programHasStarted: programHasStarted,
+          daysSinceStart: programHasStarted ? 0 : -daysUntilMonday
         });
       }
 
