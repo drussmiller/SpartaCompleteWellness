@@ -2027,6 +2027,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       return;
                                     }
 
+                                    // Prepare programStartDate value
+                                    let programStartDateValue = null;
+                                    if (team.programStartDate) {
+                                      if (team.programStartDate instanceof Date) {
+                                        programStartDateValue = team.programStartDate.toISOString();
+                                      } else if (typeof team.programStartDate === 'string' && team.programStartDate.trim() !== '') {
+                                        programStartDateValue = team.programStartDate;
+                                      }
+                                    }
+
                                     updateTeamMutation.mutate({
                                       teamId: team.id,
                                       data: {
@@ -2035,13 +2045,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         groupId,
                                         maxSize,
                                         status: Number(status),
-                                        programStartDate: team.programStartDate 
-                                          ? (team.programStartDate instanceof Date
-                                              ? team.programStartDate.toISOString()
-                                              : typeof team.programStartDate === 'string' && team.programStartDate.trim() !== ''
-                                                ? team.programStartDate
-                                                : null)
-                                          : null,
+                                        programStartDate: programStartDateValue,
                                       },
                                     });
                                   }}
