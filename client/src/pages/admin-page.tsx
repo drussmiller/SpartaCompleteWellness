@@ -67,6 +67,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+import { format } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -2868,16 +2869,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </CardDescription>
                                     <div className="mt-1 text-sm text-muted-foreground">
                                       Date Joined:{" "}
-                                      {new Date(
-                                        user.createdAt!,
-                                      ).toLocaleDateString()}
+                                      {format(new Date(user.createdAt!), "PPP")}
                                     </div>
                                     {user.programStartDate && (
                                       <div className="mt-1 text-sm text-muted-foreground">
                                         Program Start Date:{" "}
-                                        {new Date(
-                                          user.programStartDate,
-                                        ).toLocaleDateString()}
+                                        {format(new Date(user.programStartDate), "PPP")}
                                       </div>
                                     )}
                                     <div className="mt-1 text-sm text-muted-foreground">
