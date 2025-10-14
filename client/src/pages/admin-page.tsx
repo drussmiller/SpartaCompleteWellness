@@ -3204,6 +3204,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 Team Assignment
                               </p>
                               <Select
+                                key={`team-select-${user.id}-${sortedTeams?.length || 0}`}
                                 defaultValue={user.teamId?.toString() || "none"}
                                 onValueChange={(value) => {
                                   const teamId =
@@ -3219,7 +3220,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">No Team</SelectItem>
-                                  {visibleTeams?.map((team) => (
+                                  {sortedTeams?.map((team) => (
                                     <SelectItem
                                       key={team.id}
                                       value={team.id.toString()}
