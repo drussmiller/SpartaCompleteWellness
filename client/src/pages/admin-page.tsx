@@ -699,35 +699,48 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const deleteOrganizationMutation = useMutation({
     mutationFn: async (organizationId: number) => {
-      // Only proceed if we have confirmation (orgToDelete is set)
-      if (!orgToDelete) {
-        // First fetch delete info to show in confirmation
-        const infoRes = await apiRequest("GET", `/api/organizations/${organizationId}/delete-info`);
-        if (!infoRes.ok) {
-          throw new Error("Failed to get deletion info");
-        }
-        const deleteInfo = await infoRes.json();
+      // First fetch delete info to show in confirmation
+      const infoRes = await apiRequest("GET", `/api/organizations/${organizationId}/delete-info`);
+      if (!infoRes.ok) {
+        throw new Error("Failed to get deletion info");
+      }
+      const deleteInfo = await infoRes.json();
 
-        const org = organizations?.find(o => o.id === organizationId);
-        if (!org) {
-          throw new Error("Organization not found");
-        }
-
-        // Show confirmation dialog
-        setOrgToDelete({
-          id: organizationId,
-          name: org.name,
-          groupCount: deleteInfo.groupCount,
-          teamCount: deleteInfo.teamCount,
-          userCount: deleteInfo.userCount,
-          postCount: deleteInfo.postCount,
-          mediaCount: deleteInfo.mediaCount,
-        });
-
-        // Don't proceed with deletion yet
-        return null;
+      const org = organizations?.find(o => o.id === organizationId);
+      if (!org) {
+        throw new Error("Organization not found");
       }
 
+      // Show confirmation dialog
+      setOrgToDelete({
+        id: organizationId,
+        name: org.name,
+        groupCount: deleteInfo.groupCount,
+        teamCount: deleteInfo.teamCount,
+        userCount: deleteInfo.userCount,
+        postCount: deleteInfo.postCount,
+        mediaCount: deleteInfo.mediaCount,
+      });
+
+      // Don't proceed with deletion yet
+      return null;
+    },
+    onSuccess: () => {
+      // This will be called after showing the dialog, but we don't do anything here
+      // The actual deletion happens in the AlertDialog's onClick handler
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setOrgToDelete(null);
+    },
+  });
+
+  const confirmDeleteOrganizationMutation = useMutation({
+    mutationFn: async (organizationId: number) => {
       // User confirmed, proceed with deletion
       const res = await apiRequest("DELETE", `/api/organizations/${organizationId}`);
       if (!res.ok) {
@@ -736,9 +749,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (data) => {
-      if (!data) return; // No success message if we're just showing confirmation
-
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Organization deleted successfully",
@@ -3605,12 +3616,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <AlertDialogAction
                 onClick={() => {
                   if (orgToDelete) {
-                    deleteOrganizationMutation.mutate(orgToDelete.id);
+                    confirmDeleteOrganizationMutation.mutate(orgToDelete.id);
                   }
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={confirmDeleteOrganizationMutation.isPending}
               >
-                Delete Organization
+                {confirmDeleteOrganizationMutation.isPending ? "Deleting..." : "Delete Organization"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
