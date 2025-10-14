@@ -1686,9 +1686,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               <Calendar
                                                 mode="single"
                                                 selected={(() => {
-                                                  const dateToUse = selectedProgramStartDate[group.id] !== undefined 
-                                                    ? selectedProgramStartDate[group.id] 
-                                                    : (editingGroup?.id === group.id ? editingGroup.programStartDate : group.programStartDate);
+                                                  // Always read from editingGroup if we're editing this group
+                                                  const dateToUse = editingGroup?.id === group.id 
+                                                    ? editingGroup.programStartDate 
+                                                    : (selectedProgramStartDate[group.id] !== undefined 
+                                                        ? selectedProgramStartDate[group.id] 
+                                                        : group.programStartDate);
                                                   if (!dateToUse) return undefined;
                                                   const isoStr = typeof dateToUse === 'string' 
                                                     ? dateToUse 
