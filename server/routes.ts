@@ -65,6 +65,7 @@ import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
 import { inviteCodeRouter } from "./invite-code-routes";
+import { spartaStorage } from "./sparta-object-storage";
 
 // Configure multer for memory storage (Object Storage only)
 const upload = multer({
@@ -2158,6 +2159,56 @@ export const registerRoutes = async (
         const userIds = teamUsers.map(u => u.id);
 
         if (userIds.length > 0) {
+          // Get all posts with media to delete files from Object Storage
+          const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
+          const mediaUrls = userPosts
+            .filter(p => p.mediaUrl)
+            .map(p => p.mediaUrl as string);
+
+          // Delete media files from Object Storage
+          for (const mediaUrl of mediaUrls) {
+            try {
+              await spartaStorage.deleteFile(mediaUrl);
+              logger.info(`Deleted media file: ${mediaUrl}`);
+            } catch (err) {
+              logger.error(`Failed to delete media file ${mediaUrl}:`, err);
+            }
+          }
+
+          // Get all messages sent or received by these users
+          const userMessages = await tx.select().from(messages).where(
+            or(
+              inArray(messages.senderId, userIds),
+              inArray(messages.recipientId, userIds)
+            )
+          );
+          const messageMediaUrls = userMessages
+            .filter(m => m.imageUrl)
+            .map(m => m.imageUrl as string);
+
+          // Delete message media files from Object Storage
+          for (const mediaUrl of messageMediaUrls) {
+            try {
+              await spartaStorage.deleteFile(mediaUrl);
+              logger.info(`Deleted message media file: ${mediaUrl}`);
+            } catch (err) {
+              logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
+            }
+          }
+
+          // Delete messages
+          await tx.delete(messages).where(
+            or(
+              inArray(messages.senderId, userIds),
+              inArray(messages.recipientId, userIds)
+            )
+          );
+          logger.info(`Deleted messages for ${userIds.length} users in team ${teamId}`);
+
+          // Delete reactions
+          await tx.delete(reactions).where(inArray(reactions.userId, userIds));
+          logger.info(`Deleted reactions for ${userIds.length} users in team ${teamId}`);
+
           // Delete all posts by these users
           await tx.delete(posts).where(inArray(posts.userId, userIds));
           logger.info(`Deleted posts for ${userIds.length} users in team ${teamId}`);
@@ -2409,6 +2460,56 @@ export const registerRoutes = async (
             const userIds = usersInTeams.map(u => u.id);
 
             if (userIds.length > 0) {
+              // Get all posts with media to delete files from Object Storage
+              const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
+              const mediaUrls = userPosts
+                .filter(p => p.mediaUrl)
+                .map(p => p.mediaUrl as string);
+
+              // Delete media files from Object Storage
+              for (const mediaUrl of mediaUrls) {
+                try {
+                  await spartaStorage.deleteFile(mediaUrl);
+                  logger.info(`Deleted media file: ${mediaUrl}`);
+                } catch (err) {
+                  logger.error(`Failed to delete media file ${mediaUrl}:`, err);
+                }
+              }
+
+              // Get all messages sent or received by these users
+              const userMessages = await tx.select().from(messages).where(
+                or(
+                  inArray(messages.senderId, userIds),
+                  inArray(messages.recipientId, userIds)
+                )
+              );
+              const messageMediaUrls = userMessages
+                .filter(m => m.imageUrl)
+                .map(m => m.imageUrl as string);
+
+              // Delete message media files from Object Storage
+              for (const mediaUrl of messageMediaUrls) {
+                try {
+                  await spartaStorage.deleteFile(mediaUrl);
+                  logger.info(`Deleted message media file: ${mediaUrl}`);
+                } catch (err) {
+                  logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
+                }
+              }
+
+              // Delete messages
+              await tx.delete(messages).where(
+                or(
+                  inArray(messages.senderId, userIds),
+                  inArray(messages.recipientId, userIds)
+                )
+              );
+              logger.info(`Deleted messages for ${userIds.length} users in organization ${organizationId}`);
+
+              // Delete reactions
+              await tx.delete(reactions).where(inArray(reactions.userId, userIds));
+              logger.info(`Deleted reactions for ${userIds.length} users in organization ${organizationId}`);
+
               // Delete all posts by these users
               await tx.delete(posts).where(inArray(posts.userId, userIds));
               logger.info(`Deleted posts for ${userIds.length} users in organization ${organizationId}`);
@@ -2655,6 +2756,56 @@ export const registerRoutes = async (
           const userIds = teamUsers.map(u => u.id);
 
           if (userIds.length > 0) {
+            // Get all posts with media to delete files from Object Storage
+            const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
+            const mediaUrls = userPosts
+              .filter(p => p.mediaUrl)
+              .map(p => p.mediaUrl as string);
+
+            // Delete media files from Object Storage
+            for (const mediaUrl of mediaUrls) {
+              try {
+                await spartaStorage.deleteFile(mediaUrl);
+                logger.info(`Deleted media file: ${mediaUrl}`);
+              } catch (err) {
+                logger.error(`Failed to delete media file ${mediaUrl}:`, err);
+              }
+            }
+
+            // Get all messages sent or received by these users
+            const userMessages = await tx.select().from(messages).where(
+              or(
+                inArray(messages.senderId, userIds),
+                inArray(messages.recipientId, userIds)
+              )
+            );
+            const messageMediaUrls = userMessages
+              .filter(m => m.imageUrl)
+              .map(m => m.imageUrl as string);
+
+            // Delete message media files from Object Storage
+            for (const mediaUrl of messageMediaUrls) {
+              try {
+                await spartaStorage.deleteFile(mediaUrl);
+                logger.info(`Deleted message media file: ${mediaUrl}`);
+              } catch (err) {
+                logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
+              }
+            }
+
+            // Delete messages
+            await tx.delete(messages).where(
+              or(
+                inArray(messages.senderId, userIds),
+                inArray(messages.recipientId, userIds)
+              )
+            );
+            logger.info(`Deleted messages for ${userIds.length} users in group ${groupId}`);
+
+            // Delete reactions
+            await tx.delete(reactions).where(inArray(reactions.userId, userIds));
+            logger.info(`Deleted reactions for ${userIds.length} users in group ${groupId}`);
+
             // Delete all posts by these users
             await tx.delete(posts).where(inArray(posts.userId, userIds));
             logger.info(`Deleted posts for ${userIds.length} users in group ${groupId}`);
