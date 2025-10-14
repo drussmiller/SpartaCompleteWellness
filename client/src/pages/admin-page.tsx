@@ -385,6 +385,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Team updated successfully",
       });
+      setEditingTeam(null);
+      setSelectedGroupId("");
     },
     onError: (error: Error) => {
       toast({
