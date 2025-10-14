@@ -869,35 +869,48 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   const deleteGroupMutation = useMutation({
-    mutationFn: async ({ groupId }: { groupId: number }) => { // Changed to accept object
-      // Only proceed if we have confirmation (groupToDelete is set)
-      if (!groupToDelete) {
-        // First fetch delete info to show in confirmation
-        const infoRes = await apiRequest("GET", `/api/groups/${groupId}/delete-info`);
-        if (!infoRes.ok) {
-          throw new Error("Failed to get deletion info");
-        }
-        const deleteInfo = await infoRes.json();
+    mutationFn: async (groupId: number) => {
+      // First fetch delete info to show in confirmation
+      const infoRes = await apiRequest("GET", `/api/groups/${groupId}/delete-info`);
+      if (!infoRes.ok) {
+        throw new Error("Failed to get deletion info");
+      }
+      const deleteInfo = await infoRes.json();
 
-        const group = groups?.find(g => g.id === groupId);
-        if (!group) {
-          throw new Error("Group not found");
-        }
-
-        // Show confirmation dialog
-        setGroupToDelete({
-          id: groupId,
-          name: group.name,
-          teamCount: deleteInfo.teamCount,
-          userCount: deleteInfo.userCount,
-          postCount: deleteInfo.postCount,
-          mediaCount: deleteInfo.mediaCount,
-        });
-
-        // Don't proceed with deletion yet
-        return null;
+      const group = groups?.find(g => g.id === groupId);
+      if (!group) {
+        throw new Error("Group not found");
       }
 
+      // Show confirmation dialog
+      setGroupToDelete({
+        id: groupId,
+        name: group.name,
+        teamCount: deleteInfo.teamCount,
+        userCount: deleteInfo.userCount,
+        postCount: deleteInfo.postCount,
+        mediaCount: deleteInfo.mediaCount,
+      });
+
+      // Don't proceed with deletion yet
+      return null;
+    },
+    onSuccess: () => {
+      // This will be called after showing the dialog, but we don't do anything here
+      // The actual deletion happens in the AlertDialog's onClick handler
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setGroupToDelete(null);
+    },
+  });
+
+  const confirmDeleteGroupMutation = useMutation({
+    mutationFn: async (groupId: number) => {
       // User confirmed, proceed with deletion
       const res = await apiRequest("DELETE", `/api/groups/${groupId}`);
       if (!res.ok) {
@@ -906,10 +919,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (data, variables) => { // Changed to receive variables which is the object { groupId }
-      const groupId = variables.groupId; // Extract groupId from variables
-      if (!data) return; // No success message if we're just showing confirmation
-
+    onSuccess: (data, groupId) => {
       toast({
         title: "Success",
         description: "Group deleted successfully",
@@ -2114,7 +2124,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     variant="destructive"
                                     size="sm"
                                     onClick={() =>
-                                      deleteGroupMutation.mutate({ groupId: group.id })
+                                      deleteGroupMutation.mutate(group.id)
                                     }
                                     disabled={deleteGroupMutation.isPending}
                                   >
@@ -3547,12 +3557,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <AlertDialogAction
                 onClick={() => {
                   if (groupToDelete) {
-                    deleteGroupMutation.mutate({ groupId: groupToDelete.id });
+                    confirmDeleteGroupMutation.mutate(groupToDelete.id);
                   }
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={confirmDeleteGroupMutation.isPending}
               >
-                Delete Group
+                {confirmDeleteGroupMutation.isPending ? "Deleting..." : "Delete Group"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
