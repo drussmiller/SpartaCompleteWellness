@@ -141,7 +141,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [pendingOrgUpdate, setPendingOrgUpdate] = useState<{ orgId: number, data: Partial<Organization> } | null>(null);
   const [groupToInactivate, setGroupToInactivate] = useState<{ id: number, activeTeamCount: number, activeUserCount: number } | null>(null);
   const [pendingGroupUpdate, setPendingGroupUpdate] = useState<{ groupId: number, data: Partial<Group> } | null>(null);
-  
+
   // Delete confirmation states
   const [teamToDelete, setTeamToDelete] = useState<{ id: number, name: string, userCount: number, postCount: number, mediaCount: number } | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<{ id: number, name: string, teamCount: number, userCount: number, postCount: number, mediaCount: number } | null>(null);
@@ -280,7 +280,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           throw new Error("Failed to get deletion info");
         }
         const deleteInfo = await infoRes.json();
-        
+
         const team = teams?.find(t => t.id === teamId);
         if (!team) {
           throw new Error("Team not found");
@@ -294,11 +294,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           postCount: deleteInfo.postCount,
           mediaCount: deleteInfo.mediaCount,
         });
-        
+
         // Don't proceed with deletion yet
         return null;
       }
-      
+
       // User confirmed, proceed with deletion
       const res = await apiRequest("DELETE", `/api/teams/${teamId}`);
       if (!res.ok) {
@@ -309,15 +309,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
     onSuccess: (data) => {
       if (!data) return; // No success message if we're just showing confirmation
-      
+
       toast({
         title: "Success",
         description: "Team deleted successfully",
       });
-      
+
       // Clear confirmation state
       setTeamToDelete(null);
-      
+
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -433,7 +433,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
     onSuccess: (updatedTeam) => {
       const usersWereUpdated = updatedTeam.usersUpdated && updatedTeam.usersUpdated > 0;
-      
+
       toast({
         title: "Success",
         description: usersWereUpdated 
@@ -486,7 +486,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         const activeTeams = sortedTeams?.filter((t) => groupIds.includes(t.groupId) && t.status === 1) || [];
         const teamIds = activeTeams.map((t) => t.id);
         const activeUsers = users?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
-        
+
         if (orgGroups.length > 0 || activeTeams.length > 0 || activeUsers.length > 0) {
           // Store the pending update and show confirmation
           setPendingOrgUpdate({ orgId: organizationId, data });
@@ -513,20 +513,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
     onSuccess: (data) => {
       if (!data) return; // Waiting for user confirmation
-      
+
       const message = data.groupsUpdated || data.teamsUpdated || data.usersUpdated
         ? `Organization updated. ${data.groupsUpdated || 0} group(s), ${data.teamsUpdated || 0} team(s), and ${data.usersUpdated || 0} user(s) made inactive.`
         : "Organization updated successfully";
-        
+
       toast({
         title: "Success",
         description: message,
       });
-      
+
       // Clear pending states
       setPendingOrgUpdate(null);
       setOrgToInactivate(null);
-      
+
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
@@ -541,316 +541,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       });
       setPendingOrgUpdate(null);
       setOrgToInactivate(null);
-    },
-  });
-
-  const updateGroupMutation = useMutation({
-    mutationFn: async ({ groupId, data, skipConfirmation }: { groupId: number; data: any; skipConfirmation?: boolean }) => {
-      // Check if group is being set to inactive
-      const group = groups?.find((g) => g.id === groupId);
-      if (!skipConfirmation && data.status === 0 && group && group.status === 1) {
-        // Count active children before inactivating
-        const activeTeams = sortedTeams?.filter((t) => t.groupId === groupId && t.status === 1) || [];
-        const teamIds = activeTeams.map((t) => t.id);
-        const activeUsers = users?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
-        
-        if (activeTeams.length > 0 || activeUsers.length > 0) {
-          // Store the pending update and show confirmation
-          setPendingGroupUpdate({ groupId, data });
-          setGroupToInactivate({
-            id: groupId,
-            activeTeamCount: activeTeams.length,
-            activeUserCount: activeUsers.length
-          });
-          return { waitingForConfirmation: true };
-        }
-      }
-
-      // Optimistically update local state immediately
-      setOptimisticGroups(prev => ({
-        ...prev,
-        [groupId]: { ...prev[groupId], ...data }
-      }));
-
-      const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
-      if (!res.ok) {
-        let errorMessage = "Failed to update group";
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // If JSON parsing fails, use default message
-          console.error("Failed to parse error response:", e);
-        }
-        throw new Error(errorMessage);
-      }
-      return res.json();
-    },
-    onSuccess: (updatedGroup) => {
-      if (!updatedGroup || updatedGroup.waitingForConfirmation) return; // Waiting for user confirmation
-      
-      const message = updatedGroup.teamsUpdated || updatedGroup.usersUpdated
-        ? `Group updated. ${updatedGroup.teamsUpdated || 0} team(s) and ${updatedGroup.usersUpdated || 0} user(s) made inactive.`
-        : "Group updated successfully";
-        
-      toast({
-        title: "Success",
-        description: message,
-      });
-
-      // Clear pending states
-      setPendingGroupUpdate(null);
-      setGroupToInactivate(null);
-      setEditingGroup(null);
-
-      // Update the groups cache with the new data
-      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
-        if (!oldGroups) return [updatedGroup];
-        return oldGroups.map(group => 
-          group.id === updatedGroup.id ? updatedGroup : group
-        );
-      });
-      
-      // If teams or users were made inactive, invalidate those caches
-      if (updatedGroup.teamsUpdated || updatedGroup.usersUpdated) {
-        queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      }
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      setPendingGroupUpdate(null);
-      setGroupToInactivate(null);
-    },
-  });
-
-  const updateUserMutation = useMutation({
-    mutationFn: async ({
-      userId,
-      data,
-    }: {
-      userId: number;
-      data: Partial<User>;
-    }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
-      if (!res.ok) {
-        const errorMessage = await getErrorMessage(res, "Failed to update user");
-        throw new Error(errorMessage);
-      }
-      return res.json();
-    },
-    onSuccess: (updatedUser) => {
-      toast({
-        title: "Success",
-        description: "User updated successfully",
-      });
-
-      // Update the users list in the cache
-      queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
-        if (!oldUsers) return oldUsers;
-        return oldUsers.map(user => 
-          user.id === updatedUser.id ? updatedUser : user
-        );
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await apiRequest("DELETE", `/api/users/${userId}`);
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const resetPasswordMutation = useMutation({
-    mutationFn: async ({
-      userId,
-      newPassword,
-    }: {
-      userId: number;
-      newPassword: string;
-    }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}/password`, {
-        newPassword,
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        let errorMessage;
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || "Failed to reset password";
-        } catch {
-          errorMessage = errorText || "Failed to reset password";
-        }
-        throw new Error(errorMessage);
-      }
-      // Always return success for 200 responses
-      return { success: true };
-    },
-    onSuccess: () => {
-      console.log("Password reset success - closing dialog");
-      toast({
-        title: "Success",
-        description: "Password reset successfully",
-      });
-      // Force close dialog and reset form
-      setTimeout(() => {
-        setResetPasswordOpen(false);
-        setNewPassword("");
-        setSelectedUserId(null);
-      }, 100);
-    },
-    onError: (error: Error) => {
-      console.error("Reset password error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to reset password",
-        variant: "destructive",
-      });
-      // Clear password field on error but keep dialog open
-      setNewPassword("");
-    },
-  });
-
-  // Organization mutations
-  const organizationForm = useForm<OrganizationFormData>({
-    resolver: zodResolver(insertOrganizationSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-    },
-  });
-
-  const createOrganizationMutation = useMutation({
-    mutationFn: async (data: OrganizationFormData) => {
-      const res = await apiRequest("POST", "/api/organizations", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create organization");
-      }
-      return res.json();
-    },
-    onSuccess: (newOrganization) => {
-      toast({
-        title: "Success",
-        description: "Organization created successfully",
-      });
-      organizationForm.reset();
-
-      // Update cache manually instead of invalidating to prevent panel collapse
-      queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
-        if (!oldOrgs) return [newOrganization];
-        return [...oldOrgs, newOrganization];
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteOrganizationMutation = useMutation({
-    mutationFn: async (organizationId: number) => {
-      // Only proceed if we have confirmation (orgToDelete is set)
-      if (!orgToDelete) {
-        // First fetch delete info to show in confirmation
-        const infoRes = await apiRequest("GET", `/api/organizations/${organizationId}/delete-info`);
-        if (!infoRes.ok) {
-          throw new Error("Failed to get deletion info");
-        }
-        const deleteInfo = await infoRes.json();
-        
-        const org = organizations?.find(o => o.id === organizationId);
-        if (!org) {
-          throw new Error("Organization not found");
-        }
-
-        // Show confirmation dialog
-        setOrgToDelete({
-          id: organizationId,
-          name: org.name,
-          groupCount: deleteInfo.groupCount,
-          teamCount: deleteInfo.teamCount,
-          userCount: deleteInfo.userCount,
-          postCount: deleteInfo.postCount,
-          mediaCount: deleteInfo.mediaCount,
-        });
-        
-        // Don't proceed with deletion yet
-        return null;
-      }
-      
-      // User confirmed, proceed with deletion
-      const res = await apiRequest(
-        "DELETE",
-        `/api/organizations/${organizationId}`,
-      );
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to delete organization");
-      }
-      return res.json();
-    },
-    onSuccess: (data, organizationId) => {
-      if (!data) return; // No success message if we're just showing confirmation
-      
-      toast({
-        title: "Success",
-        description: "Organization deleted successfully",
-      });
-
-      // Clear confirmation state
-      setOrgToDelete(null);
-
-      // Update cache manually to remove deleted organization
-      queryClient.setQueryData(["/api/organizations"], (oldOrgs: Organization[] | undefined) => {
-        if (!oldOrgs) return [];
-        return oldOrgs.filter(org => org.id !== organizationId);
-      });
-
-      // Force re-fetch to ensure UI is in sync with database
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      setOrgToDelete(null);
     },
   });
 
@@ -900,7 +590,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   const deleteGroupMutation = useMutation({
-    mutationFn: async (groupId: number) => {
+    mutationFn: async ({ groupId }: { groupId: number }) => { // Changed to accept object
       // Only proceed if we have confirmation (groupToDelete is set)
       if (!groupToDelete) {
         // First fetch delete info to show in confirmation
@@ -909,7 +599,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           throw new Error("Failed to get deletion info");
         }
         const deleteInfo = await infoRes.json();
-        
+
         const group = groups?.find(g => g.id === groupId);
         if (!group) {
           throw new Error("Group not found");
@@ -924,11 +614,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           postCount: deleteInfo.postCount,
           mediaCount: deleteInfo.mediaCount,
         });
-        
+
         // Don't proceed with deletion yet
         return null;
       }
-      
+
       // User confirmed, proceed with deletion
       const res = await apiRequest("DELETE", `/api/groups/${groupId}`);
       if (!res.ok) {
@@ -937,9 +627,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (data, groupId) => {
+    onSuccess: (data, variables) => { // Changed to receive variables which is the object { groupId }
+      const groupId = variables.groupId; // Extract groupId from variables
       if (!data) return; // No success message if we're just showing confirmation
-      
+
       toast({
         title: "Success",
         description: "Group deleted successfully",
@@ -2144,7 +1835,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     variant="destructive"
                                     size="sm"
                                     onClick={() =>
-                                      deleteGroupMutation.mutate(group.id)
+                                      deleteGroupMutation.mutate({ groupId: group.id })
                                     }
                                     disabled={deleteGroupMutation.isPending}
                                   >
@@ -3577,7 +3268,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <AlertDialogAction
                 onClick={() => {
                   if (groupToDelete) {
-                    deleteGroupMutation.mutate(groupToDelete.id);
+                    deleteGroupMutation.mutate({ groupId: groupToDelete.id });
                   }
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white"
