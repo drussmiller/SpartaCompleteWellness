@@ -304,7 +304,8 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         role: "Team Lead",
         teamId: teamAdmin.id,
         teamName: teamAdmin.name,
-        groupName: group?.name 
+        groupName: group?.name,
+        displayName: teamAdmin.name // Use team name for display
       });
     }
 
@@ -365,7 +366,8 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         role: "Team Member",
         teamId: teamMember.id,
         teamName: teamMember.name,
-        groupName: group?.name 
+        groupName: group?.name,
+        displayName: teamMember.name // Use team name for display
       });
     }
 

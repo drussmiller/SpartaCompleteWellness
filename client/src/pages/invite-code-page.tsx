@@ -54,7 +54,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
     onSuccess: (data) => {
       toast({
         title: "Success!",
-        description: `You have been added as ${data.role} to ${data.groupName || data.teamName}`,
+        description: `You have been added as ${data.role} to ${data.displayName || data.teamName || data.groupName}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setTimeout(() => {
