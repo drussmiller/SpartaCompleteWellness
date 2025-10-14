@@ -1720,14 +1720,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               size="sm"
                                               type="button"
                                               onClick={() => {
+                                                // Clear the date in state
                                                 setSelectedProgramStartDate(prev => ({
                                                   ...prev,
                                                   [group.id]: undefined
                                                 }));
+                                                
+                                                // Update the hidden input
                                                 const input = document.getElementById(`programStartDate-${group.id}`) as HTMLInputElement;
                                                 if (input) {
                                                   input.value = '';
                                                 }
+                                                
+                                                // Update the group object and force re-render
+                                                const updatedGroup = { ...group, programStartDate: null };
+                                                setEditingGroup(updatedGroup);
                                               }}
                                               data-testid="button-clear-group-program-start-date"
                                               className="px-3"
