@@ -1717,7 +1717,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           {(selectedProgramStartDate[group.id] !== undefined ? selectedProgramStartDate[group.id] : group.programStartDate) && (
                                             <Button
                                               variant="outline"
-                                              size="icon"
+                                              size="sm"
                                               type="button"
                                               onClick={() => {
                                                 setSelectedProgramStartDate(prev => ({
@@ -1730,8 +1730,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 }
                                               }}
                                               data-testid="button-clear-group-program-start-date"
+                                              className="px-3"
                                             >
-                                              ×
+                                              Clear
                                             </Button>
                                           )}
                                         </div>
