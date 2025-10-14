@@ -3202,10 +3202,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <AlertDialogAction
                 onClick={() => {
                   if (pendingTeamUpdate) {
-                    updateTeamStatusMutation.mutate({
+                    // Execute the full team update with user inactivation
+                    updateTeamMutation.mutate({
                       teamId: pendingTeamUpdate.teamId,
-                      status: 0, // 0 for inactive
-                      makeUsersInactive: true,
+                      data: {
+                        ...pendingTeamUpdate.data,
+                        makeUsersInactive: true
+                      }
                     });
                     // The mutation success/error handlers will clear the dialog states
                   }
