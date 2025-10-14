@@ -136,6 +136,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
   const [teamToInactivate, setTeamToInactivate] = useState<{ id: number, activeUserCount: number } | null>(null); // State to hold team details for confirmation
+  const [pendingTeamUpdate, setPendingTeamUpdate] = useState<{ teamId: number, data: Partial<Team> } | null>(null); // State to hold pending update when user needs to confirm inactivation
 
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
@@ -399,6 +400,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       setEditingTeam(null);
       setSelectedGroupId("");
+      setPendingTeamUpdate(null); // Clear pending update on success
     },
     onError: (error: Error) => {
       toast({
@@ -871,6 +873,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       if (data.usersUpdated) {
         queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       }
+      setPendingTeamUpdate(null); // Clear pending update on success
+      setTeamToInactivate(null); // Close the confirmation dialog
     },
     onError: (error: Error) => {
       toast({
@@ -878,6 +882,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+      setPendingTeamUpdate(null); // Clear pending update on error
+      setTeamToInactivate(null); // Close the confirmation dialog
     },
   });
 
@@ -2203,16 +2209,40 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       }
                                     }
 
+                                    const updateData = {
+                                      name,
+                                      description,
+                                      groupId,
+                                      maxSize,
+                                      status: Number(status),
+                                      programStartDate: programStartDateValue,
+                                    };
+
+                                    // Check if team is being set to inactive
+                                    if (status === 0 && team.status === 1) {
+                                      // Count active users in this team
+                                      const activeUsersInTeam = mergedUsers?.filter(
+                                        (u) => u.teamId === team.id && u.status === 1
+                                      ).length || 0;
+
+                                      if (activeUsersInTeam > 0) {
+                                        // Store the pending update and show confirmation dialog
+                                        setPendingTeamUpdate({
+                                          teamId: team.id,
+                                          data: updateData
+                                        });
+                                        setTeamToInactivate({
+                                          id: team.id,
+                                          activeUserCount: activeUsersInTeam
+                                        });
+                                        return;
+                                      }
+                                    }
+
+                                    // No active users or not changing to inactive, proceed with update
                                     updateTeamMutation.mutate({
                                       teamId: team.id,
-                                      data: {
-                                        name,
-                                        description,
-                                        groupId,
-                                        maxSize,
-                                        status: Number(status),
-                                        programStartDate: programStartDateValue,
-                                      },
+                                      data: updateData,
                                     });
                                   }}
                                 >
@@ -3171,13 +3201,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <AlertDialogCancel onClick={() => setTeamToInactivate(null)}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  if (teamToInactivate) {
+                  if (pendingTeamUpdate) {
                     updateTeamStatusMutation.mutate({
-                      teamId: teamToInactivate.id,
+                      teamId: pendingTeamUpdate.teamId,
                       status: 0, // 0 for inactive
                       makeUsersInactive: true,
                     });
-                    setTeamToInactivate(null); // Close the dialog
+                    // The mutation success/error handlers will clear the dialog states
                   }
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white"

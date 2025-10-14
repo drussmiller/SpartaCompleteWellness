@@ -2155,14 +2155,32 @@ export const registerRoutes = async (
 
       logger.info(`Updating team ${teamId} with data:`, req.body);
 
-      // Validate the data using a partial team schema
-      const updateData = { ...req.body };
+      // Extract makeUsersInactive flag
+      const { makeUsersInactive, ...updateData } = req.body;
 
       // Handle programStartDate conversion if it exists
       if (updateData.programStartDate !== undefined) {
         updateData.programStartDate = updateData.programStartDate 
           ? new Date(updateData.programStartDate) 
           : null;
+      }
+
+      // If team is being set to inactive and makeUsersInactive is true, update users
+      if (updateData.status === 0 && makeUsersInactive) {
+        logger.info(`Making users inactive for team ${teamId}`);
+        
+        const updatedUsers = await db
+          .update(users)
+          .set({ status: 0 })
+          .where(
+            and(
+              eq(users.teamId, teamId),
+              eq(users.status, 1)
+            )
+          )
+          .returning();
+        
+        logger.info(`Set ${updatedUsers.length} user(s) to inactive for team ${teamId}`);
       }
 
       // Update the team in the database
