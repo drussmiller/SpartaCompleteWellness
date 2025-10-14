@@ -2095,6 +2095,48 @@ export const registerRoutes = async (
     }
   });
 
+  // Get team deletion info (counts of what will be deleted)
+  router.get("/api/teams/:id/delete-info", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Count users in this team
+      const teamUsers = await db.select().from(users).where(eq(users.teamId, teamId));
+      const userIds = teamUsers.map(u => u.id);
+
+      let postCount = 0;
+      let mediaCount = 0;
+
+      if (userIds.length > 0) {
+        // Count posts by these users
+        const userPosts = await db.select().from(posts).where(inArray(posts.userId, userIds));
+        postCount = userPosts.length;
+
+        // Count media files (posts with imageUrl or videoUrl)
+        mediaCount = userPosts.filter(p => p.imageUrl || p.videoUrl).length;
+      }
+
+      res.json({
+        userCount: teamUsers.length,
+        postCount,
+        mediaCount,
+      });
+    } catch (error) {
+      logger.error(`Error getting team delete info ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to get team delete info",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add team deletion endpoint
   router.delete("/api/teams/:id", authenticate, async (req, res) => {
     try {
@@ -2109,10 +2151,27 @@ export const registerRoutes = async (
 
       logger.info(`Deleting team ${teamId} by user ${req.user.id}`);
 
-      // Delete the team from the database
-      await db.delete(teams).where(eq(teams.id, teamId));
+      // Use database transaction for atomic deletion with cascade
+      await db.transaction(async (tx) => {
+        // Get all users in this team
+        const teamUsers = await tx.select().from(users).where(eq(users.teamId, teamId));
+        const userIds = teamUsers.map(u => u.id);
 
-      // Return success response
+        if (userIds.length > 0) {
+          // Delete all posts by these users
+          await tx.delete(posts).where(inArray(posts.userId, userIds));
+          logger.info(`Deleted posts for ${userIds.length} users in team ${teamId}`);
+
+          // Delete all users in this team
+          await tx.delete(users).where(inArray(users.id, userIds));
+          logger.info(`Deleted ${userIds.length} users in team ${teamId}`);
+        }
+
+        // Finally delete the team
+        await tx.delete(teams).where(eq(teams.id, teamId));
+      });
+
+      logger.info(`Team ${teamId} deleted successfully by user ${req.user.id}`);
       res.status(200).json({ message: "Team deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting team ${req.params.id}:`, error);
@@ -2259,6 +2318,66 @@ export const registerRoutes = async (
     }
   });
 
+  // Get organization deletion info (counts of what will be deleted)
+  router.get("/api/organizations/:id/delete-info", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const organizationId = parseInt(req.params.id);
+      if (isNaN(organizationId)) {
+        return res.status(400).json({ message: "Invalid organization ID" });
+      }
+
+      // Get all groups in this organization
+      const orgGroups = await storage.getGroupsByOrganization(organizationId);
+      const groupIds = orgGroups.map(g => g.id);
+
+      let teamCount = 0;
+      let userCount = 0;
+      let postCount = 0;
+      let mediaCount = 0;
+
+      if (groupIds.length > 0) {
+        // Get all teams in these groups
+        const teamsInGroups = await db.select().from(teams).where(inArray(teams.groupId, groupIds));
+        teamCount = teamsInGroups.length;
+        const teamIds = teamsInGroups.map(t => t.id);
+
+        if (teamIds.length > 0) {
+          // Get all users in these teams
+          const usersInTeams = await db.select().from(users).where(inArray(users.teamId, teamIds));
+          userCount = usersInTeams.length;
+          const userIds = usersInTeams.map(u => u.id);
+
+          if (userIds.length > 0) {
+            // Count posts by these users
+            const userPosts = await db.select().from(posts).where(inArray(posts.userId, userIds));
+            postCount = userPosts.length;
+
+            // Count media files
+            mediaCount = userPosts.filter(p => p.imageUrl || p.videoUrl).length;
+          }
+        }
+      }
+
+      res.json({
+        groupCount: orgGroups.length,
+        teamCount,
+        userCount,
+        postCount,
+        mediaCount,
+      });
+    } catch (error) {
+      logger.error(`Error getting organization delete info ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to get organization delete info",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Delete organization endpoint
   router.delete("/api/organizations/:id", authenticate, async (req, res) => {
     try {
@@ -2270,6 +2389,8 @@ export const registerRoutes = async (
       if (isNaN(organizationId)) {
         return res.status(400).json({ message: "Invalid organization ID" });
       }
+
+      logger.info(`Deleting organization ${organizationId} by user ${req.user.id}`);
 
       // Use database transaction for atomic deletion with cascade
       await db.transaction(async (tx) => {
@@ -2283,11 +2404,16 @@ export const registerRoutes = async (
           const teamIds = teamsInGroups.map(t => t.id);
 
           if (teamIds.length > 0) {
-            // Delete all users in these teams
+            // Get all users in these teams
             const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
             const userIds = usersInTeams.map(u => u.id);
 
             if (userIds.length > 0) {
+              // Delete all posts by these users
+              await tx.delete(posts).where(inArray(posts.userId, userIds));
+              logger.info(`Deleted posts for ${userIds.length} users in organization ${organizationId}`);
+
+              // Delete all users in these teams
               await tx.delete(users).where(inArray(users.id, userIds));
               logger.info(`Deleted ${userIds.length} users for organization ${organizationId}`);
             }
@@ -2299,7 +2425,7 @@ export const registerRoutes = async (
 
           // Delete all groups in this organization
           await tx.delete(groups).where(inArray(groups.id, groupIds));
-          logger.log(`Deleted ${groupIds.length} groups for organization ${organizationId}`);
+          logger.info(`Deleted ${groupIds.length} groups for organization ${organizationId}`);
         }
 
         // Finally delete the organization
@@ -2453,6 +2579,57 @@ export const registerRoutes = async (
     }
   });
 
+  // Get group deletion info (counts of what will be deleted)
+  router.get("/api/groups/:id/delete-info", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      // Get all teams in this group
+      const groupTeams = await db.select().from(teams).where(eq(teams.groupId, groupId));
+      const teamIds = groupTeams.map(t => t.id);
+
+      let userCount = 0;
+      let postCount = 0;
+      let mediaCount = 0;
+
+      if (teamIds.length > 0) {
+        // Get all users in these teams
+        const teamUsers = await db.select().from(users).where(inArray(users.teamId, teamIds));
+        userCount = teamUsers.length;
+        const userIds = teamUsers.map(u => u.id);
+
+        if (userIds.length > 0) {
+          // Count posts by these users
+          const userPosts = await db.select().from(posts).where(inArray(posts.userId, userIds));
+          postCount = userPosts.length;
+
+          // Count media files
+          mediaCount = userPosts.filter(p => p.imageUrl || p.videoUrl).length;
+        }
+      }
+
+      res.json({
+        teamCount: groupTeams.length,
+        userCount,
+        postCount,
+        mediaCount,
+      });
+    } catch (error) {
+      logger.error(`Error getting group delete info ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to get group delete info",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   router.delete("/api/groups/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -2464,8 +2641,39 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      await storage.deleteGroup(groupId);
-      logger.info(`Deleted group ${groupId} by user ${req.user.id}`);
+      logger.info(`Deleting group ${groupId} by user ${req.user.id}`);
+
+      // Use database transaction for atomic deletion with cascade
+      await db.transaction(async (tx) => {
+        // Get all teams in this group
+        const groupTeams = await tx.select().from(teams).where(eq(teams.groupId, groupId));
+        const teamIds = groupTeams.map(t => t.id);
+
+        if (teamIds.length > 0) {
+          // Get all users in these teams
+          const teamUsers = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+          const userIds = teamUsers.map(u => u.id);
+
+          if (userIds.length > 0) {
+            // Delete all posts by these users
+            await tx.delete(posts).where(inArray(posts.userId, userIds));
+            logger.info(`Deleted posts for ${userIds.length} users in group ${groupId}`);
+
+            // Delete all users in these teams
+            await tx.delete(users).where(inArray(users.id, userIds));
+            logger.info(`Deleted ${userIds.length} users in group ${groupId}`);
+          }
+
+          // Delete all teams in this group
+          await tx.delete(teams).where(inArray(teams.id, teamIds));
+          logger.info(`Deleted ${teamIds.length} teams in group ${groupId}`);
+        }
+
+        // Finally delete the group
+        await tx.delete(groups).where(eq(groups.id, groupId));
+      });
+
+      logger.info(`Group ${groupId} deleted successfully by user ${req.user.id}`);
       res.status(200).json({ message: "Group deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting group ${req.params.id}:`, error);
