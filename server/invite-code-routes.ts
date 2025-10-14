@@ -242,7 +242,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       const now = new Date();
       
       // Determine program start date based on team settings
-      let userProgramStartDate = now;
+      let userProgramStartDate: Date | null = null;
       if (teamAdmin.programStartDate) {
         const teamStartDate = new Date(teamAdmin.programStartDate);
         // Use team's program start date if it hasn't passed yet
@@ -251,14 +251,21 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         }
       }
       
+      // If no team program start date or it has passed, don't set user's programStartDate
+      // This allows the frontend to apply default "next Monday" logic
+      const updateData: any = { 
+        isTeamLead: true,
+        teamId: teamAdmin.id,
+        teamJoinedAt: now
+      };
+      
+      if (userProgramStartDate) {
+        updateData.programStartDate = userProgramStartDate;
+      }
+      
       await db
         .update(users)
-        .set({ 
-          isTeamLead: true,
-          teamId: teamAdmin.id,
-          teamJoinedAt: now,
-          programStartDate: userProgramStartDate
-        })
+        .set(updateData)
         .where(eq(users.id, userId));
 
       return res.json({ 
@@ -295,7 +302,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       const now = new Date();
       
       // Determine program start date based on team settings
-      let userProgramStartDate = now;
+      let userProgramStartDate: Date | null = null;
       if (teamMember.programStartDate) {
         const teamStartDate = new Date(teamMember.programStartDate);
         // Use team's program start date if it hasn't passed yet
@@ -304,14 +311,21 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         }
       }
       
+      // If no team program start date or it has passed, don't set user's programStartDate
+      // This allows the frontend to apply default "next Monday" logic
+      const updateData: any = { 
+        teamId: teamMember.id,
+        teamJoinedAt: now,
+        isTeamLead: false
+      };
+      
+      if (userProgramStartDate) {
+        updateData.programStartDate = userProgramStartDate;
+      }
+      
       await db
         .update(users)
-        .set({ 
-          teamId: teamMember.id,
-          teamJoinedAt: now,
-          programStartDate: userProgramStartDate,
-          isTeamLead: false
-        })
+        .set(updateData)
         .where(eq(users.id, userId));
 
       return res.json({ 
