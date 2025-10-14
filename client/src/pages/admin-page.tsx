@@ -380,11 +380,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedTeam) => {
       toast({
         title: "Success",
         description: "Team updated successfully",
       });
+      
+      // Update the teams cache with the new data
+      queryClient.setQueryData(["/api/teams"], (oldTeams: Team[] | undefined) => {
+        if (!oldTeams) return [updatedTeam];
+        return oldTeams.map(team => 
+          team.id === updatedTeam.id ? updatedTeam : team
+        );
+      });
+      
       setEditingTeam(null);
       setSelectedGroupId("");
     },

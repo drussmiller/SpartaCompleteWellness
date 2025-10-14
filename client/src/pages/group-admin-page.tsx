@@ -118,9 +118,17 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedTeam) => {
       toast({ title: "Success", description: "Team updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/group-admin/teams"] });
+      
+      // Update the teams cache with the new data
+      queryClient.setQueryData(["/api/group-admin/teams"], (oldTeams: TeamWithCount[] | undefined) => {
+        if (!oldTeams) return [updatedTeam];
+        return oldTeams.map(team => 
+          team.id === updatedTeam.id ? { ...team, ...updatedTeam } : team
+        );
+      });
+      
       setEditTeamOpen(false);
       setEditingTeam(null);
       setSelectedProgramStartDate(undefined);
