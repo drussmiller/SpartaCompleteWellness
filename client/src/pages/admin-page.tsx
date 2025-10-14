@@ -1800,6 +1800,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <CardDescription>
                                         {group.description}
                                       </CardDescription>
+                                      {group.programStartDate && (
+                                        <p className="text-sm mt-2">
+                                          <span className="font-medium">
+                                            Program Start Date:{" "}
+                                          </span>
+                                          {new Date(group.programStartDate).toLocaleDateString()}
+                                        </p>
+                                      )}
                                       <p className="text-sm mt-2">
                                         <span className="font-medium">
                                           Status:{" "}
