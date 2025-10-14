@@ -137,6 +137,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Record<number, Date | undefined>>({});
   const [teamToInactivate, setTeamToInactivate] = useState<{ id: number, activeUserCount: number } | null>(null); // State to hold team details for confirmation
   const [pendingTeamUpdate, setPendingTeamUpdate] = useState<{ teamId: number, data: Partial<Team> } | null>(null); // State to hold pending update when user needs to confirm inactivation
+  const [orgToInactivate, setOrgToInactivate] = useState<{ id: number, activeGroupCount: number, activeTeamCount: number, activeUserCount: number } | null>(null);
+  const [pendingOrgUpdate, setPendingOrgUpdate] = useState<{ orgId: number, data: Partial<Organization> } | null>(null);
+  const [groupToInactivate, setGroupToInactivate] = useState<{ id: number, activeTeamCount: number, activeUserCount: number } | null>(null);
+  const [pendingGroupUpdate, setPendingGroupUpdate] = useState<{ groupId: number, data: Partial<Group> } | null>(null);
 
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
@@ -430,6 +434,29 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       organizationId: number;
       data: Partial<Organization>;
     }) => {
+      // Check if organization is being set to inactive
+      const org = sortedOrganizations?.find((o) => o.id === organizationId);
+      if (data.status === 0 && org && org.status === 1) {
+        // Count active children before inactivating
+        const orgGroups = groupsQuery.data?.filter((g) => g.organizationId === organizationId && g.status === 1) || [];
+        const groupIds = orgGroups.map((g) => g.id);
+        const activeTeams = sortedTeams?.filter((t) => groupIds.includes(t.groupId) && t.status === 1) || [];
+        const teamIds = activeTeams.map((t) => t.id);
+        const activeUsers = usersQuery.data?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
+        
+        if (orgGroups.length > 0 || activeTeams.length > 0 || activeUsers.length > 0) {
+          // Store the pending update and show confirmation
+          setPendingOrgUpdate({ orgId: organizationId, data });
+          setOrgToInactivate({
+            id: organizationId,
+            activeGroupCount: orgGroups.length,
+            activeTeamCount: activeTeams.length,
+            activeUserCount: activeUsers.length
+          });
+          return null; // Don't proceed with the mutation yet
+        }
+      }
+
       const res = await apiRequest(
         "PATCH",
         `/api/organizations/${organizationId}`,
@@ -441,11 +468,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (!data) return; // Waiting for user confirmation
+      
+      const message = data.groupsUpdated || data.teamsUpdated || data.usersUpdated
+        ? `Organization updated. ${data.groupsUpdated || 0} group(s), ${data.teamsUpdated || 0} team(s), and ${data.usersUpdated || 0} user(s) made inactive.`
+        : "Organization updated successfully";
+        
       toast({
         title: "Success",
-        description: "Organization updated successfully",
+        description: message,
       });
+      
+      // Clear pending states
+      setPendingOrgUpdate(null);
+      setOrgToInactivate(null);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: (error: Error) => {
       toast({
@@ -453,11 +496,33 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+      setPendingOrgUpdate(null);
+      setOrgToInactivate(null);
     },
   });
 
   const updateGroupMutation = useMutation({
     mutationFn: async ({ groupId, data }: { groupId: number; data: any }) => {
+      // Check if group is being set to inactive
+      const group = groupsQuery.data?.find((g) => g.id === groupId);
+      if (data.status === 0 && group && group.status === 1) {
+        // Count active children before inactivating
+        const activeTeams = sortedTeams?.filter((t) => t.groupId === groupId && t.status === 1) || [];
+        const teamIds = activeTeams.map((t) => t.id);
+        const activeUsers = usersQuery.data?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
+        
+        if (activeTeams.length > 0 || activeUsers.length > 0) {
+          // Store the pending update and show confirmation
+          setPendingGroupUpdate({ groupId, data });
+          setGroupToInactivate({
+            id: groupId,
+            activeTeamCount: activeTeams.length,
+            activeUserCount: activeUsers.length
+          });
+          return null; // Don't proceed with the mutation yet
+        }
+      }
+
       // Optimistically update local state immediately
       setOptimisticGroups(prev => ({
         ...prev,
@@ -479,10 +544,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       return res.json();
     },
     onSuccess: (updatedGroup) => {
+      if (!updatedGroup) return; // Waiting for user confirmation
+      
+      const message = updatedGroup.teamsUpdated || updatedGroup.usersUpdated
+        ? `Group updated. ${updatedGroup.teamsUpdated || 0} team(s) and ${updatedGroup.usersUpdated || 0} user(s) made inactive.`
+        : "Group updated successfully";
+        
       toast({
         title: "Success",
-        description: "Group updated successfully",
+        description: message,
       });
+
+      // Clear pending states
+      setPendingGroupUpdate(null);
+      setGroupToInactivate(null);
 
       // Update the groups cache with the new data
       queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
@@ -491,6 +566,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           group.id === updatedGroup.id ? updatedGroup : group
         );
       });
+      
+      // If teams or users were made inactive, invalidate those caches
+      if (updatedGroup.teamsUpdated || updatedGroup.usersUpdated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -498,6 +579,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+      setPendingGroupUpdate(null);
+      setGroupToInactivate(null);
     },
   });
 
