@@ -2165,7 +2165,15 @@ export const registerRoutes = async (
           : null;
       }
 
+      // Update the team in the database first
+      const [updatedTeam] = await db
+        .update(teams)
+        .set(updateData)
+        .where(eq(teams.id, teamId))
+        .returning();
+
       // If team is being set to inactive and makeUsersInactive is true, update users
+      let usersUpdated = 0;
       if (updateData.status === 0 && makeUsersInactive) {
         logger.info(`Making users inactive for team ${teamId}`);
         
@@ -2180,18 +2188,17 @@ export const registerRoutes = async (
           )
           .returning();
         
-        logger.info(`Set ${updatedUsers.length} user(s) to inactive for team ${teamId}`);
+        usersUpdated = updatedUsers.length;
+        logger.info(`Set ${usersUpdated} user(s) to inactive for team ${teamId}`);
       }
 
-      // Update the team in the database
-      const [updatedTeam] = await db
-        .update(teams)
-        .set(updateData)
-        .where(eq(teams.id, teamId))
-        .returning();
-
       logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedTeam);
+      
+      // Return the team data with info about users updated
+      res.status(200).json({
+        ...updatedTeam,
+        usersUpdated: usersUpdated > 0 ? usersUpdated : undefined
+      });
     } catch (error) {
       logger.error(`Error updating team ${req.params.id}:`, error);
       res.status(500).json({

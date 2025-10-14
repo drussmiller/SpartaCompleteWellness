@@ -385,9 +385,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       return res.json();
     },
     onSuccess: (updatedTeam) => {
+      const usersWereUpdated = updatedTeam.usersUpdated && updatedTeam.usersUpdated > 0;
+      
       toast({
         title: "Success",
-        description: "Team updated successfully",
+        description: usersWereUpdated 
+          ? `Team updated successfully. ${updatedTeam.usersUpdated} user(s) made inactive.`
+          : "Team updated successfully",
       });
 
       // Update the teams cache with the new data
@@ -397,6 +401,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           team.id === updatedTeam.id ? updatedTeam : team
         );
       });
+
+      // If users were made inactive, invalidate the users cache to reflect changes
+      if (usersWereUpdated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      }
 
       setEditingTeam(null);
       setSelectedGroupId("");
