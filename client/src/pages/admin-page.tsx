@@ -1605,6 +1605,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             competitive,
                                             programStartDate: programStartDateValue,
                                           },
+                                        }, {
+                                          onSuccess: () => {
+                                            setEditingGroup(null);
+                                          }
                                         });
                                       }}
                                       className="space-y-2"
