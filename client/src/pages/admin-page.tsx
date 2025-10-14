@@ -502,10 +502,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   const updateGroupMutation = useMutation({
-    mutationFn: async ({ groupId, data }: { groupId: number; data: any }) => {
+    mutationFn: async ({ groupId, data, skipConfirmation }: { groupId: number; data: any; skipConfirmation?: boolean }) => {
       // Check if group is being set to inactive
       const group = groups?.find((g) => g.id === groupId);
-      if (data.status === 0 && group && group.status === 1) {
+      if (!skipConfirmation && data.status === 0 && group && group.status === 1) {
         // Count active children before inactivating
         const activeTeams = sortedTeams?.filter((t) => t.groupId === groupId && t.status === 1) || [];
         const teamIds = activeTeams.map((t) => t.id);
@@ -519,7 +519,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             activeTeamCount: activeTeams.length,
             activeUserCount: activeUsers.length
           });
-          return null; // Don't proceed with the mutation yet
+          return { waitingForConfirmation: true };
         }
       }
 
@@ -544,7 +544,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       return res.json();
     },
     onSuccess: (updatedGroup) => {
-      if (!updatedGroup) return; // Waiting for user confirmation
+      if (!updatedGroup || updatedGroup.waitingForConfirmation) return; // Waiting for user confirmation
       
       const message = updatedGroup.teamsUpdated || updatedGroup.usersUpdated
         ? `Group updated. ${updatedGroup.teamsUpdated || 0} team(s) and ${updatedGroup.usersUpdated || 0} user(s) made inactive.`
@@ -3384,10 +3384,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               <AlertDialogAction
                 onClick={() => {
                   if (pendingGroupUpdate) {
-                    // Execute the group update
+                    // Execute the group update with skipConfirmation flag
                     updateGroupMutation.mutate({
                       groupId: pendingGroupUpdate.groupId,
-                      data: pendingGroupUpdate.data
+                      data: pendingGroupUpdate.data,
+                      skipConfirmation: true
                     });
                   }
                 }}
