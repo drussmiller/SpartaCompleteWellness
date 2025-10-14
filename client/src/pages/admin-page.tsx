@@ -1573,6 +1573,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         const competitive = formData.get(
                                           "competitive",
                                         ) === "on";
+                                        const programStartDateValue = formData.get(
+                                          "programStartDate",
+                                        ) as string;
 
                                         if (!name || !organizationId) {
                                           toast({
@@ -1593,7 +1596,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             organizationId,
                                             status: Number(status),
                                             competitive,
+                                            programStartDate: programStartDateValue || null,
                                           },
+                                        }, {
+                                          onSuccess: () => {
+                                            // Clear the selected date state after successful save
+                                            setSelectedProgramStartDate(prev => {
+                                              const newState = { ...prev };
+                                              delete newState[group.id];
+                                              return newState;
+                                            });
+                                          }
                                         });
                                       }}
                                       className="space-y-2"
@@ -1648,6 +1661,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <div>
                                         <Label className="text-sm font-medium mb-1 block">Program Start Date (Mondays only)</Label>
                                         <div className="flex gap-2">
+                                          <input
+                                            type="hidden"
+                                            name="programStartDate"
+                                            id={`programStartDate-${group.id}`}
+                                            defaultValue={group.programStartDate ? new Date(group.programStartDate).toISOString() : ''}
+                                          />
                                           <Popover>
                                             <PopoverTrigger asChild>
                                               <Button
@@ -1656,29 +1675,38 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 type="button"
                                                 data-testid="button-admin-edit-group-program-start-date"
                                               >
-                                                {group.programStartDate
-                                                  ? new Date(group.programStartDate).toLocaleDateString()
-                                                  : "Select a Monday"}
+                                                {selectedProgramStartDate[group.id] !== undefined 
+                                                  ? (selectedProgramStartDate[group.id] ? new Date(selectedProgramStartDate[group.id]!).toLocaleDateString() : "No date selected")
+                                                  : (group.programStartDate
+                                                    ? new Date(group.programStartDate).toLocaleDateString()
+                                                    : "Select a Monday")}
                                               </Button>
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-0" align="start">
                                               <Calendar
                                                 mode="single"
-                                                selected={group.programStartDate ? (() => {
-                                                  const isoStr = typeof group.programStartDate === 'string' 
-                                                    ? group.programStartDate 
-                                                    : (group.programStartDate as any)?.toISOString?.() || '';
+                                                selected={(() => {
+                                                  const dateToUse = selectedProgramStartDate[group.id] !== undefined 
+                                                    ? selectedProgramStartDate[group.id] 
+                                                    : group.programStartDate;
+                                                  if (!dateToUse) return undefined;
+                                                  const isoStr = typeof dateToUse === 'string' 
+                                                    ? dateToUse 
+                                                    : (dateToUse as any)?.toISOString?.() || '';
                                                   const dateStr = isoStr.split('T')[0];
                                                   const [year, month, day] = dateStr.split('-').map(Number);
                                                   return new Date(year, month - 1, day);
-                                                })() : undefined}
+                                                })()}
                                                 onSelect={(date) => {
-                                                  updateGroupMutation.mutate({
-                                                    groupId: group.id,
-                                                    data: {
-                                                      programStartDate: date ? date.toISOString() : null,
-                                                    },
-                                                  });
+                                                  const isoString = date ? date.toISOString() : '';
+                                                  setSelectedProgramStartDate(prev => ({
+                                                    ...prev,
+                                                    [group.id]: date || undefined
+                                                  }));
+                                                  const input = document.getElementById(`programStartDate-${group.id}`) as HTMLInputElement;
+                                                  if (input) {
+                                                    input.value = isoString;
+                                                  }
                                                 }}
                                                 disabled={(date) => {
                                                   return date.getDay() !== 1;
@@ -1686,18 +1714,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               />
                                             </PopoverContent>
                                           </Popover>
-                                          {group.programStartDate && (
+                                          {(selectedProgramStartDate[group.id] !== undefined ? selectedProgramStartDate[group.id] : group.programStartDate) && (
                                             <Button
                                               variant="outline"
                                               size="icon"
                                               type="button"
                                               onClick={() => {
-                                                updateGroupMutation.mutate({
-                                                  groupId: group.id,
-                                                  data: {
-                                                    programStartDate: null,
-                                                  },
-                                                });
+                                                setSelectedProgramStartDate(prev => ({
+                                                  ...prev,
+                                                  [group.id]: undefined
+                                                }));
+                                                const input = document.getElementById(`programStartDate-${group.id}`) as HTMLInputElement;
+                                                if (input) {
+                                                  input.value = '';
+                                                }
                                               }}
                                               data-testid="button-clear-group-program-start-date"
                                             >
@@ -1757,7 +1787,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           type="button"
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => setEditingGroup(null)}
+                                          onClick={() => {
+                                            setEditingGroup(null);
+                                            // Clear the selected date state when canceling
+                                            setSelectedProgramStartDate(prev => {
+                                              const newState = { ...prev };
+                                              delete newState[group.id];
+                                              return newState;
+                                            });
+                                          }}
                                         >
                                           Cancel
                                         </Button>
