@@ -2036,10 +2036,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         maxSize,
                                         status: Number(status),
                                         programStartDate: team.programStartDate 
-                                          ? (typeof team.programStartDate === 'string' && team.programStartDate.trim() !== ''
-                                              ? team.programStartDate
-                                              : team.programStartDate instanceof Date
-                                                ? team.programStartDate.toISOString()
+                                          ? (team.programStartDate instanceof Date
+                                              ? team.programStartDate.toISOString()
+                                              : typeof team.programStartDate === 'string' && team.programStartDate.trim() !== ''
+                                                ? team.programStartDate
                                                 : null)
                                           : null,
                                       },
