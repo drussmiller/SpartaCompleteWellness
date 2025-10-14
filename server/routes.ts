@@ -5763,15 +5763,13 @@ export const registerRoutes = async (
         updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
-      // If team is being changed, update join date and program start date
+      // If team is being changed, update join date
       if (req.body.teamId !== undefined) {
         if (req.body.teamId) {
           const now = new Date();
           updateData.teamJoinedAt = now;
-          // Don't override programStartDate if it's explicitly provided
-          if (!req.body.programStartDate) {
-            updateData.programStartDate = now;
-          }
+          // Only set programStartDate if explicitly provided in the request
+          // Otherwise, leave it unchanged (don't auto-set to now)
         } else {
           // If removing from team, clear join date but keep program start date
           updateData.teamJoinedAt = null;
