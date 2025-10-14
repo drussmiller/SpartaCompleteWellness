@@ -333,6 +333,106 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   // Keep this for backward compatibility but it won't be used in the new UI
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      newPassword,
+    }: {
+      userId: number;
+      newPassword: string;
+    }) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, {
+        newPassword,
+      });
+      if (!res.ok) {
+        const errorMessage = await getErrorMessage(res, "Failed to reset password");
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Password reset successfully",
+      });
+      setResetPasswordOpen(false);
+      setNewPassword("");
+      setSelectedUserId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}`);
+      if (!res.ok) {
+        const errorMessage = await getErrorMessage(res, "Failed to delete user");
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      data,
+    }: {
+      userId: number;
+      data: Partial<User>;
+    }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, data);
+      if (!res.ok) {
+        const errorMessage = await getErrorMessage(res, "Failed to update user");
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: (updatedUser) => {
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+
+      // Update the users cache
+      queryClient.setQueryData(["/api/users"], (oldUsers: User[] | undefined) => {
+        if (!oldUsers) return [updatedUser];
+        return oldUsers.map(user => 
+          user.id === updatedUser.id ? updatedUser : user
+        );
+      });
+
+      setEditingUser(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateUserTeamMutation = useMutation({
     mutationFn: async ({
       userId,
@@ -547,11 +647,111 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Group mutations
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<number | null>(null);
 
+  const organizationForm = useForm<OrganizationFormData>({
+    resolver: zodResolver(insertOrganizationSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
+
   const groupForm = useForm<GroupFormData>({
     resolver: zodResolver(insertGroupSchema.omit({ organizationId: true })),
     defaultValues: {
       name: "",
       description: "",
+    },
+  });
+
+  const createOrganizationMutation = useMutation({
+    mutationFn: async (data: OrganizationFormData) => {
+      const res = await apiRequest("POST", "/api/organizations", data);
+      if (!res.ok) {
+        const errorMessage = await getErrorMessage(res, "Failed to create organization");
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Organization created successfully",
+      });
+      organizationForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteOrganizationMutation = useMutation({
+    mutationFn: async (organizationId: number) => {
+      // Only proceed if we have confirmation (orgToDelete is set)
+      if (!orgToDelete) {
+        // First fetch delete info to show in confirmation
+        const infoRes = await apiRequest("GET", `/api/organizations/${organizationId}/delete-info`);
+        if (!infoRes.ok) {
+          throw new Error("Failed to get deletion info");
+        }
+        const deleteInfo = await infoRes.json();
+
+        const org = organizations?.find(o => o.id === organizationId);
+        if (!org) {
+          throw new Error("Organization not found");
+        }
+
+        // Show confirmation dialog
+        setOrgToDelete({
+          id: organizationId,
+          name: org.name,
+          groupCount: deleteInfo.groupCount,
+          teamCount: deleteInfo.teamCount,
+          userCount: deleteInfo.userCount,
+          postCount: deleteInfo.postCount,
+          mediaCount: deleteInfo.mediaCount,
+        });
+
+        // Don't proceed with deletion yet
+        return null;
+      }
+
+      // User confirmed, proceed with deletion
+      const res = await apiRequest("DELETE", `/api/organizations/${organizationId}`);
+      if (!res.ok) {
+        const errorMessage = await getErrorMessage(res, "Failed to delete organization");
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (!data) return; // No success message if we're just showing confirmation
+
+      toast({
+        title: "Success",
+        description: "Organization deleted successfully",
+      });
+
+      // Clear confirmation state
+      setOrgToDelete(null);
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setOrgToDelete(null);
     },
   });
 
@@ -586,6 +786,85 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  const updateGroupMutation = useMutation({
+    mutationFn: async ({
+      groupId,
+      data,
+      skipConfirmation,
+    }: {
+      groupId: number;
+      data: Partial<Group>;
+      skipConfirmation?: boolean;
+    }) => {
+      // Check if group is being set to inactive
+      const group = sortedGroups?.find((g) => g.id === groupId);
+      if (data.status === 0 && group && group.status === 1 && !skipConfirmation) {
+        // Count active children before inactivating
+        const activeTeams = sortedTeams?.filter((t) => t.groupId === groupId && t.status === 1) || [];
+        const teamIds = activeTeams.map((t) => t.id);
+        const activeUsers = users?.filter((u) => u.teamId && teamIds.includes(u.teamId) && u.status === 1) || [];
+
+        if (activeTeams.length > 0 || activeUsers.length > 0) {
+          // Store the pending update and show confirmation
+          setPendingGroupUpdate({ groupId, data });
+          setGroupToInactivate({
+            id: groupId,
+            activeTeamCount: activeTeams.length,
+            activeUserCount: activeUsers.length
+          });
+          return null; // Don't proceed with the mutation yet
+        }
+      }
+
+      const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update group");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (!data) return; // Waiting for user confirmation
+
+      const message = data.teamsUpdated || data.usersUpdated
+        ? `Group updated. ${data.teamsUpdated || 0} team(s) and ${data.usersUpdated || 0} user(s) made inactive.`
+        : "Group updated successfully";
+
+      toast({
+        title: "Success",
+        description: message,
+      });
+
+      // Clear pending states
+      setPendingGroupUpdate(null);
+      setGroupToInactivate(null);
+      setEditingGroup(null);
+
+      // Update the groups cache with the new data
+      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
+        if (!oldGroups) return [data];
+        return oldGroups.map(group => 
+          group.id === data.id ? data : group
+        );
+      });
+
+      // If teams or users were made inactive, invalidate those caches
+      if (data.teamsUpdated || data.usersUpdated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setPendingGroupUpdate(null);
+      setGroupToInactivate(null);
     },
   });
 
