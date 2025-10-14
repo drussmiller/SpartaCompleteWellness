@@ -558,6 +558,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       // Clear pending states
       setPendingGroupUpdate(null);
       setGroupToInactivate(null);
+      setEditingGroup(null);
 
       // Update the groups cache with the new data
       queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
