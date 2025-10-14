@@ -2495,7 +2495,11 @@ export const registerRoutes = async (
         logger.info(`Group Admin filtered update data for group ${groupId}:`, updateData);
       } else {
         // Full admins can update everything
-        updateData = req.body;
+        updateData = { ...req.body };
+        // Convert programStartDate to Date object if present
+        if (updateData.programStartDate !== undefined) {
+          updateData.programStartDate = updateData.programStartDate ? new Date(updateData.programStartDate) : null;
+        }
       }
 
       // Ensure we have something to update
