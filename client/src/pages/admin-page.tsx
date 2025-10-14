@@ -2107,7 +2107,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         <PopoverContent className="w-auto p-0" align="start">
                                           <Calendar
                                             mode="single"
-                                            selected={team.programStartDate ? new Date(team.programStartDate) : undefined}
+                                            selected={team.programStartDate ? (() => {
+                                              const date = new Date(team.programStartDate);
+                                              const offset = date.getTimezoneOffset();
+                                              return new Date(date.getTime() - (offset * 60 * 1000));
+                                            })() : undefined}
                                             onSelect={(date) => {
                                               // Update team object directly for display
                                               team.programStartDate = date || null;
@@ -2553,7 +2557,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               mode="single"
                                               selected={
                                                 selectedProgramStartDate[user.id] ||
-                                                (user.programStartDate ? new Date(user.programStartDate) : undefined)
+                                                (user.programStartDate ? (() => {
+                                                  const date = new Date(user.programStartDate);
+                                                  const offset = date.getTimezoneOffset();
+                                                  return new Date(date.getTime() - (offset * 60 * 1000));
+                                                })() : undefined)
                                               }
                                               onSelect={(date) => {
                                                 if (date) {
