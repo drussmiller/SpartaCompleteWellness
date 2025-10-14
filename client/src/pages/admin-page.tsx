@@ -264,9 +264,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Team created successfully",
       });
+      setCreateTeamDialogOpen(false);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      setCreateTeamDialogOpen(false);
     },
     onError: (error: Error) => {
       toast({
@@ -684,9 +684,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Organization created successfully",
       });
+      setCreateOrgDialogOpen(false);
       organizationForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
-      setCreateOrgDialogOpen(false);
     },
     onError: (error: Error) => {
       toast({
@@ -777,6 +777,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "Group created successfully",
       });
+      setCreateGroupDialogOpen(false);
+      setSelectedOrganizationId(null);
       groupForm.reset();
 
       // Update cache manually to add the new group
@@ -787,8 +789,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       // Also invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-      setCreateGroupDialogOpen(false);
-      setSelectedOrganizationId(null);
     },
     onError: (error: Error) => {
       toast({
