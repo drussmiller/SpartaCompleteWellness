@@ -6,6 +6,28 @@ import { authenticate } from "./auth";
 import { generateInviteCode } from "./invite-code-utils";
 import { logger } from "./logger";
 
+// Helper function to get next Monday (or today if today is Monday)
+function getNextMonday(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  
+  const dayOfWeek = result.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  
+  if (dayOfWeek === 1) {
+    // Today is Monday, return today
+    return result;
+  } else if (dayOfWeek === 0) {
+    // Today is Sunday, next Monday is tomorrow
+    result.setDate(result.getDate() + 1);
+  } else {
+    // Today is Tue-Sat, calculate days until next Monday
+    const daysUntilMonday = 8 - dayOfWeek;
+    result.setDate(result.getDate() + daysUntilMonday);
+  }
+  
+  return result;
+}
+
 export const inviteCodeRouter = Router();
 
 inviteCodeRouter.get("/api/invite-codes/group/:groupId", authenticate, async (req: Request, res: Response) => {
@@ -242,26 +264,27 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       const now = new Date();
       
       // Determine program start date based on team settings
-      let userProgramStartDate: Date | null = null;
+      let userProgramStartDate: Date;
       if (teamAdmin.programStartDate) {
         const teamStartDate = new Date(teamAdmin.programStartDate);
         // Use team's program start date if it hasn't passed yet
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
+        } else {
+          // Team start date has passed, calculate next Monday
+          userProgramStartDate = getNextMonday(now);
         }
+      } else {
+        // No team program start date, calculate next Monday (or today if today is Monday)
+        userProgramStartDate = getNextMonday(now);
       }
       
-      // If no team program start date or it has passed, don't set user's programStartDate
-      // This allows the frontend to apply default "next Monday" logic
       const updateData: any = { 
         isTeamLead: true,
         teamId: teamAdmin.id,
-        teamJoinedAt: now
+        teamJoinedAt: now,
+        programStartDate: userProgramStartDate
       };
-      
-      if (userProgramStartDate) {
-        updateData.programStartDate = userProgramStartDate;
-      }
       
       await db
         .update(users)
@@ -302,26 +325,27 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       const now = new Date();
       
       // Determine program start date based on team settings
-      let userProgramStartDate: Date | null = null;
+      let userProgramStartDate: Date;
       if (teamMember.programStartDate) {
         const teamStartDate = new Date(teamMember.programStartDate);
         // Use team's program start date if it hasn't passed yet
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
+        } else {
+          // Team start date has passed, calculate next Monday
+          userProgramStartDate = getNextMonday(now);
         }
+      } else {
+        // No team program start date, calculate next Monday (or today if today is Monday)
+        userProgramStartDate = getNextMonday(now);
       }
       
-      // If no team program start date or it has passed, don't set user's programStartDate
-      // This allows the frontend to apply default "next Monday" logic
       const updateData: any = { 
         teamId: teamMember.id,
         teamJoinedAt: now,
-        isTeamLead: false
+        isTeamLead: false,
+        programStartDate: userProgramStartDate
       };
-      
-      if (userProgramStartDate) {
-        updateData.programStartDate = userProgramStartDate;
-      }
       
       await db
         .update(users)
