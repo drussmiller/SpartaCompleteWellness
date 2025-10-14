@@ -2033,6 +2033,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         groupId,
                                         maxSize,
                                         status: Number(status),
+                                        programStartDate: team.programStartDate || null,
                                       },
                                     });
                                   }}
@@ -2108,6 +2109,42 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           </SelectItem>
                                         </SelectContent>
                                       </Select>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium mb-1 block">Program Start Date (Mondays only)</Label>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <Button
+                                            variant="outline"
+                                            className="w-full justify-start text-left font-normal"
+                                            type="button"
+                                            data-testid="button-admin-edit-team-program-start-date"
+                                          >
+                                            {team.programStartDate
+                                              ? new Date(team.programStartDate).toLocaleDateString()
+                                              : "Select a Monday"}
+                                          </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                          <Calendar
+                                            mode="single"
+                                            selected={team.programStartDate ? new Date(team.programStartDate) : undefined}
+                                            onSelect={(date) => {
+                                              // Update team object directly for display
+                                              team.programStartDate = date || null;
+                                              // Force re-render
+                                              setEditingTeam({...team});
+                                            }}
+                                            disabled={(date) => {
+                                              // Only allow Mondays (getDay() === 1)
+                                              return date.getDay() !== 1;
+                                            }}
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        When set, new members will inherit this date as their program start date (if it hasn't passed)
+                                      </p>
                                     </div>
                                     <div className="flex gap-2">
                                       <Button type="submit" size="sm">
