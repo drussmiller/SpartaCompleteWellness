@@ -18,6 +18,8 @@ import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import { z } from "zod";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 interface TeamWithCount extends Team {
   memberCount: number;
@@ -37,6 +39,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [editTeamOpen, setEditTeamOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamWithCount | null>(null);
+  const [selectedProgramStartDate, setSelectedProgramStartDate] = useState<Date | undefined>(undefined);
 
   // Get group information
   const { data: group } = useQuery<Group>({
@@ -87,6 +90,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/group-admin/teams"] });
       setCreateTeamOpen(false);
       createForm.reset();
+      setSelectedProgramStartDate(undefined);
     },
     onError: (error: Error) => {
       toast({
@@ -119,6 +123,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/group-admin/teams"] });
       setEditTeamOpen(false);
       setEditingTeam(null);
+      setSelectedProgramStartDate(undefined);
     },
     onError: (error: Error) => {
       toast({
@@ -160,6 +165,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
       maxSize: team.maxSize || 6,
       programStartDate: team.programStartDate ? new Date(team.programStartDate) : undefined
     });
+    setSelectedProgramStartDate(team.programStartDate ? new Date(team.programStartDate) : undefined);
     setEditTeamOpen(true);
   };
 
@@ -286,15 +292,35 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                       name="programStartDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Program Start Date (Optional)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="date" 
-                              value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                              onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                              data-testid="input-team-program-start-date"
-                            />
-                          </FormControl>
+                          <FormLabel>Program Start Date (Mondays only)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className="w-full justify-start text-left font-normal"
+                                  data-testid="button-team-program-start-date"
+                                >
+                                  {field.value
+                                    ? new Date(field.value).toLocaleDateString()
+                                    : "Select a Monday"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ? new Date(field.value) : undefined}
+                                onSelect={(date) => {
+                                  field.onChange(date);
+                                }}
+                                disabled={(date) => {
+                                  // Only allow Mondays (getDay() === 1)
+                                  return date.getDay() !== 1;
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                           <p className="text-xs text-muted-foreground">
                             When set, new members will inherit this date as their program start date (if it hasn't passed)
@@ -488,15 +514,35 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                     name="programStartDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Program Start Date (Optional)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date" 
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                            data-testid="input-edit-team-program-start-date"
-                          />
-                        </FormControl>
+                        <FormLabel>Program Start Date (Mondays only)</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start text-left font-normal"
+                                data-testid="button-edit-team-program-start-date"
+                              >
+                                {field.value
+                                  ? new Date(field.value).toLocaleDateString()
+                                  : "Select a Monday"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => {
+                                field.onChange(date);
+                              }}
+                              disabled={(date) => {
+                                // Only allow Mondays (getDay() === 1)
+                                return date.getDay() !== 1;
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                         <p className="text-xs text-muted-foreground">
                           When set, new members will inherit this date as their program start date (if it hasn't passed)
