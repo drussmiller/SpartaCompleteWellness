@@ -462,10 +462,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedGroup) => {
       toast({
         title: "Success",
         description: "Group updated successfully",
+      });
+
+      // Update the groups cache with the new data
+      queryClient.setQueryData(["/api/groups"], (oldGroups: Group[] | undefined) => {
+        if (!oldGroups) return [updatedGroup];
+        return oldGroups.map(group => 
+          group.id === updatedGroup.id ? updatedGroup : group
+        );
       });
     },
     onError: (error: Error) => {
