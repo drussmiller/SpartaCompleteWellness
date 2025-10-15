@@ -2384,6 +2384,70 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
+      // Extract and validate scope information
+      const postScope = postData.postScope || 'my_team';
+      const targetOrganizationId = postData.targetOrganizationId || null;
+      const targetGroupId = postData.targetGroupId || null;
+      const targetTeamId = postData.targetTeamId || null;
+
+      // Get user's details for permission validation
+      const [currentUser] = await db
+        .select({
+          isAdmin: users.isAdmin,
+          isGroupAdmin: users.isGroupAdmin,
+          adminGroupId: users.adminGroupId,
+          teamId: users.teamId
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      // Validate user has permission to post with the selected scope
+      if (postScope === 'everyone' && !currentUser.isAdmin) {
+        return res.status(403).json({ message: "Only admins can post to everyone" });
+      }
+      
+      if (postScope === 'organization') {
+        if (!currentUser.isAdmin) {
+          return res.status(403).json({ message: "Only admins can post to an organization" });
+        }
+        if (!targetOrganizationId) {
+          return res.status(400).json({ message: "Organization ID is required for organization scope" });
+        }
+      }
+      
+      if (postScope === 'group') {
+        if (!currentUser.isAdmin && !currentUser.isGroupAdmin) {
+          return res.status(403).json({ message: "Only admins and group admins can post to a group" });
+        }
+        if (!targetGroupId) {
+          return res.status(400).json({ message: "Group ID is required for group scope" });
+        }
+        // Group admins can only post to their own group
+        if (currentUser.isGroupAdmin && targetGroupId !== currentUser.adminGroupId) {
+          return res.status(403).json({ message: "Group admins can only post to their own group" });
+        }
+      }
+      
+      if (postScope === 'team') {
+        if (!currentUser.isAdmin && !currentUser.isGroupAdmin) {
+          return res.status(403).json({ message: "Only admins and group admins can post to a team" });
+        }
+        if (!targetTeamId) {
+          return res.status(400).json({ message: "Team ID is required for team scope" });
+        }
+        // Group admins can only post to teams in their group
+        if (currentUser.isGroupAdmin) {
+          const [team] = await db
+            .select({ groupId: teams.groupId })
+            .from(teams)
+            .where(eq(teams.id, targetTeamId));
+          
+          if (!team || team.groupId !== currentUser.adminGroupId) {
+            return res.status(403).json({ message: "Group admins can only post to teams in their group" });
+          }
+        }
+      }
+
       const post = await db
         .insert(posts)
         .values({
@@ -2393,6 +2457,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           mediaUrl: mediaUrl,
           is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
+          postScope: postScope,
+          targetOrganizationId: targetOrganizationId,
+          targetGroupId: targetGroupId,
+          targetTeamId: targetTeamId,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
         .returning()
