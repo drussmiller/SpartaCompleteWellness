@@ -148,6 +148,10 @@ export const posts = pgTable("posts", {
   createdAt: timestamp("created_at").defaultNow(),
   parentId: integer("parent_id"),
   depth: integer("depth").default(0),
+  postScope: text("post_scope", { enum: ["everyone", "organization", "group", "team", "my_team"] }).default("my_team"), // Scope of the post
+  targetOrganizationId: integer("target_organization_id"), // When postScope is "organization"
+  targetGroupId: integer("target_group_id"), // When postScope is "group"
+  targetTeamId: integer("target_team_id"), // When postScope is "team"
 });
 
 // Relationship for post replies/comments
@@ -338,7 +342,11 @@ export const insertPostSchema = createInsertSchema(posts)
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),
     createdAt: z.string().optional(),
-    is_video: z.boolean().optional().default(false) // Flag for explicitly marking video content
+    is_video: z.boolean().optional().default(false), // Flag for explicitly marking video content
+    postScope: z.enum(["everyone", "organization", "group", "team", "my_team"]).default("my_team"),
+    targetOrganizationId: z.number().optional().nullable(),
+    targetGroupId: z.number().optional().nullable(),
+    targetTeamId: z.number().optional().nullable(),
   });
 
 export const insertUserSchema = createInsertSchema(users)
