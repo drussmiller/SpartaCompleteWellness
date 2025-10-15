@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ChevronLeft,
@@ -12,6 +11,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAchievements } from "@/hooks/use-achievements";
 import { Switch } from "@/components/ui/switch";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface NotificationSettingsProps {
   onClose: () => void;
@@ -20,14 +26,27 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
-  const [notificationTime, setNotificationTime] = useState("09:00");
+  const [hour, setHour] = useState("9");
+  const [period, setPeriod] = useState<"AM" | "PM">("AM");
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
   });
 
+  // Convert hour + period to 24-hour format (always at :00 minutes)
+  const convertTo24Hour = (hour: string, period: "AM" | "PM"): string => {
+    let hourNum = parseInt(hour);
+    if (period === "PM" && hourNum !== 12) {
+      hourNum += 12;
+    } else if (period === "AM" && hourNum === 12) {
+      hourNum = 0;
+    }
+    return `${String(hourNum).padStart(2, '0')}:00`;
+  };
+
   const updateScheduleMutation = useMutation({
-    mutationFn: async (time: string) => {
+    mutationFn: async () => {
+      const time = convertTo24Hour(hour, period);
       // Get user's timezone offset in minutes
       const timezoneOffset = new Date().getTimezoneOffset();
       
@@ -59,28 +78,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   });
 
   const handleSave = () => {
-    updateScheduleMutation.mutate(notificationTime);
+    updateScheduleMutation.mutate();
   };
 
   const testNotificationTimeMutation = useMutation({
     mutationFn: async () => {
       try {
-        // Extract hour and minute from notification time
-        const [hour, minute] = notificationTime.split(":").map(Number);
-
-        // Validate time values
-        if (
-          isNaN(hour) ||
-          isNaN(minute) ||
-          hour < 0 ||
-          hour > 23 ||
-          minute < 0 ||
-          minute > 59
-        ) {
-          throw new Error(
-            "Invalid notification time. Please use the format HH:MM.",
-          );
-        }
+        // Convert to 24-hour format
+        const time24 = convertTo24Hour(hour, period);
+        const [hourNum, minute] = time24.split(":").map(Number);
 
         // Set timeout to prevent hanging requests
         const controller = new AbortController();
@@ -94,7 +100,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
         try {
           const response = await fetch(
-            `/api/test-notification?hour=${hour}&minute=${minute}`,
+            `/api/test-notification?hour=${hourNum}&minute=${minute}`,
             { signal: controller.signal },
           );
 
@@ -151,15 +157,16 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     },
     onSuccess: (data) => {
       console.log("Test notification response:", data);
+      const displayTime = `${hour}:00 ${period}`;
       if (data.totalNotifications > 0) {
         toast({
           title: "Notification Test Successful",
-          description: `Sent ${data.totalNotifications} test notification(s) for time ${notificationTime}`,
+          description: `Sent ${data.totalNotifications} test notification(s) for time ${displayTime}`,
         });
       } else {
         toast({
           title: "Test Complete",
-          description: `No notifications sent. Your notification time ${notificationTime} doesn't match the test time.`,
+          description: `No notifications sent. Your notification time ${displayTime} doesn't match the test time.`,
         });
       }
 
@@ -227,18 +234,37 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notification-time" className="text-lg">
+          <Label className="text-lg">
             Daily Notification Time
           </Label>
-          <Input
-            id="notification-time"
-            type="time"
-            className="text-lg"
-            value={notificationTime}
-            onChange={(e) => setNotificationTime(e.target.value)}
-          />
+          <div className="flex gap-2">
+            <Select value={hour} onValueChange={setHour}>
+              <SelectTrigger className="flex-1 text-lg">
+                <SelectValue placeholder="Hour" />
+              </SelectTrigger>
+              <SelectContent>
+                {[...Array(12)].map((_, i) => {
+                  const h = i + 1;
+                  return (
+                    <SelectItem key={h} value={h.toString()}>
+                      {h}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <Select value={period} onValueChange={(v) => setPeriod(v as "AM" | "PM")}>
+              <SelectTrigger className="w-24 text-lg">
+                <SelectValue placeholder="AM/PM" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AM">AM</SelectItem>
+                <SelectItem value="PM">PM</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <p className="text-sm text-muted-foreground">
-            You will receive notifications at this time:
+            Notifications will be sent on the hour (at {hour}:00 {period}):
           </p>
           <ul className="list-disc pl-6 space-y-2 text-base text-muted-foreground">
             <li>

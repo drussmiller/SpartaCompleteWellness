@@ -105,7 +105,7 @@ scheduleDailyScoreCheck = () => {
   }
 
   logger.info('Starting automated notification scheduling');
-  logger.info('Checking every 4 hours to send once-daily reminders to users at their selected time');
+  logger.info('Checking every hour to send once-daily reminders to users at their selected time');
 
   // Function to check and send notifications
   const checkNotifications = async () => {
@@ -122,7 +122,7 @@ scheduleDailyScoreCheck = () => {
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
 
-      logger.info(`Running scheduled notification check at ${currentHour}:${String(currentMinute).padStart(2, '0')}`);
+      logger.info(`Running hourly notification check at ${currentHour}:${String(currentMinute).padStart(2, '0')}`);
 
       // Make internal request to check-daily-scores endpoint
       const response = await fetch(`http://localhost:${port}/api/check-daily-scores`, {
@@ -153,12 +153,12 @@ scheduleDailyScoreCheck = () => {
     }
   };
 
-  // Run check every 4 hours (14400000ms)
+  // Run check every hour (3600000ms)
   // This ensures reliable once-daily delivery:
-  // - Checks 6 times per day (00:00, 04:00, 08:00, 12:00, 16:00, 20:00)
-  // - Sends notification once per user after their selected time
-  // - Even if a check is missed, the next check will catch it
-  notificationCheckInterval = setInterval(checkNotifications, 14400000);
+  // - Checks 24 times per day (every hour on the hour)
+  // - Sends notification once per user after their selected hour
+  // - User receives exactly 1 notification per day
+  notificationCheckInterval = setInterval(checkNotifications, 3600000);
   
   // Also run an immediate check on startup
   checkNotifications();
