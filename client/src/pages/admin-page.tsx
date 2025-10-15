@@ -348,7 +348,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       userId: number;
       newPassword: string;
     }) => {
-      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, {
+      const res = await apiRequest("PATCH", `/api/users/${userId}/password`, {
         newPassword,
       });
       if (!res.ok) {
