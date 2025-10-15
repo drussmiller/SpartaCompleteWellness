@@ -1328,6 +1328,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const postType = req.query.type as string;
       const excludeType = req.query.exclude as string;
 
+      // Get current user's team, group, and organization info for scope filtering
+      const [currentUser] = await db
+        .select({
+          teamId: users.teamId
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      let userOrganizationId = null;
+      let userGroupId = null;
+
+      if (currentUser?.teamId) {
+        const [team] = await db
+          .select({
+            groupId: teams.groupId
+          })
+          .from(teams)
+          .where(eq(teams.id, currentUser.teamId));
+
+        if (team?.groupId) {
+          userGroupId = team.groupId;
+
+          const [group] = await db
+            .select({
+              organizationId: groups.organizationId
+            })
+            .from(groups)
+            .where(eq(groups.id, team.groupId));
+
+          if (group?.organizationId) {
+            userOrganizationId = group.organizationId;
+          }
+        }
+      }
+
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
 
@@ -1357,6 +1392,51 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (excludeType) {
         conditions.push(not(eq(posts.type, excludeType)));
       }
+
+      // Add scope filtering - only show posts the user should see
+      const scopeConditions = [
+        eq(posts.postScope, 'everyone'), // Everyone can see posts with 'everyone' scope
+      ];
+
+      if (userOrganizationId) {
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'organization'),
+            eq(posts.targetOrganizationId, userOrganizationId)
+          )
+        );
+      }
+
+      if (userGroupId) {
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'group'),
+            eq(posts.targetGroupId, userGroupId)
+          )
+        );
+      }
+
+      if (currentUser?.teamId) {
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'team'),
+            eq(posts.targetTeamId, currentUser.teamId)
+          )
+        );
+        
+        // For 'my_team' scope, show posts from users in the same team
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'my_team'),
+            sql`${posts.userId} IN (SELECT id FROM users WHERE team_id = ${currentUser.teamId})`
+          )
+        );
+      } else {
+        // If user has no team, they can only see 'everyone' posts
+        // The my_team condition will naturally be excluded
+      }
+
+      conditions.push(or(...scopeConditions));
 
       // Join with users table to get author info
       const query = db
