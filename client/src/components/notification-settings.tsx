@@ -237,9 +237,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           <Label className="text-lg">
             Daily Notification Time
           </Label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-center items-center">
             <Select value={hour} onValueChange={setHour}>
-              <SelectTrigger className="flex-1 text-lg">
+              <SelectTrigger className="w-20 text-lg">
                 <SelectValue placeholder="Hour" />
               </SelectTrigger>
               <SelectContent>
