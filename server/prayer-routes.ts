@@ -11,7 +11,12 @@ export const prayerRoutes = Router();
 // Get count of new prayer request posts since user's last view
 prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) => {
   try {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    // Set JSON content type explicitly
+    res.setHeader('Content-Type', 'application/json');
+
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     // Get the user's last prayer request view timestamp and team info
     logger.info(`Fetching prayer request view timestamp for user ${req.user.id}`);
@@ -82,6 +87,7 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
     res.json({ unreadCount: newPrayerRequests[0].count });
   } catch (error) {
     logger.error('Error fetching unread prayer requests:', error);
+    res.setHeader('Content-Type', 'application/json');
     res.status(500).json({
       message: "Failed to fetch prayer request count",
       error: error instanceof Error ? error.message : "Unknown error"
