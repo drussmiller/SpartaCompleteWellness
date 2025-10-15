@@ -2765,7 +2765,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           email: users.email,
           isAdmin: users.isAdmin,
           teamId: users.teamId,
-          notificationTime: users.notificationTime
+          notificationTime: users.notificationTime,
+          timezoneOffset: users.timezoneOffset
         })
         .from(users);
 
@@ -2922,23 +2923,38 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
               continue;
             }
 
-            // Parse user's notification time preference (HH:MM format)
+            // Parse user's notification time preference (HH:MM format stored in user's local time)
             const notificationTimeParts = user.notificationTime.split(':');
             const preferredHour = parseInt(notificationTimeParts[0]);
             const preferredMinute = parseInt(notificationTimeParts[1] || '0');
             
-            // Get current time in user's server time (UTC)
-            const currentTimeInMinutes = currentHour * 60 + currentMinute;
+            // Convert server UTC time to user's local timezone
+            // timezoneOffset is stored in minutes (e.g., -300 for UTC-5/Central Time)
+            const userTimezoneOffsetMinutes = user.timezoneOffset || 0;
+            
+            // Create a date object for current server time
+            const serverTime = new Date();
+            serverTime.setHours(currentHour, currentMinute, 0, 0);
+            
+            // Convert to user's local time by applying their timezone offset
+            const userLocalTime = new Date(serverTime.getTime() + (userTimezoneOffsetMinutes * 60 * 1000));
+            const userLocalHour = userLocalTime.getUTCHours();
+            const userLocalMinute = userLocalTime.getUTCMinutes();
+            
+            // Compare in user's local timezone
+            const currentTimeInMinutes = userLocalHour * 60 + userLocalMinute;
             const preferredTimeInMinutes = preferredHour * 60 + preferredMinute;
             
-            // Check if the preferred notification time has passed today
+            // Check if the preferred notification time has passed today in user's timezone
             const hasTimePassed = currentTimeInMinutes >= preferredTimeInMinutes;
                 
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
               email: user.email,
-              currentTime: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+              serverTimeUTC: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+              userLocalTime: `${userLocalHour}:${String(userLocalMinute).padStart(2, '0')}`,
               preferredTime: `${preferredHour}:${String(preferredMinute).padStart(2, '0')}`,
+              timezoneOffset: userTimezoneOffsetMinutes,
               hasTimePassed,
               alreadySentToday: existingNotifications.length > 0
             });
