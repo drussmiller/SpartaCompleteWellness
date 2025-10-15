@@ -25,12 +25,35 @@ interface NotificationSettingsProps {
 
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [hour, setHour] = useState("9");
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
+  });
+
+  // Load user's saved notification time
+  useState(() => {
+    if (user?.notificationTime) {
+      const [savedHour, savedMinute] = user.notificationTime.split(':');
+      const hourNum = parseInt(savedHour);
+      
+      if (hourNum === 0) {
+        setHour("12");
+        setPeriod("AM");
+      } else if (hourNum < 12) {
+        setHour(hourNum.toString());
+        setPeriod("AM");
+      } else if (hourNum === 12) {
+        setHour("12");
+        setPeriod("PM");
+      } else {
+        setHour((hourNum - 12).toString());
+        setPeriod("PM");
+      }
+    }
   });
 
   // Convert hour + period to 24-hour format (always at :00 minutes)
@@ -56,6 +79,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         {
           notificationTime: time,
           timezoneOffset: -timezoneOffset, // Negate because getTimezoneOffset returns opposite sign
+          achievementNotificationsEnabled: notificationsEnabled,
         },
       );
       if (!response.ok) {
@@ -67,6 +91,8 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       toast({
         description: "Notification schedule updated successfully",
       });
+      // Refresh user data to get updated settings
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onError: (error: Error) => {
       toast({
