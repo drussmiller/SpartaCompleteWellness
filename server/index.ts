@@ -104,8 +104,8 @@ scheduleDailyScoreCheck = () => {
     notificationCheckInterval = null;
   }
 
-  logger.info('Starting automated daily notification scheduling');
-  logger.info('Checking every minute for users whose notification time matches');
+  logger.info('Starting automated hourly notification scheduling');
+  logger.info('Checking every hour for users missing daily posts from previous day');
 
   // Function to check and send notifications
   const checkNotifications = async () => {
@@ -122,10 +122,7 @@ scheduleDailyScoreCheck = () => {
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
 
-      // Only log every 15 minutes to reduce noise
-      if (currentMinute % 15 === 0) {
-        logger.info(`Checking for notifications at ${currentHour}:${String(currentMinute).padStart(2, '0')}`);
-      }
+      logger.info(`Running hourly notification check at ${currentHour}:${String(currentMinute).padStart(2, '0')}`);
 
       // Make internal request to check-daily-scores endpoint
       const response = await fetch(`http://localhost:${port}/api/check-daily-scores`, {
@@ -156,8 +153,8 @@ scheduleDailyScoreCheck = () => {
     }
   };
 
-  // Run check every minute (60000ms)
-  notificationCheckInterval = setInterval(checkNotifications, 60000);
+  // Run check every hour (3600000ms)
+  notificationCheckInterval = setInterval(checkNotifications, 3600000);
   
   // Also run an immediate check on startup
   checkNotifications();
