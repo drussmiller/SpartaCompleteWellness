@@ -2916,52 +2916,37 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 )
               );
 
-            // Use passed in hour/minute or current time
+            // Skip if user has no notification time preference set
+            if (!user.notificationTime) {
+              logger.info(`Skipping user ${user.id} - no notification time preference set`);
+              continue;
+            }
+
             // Parse user's notification time preference (HH:MM format)
-            const notificationTimeParts = user.notificationTime ? user.notificationTime.split(':') : ['9', '00'];
+            const notificationTimeParts = user.notificationTime.split(':');
             const preferredHour = parseInt(notificationTimeParts[0]);
             const preferredMinute = parseInt(notificationTimeParts[1] || '0');
             
-            // Convert the server's current time to the user's local timezone
-            // For rmiller@gmail.com (CDT), this would convert 4:00 AM UTC to 9:00 AM CDT
-            // assuming a timezone offset of -300 minutes (-5 hours)
-            // This allows us to match the user's preferred notification time
+            // Get current time in user's server time (UTC)
+            const currentTimeInMinutes = currentHour * 60 + currentMinute;
+            const preferredTimeInMinutes = preferredHour * 60 + preferredMinute;
             
-            // This is a simplified implementation - in a perfect solution, we would store
-            // the user's timezone preference and convert properly with full timezone support
-            // For now, we'll use the correct offset for Central Daylight Time users
-            
-            // Default offset for Central Time: 5 hours = 300 minutes
-            // Note: Timezone offset for CDT is -5 hours from UTC, but the offset needs to be positive
-            // to add hours to the UTC time
-            const defaultTzOffsetMinutes = 300; // CDT is UTC-5, so we add 5 hours (300 mins) to get proper time 
-            
-            // Adjust currentHour based on timezone offset
-            let adjustedHour = currentHour + Math.floor(defaultTzOffsetMinutes / 60);
-            // Handle day overflow
-            adjustedHour = adjustedHour % 24;
-            
-            // Check if we're within a 10-minute window of the user's preferred time
-            const isPreferredTimeWindow = 
-              (adjustedHour === preferredHour && 
-                (currentMinute >= preferredMinute && currentMinute < preferredMinute + 10)) ||
-              // Handle edge case where preferred time is near the end of an hour
-              (adjustedHour === preferredHour + 1 && 
-                preferredMinute >= 50 && 
-                currentMinute < (preferredMinute + 10) % 60);
+            // Check if the preferred notification time has passed today
+            const hasTimePassed = currentTimeInMinutes >= preferredTimeInMinutes;
                 
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
               email: user.email,
-              serverTime: `${currentHour}:${currentMinute}`,
-              adjustedTime: `${adjustedHour}:${currentMinute}`, // Time adjusted for timezone
-              preferredTime: `${preferredHour}:${preferredMinute}`,
-              isPreferredTimeWindow,
-              existingNotificationsToday: existingNotifications.length
+              currentTime: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+              preferredTime: `${preferredHour}:${String(preferredMinute).padStart(2, '0')}`,
+              hasTimePassed,
+              alreadySentToday: existingNotifications.length > 0
             });
             
-            // Only send if within time window and no notifications sent today
-            if (existingNotifications.length === 0 && isPreferredTimeWindow) {
+            // Only send if:
+            // 1. No notification sent today
+            // 2. Current time has passed the user's preferred notification time
+            if (existingNotifications.length === 0 && hasTimePassed) {
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
