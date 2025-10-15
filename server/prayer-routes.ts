@@ -10,10 +10,10 @@ export const prayerRoutes = Router();
 
 // Get count of new prayer request posts since user's last view
 prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) => {
+  // Set JSON content type at the very beginning
+  res.setHeader('Content-Type', 'application/json');
+  
   try {
-    // Set JSON content type explicitly
-    res.setHeader('Content-Type', 'application/json');
-
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -84,14 +84,16 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
       );
 
     logger.info(`Unread prayer requests for user ${req.user.id} (group ${userTeamData.groupId}): ${newPrayerRequests[0].count}. Last viewed: ${lastViewTime}`);
-    res.json({ unreadCount: newPrayerRequests[0].count });
+    return res.json({ unreadCount: newPrayerRequests[0].count });
   } catch (error) {
     logger.error('Error fetching unread prayer requests:', error);
-    res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({
-      message: "Failed to fetch prayer request count",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
+    // Ensure we haven't sent headers yet
+    if (!res.headersSent) {
+      return res.status(500).json({
+        message: "Failed to fetch prayer request count",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
   }
 });
 
