@@ -21,6 +21,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
+  postScope?: "everyone" | "organization" | "group" | "team" | "my_team";
+  targetOrganizationId?: number | null;
+  targetGroupId?: number | null;
+  targetTeamId?: number | null;
 };
 
 export function CreatePostDialog({ 
@@ -47,6 +51,25 @@ export function CreatePostDialog({
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [postScope, setPostScope] = useState<"everyone" | "organization" | "group" | "team" | "my_team">("my_team");
+
+  // Fetch organizations for admin users
+  const { data: organizations = [] } = useQuery({
+    queryKey: ["/api/organizations"],
+    enabled: !!user?.isAdmin && open,
+  });
+
+  // Fetch groups for admin and group admin users
+  const { data: groups = [] } = useQuery({
+    queryKey: ["/api/groups"],
+    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && open,
+  });
+
+  // Fetch teams for admin and group admin users
+  const { data: teams = [] } = useQuery({
+    queryKey: ["/api/teams"],
+    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && open,
+  });
 
   // Check if user's team is in a competitive group
   const { data: isCompetitive = false, isLoading: isLoadingCompetitive } = useQuery({
@@ -100,7 +123,11 @@ export function CreatePostDialog({
       content: "",
       mediaUrl: null,
       points: actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
-      postDate: selectedDate
+      postDate: selectedDate,
+      postScope: "my_team",
+      targetOrganizationId: null,
+      targetGroupId: null,
+      targetTeamId: null,
     }
   });
 
@@ -300,7 +327,11 @@ export function CreatePostDialog({
           type: data.type,
           content: content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
-          createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString()
+          createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString(),
+          postScope: data.postScope || postScope || "my_team",
+          targetOrganizationId: data.targetOrganizationId || null,
+          targetGroupId: data.targetGroupId || null,
+          targetTeamId: data.targetTeamId || null,
         };
 
         console.log("Post data prepared:", { 
@@ -396,6 +427,7 @@ export function CreatePostDialog({
       setVideoThumbnail(null);
       setSelectedMediaType(null);
       setSelectedExistingVideo(null);
+      setPostScope("my_team");
 
       // Clear any file inputs
       if (videoInputRef.current) {
@@ -478,6 +510,7 @@ export function CreatePostDialog({
         setVideoThumbnail(null);
         setSelectedMediaType(null);
         setSelectedExistingVideo(null);
+        setPostScope("my_team");
       }
     }}>
       <DialogTrigger asChild>
@@ -604,6 +637,146 @@ export function CreatePostDialog({
                   </FormItem>
                 )}
               />
+            )}
+
+            {/* Post Scope Selector - Only show for Admin and Group Admin */}
+            {(user?.isAdmin || user?.isGroupAdmin) && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="postScope"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Post To</FormLabel>
+                      <Select 
+                        value={postScope} 
+                        onValueChange={(value: any) => {
+                          setPostScope(value);
+                          field.onChange(value);
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select audience" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {user?.isAdmin && <SelectItem value="everyone">Everyone</SelectItem>}
+                          {user?.isAdmin && <SelectItem value="organization">Organization</SelectItem>}
+                          <SelectItem value="group">Group</SelectItem>
+                          <SelectItem value="team">Team</SelectItem>
+                          <SelectItem value="my_team">My Team (Default)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Organization Selector */}
+                {postScope === "organization" && user?.isAdmin && (
+                  <FormField
+                    control={form.control}
+                    name="targetOrganizationId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Organization</FormLabel>
+                        <Select 
+                          value={field.value?.toString()} 
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose organization" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {organizations.map((org: any) => (
+                              <SelectItem key={org.id} value={org.id.toString()}>
+                                {org.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Group Selector */}
+                {postScope === "group" && (
+                  <FormField
+                    control={form.control}
+                    name="targetGroupId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Group</FormLabel>
+                        <Select 
+                          value={field.value?.toString()} 
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose group" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {groups
+                              .filter((group: any) => user?.isAdmin || group.id === user?.adminGroupId)
+                              .map((group: any) => (
+                                <SelectItem key={group.id} value={group.id.toString()}>
+                                  {group.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Team Selector */}
+                {postScope === "team" && (
+                  <FormField
+                    control={form.control}
+                    name="targetTeamId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Team</FormLabel>
+                        <Select 
+                          value={field.value?.toString()} 
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose team" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {teams
+                              .filter((team: any) => {
+                                if (user?.isAdmin) return true;
+                                if (user?.isGroupAdmin) {
+                                  // Group admins can only see teams in their group
+                                  return groups.find((g: any) => g.id === user.adminGroupId && g.id === team.groupId);
+                                }
+                                return false;
+                              })
+                              .map((team: any) => (
+                                <SelectItem key={team.id} value={team.id.toString()}>
+                                  {team.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </>
             )}
 
             {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer") && (
