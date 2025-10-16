@@ -2470,15 +2470,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const targetGroupId = postData.targetGroupId || null;
       const targetTeamId = postData.targetTeamId || null;
 
-      logger.info('=================');
-      logger.info('COMPLETE POST DATA:');
-      logger.info(JSON.stringify(postData, null, 2));
-      logger.info('EXTRACTED VALUES:');
-      logger.info(`  postScope: ${postScope}`);
-      logger.info(`  targetOrganizationId: ${targetOrganizationId}`);
-      logger.info(`  targetGroupId: ${targetGroupId}`);
-      logger.info(`  targetTeamId: ${targetTeamId}`);
-      logger.info('=================');
+      console.log('=================== SERVER RECEIVED DATA ===================');
+      console.log('Complete postData object:', JSON.stringify(postData, null, 2));
+      console.log('Extracted scope values:');
+      console.log('  postScope:', postScope);
+      console.log('  targetOrganizationId:', targetOrganizationId);
+      console.log('  targetGroupId:', targetGroupId);
+      console.log('  targetTeamId:', targetTeamId);
+      console.log('============================================================');
 
       // Get user's details for permission validation
       const [currentUser] = await db
