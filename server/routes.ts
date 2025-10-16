@@ -1401,14 +1401,7 @@ export const registerRoutes = async (
       let postData = req.body;
       if (typeof postData.data === 'string') {
         try {
-          const rawData = postData.data;
-          console.log("🔍 RAW JSON STRING (first 500 chars):", rawData.substring(0, 500));
           postData = JSON.parse(postData.data);
-          
-          console.log("🔍 AFTER JSON.PARSE - Full object keys:", Object.keys(postData));
-          console.log("🔍 AFTER JSON.PARSE - postScope value:", postData.postScope);
-          console.log("🔍 AFTER JSON.PARSE - targetTeamId value:", postData.targetTeamId);
-          
           console.log("Successfully parsed post data:", { postType: postData.type });
         } catch (parseError) {
           console.error("Error parsing post data:", parseError);
@@ -1725,16 +1718,6 @@ export const registerRoutes = async (
         mediaUrl = null;
         logger.info(`No media uploaded for ${postData.type} post`);
       }
-
-      console.log("🔍 BEFORE DATABASE INSERT - Values being inserted:", {
-        userId: req.user.id,
-        type: postData.type,
-        postScope: postData.postScope,
-        targetOrganizationId: postData.targetOrganizationId,
-        targetGroupId: postData.targetGroupId,
-        targetTeamId: postData.targetTeamId,
-        points: points
-      });
 
       const post = await db
         .insert(posts)
