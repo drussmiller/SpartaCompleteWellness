@@ -1206,6 +1206,7 @@ export const registerRoutes = async (
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
 
       // Add team-only filter if specified
+      // This includes posts from team members AND posts targeted to this team via scope
       if (teamOnly) {
         if (!req.user.teamId) {
           // If user has no team, return empty array
@@ -1226,9 +1227,19 @@ export const registerRoutes = async (
           return res.json([]);
         }
 
-        // Filter posts to only show posts from team members
-        conditions.push(inArray(posts.userId, memberIds));
-        logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members: ${memberIds.join(', ')}`);
+        // Filter posts to show:
+        // 1. Posts from team members (my_team scope), OR
+        // 2. Posts targeted to this team (team scope with target_team_id matching)
+        conditions.push(
+          or(
+            inArray(posts.userId, memberIds),
+            and(
+              eq(posts.postScope, 'team'),
+              eq(posts.targetTeamId, req.user.teamId)
+            )
+          )
+        );
+        logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members PLUS team-targeted posts`);
       }
 
       // Special handling for prayer posts - filter by group instead of team

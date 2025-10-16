@@ -1,0 +1,195 @@
+Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+main.tsx:5 React entry point initializing...
+main.tsx:14 Creating React root...
+main.tsx:16 Rendering app...
+main.tsx:18 App mounted successfully
+App.tsx:142 App component rendering
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: Object
+2use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: Object
+use-auth.tsx:35 Fetching user data...
+App.tsx:150 Notification permission: default
+use-auth.tsx:40 User fetch response status: 200
+use-auth.tsx:52 Fetched user data: Object
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: Object
+2use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: Object
+6use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+3use-auth.tsx:152 useAuth hook called
+use-prayer-requests.tsx:75 Auth state changed, isAuthenticated: true, userId: 9
+use-prayer-requests.tsx:22 Fetching prayer request count for user 9
+2use-post-limits.ts:76 Post limit event listeners attached
+home-page.tsx:77 Fetching posts...
+use-prayer-requests.tsx:75 Auth state changed, isAuthenticated: true, userId: 9
+use-prayer-requests.tsx:22 Fetching prayer request count for user 9
+home-page.tsx:187 📝 Initial scroll setup - scrollY: 0
+home-page.tsx:188 📝 Document height: 917
+home-page.tsx:189 📝 Window height: 917
+home-page.tsx:190 📝 Body scroll height: 917
+home-page.tsx:191 📝 Main element found: true
+home-page.tsx:192 📝 Root element found: true
+3use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+3use-auth.tsx:152 useAuth hook called
+use-prayer-requests.tsx:33 Received prayer request count: 0 for user 9
+14use-auth.tsx:152 useAuth hook called
+use-prayer-requests.tsx:33 Received prayer request count: 0 for user 9
+3use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+3use-auth.tsx:152 useAuth hook called
+home-page.tsx:87 Posts received from API: 7 posts
+home-page.tsx:91 Posts after prayer filtering: 7
+3use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+4use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV
+media-utils.ts:81 Cleaned filename: 1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV&_cb=1760583661468
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV
+media-utils.ts:81 Cleaned filename: 1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV&_cb=1760583661469
+video-player.tsx:29 createSimplifiedPosterUrl called with: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+video-player.tsx:39 Video player: URL already has correct JPG format: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+3use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1750156396520-image.jpeg
+media-utils.ts:81 Cleaned filename: 1750156396520-image.jpeg
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1750156396520-image.jpeg&_cb=1760583661482
+media-utils.ts:97 createThumbnailUrl called with: shared/uploads/1750156396520-image.jpeg
+media-utils.ts:117 Creating thumbnail for filename: 1750156396520-image.jpeg
+media-utils.ts:134 Created image thumbnail URL: /api/serve-file?filename=1750156396520-image.poster.jpg
+3use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1749775630019-image.jpeg
+media-utils.ts:81 Cleaned filename: 1749775630019-image.jpeg
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1749775630019-image.jpeg&_cb=1760583661485
+media-utils.ts:97 createThumbnailUrl called with: shared/uploads/1749775630019-image.jpeg
+media-utils.ts:117 Creating thumbnail for filename: 1749775630019-image.jpeg
+media-utils.ts:134 Created image thumbnail URL: /api/serve-file?filename=1749775630019-image.poster.jpg
+14use-auth.tsx:152 useAuth hook called
+:5000/:1 [Intervention] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113
+3use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+7use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 693
+use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV
+media-utils.ts:81 Cleaned filename: 1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.MOV&_cb=1760583662453
+video-player.tsx:29 createSimplifiedPosterUrl called with: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+video-player.tsx:39 Video player: URL already has correct JPG format: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+2use-auth.tsx:152 useAuth hook called
+video-player.tsx:29 createSimplifiedPosterUrl called with: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+video-player.tsx:39 Video player: URL already has correct JPG format: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+use-comment-count.tsx:75 Fetched 1 comments for post 688
+3use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:93 Updated comment count for post 688 to 1 from query
+4use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 664
+4use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 501
+4use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 479
+3use-auth.tsx:152 useAuth hook called
+video-player.tsx:120 Poster image loaded successfully: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+video-player.tsx:29 createSimplifiedPosterUrl called with: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+video-player.tsx:39 Video player: URL already has correct JPG format: /api/serve-file?filename=1756252307833-77794501967__72B923E4-3F54-4E89-B50D-F5132F046DBB.jpg&_cb=693
+use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 394
+7use-auth.tsx:152 useAuth hook called
+2app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-comment-count.tsx:75 Fetched 0 comments for post 16
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+profile-page.tsx:280 Profile page user data updated: Object
+profile-page.tsx:284 Refetching user data
+Dialog.tsx:517  `DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+(anonymous) @ Dialog.tsx:517
+Dialog.tsx:540  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ Dialog.tsx:540
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:116 Attempting logout...
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: Object
+2use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: Object
+4use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+2use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:152 useAuth hook called
+bottom-nav.tsx:19 BottomNav render - isVisible: true
+use-auth.tsx:120 Logout successful
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: Object
+2use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: Object
+use-auth.tsx:35 Fetching user data...
+api/user:1   Failed to load resource: the server responded with a status of 401 (Unauthorized)
+use-auth.tsx:40 User fetch response status: 401
+use-auth.tsx:43 User not authenticated
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: Object
+2use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: Object
+4use-auth.tsx:152 useAuth hook called
+use-auth.tsx:67 Attempting login...
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: Object
+2use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: Object
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:76 Login successful: Object
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: Object
+2use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: Object
+4use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-prayer-requests.tsx:75 Auth state changed, isAuthenticated: true, userId: 9
+use-prayer-requests.tsx:22 Fetching prayer request count for user 9
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-prayer-requests.tsx:33 Received prayer request count: 0 for user 9
+9use-auth.tsx:152 useAuth hook called
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
