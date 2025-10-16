@@ -3197,7 +3197,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     {user.programStartDate && user.programStartDate !== '' && (
                                       <div className="mt-1 text-sm text-muted-foreground">
                                         Program Start Date:{" "}
-                                        {format(new Date(user.programStartDate), "PPP")}
+                                        {(() => {
+                                          // Extract date portion only to avoid timezone conversion
+                                          const dateStr = String(user.programStartDate).split('T')[0];
+                                          const [year, month, day] = dateStr.split('-').map(Number);
+                                          return format(new Date(year, month - 1, day), "PPP");
+                                        })()}
                                       </div>
                                     )}
                                     <div className="mt-1 text-sm text-muted-foreground">
