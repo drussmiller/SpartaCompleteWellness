@@ -1891,6 +1891,28 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           }
                                         }
 
+                                        // Calculate current week and day based on program start date
+                                        let currentWeek = 1;
+                                        let currentDay = 1;
+                                        
+                                        if (programStartDateValue) {
+                                          const startDate = new Date(programStartDateValue);
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+                                          startDate.setHours(0, 0, 0, 0);
+                                          
+                                          if (startDate > today) {
+                                            // Future date: set to week 1, day 1
+                                            currentWeek = 1;
+                                            currentDay = 1;
+                                          } else {
+                                            // Past or today: calculate based on days elapsed
+                                            const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                            currentWeek = Math.floor(daysDiff / 7) + 1;
+                                            currentDay = (daysDiff % 7) + 1;
+                                          }
+                                        }
+
                                         updateGroupMutation.mutate({
                                           groupId: group.id,
                                           data: {
@@ -1901,6 +1923,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             status: Number(status),
                                             competitive,
                                             programStartDate: programStartDateValue,
+                                            currentWeek,
+                                            currentDay,
                                           },
                                         }, {
                                           onSuccess: () => {
@@ -2434,6 +2458,28 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       }
                                     }
 
+                                    // Calculate current week and day based on program start date
+                                    let currentWeek = 1;
+                                    let currentDay = 1;
+                                    
+                                    if (programStartDateValue) {
+                                      const startDate = new Date(programStartDateValue);
+                                      const today = new Date();
+                                      today.setHours(0, 0, 0, 0);
+                                      startDate.setHours(0, 0, 0, 0);
+                                      
+                                      if (startDate > today) {
+                                        // Future date: set to week 1, day 1
+                                        currentWeek = 1;
+                                        currentDay = 1;
+                                      } else {
+                                        // Past or today: calculate based on days elapsed
+                                        const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                        currentWeek = Math.floor(daysDiff / 7) + 1;
+                                        currentDay = (daysDiff % 7) + 1;
+                                      }
+                                    }
+
                                     const updateData = {
                                       name,
                                       description,
@@ -2441,6 +2487,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       maxSize,
                                       status: Number(status),
                                       programStartDate: programStartDateValue,
+                                      currentWeek,
+                                      currentDay,
                                     };
 
                                     // Check if team is being set to inactive
@@ -2957,6 +3005,28 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           programStartDateValue = formData.get("programStartDate") as string;
                                         }
 
+                                        // Calculate current week and day based on program start date
+                                        let currentWeek = 1;
+                                        let currentDay = 1;
+                                        
+                                        if (programStartDateValue) {
+                                          const startDate = new Date(programStartDateValue);
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+                                          startDate.setHours(0, 0, 0, 0);
+                                          
+                                          if (startDate > today) {
+                                            // Future date: set to week 1, day 1
+                                            currentWeek = 1;
+                                            currentDay = 1;
+                                          } else {
+                                            // Past or today: calculate based on days elapsed
+                                            const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                            currentWeek = Math.floor(daysDiff / 7) + 1;
+                                            currentDay = (daysDiff % 7) + 1;
+                                          }
+                                        }
+
                                         updateUserMutation.mutate({
                                           userId: user.id,
                                           data: {
@@ -2971,6 +3041,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 : 1;
                                             })(formData.get("status") as string),
                                             programStartDate: programStartDateValue ? new Date(programStartDateValue) : null,
+                                            currentWeek,
+                                            currentDay,
                                           },
                                         }, {
                                           onSuccess: () => {
