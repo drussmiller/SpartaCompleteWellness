@@ -259,7 +259,7 @@ export default function HomePage() {
               </Button>
               <Button
                 variant="outline"
-                className={`flex-1 ml-2 h-10 text-sm font-medium md:hidden ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex-1 ml-2 h-10 text-sm font-medium ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={!user?.teamId}
                 onClick={handlePrayerRequestsClick}
               >
@@ -280,7 +280,7 @@ export default function HomePage() {
         {/* Main content layout */}
         <div className="w-full">
           <div
-            className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56" : "w-full"}`}
+            className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
           >
             <main className="p-4">
               {/* Header */}
