@@ -3197,16 +3197,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     {user.programStartDate && user.programStartDate !== '' && (
                                       <div className="mt-1 text-sm text-muted-foreground">
                                         Program Start Date:{" "}
-                                        {(() => {
-                                          try {
-                                            // Assuming programStartDate is stored as YYYY-MM-DD string or Date object
-                                            // Use format for consistent display
-                                            return format(new Date(String(user.programStartDate) + 'T00:00:00'), "PPP");
-                                          } catch (e) {
-                                            console.error("Error formatting program start date:", e);
-                                            return 'Invalid Date';
-                                          }
-                                        })()}
+                                        {format(new Date(user.programStartDate), "PPP")}
                                       </div>
                                     )}
                                     <div className="mt-1 text-sm text-muted-foreground">
