@@ -668,8 +668,8 @@ export function CreatePostDialog({
               />
             )}
 
-            {/* Post Scope Selector - Only show for Admin and Group Admin */}
-            {(user?.isAdmin || user?.isGroupAdmin) && (
+            {/* Post Scope Selector - Only show for Admin and Group Admin when posting Miscellaneous */}
+            {(user?.isAdmin || user?.isGroupAdmin) && form.watch("type") === "miscellaneous" && (
               <>
                 <FormField
                   control={form.control}
