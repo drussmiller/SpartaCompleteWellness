@@ -603,36 +603,39 @@ export function CreatePostDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type</FormLabel>
-                    <FormControl>
-                      <select
-                        {...field}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 h-12"
-                        onChange={(e) => {
-                          field.onChange(e);
-                          // Reset selected media type when changing post type
-                          setSelectedMediaType(null);
-                          setImagePreview(null);
-                          setVideoThumbnail(null);
-                        }}
-                      >
-                        <option value="food" disabled={isPostTypeDisabled('food') || !hasAnyPosts}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Reset selected media type when changing post type
+                        setSelectedMediaType(null);
+                        setImagePreview(null);
+                        setVideoThumbnail(null);
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent position="popper" side="bottom" align="start">
+                        <SelectItem value="food" disabled={isPostTypeDisabled('food') || !hasAnyPosts}>
                           Food {getRemainingMessage('food')}
-                        </option>
-                        <option value="workout" disabled={isPostTypeDisabled('workout') || !hasAnyPosts}>
+                        </SelectItem>
+                        <SelectItem value="workout" disabled={isPostTypeDisabled('workout') || !hasAnyPosts}>
                           Workout {getRemainingMessage('workout')}
-                        </option>
-                        <option value="scripture" disabled={isPostTypeDisabled('scripture') || !hasAnyPosts}>
+                        </SelectItem>
+                        <SelectItem value="scripture" disabled={isPostTypeDisabled('scripture') || !hasAnyPosts}>
                           Scripture {getRemainingMessage('scripture')}
-                        </option>
-                        <option value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || !hasAnyPosts}>
+                        </SelectItem>
+                        <SelectItem value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || !hasAnyPosts}>
                           Memory Verse {getRemainingMessage('memory_verse')}
-                        </option>
-                        {/* Remove Prayer Request option entirely - will be handled on its own page */}
-                        <option value="miscellaneous">
+                        </SelectItem>
+                        <SelectItem value="miscellaneous">
                           {!hasAnyPosts ? "Intro Video" : "Miscellaneous"} {getRemainingMessage('miscellaneous')}
-                        </option>
-                      </select>
-                    </FormControl>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
