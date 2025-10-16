@@ -2080,7 +2080,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <CardDescription>
                                         {group.description}
                                       </CardDescription>
-                                      {group.programStartDate && (
+                                      {group.programStartDate && group.programStartDate !== '' && (
                                         <p className="text-sm mt-2">
                                           <span className="font-medium">
                                             Program Start Date:{" "}
@@ -2622,7 +2622,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <CardDescription className="line-clamp-2 text-sm">
                                     {team.description}
                                   </CardDescription>
-                                  {team.programStartDate && (
+                                  {team.programStartDate && team.programStartDate !== '' && (
                                     <p className="text-sm mt-2">
                                       <span className="font-medium">
                                         Program Start Date:{" "}
@@ -3174,7 +3174,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       Date Joined:{" "}
                                       {format(new Date(user.createdAt!), "PPP")}
                                     </div>
-                                    {user.programStartDate && (
+                                    {user.programStartDate && user.programStartDate !== '' && (
                                       <div className="mt-1 text-sm text-muted-foreground">
                                         Program Start Date:{" "}
                                         {format(new Date(String(user.programStartDate) + 'T00:00:00'), "PPP")}
