@@ -148,8 +148,23 @@ export function ImageViewer({ src, alt, isOpen, onClose }: ImageViewerProps) {
       className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
       onClick={onClose}
     >
-      {/* Controls */}
-      <div className="absolute top-4 right-4 flex gap-2 z-10">
+      {/* Close button - top left */}
+      <div className="absolute top-6 left-6 z-10">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          data-testid="button-close-viewer"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Zoom and rotate controls - top right */}
+      <div className="absolute top-6 right-6 flex gap-2 z-10">
         <Button
           variant="secondary"
           size="icon"
@@ -183,21 +198,10 @@ export function ImageViewer({ src, alt, isOpen, onClose }: ImageViewerProps) {
         >
           <RotateCw className="h-5 w-5" />
         </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          data-testid="button-close-viewer"
-        >
-          <X className="h-5 w-5" />
-        </Button>
       </div>
 
       {/* Zoom indicator */}
-      <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded text-sm">
+      <div className="absolute top-20 left-6 bg-black/50 text-white px-3 py-1 rounded text-sm">
         {Math.round(scale * 100)}%
       </div>
 
