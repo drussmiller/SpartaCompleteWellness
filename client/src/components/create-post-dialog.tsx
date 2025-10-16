@@ -618,7 +618,7 @@ export function CreatePostDialog({
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent position="popper" side="bottom" align="start">
+                      <SelectContent position="popper" side="bottom" align="start" className="z-[9999]">
                         <SelectItem value="food" disabled={isPostTypeDisabled('food') || !hasAnyPosts}>
                           Food {getRemainingMessage('food')}
                         </SelectItem>
