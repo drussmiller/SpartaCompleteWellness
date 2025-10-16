@@ -2087,15 +2087,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           </span>
                                           {(() => {
                                             try {
-                                              // Handle both ISO format (YYYY-MM-DD) and M/D/YYYY format
-                                              const dateStr = String(group.programStartDate);
-                                              if (dateStr.includes('-')) {
-                                                // ISO format: add T00:00:00
-                                                return new Date(dateStr + 'T00:00:00').toLocaleDateString();
-                                              } else {
-                                                // M/D/YYYY format: parse directly
-                                                return new Date(dateStr).toLocaleDateString();
+                                              const date = new Date(group.programStartDate);
+                                              if (isNaN(date.getTime())) {
+                                                return 'Invalid Date';
                                               }
+                                              return date.toLocaleDateString();
                                             } catch (e) {
                                               return 'Invalid Date';
                                             }
@@ -2643,15 +2639,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       </span>
                                       {(() => {
                                         try {
-                                          // Handle both ISO format (YYYY-MM-DD) and M/D/YYYY format
-                                          const dateStr = String(team.programStartDate);
-                                          if (dateStr.includes('-')) {
-                                            // ISO format: add T00:00:00
-                                            return new Date(dateStr + 'T00:00:00').toLocaleDateString();
-                                          } else {
-                                            // M/D/YYYY format: parse directly
-                                            return new Date(dateStr).toLocaleDateString();
+                                          const date = new Date(team.programStartDate);
+                                          if (isNaN(date.getTime())) {
+                                            return 'Invalid Date';
                                           }
+                                          return date.toLocaleDateString();
                                         } catch (e) {
                                           return 'Invalid Date';
                                         }
@@ -3207,6 +3199,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         Program Start Date:{" "}
                                         {(() => {
                                           try {
+                                            // Assuming programStartDate is stored as YYYY-MM-DD string or Date object
+                                            // Use format for consistent display
                                             return format(new Date(String(user.programStartDate) + 'T00:00:00'), "PPP");
                                           } catch (e) {
                                             console.error("Error formatting program start date:", e);

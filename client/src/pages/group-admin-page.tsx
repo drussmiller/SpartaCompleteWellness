@@ -137,7 +137,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     },
     onSuccess: (updatedTeam) => {
       toast({ title: "Success", description: "Team updated successfully" });
-      
+
       // Update the teams cache with the new data
       queryClient.setQueryData(["/api/group-admin/teams"], (oldTeams: TeamWithCount[] | undefined) => {
         if (!oldTeams) return [updatedTeam];
@@ -145,7 +145,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
           team.id === updatedTeam.id ? { ...team, ...updatedTeam } : team
         );
       });
-      
+
       setEditTeamOpen(false);
       setEditingTeam(null);
       setSelectedProgramStartDate(undefined);
@@ -456,8 +456,21 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                         <div className="text-xs text-muted-foreground space-y-1">
                           <div>Max Size: {team.maxSize || 6} members</div>
                           {team.programStartDate && (
-                            <div>Program Start: {new Date(team.programStartDate).toLocaleDateString()}</div>
-                          )}
+                                <p className="text-sm">
+                                  <span className="font-medium">Program Start Date: </span>
+                                  {(() => {
+                                    try {
+                                      const date = new Date(team.programStartDate);
+                                      if (isNaN(date.getTime())) {
+                                        return 'Invalid Date';
+                                      }
+                                      return date.toLocaleDateString();
+                                    } catch (e) {
+                                      return 'Invalid Date';
+                                    }
+                                  })()}
+                                </p>
+                              )}
                         </div>
                       </div>
                       <div className="flex gap-2">
