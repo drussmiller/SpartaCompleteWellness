@@ -1288,6 +1288,88 @@ export const registerRoutes = async (
         conditions.push(ne(posts.type, excludeType));
       }
 
+      // Add scope-based filtering
+      // Users should only see posts where:
+      // 1. post_scope is 'everyone', OR
+      // 2. post_scope is 'my_team' and they're in the author's team, OR
+      // 3. post_scope is 'team' and they're in the target team, OR
+      // 4. post_scope is 'group' and they're in a team within the target group, OR
+      // 5. post_scope is 'organization' and they're in a group within the target organization
+      
+      if (req.user.teamId) {
+        // Get user's team info to check group and organization
+        const [userTeam] = await db
+          .select({
+            groupId: teams.groupId
+          })
+          .from(teams)
+          .where(eq(teams.id, req.user.teamId));
+        
+        const userGroupId = userTeam?.groupId;
+        
+        let userOrganizationId = null;
+        if (userGroupId) {
+          const [userGroup] = await db
+            .select({
+              organizationId: groups.organizationId
+            })
+            .from(groups)
+            .where(eq(groups.id, userGroupId));
+          
+          userOrganizationId = userGroup?.organizationId;
+        }
+
+        // Get all user IDs in the same team (for my_team scope filtering)
+        const teamMemberIds = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.teamId, req.user.teamId));
+        
+        const memberIds = teamMemberIds.map(member => member.id);
+
+        // Build scope filter conditions
+        const scopeConditions = [
+          // Everyone posts - visible to all
+          eq(posts.postScope, 'everyone'),
+          // My team posts - user must be in the same team as the author
+          and(
+            eq(posts.postScope, 'my_team'),
+            inArray(posts.userId, memberIds)
+          ),
+          // Team posts - user must be in the target team
+          and(
+            eq(posts.postScope, 'team'),
+            eq(posts.targetTeamId, req.user.teamId)
+          ),
+        ];
+
+        // Group posts - user's team must be in the target group
+        if (userGroupId) {
+          scopeConditions.push(
+            and(
+              eq(posts.postScope, 'group'),
+              eq(posts.targetGroupId, userGroupId)
+            )
+          );
+        }
+
+        // Organization posts - user's group must be in the target organization
+        if (userOrganizationId) {
+          scopeConditions.push(
+            and(
+              eq(posts.postScope, 'organization'),
+              eq(posts.targetOrganizationId, userOrganizationId)
+            )
+          );
+        }
+
+        // Add the scope filter to conditions
+        conditions.push(or(...scopeConditions));
+      } else {
+        // User has no team - only show 'everyone' posts
+        conditions.push(eq(posts.postScope, 'everyone'));
+      }
+
       // Join with users table to get author info
       const query = db
         .select({
@@ -1299,12 +1381,17 @@ export const registerRoutes = async (
           parentId: posts.parentId,
           points: posts.points,
           userId: posts.userId,
+          postScope: posts.postScope,
+          targetOrganizationId: posts.targetOrganizationId,
+          targetGroupId: posts.targetGroupId,
+          targetTeamId: posts.targetTeamId,
           author: {
             id: users.id,
             username: users.username,
             email: users.email,
             imageUrl: users.imageUrl,
             isAdmin: users.isAdmin,
+            teamId: users.teamId,
           },
         })
         .from(posts)
