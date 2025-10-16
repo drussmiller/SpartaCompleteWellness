@@ -1981,7 +1981,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                     ? editingGroup.programStartDate 
                                                     : (editingGroup.programStartDate as any)?.toISOString?.() || '';
                                                   const dateStr = isoStr.split('T')[0];
-                                                  const [year, month, day] = dateStr.split('-').map(Number);
+                                                  const [year, month, day] = dateStr.map(Number);
                                                   return new Date(year, month - 1, day);
                                                 })() : undefined}
                                                 onSelect={(date) => {
@@ -2085,7 +2085,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <span className="font-medium">
                                             Program Start Date:{" "}
                                           </span>
-                                          {new Date(String(group.programStartDate) + 'T00:00:00').toLocaleDateString()}
+                                          {(() => {
+                                            try {
+                                              return new Date(String(group.programStartDate) + 'T00:00:00').toLocaleDateString();
+                                            } catch (e) {
+                                              return 'Invalid Date';
+                                            }
+                                          })()}
                                         </p>
                                       )}
                                       <p className="text-sm mt-2">
@@ -2627,7 +2633,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <span className="font-medium">
                                         Program Start Date:{" "}
                                       </span>
-                                      {new Date(String(team.programStartDate) + 'T00:00:00').toLocaleDateString()}
+                                      {(() => {
+                                        try {
+                                          return new Date(String(team.programStartDate) + 'T00:00:00').toLocaleDateString();
+                                        } catch (e) {
+                                          return 'Invalid Date';
+                                        }
+                                      })()}
                                     </p>
                                   )}
                                   <p className="text-sm mt-2">
@@ -3177,7 +3189,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     {user.programStartDate && user.programStartDate !== '' && (
                                       <div className="mt-1 text-sm text-muted-foreground">
                                         Program Start Date:{" "}
-                                        {format(new Date(String(user.programStartDate) + 'T00:00:00'), "PPP")}
+                                        {(() => {
+                                          try {
+                                            return format(new Date(String(user.programStartDate) + 'T00:00:00'), "PPP");
+                                          } catch (e) {
+                                            console.error("Error formatting program start date:", e);
+                                            return 'Invalid Date';
+                                          }
+                                        })()}
                                       </div>
                                     )}
                                     <div className="mt-1 text-sm text-muted-foreground">
