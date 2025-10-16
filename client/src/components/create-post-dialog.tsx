@@ -27,12 +27,12 @@ type CreatePostForm = z.infer<typeof insertPostSchema> & {
   targetTeamId?: number | null;
 };
 
-export function CreatePostDialog({ 
-  remaining: propRemaining, 
+export function CreatePostDialog({
+  remaining: propRemaining,
   initialType = "food",
   defaultType = null,
   hideTypeField = false
-}: { 
+}: {
   remaining: Record<string, number>;
   initialType?: string;
   defaultType?: string | null;
@@ -46,7 +46,7 @@ export function CreatePostDialog({
   const { canPost, counts, refetch, remaining, memoryVerseWeekCount } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null); 
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const [selectedExistingVideo, setSelectedExistingVideo] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
@@ -197,7 +197,7 @@ export function CreatePostDialog({
     // This ensures consistency between the dropdown display and button status
     switch (type) {
       case 'food':
-        return !canPost.food; 
+        return !canPost.food;
       case 'workout':
         return !canPost.workout;
       case 'scripture':
@@ -238,10 +238,10 @@ export function CreatePostDialog({
           formData.append("existing_video_id", existingVideoId);
 
           // We don't need to append any image/video file since we're using an existing one
-        } 
+        }
         // Handle regular media uploads
         else if (data.mediaUrl && data.mediaUrl.length > 0) {
-          console.log("Media URL found, preparing to upload", { 
+          console.log("Media URL found, preparing to upload", {
             type: data.type,
             mediaUrlLength: data.mediaUrl.length,
             urlPreview: data.mediaUrl.substring(0, 30) + "..."
@@ -249,7 +249,7 @@ export function CreatePostDialog({
 
           try {
             // Handle memory verse, miscellaneous, and prayer post video uploads
-            if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || (data.type === 'prayer' && selectedMediaType === 'video')) && 
+            if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || (data.type === 'prayer' && selectedMediaType === 'video')) &&
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
 
@@ -289,27 +289,27 @@ export function CreatePostDialog({
 
               console.log(`Uploading ${data.type} video file:`, {
                 fileName: videoFile.name,
-                fileType: videoFile.type, 
+                fileType: videoFile.type,
                 fileSize: videoFile.size,
                 fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2) + "MB",
                 hasThumbnail: !!videoThumbnail,
                 postType: data.type
               });
-            } 
+            }
             // Handle memory verse posts with no video
             else if (data.type === 'memory_verse' && !selectedExistingVideo) {
               console.error("Memory verse post missing video file");
               throw new Error("No video file selected");
-            } 
+            }
             // Handle regular image uploads (including miscellaneous posts with images)
-            else if (data.mediaUrl && data.mediaUrl.length > 0 && 
+            else if (data.mediaUrl && data.mediaUrl.length > 0 &&
                     !(data.type === 'miscellaneous' && selectedMediaType === 'video')) {
               // For images, fetch the blob from the data URL
               console.log("Processing image URL to blob");
               const blob = await fetch(data.mediaUrl).then(r => r.blob());
-              console.log("Blob created from image URL", { 
-                type: blob.type, 
-                size: blob.size 
+              console.log("Blob created from image URL", {
+                type: blob.type,
+                size: blob.size
               });
               formData.append("image", blob, "image.jpeg");
               console.log("Image blob appended to form data");
@@ -334,10 +334,10 @@ export function CreatePostDialog({
           targetTeamId: data.targetTeamId || null,
         };
 
-        console.log("Post data prepared:", { 
-          type: postData.type, 
+        console.log("Post data prepared:", {
+          type: postData.type,
           contentLength: postData.content.length,
-          hasImage: !!data.mediaUrl 
+          hasImage: !!data.mediaUrl
         });
 
         // Add special identifier for miscellaneous post type if it has video
@@ -382,10 +382,10 @@ export function CreatePostDialog({
         });
         console.log("Response headers:", responseHeaders);
 
-        console.log("Server response received", { 
-          status: response.status, 
+        console.log("Server response received", {
+          status: response.status,
           ok: response.ok,
-          statusText: response.statusText 
+          statusText: response.statusText
         });
 
         if (!response.ok) {
@@ -405,7 +405,7 @@ export function CreatePostDialog({
       const previousPosts = queryClient.getQueryData(["/api/posts"]);
 
       const optimisticPost = {
-        id: Date.now(), 
+        id: Date.now(),
         type: data.type,
         content: data.content,
         mediaUrl: imagePreview,
@@ -447,15 +447,15 @@ export function CreatePostDialog({
       }
 
       // Only invalidate the specific posts query we're using
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/posts", "team-posts"], 
+      queryClient.invalidateQueries({
+        queryKey: ["/api/posts", "team-posts"],
         exact: false // This will match all variations including different teamIds
       });
 
       // Invalidate post limits - use exact: false to match all variations of the counts query
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ["/api/posts/counts"],
-        exact: false 
+        exact: false
       });
 
       // If this was a prayer post, also invalidate the prayer requests cache
@@ -520,9 +520,9 @@ export function CreatePostDialog({
       </DialogTrigger>
       <DialogContent className="h-screen overflow-y-auto pb-32 sm:pb-28 pt-8">
         <div className="flex justify-between items-center mb-4 px-2">
-          <Button 
-            onClick={() => setOpen(false)} 
-            variant="ghost" 
+          <Button
+            onClick={() => setOpen(false)}
+            variant="ghost"
             className="h-8 w-8 p-0"
             aria-label="Close"
           >
@@ -648,8 +648,8 @@ export function CreatePostDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Post To</FormLabel>
-                      <Select 
-                        value={postScope} 
+                      <Select
+                        value={postScope}
                         onValueChange={(value: any) => {
                           setPostScope(value);
                           field.onChange(value);
@@ -681,8 +681,8 @@ export function CreatePostDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Select Organization</FormLabel>
-                        <Select 
-                          value={field.value?.toString()} 
+                        <Select
+                          value={field.value?.toString()}
                           onValueChange={(value) => field.onChange(parseInt(value))}
                         >
                           <FormControl>
@@ -712,8 +712,8 @@ export function CreatePostDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Select Group</FormLabel>
-                        <Select 
-                          value={field.value?.toString()} 
+                        <Select
+                          value={field.value?.toString()}
                           onValueChange={(value) => field.onChange(parseInt(value))}
                         >
                           <FormControl>
@@ -745,8 +745,8 @@ export function CreatePostDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Select Team</FormLabel>
-                        <Select 
-                          value={field.value?.toString()} 
+                        <Select
+                          value={field.value?.toString()}
                           onValueChange={(value) => field.onChange(parseInt(value))}
                         >
                           <FormControl>
@@ -786,7 +786,7 @@ export function CreatePostDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {(form.watch("type") === "memory_verse") ? "Video" : 
+                      {(form.watch("type") === "memory_verse") ? "Video" :
                        (form.watch("type") === "miscellaneous" && !hasAnyPosts) ? "Intro Video" :
                        (form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") ? "Media" : "Image"}
                     </FormLabel>
@@ -804,7 +804,7 @@ export function CreatePostDialog({
                               }
                             }}
                           >
-                            <div className="flex flex-col items-center justify-center text-center">                              
+                            <div className="flex flex-col items-center justify-center text-center">
                               <span>Select video</span>
                             </div>
                           </Button>
@@ -1018,7 +1018,7 @@ export function CreatePostDialog({
                             <div className="mt-2">
                               {videoThumbnail ? (
                                 <div>
-                                  <img 
+                                  <img
                                     src={videoThumbnail}
                                     alt="Video Thumbnail"
                                     className="max-h-40 rounded-md border border-gray-300"
@@ -1033,7 +1033,7 @@ export function CreatePostDialog({
                             </div>
                           )}
                           {/* Display regular images for other post types or miscellaneous image posts */}
-                          {((form.watch("type") !== "memory_verse" && form.watch("type") !== "miscellaneous" && !(form.watch("type") === "prayer" && selectedMediaType === "video")) || 
+                          {((form.watch("type") !== "memory_verse" && form.watch("type") !== "miscellaneous" && !(form.watch("type") === "prayer" && selectedMediaType === "video")) ||
                             (form.watch("type") === "miscellaneous" && selectedMediaType === "image")) && imagePreview && (
                             <img
                               src={imagePreview}
@@ -1214,7 +1214,7 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           if (hasResolved) return;
 
           // For memory verse videos, try to seek to a better position
-          const seekTime = video.duration > 0 
+          const seekTime = video.duration > 0
             ? Math.min(video.duration * 0.15, 3) // 15% into video or 3 seconds max
             : 1;
           console.log(`🔍 Seeking to ${seekTime} seconds for thumbnail (duration: ${video.duration}s)`);
