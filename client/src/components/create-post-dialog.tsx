@@ -337,7 +337,11 @@ export function CreatePostDialog({
         console.log("Post data prepared:", {
           type: postData.type,
           contentLength: postData.content.length,
-          hasImage: !!data.mediaUrl
+          hasImage: !!data.mediaUrl,
+          postScope: postData.postScope,
+          targetOrganizationId: postData.targetOrganizationId,
+          targetGroupId: postData.targetGroupId,
+          targetTeamId: postData.targetTeamId
         });
 
         // Add special identifier for miscellaneous post type if it has video
@@ -763,7 +767,7 @@ export function CreatePostDialog({
                                 if (user?.isAdmin) return true;
                                 if (user?.isGroupAdmin) {
                                   // Group admins can only see teams in their group
-                                  return groups.find((g: any) => g.id === user.adminGroupId && g.id === team.groupId);
+                                  return team.groupId === user.adminGroupId;
                                 }
                                 return false;
                               })

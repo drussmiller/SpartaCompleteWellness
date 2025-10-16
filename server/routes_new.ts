@@ -2470,6 +2470,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const targetGroupId = postData.targetGroupId || null;
       const targetTeamId = postData.targetTeamId || null;
 
+      logger.info('Post scope information:', { 
+        postScope, 
+        targetOrganizationId, 
+        targetGroupId, 
+        targetTeamId 
+      });
+
       // Get user's details for permission validation
       const [currentUser] = await db
         .select({
