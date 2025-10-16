@@ -636,14 +636,6 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                               "Loading..."}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-lg text-muted-foreground">
-                            Team Joined
-                          </span>
-                          <span className="text-sm font-medium">
-                            {format(new Date(user.teamJoinedAt), "PPP")}
-                          </span>
-                        </div>
                         {activityProgress &&
                           activityProgress.currentWeek &&
                           activityProgress.currentDay && (
