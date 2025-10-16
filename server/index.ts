@@ -158,11 +158,15 @@ scheduleDailyScoreCheck = () => {
   // - Checks 24 times per day (every hour on the hour)
   // - Sends notification once per user after their selected hour
   // - User receives exactly 1 notification per day
-  notificationCheckInterval = setInterval(checkNotifications, 3600000);
+  notificationCheckInterval = setInterval(() => {
+    console.log(`[NOTIFICATION SCHEDULER] Hourly check triggered at ${new Date().toISOString()}`);
+    checkNotifications();
+  }, 3600000);
   
   // Also run an immediate check on startup
   checkNotifications();
   
+  console.log('[NOTIFICATION SCHEDULER] Interval set successfully - will check every hour');
   logger.info('Daily notification scheduler started successfully');
 };
 
