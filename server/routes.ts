@@ -1726,6 +1726,16 @@ export const registerRoutes = async (
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
+      console.log("🔍 BEFORE DATABASE INSERT - Values being inserted:", {
+        userId: req.user.id,
+        type: postData.type,
+        postScope: postData.postScope,
+        targetOrganizationId: postData.targetOrganizationId,
+        targetGroupId: postData.targetGroupId,
+        targetTeamId: postData.targetTeamId,
+        points: points
+      });
+
       const post = await db
         .insert(posts)
         .values({
@@ -1735,6 +1745,10 @@ export const registerRoutes = async (
           mediaUrl: mediaUrl,
           is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
+          postScope: postData.postScope || 'my_team',
+          targetOrganizationId: postData.targetOrganizationId || null,
+          targetGroupId: postData.targetGroupId || null,
+          targetTeamId: postData.targetTeamId || null,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
         .returning()
