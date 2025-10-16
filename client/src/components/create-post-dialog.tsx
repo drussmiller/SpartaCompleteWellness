@@ -214,6 +214,13 @@ export function CreatePostDialog({
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
       try {
+        console.log("🚀🚀🚀 MUTATION FUNCTION CALLED with data:", data);
+        console.log("🚀 SCOPE DATA IN MUTATION:", {
+          postScope: data.postScope,
+          targetOrganizationId: data.targetOrganizationId,
+          targetGroupId: data.targetGroupId,
+          targetTeamId: data.targetTeamId
+        });
         console.log("Starting post creation for type:", data.type);
         const formData = new FormData();
 
