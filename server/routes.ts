@@ -1364,7 +1364,9 @@ export const registerRoutes = async (
         }
 
         // Add the scope filter to conditions
-        conditions.push(or(...scopeConditions));
+        if (scopeConditions.length > 0) {
+          conditions.push(or(...scopeConditions));
+        }
       } else {
         // User has no team - only show 'everyone' posts
         conditions.push(eq(posts.postScope, 'everyone'));
