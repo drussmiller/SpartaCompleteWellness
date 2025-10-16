@@ -2087,7 +2087,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           </span>
                                           {(() => {
                                             try {
-                                              return new Date(String(group.programStartDate) + 'T00:00:00').toLocaleDateString();
+                                              // Handle both ISO format (YYYY-MM-DD) and M/D/YYYY format
+                                              const dateStr = String(group.programStartDate);
+                                              if (dateStr.includes('-')) {
+                                                // ISO format: add T00:00:00
+                                                return new Date(dateStr + 'T00:00:00').toLocaleDateString();
+                                              } else {
+                                                // M/D/YYYY format: parse directly
+                                                return new Date(dateStr).toLocaleDateString();
+                                              }
                                             } catch (e) {
                                               return 'Invalid Date';
                                             }
@@ -2635,7 +2643,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       </span>
                                       {(() => {
                                         try {
-                                          return new Date(String(team.programStartDate) + 'T00:00:00').toLocaleDateString();
+                                          // Handle both ISO format (YYYY-MM-DD) and M/D/YYYY format
+                                          const dateStr = String(team.programStartDate);
+                                          if (dateStr.includes('-')) {
+                                            // ISO format: add T00:00:00
+                                            return new Date(dateStr + 'T00:00:00').toLocaleDateString();
+                                          } else {
+                                            // M/D/YYYY format: parse directly
+                                            return new Date(dateStr).toLocaleDateString();
+                                          }
                                         } catch (e) {
                                           return 'Invalid Date';
                                         }
