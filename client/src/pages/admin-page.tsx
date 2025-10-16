@@ -2085,7 +2085,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           <span className="font-medium">
                                             Program Start Date:{" "}
                                           </span>
-                                          {new Date(group.programStartDate).toLocaleDateString()}
+                                          {new Date(group.programStartDate + 'T00:00:00').toLocaleDateString()}
                                         </p>
                                       )}
                                       <p className="text-sm mt-2">
@@ -2627,7 +2627,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <span className="font-medium">
                                         Program Start Date:{" "}
                                       </span>
-                                      {new Date(team.programStartDate).toLocaleDateString()}
+                                      {new Date(team.programStartDate + 'T00:00:00').toLocaleDateString()}
                                     </p>
                                   )}
                                   <p className="text-sm mt-2">
@@ -3177,7 +3177,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     {user.programStartDate && (
                                       <div className="mt-1 text-sm text-muted-foreground">
                                         Program Start Date:{" "}
-                                        {format(new Date(user.programStartDate), "PPP")}
+                                        {format(new Date(user.programStartDate + 'T00:00:00'), "PPP")}
                                       </div>
                                     )}
                                     <div className="mt-1 text-sm text-muted-foreground">
