@@ -499,15 +499,20 @@ export function CreatePostDialog({
   });
 
   const onSubmit = (data: CreatePostForm) => {
+    console.log("============ FORM SUBMIT DEBUG START ============");
     console.log("🔥 onSubmit called with data:", { type: data.type, hasMediaUrl: !!data.mediaUrl, content: data.content?.substring(0, 50) });
     console.log("🔥 Form errors:", form.formState.errors);
-    console.log("🔥 [SCOPE DEBUG] Form data scope values:", {
+    console.log("🔥 [SCOPE DEBUG] Form data received in onSubmit:", {
       postScope: data.postScope,
       targetOrganizationId: data.targetOrganizationId,
       targetGroupId: data.targetGroupId,
-      targetTeamId: data.targetTeamId,
+      targetTeamId: data.targetTeamId
+    });
+    console.log("🔥 [SCOPE DEBUG] Local state values:", {
       localPostScope: postScope
     });
+    console.log("🔥 [SCOPE DEBUG] All form values from getValues():", form.getValues());
+    console.log("============ FORM SUBMIT DEBUG END ============");
     data.postDate = selectedDate;
     createPostMutation.mutate(data);
   };
