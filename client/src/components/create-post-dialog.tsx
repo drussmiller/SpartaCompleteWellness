@@ -341,10 +341,8 @@ export function CreatePostDialog({
           targetTeamId: data.targetTeamId || null,
         };
 
-        console.log("Post data prepared:", {
-          type: postData.type,
-          contentLength: postData.content.length,
-          hasImage: !!data.mediaUrl,
+        console.log("📦 POST DATA OBJECT BEFORE STRINGIFY:", postData);
+        console.log("📦 SCOPE FIELDS:", {
           postScope: postData.postScope,
           targetOrganizationId: postData.targetOrganizationId,
           targetGroupId: postData.targetGroupId,
@@ -367,7 +365,12 @@ export function CreatePostDialog({
           });
         }
 
-        formData.append("data", JSON.stringify(postData));
+        const postDataJSON = JSON.stringify(postData);
+        console.log("📦 STRINGIFIED POST DATA:", postDataJSON);
+        console.log("📦 JSON includes postScope?", postDataJSON.includes("postScope"));
+        console.log("📦 JSON includes targetTeamId?", postDataJSON.includes("targetTeamId"));
+        
+        formData.append("data", postDataJSON);
 
         console.log("FormData ready for submission", {
           formDataKeys: Array.from(formData.keys()),
