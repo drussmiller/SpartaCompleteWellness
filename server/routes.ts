@@ -1388,6 +1388,8 @@ export const registerRoutes = async (
         if (scopeConditions.length > 0) {
           conditions.push(or(...scopeConditions));
         }
+        
+        logger.info(`[SCOPE FILTER] User ${req.user.id} (team ${req.user.teamId}) - Scope conditions count: ${scopeConditions.length}`);
       } else {
         // User has no team - only show 'everyone' posts
         conditions.push(eq(posts.postScope, 'everyone'));
