@@ -26,6 +26,7 @@ import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/i
 import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
+import { ImageViewer } from "@/components/ui/image-viewer";
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -97,6 +98,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [triggerReload, setTriggerReload] = useState(0);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -361,10 +363,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     postType: post.type
                   });
                 }}
-                onClick={(e) => {
-                  // No longer hiding images - let them display even if some fail to load
-                  console.log('Image load error, but not hiding container');
+                onClick={() => {
+                  setIsImageViewerOpen(true);
                 }}
+                data-testid={`img-post-${post.id}`}
               />
             )}
           </div>
@@ -408,6 +410,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         isOpen={isCommentsOpen}
         onClose={() => setIsCommentsOpen(false)}
       />
+
+      {!shouldShowAsVideo && imageUrl && (
+        <ImageViewer
+          src={imageUrl}
+          alt={`${post.type} post content`}
+          isOpen={isImageViewerOpen}
+          onClose={() => setIsImageViewerOpen(false)}
+        />
+      )}
     </div>
   );
 });
