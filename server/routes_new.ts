@@ -2548,6 +2548,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         }
       }
 
+      console.log("🔴🔴🔴 DATABASE INSERT VALUES:");
+      console.log("  postScope:", postScope);
+      console.log("  targetOrganizationId:", targetOrganizationId);
+      console.log("  targetGroupId:", targetGroupId);
+      console.log("  targetTeamId:", targetTeamId);
+      console.log("  typeof targetTeamId:", typeof targetTeamId);
+
       const post = await db
         .insert(posts)
         .values({
@@ -2565,6 +2572,10 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         })
         .returning()
         .then(posts => posts[0]);
+      
+      console.log("🟢🟢🟢 CREATED POST:");
+      console.log("  post.postScope:", post.postScope);
+      console.log("  post.targetTeamId:", post.targetTeamId);
 
       // Log the created post for verification
       logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
