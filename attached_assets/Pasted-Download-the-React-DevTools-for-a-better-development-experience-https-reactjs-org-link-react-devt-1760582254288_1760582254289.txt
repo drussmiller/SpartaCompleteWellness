@@ -1,0 +1,340 @@
+Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+main.tsx:5 React entry point initializing...
+main.tsx:14 Creating React root...
+main.tsx:16 Rendering app...
+main.tsx:18 App mounted successfully
+App.tsx:142 App component rendering
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: {user: undefined, isLoading: true, error: null}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: {user: null, isLoading: true, error: null}
+use-auth.tsx:35 Fetching user data...
+App.tsx:150 Notification permission: default
+use-auth.tsx:40 User fetch response status: 200
+use-auth.tsx:52 Fetched user data: {id: 1, username: 'admin', preferredName: 'Admin', email: 'admin@example.com', password: '28f3a667323fbd0b1619a1f2620bd7f8f16a5d9bb188e8da6d…c48f15ae322255f2.32c02becc7d1ac098d8ebd82b752c9a7', …}
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: {user: {…}, isLoading: false, error: null}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: {user: {…}, isLoading: false, error: null}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-prayer-requests.tsx:75 Auth state changed, isAuthenticated: true, userId: 1
+use-prayer-requests.tsx:22 Fetching prayer request count for user 1
+2use-post-limits.ts:76 Post limit event listeners attached
+home-page.tsx:77 Fetching posts...
+use-prayer-requests.tsx:75 Auth state changed, isAuthenticated: true, userId: 1
+use-prayer-requests.tsx:22 Fetching prayer request count for user 1
+home-page.tsx:187 📝 Initial scroll setup - scrollY: 0
+home-page.tsx:188 📝 Document height: 917
+home-page.tsx:189 📝 Window height: 917
+home-page.tsx:190 📝 Body scroll height: 917
+home-page.tsx:191 📝 Main element found: true
+home-page.tsx:192 📝 Root element found: true
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-prayer-requests.tsx:37  Error fetching prayer request count: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+fetchUnreadCount @ use-prayer-requests.tsx:37
+await in fetchUnreadCount
+(anonymous) @ use-prayer-requests.tsx:77
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+commitRootImpl @ react-dom.development.js:26974
+commitRoot @ react-dom.development.js:26721
+performSyncWorkOnRoot @ react-dom.development.js:26156
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+setTimeout
+scheduleFn @ notifyManager.ts:22
+flush @ notifyManager.ts:37
+batch @ notifyManager.ts:56
+dispatch_fn @ query.ts:617
+setData @ query.ts:218
+onSuccess @ query.ts:507
+resolve @ retryer.ts:107
+Promise.then
+run @ retryer.ts:159
+start @ retryer.ts:218
+fetch @ query.ts:540
+executeFetch_fn @ queryObserver.ts:346
+onSubscribe @ queryObserver.ts:108
+subscribe @ subscribable.ts:11
+(anonymous) @ useBaseQuery.ts:92
+subscribeToStore @ react-dom.development.js:16139
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+performSyncWorkOnRoot @ react-dom.development.js:26115
+flushSyncCallbacks @ react-dom.development.js:12042
+commitRootImpl @ react-dom.development.js:26998
+commitRoot @ react-dom.development.js:26721
+finishConcurrentRender @ react-dom.development.js:26020
+performConcurrentWorkOnRoot @ react-dom.development.js:25848
+workLoop @ scheduler.development.js:266
+flushWork @ scheduler.development.js:239
+performWorkUntilDeadline @ scheduler.development.js:533
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-prayer-requests.tsx:37  Error fetching prayer request count: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+fetchUnreadCount @ use-prayer-requests.tsx:37
+await in fetchUnreadCount
+(anonymous) @ use-prayer-requests.tsx:77
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+commitRootImpl @ react-dom.development.js:26974
+commitRoot @ react-dom.development.js:26721
+performSyncWorkOnRoot @ react-dom.development.js:26156
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+setTimeout
+scheduleFn @ notifyManager.ts:22
+flush @ notifyManager.ts:37
+batch @ notifyManager.ts:56
+dispatch_fn @ query.ts:617
+setData @ query.ts:218
+onSuccess @ query.ts:507
+resolve @ retryer.ts:107
+Promise.then
+run @ retryer.ts:159
+start @ retryer.ts:218
+fetch @ query.ts:540
+executeFetch_fn @ queryObserver.ts:346
+onSubscribe @ queryObserver.ts:108
+subscribe @ subscribable.ts:11
+(anonymous) @ useBaseQuery.ts:92
+subscribeToStore @ react-dom.development.js:16139
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+performSyncWorkOnRoot @ react-dom.development.js:26115
+flushSyncCallbacks @ react-dom.development.js:12042
+commitRootImpl @ react-dom.development.js:26998
+commitRoot @ react-dom.development.js:26721
+finishConcurrentRender @ react-dom.development.js:26020
+performConcurrentWorkOnRoot @ react-dom.development.js:25848
+workLoop @ scheduler.development.js:266
+flushWork @ scheduler.development.js:239
+performWorkUntilDeadline @ scheduler.development.js:533
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+home-page.tsx:87 Posts received from API: 2 posts
+home-page.tsx:91 Posts after prayer filtering: 2
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1760233303176-image.jpeg
+media-utils.ts:81 Cleaned filename: 1760233303176-image.jpeg
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1760233303176-image.jpeg&_cb=1760582202225
+media-utils.ts:97 createThumbnailUrl called with: shared/uploads/1760233303176-image.jpeg
+media-utils.ts:117 Creating thumbnail for filename: 1760233303176-image.jpeg
+media-utils.ts:134 Created image thumbnail URL: /api/serve-file?filename=1760233303176-image.poster.jpg
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+(index):1 [Intervention] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 2 comments for post 710
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:93 Updated comment count for post 710 to 2 from query
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 306
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+post-card.tsx:357 [Image Load Success] {src: '/api/serve-file?filename=1760233303176-image.jpeg&_cb=1760582202225', originalUrl: 'shared/uploads/1760233303176-image.jpeg', postId: 710, postType: 'food'}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+Dialog.tsx:540  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ Dialog.tsx:540
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+commitRootImpl @ react-dom.development.js:26974
+commitRoot @ react-dom.development.js:26721
+performSyncWorkOnRoot @ react-dom.development.js:26156
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:780 🎯 Team selected: {rawValue: '1', parsedValue: 1, fieldValue: null}
+create-post-dialog.tsx:782 🎯 After onChange, field value: null
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:512 ============ FORM SUBMIT DEBUG START ============
+create-post-dialog.tsx:513 🔥 onSubmit called with data: {type: 'miscellaneous', hasMediaUrl: true, content: ''}
+create-post-dialog.tsx:514 🔥 Form errors: {}
+create-post-dialog.tsx:515 🔥 [SCOPE DEBUG] Form data received in onSubmit: {postScope: 'team', targetOrganizationId: null, targetGroupId: null, targetTeamId: 1}
+create-post-dialog.tsx:521 🔥 [SCOPE DEBUG] Local state values: {localPostScope: 'team'}
+create-post-dialog.tsx:524 🔥 [SCOPE DEBUG] All form values from getValues(): {type: 'miscellaneous', content: '', mediaUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD…GvjuOsISBKMKj3ALMTMWH92OIQkEhVZyNrWP5poEXzMIQj//Z', points: 3, postDate: Wed Oct 15 2025 21:36:40 GMT-0500 (Central Daylight Time), …}
+create-post-dialog.tsx:525 ============ FORM SUBMIT DEBUG END ============
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:217 🚀🚀🚀 MUTATION FUNCTION CALLED with data: {type: 'miscellaneous', content: '', mediaUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD…GvjuOsISBKMKj3ALMTMWH92OIQkEhVZyNrWP5poEXzMIQj//Z', is_video: false, points: 3, …}
+create-post-dialog.tsx:218 🚀 SCOPE DATA IN MUTATION: {postScope: 'team', targetOrganizationId: null, targetGroupId: null, targetTeamId: 1}
+create-post-dialog.tsx:224 Starting post creation for type: miscellaneous
+create-post-dialog.tsx:251 Media URL found, preparing to upload {type: 'miscellaneous', mediaUrlLength: 29607, urlPreview: 'data:image/jpeg;base64,/9j/4AA...'}
+create-post-dialog.tsx:315 Processing image URL to blob
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:317 Blob created from image URL {type: 'image/jpeg', size: 22188}
+create-post-dialog.tsx:322 Image blob appended to form data
+create-post-dialog.tsx:344 📦 POST DATA OBJECT BEFORE STRINGIFY: {type: 'miscellaneous', content: '', points: 0, createdAt: '2025-10-16T02:36:40.219Z', postScope: 'team', …}
+create-post-dialog.tsx:345 📦 SCOPE FIELDS: {postScope: 'team', targetOrganizationId: null, targetGroupId: null, targetTeamId: 1}
+create-post-dialog.tsx:361 Added media type marker for miscellaneous post: {selectedMediaType: 'image', isVideo: false, contentWithVideoMarker: ''}
+create-post-dialog.tsx:369 📦 STRINGIFIED POST DATA: {"type":"miscellaneous","content":"","points":0,"createdAt":"2025-10-16T02:36:40.219Z","postScope":"team","targetOrganizationId":null,"targetGroupId":null,"targetTeamId":1}
+create-post-dialog.tsx:370 📦 JSON includes postScope? true
+create-post-dialog.tsx:371 📦 JSON includes targetTeamId? true
+create-post-dialog.tsx:375 FormData ready for submission {formDataKeys: Array(3), hasImageKey: true, isMultipartFormData: true}
+create-post-dialog.tsx:381 Sending POST request to /api/posts
+create-post-dialog.tsx:390 Response status: 201 Created
+create-post-dialog.tsx:397 Response headers: {access-control-allow-credentials: 'true', access-control-allow-headers: 'Origin, X-Requested-With, Content-Type, Accept', access-control-allow-methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH', access-control-allow-origin: 'https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev:5000', cache-control: 'no-store', …}
+create-post-dialog.tsx:399 Server response received {status: 201, ok: true, statusText: 'Created'}
+create-post-dialog.tsx:454 Post created successfully, invalidating queries to update UI
+home-page.tsx:77 Fetching posts...
+home-page.tsx:77 Fetching posts...
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: {user: {…}, isLoading: false, error: null}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: {user: {…}, isLoading: false, error: null}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+home-page.tsx:87 Posts received from API: 3 posts
+home-page.tsx:91 Posts after prayer filtering: 3
+home-page.tsx:87 Posts received from API: 3 posts
+home-page.tsx:91 Posts after prayer filtering: 3
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1760582235384-image.jpeg
+media-utils.ts:81 Cleaned filename: 1760582235384-image.jpeg
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1760582235384-image.jpeg&_cb=1760582237224
+media-utils.ts:97 createThumbnailUrl called with: shared/uploads/1760582235384-image.jpeg
+media-utils.ts:117 Creating thumbnail for filename: 1760582235384-image.jpeg
+media-utils.ts:134 Created image thumbnail URL: /api/serve-file?filename=1760582235384-image.poster.jpg
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 768
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+post-card.tsx:357 [Image Load Success] {src: '/api/serve-file?filename=1760582235384-image.jpeg&_cb=1760582237224', originalUrl: 'shared/uploads/1760582235384-image.jpeg', postId: 768, postType: 'miscellaneous'}
