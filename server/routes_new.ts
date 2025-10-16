@@ -2024,6 +2024,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         try {
           console.log("Parsing JSON from postData.data", { raw: postData.data.substring(0, 100) + '...' });
           postData = JSON.parse(postData.data);
+          console.log("✅ PARSED POST DATA:", JSON.stringify(postData, null, 2));
+          console.log("✅ SCOPE VALUES AFTER PARSE:", {
+            postScope: postData.postScope,
+            targetOrganizationId: postData.targetOrganizationId,
+            targetGroupId: postData.targetGroupId,
+            targetTeamId: postData.targetTeamId
+          });
           console.log("Successfully parsed post data:", { postType: postData.type });
         } catch (parseError) {
           console.error("Error parsing post data:", parseError);
