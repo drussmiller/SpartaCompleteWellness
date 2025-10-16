@@ -767,6 +767,7 @@ export function CreatePostDialog({
                                 }
                                 return false;
                               })
+                              .sort((a: any, b: any) => a.name.localeCompare(b.name))
                               .map((team: any) => (
                                 <SelectItem key={team.id} value={team.id.toString()}>
                                   {team.name}
