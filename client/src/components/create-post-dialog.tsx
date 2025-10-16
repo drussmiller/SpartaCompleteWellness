@@ -766,7 +766,11 @@ export function CreatePostDialog({
                         <FormLabel>Select Team</FormLabel>
                         <Select
                           value={field.value?.toString()}
-                          onValueChange={(value) => field.onChange(parseInt(value))}
+                          onValueChange={(value) => {
+                            console.log("🎯 Team selected:", { rawValue: value, parsedValue: parseInt(value), fieldValue: field.value });
+                            field.onChange(parseInt(value));
+                            console.log("🎯 After onChange, field value:", field.value);
+                          }}
                         >
                           <FormControl>
                             <SelectTrigger>
