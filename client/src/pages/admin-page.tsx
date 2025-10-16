@@ -3278,12 +3278,28 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       </div>
                                     )}
                                     <div className="mt-1 text-sm text-muted-foreground">
-                                      Progress: Week{" "}
-                                      {userProgress[user.id]?.week ??
-                                        user.currentWeek}
-                                      , Day{" "}
-                                      {userProgress[user.id]?.day ??
-                                        user.currentDay}
+                                      {(() => {
+                                        if (user.programStartDate) {
+                                          const startDate = new Date(user.programStartDate);
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+                                          startDate.setHours(0, 0, 0, 0);
+                                          
+                                          if (startDate > today) {
+                                            const daysUntilStart = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                            return `Progress: Starts in ${daysUntilStart} day${daysUntilStart !== 1 ? 's' : ''}`;
+                                          }
+                                        }
+                                        
+                                        return (
+                                          <>
+                                            Progress: Week{" "}
+                                            {userProgress[user.id]?.week ?? user.currentWeek}
+                                            , Day{" "}
+                                            {userProgress[user.id]?.day ?? user.currentDay}
+                                          </>
+                                        );
+                                      })()}
                                     </div>
                                     <p className="text-sm mt-2">
                                       <span className="font-medium">
