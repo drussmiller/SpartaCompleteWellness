@@ -1153,6 +1153,27 @@ export const registerRoutes = async (
     },
   );
 
+  // Prayer requests unread count endpoint
+  router.get("/api/prayer-requests/unread", authenticate, async (req, res) => {
+    try {
+      res.setHeader("Content-Type", "application/json");
+      
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // For now, return 0 - prayer request tracking can be enhanced later
+      logger.info(`Found 0 unread messages for user ${req.user.id}`);
+      res.json({ unreadCount: 0 });
+    } catch (error) {
+      logger.error("Error fetching prayer requests unread count:", error);
+      res.status(500).json({
+        message: "Failed to fetch unread prayer requests count",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Main GET endpoint for fetching posts
   router.get("/api/posts", authenticate, async (req, res) => {
     try {

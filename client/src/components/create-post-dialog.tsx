@@ -555,6 +555,9 @@ export function CreatePostDialog({
             <span className="text-2xl font-bold">×</span>
           </Button>
           <DialogTitle className="text-center flex-1 mr-8">Create Post</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a new post to share with your team
+          </DialogDescription>
         </div>
         <Form {...form}>
           <form id="create-post-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex flex-col">
