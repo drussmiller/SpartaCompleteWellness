@@ -1,9 +1,38 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, Book, Dumbbell, Cross, Award } from "lucide-react";
+import { HelpCircle, Book, Dumbbell, Cross, Award, Bell } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { AchievementDemo } from "@/components/achievements/achievement-demo";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function HelpPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const testNotificationMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("User not found");
+      const response = await apiRequest("POST", `/api/test-notification/${user.id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Test Notification Sent",
+        description: "Check your notifications to see if you would receive a reminder based on today's activity.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Test Failed",
+        description: error.message || "Failed to send test notification",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <AppLayout>
       {/* Fixed title bar */}
@@ -110,6 +139,32 @@ export default function HelpPage() {
             <AchievementDemo />
           </CardContent>
         </Card>
+
+        {/* Admin Test Notification Button */}
+        {user?.isAdmin && (
+          <Card className="border-primary/50 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Bell className="h-5 w-5" />
+                Admin Testing
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Test the notification system to see if you would receive a daily reminder 
+                based on today's posting activity. The test simulates checking at your preferred notification time.
+              </p>
+              <Button
+                onClick={() => testNotificationMutation.mutate()}
+                disabled={testNotificationMutation.isPending}
+                className="w-full"
+                data-testid="button-test-notification"
+              >
+                {testNotificationMutation.isPending ? "Sending..." : "Test Notification"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </AppLayout>
   );
