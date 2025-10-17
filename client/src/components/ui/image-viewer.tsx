@@ -149,7 +149,7 @@ export function ImageViewer({ src, alt, isOpen, onClose }: ImageViewerProps) {
       onClick={onClose}
     >
       {/* Close button - top left */}
-      <div className="absolute top-6 left-6 z-10">
+      <div className="absolute top-12 left-6 z-10">
         <Button
           variant="secondary"
           size="icon"
