@@ -2462,6 +2462,7 @@ export const registerRoutes = async (
           isAdmin: users.isAdmin,
           teamId: users.teamId,
           notificationTime: users.notificationTime,
+          timezoneOffset: users.timezoneOffset,
         })
         .from(users);
 
@@ -2596,21 +2597,33 @@ export const registerRoutes = async (
             const notificationTimeParts = user.notificationTime
               ? user.notificationTime.split(":")
               : ["8", "00"];
-            const preferredHour = parseInt(notificationTimeParts[0]);
-            const preferredMinute = parseInt(notificationTimeParts[1] || "0");
+            const preferredLocalHour = parseInt(notificationTimeParts[0]);
+            const preferredLocalMinute = parseInt(notificationTimeParts[1] || "0");
+
+            // Convert user's local notification time to UTC
+            // timezoneOffset is in minutes (e.g., -300 for EST)
+            const timezoneOffsetMinutes = user.timezoneOffset || 0;
+            const timezoneOffsetHours = Math.floor(timezoneOffsetMinutes / 60);
+            
+            // UTC = local_time - offset
+            // For EST (offset = -300 = -5 hours): 7:00 AM local = 7 - (-5) = 12:00 PM UTC
+            const preferredUTCHour = (preferredLocalHour - timezoneOffsetHours + 24) % 24;
+            const preferredUTCMinute = preferredLocalMinute;
 
             const isPreferredTimeWindow =
-              (currentHour === preferredHour &&
-                currentMinute >= preferredMinute &&
-                currentMinute < preferredMinute + 10) ||
-              (currentHour === preferredHour + 1 &&
-                preferredMinute >= 50 &&
-                currentMinute < (preferredMinute + 10) % 60);
+              (currentHour === preferredUTCHour &&
+                currentMinute >= preferredUTCMinute &&
+                currentMinute < preferredUTCMinute + 10) ||
+              (currentHour === preferredUTCHour + 1 &&
+                preferredUTCMinute >= 50 &&
+                currentMinute < (preferredUTCMinute + 10) % 60);
 
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
-              currentTime: `${currentHour}:${currentMinute}`,
-              preferredTime: `${preferredHour}:${preferredMinute}`,
+              currentTime: `${currentHour}:${currentMinute} UTC`,
+              preferredLocalTime: `${preferredLocalHour}:${preferredLocalMinute}`,
+              preferredUTCTime: `${preferredUTCHour}:${preferredUTCMinute}`,
+              timezoneOffset: timezoneOffsetMinutes,
               isPreferredTimeWindow,
               existingNotificationsToday: existingNotifications.length,
             });
