@@ -163,48 +163,6 @@ export function ImageViewer({ src, alt, isOpen, onClose }: ImageViewerProps) {
         </Button>
       </div>
 
-      {/* Zoom and rotate controls - top right */}
-      <div className="absolute top-6 right-6 flex gap-2 z-10">
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleZoomIn();
-          }}
-          data-testid="button-zoom-in"
-        >
-          <ZoomIn className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleZoomOut();
-          }}
-          data-testid="button-zoom-out"
-        >
-          <ZoomOut className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleRotate();
-          }}
-          data-testid="button-rotate"
-        >
-          <RotateCw className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {/* Zoom indicator */}
-      <div className="absolute top-20 left-6 bg-black/50 text-white px-3 py-1 rounded text-sm">
-        {Math.round(scale * 100)}%
-      </div>
-
       {/* Reset button */}
       {(scale !== 1 || rotation !== 0 || position.x !== 0 || position.y !== 0) && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
