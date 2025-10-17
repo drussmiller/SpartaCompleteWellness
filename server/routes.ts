@@ -2359,6 +2359,276 @@ export const registerRoutes = async (
     }
   });
 
+  // Daily score check endpoints for notifications
+  router.get("/api/check-daily-scores", async (req, res) => {
+    try {
+      const userId = parseInt(req.query.userId as string);
+      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
+
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      logger.info(`Manual check daily scores for user ${userId} with timezone offset ${tzOffset}`);
+
+      // Forward to the post endpoint
+      await checkDailyScores({ body: { userId, tzOffset } } as Request, res);
+    } catch (error) {
+      logger.error('Error in GET daily score check:', error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  router.post("/api/check-daily-scores", async (req, res) => {
+    try {
+      await checkDailyScores(req, res);
+    } catch (error) {
+      logger.error("Error in POST daily score check:", error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Main function to check daily scores
+  const checkDailyScores = async (req: Request, res: Response) => {
+    try {
+      logger.info("Starting daily score check with request body:", req.body);
+
+      const currentHour = req.body?.currentHour !== undefined
+        ? parseInt(req.body.currentHour)
+        : new Date().getHours();
+
+      const currentMinute = req.body?.currentMinute !== undefined
+        ? parseInt(req.body.currentMinute)
+        : new Date().getMinutes();
+
+      logger.info(`Check daily scores at time: ${currentHour}:${currentMinute}`);
+
+      const allUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          isAdmin: users.isAdmin,
+          teamId: users.teamId,
+          notificationTime: users.notificationTime,
+        })
+        .from(users);
+
+      logger.info(`Found ${Array.isArray(allUsers) ? allUsers.length : 0} users to check`);
+
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay();
+
+      logger.info(`Checking points from ${yesterday.toISOString()} to ${today.toISOString()}`);
+
+      for (const user of allUsers) {
+        try {
+          logger.info(`Processing user ${user.id} (${user.username})`);
+
+          const userPostsResult = await db
+            .select({
+              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
+              types: sql<string[]>`array_agg(distinct ${posts.type})`,
+              count: sql<number>`count(*)::integer`,
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, user.id),
+                gte(posts.createdAt, yesterday),
+                lt(posts.createdAt, today),
+                isNull(posts.parentId),
+              ),
+            );
+
+          const userPosts = userPostsResult[0];
+          const totalPoints = userPosts?.points || 0;
+          const postTypes = userPosts?.types || [];
+          const postCount = userPosts?.count || 0;
+
+          const expectedPoints = dayOfWeek === 6 ? 22 : dayOfWeek === 0 ? 3 : 15;
+
+          logger.info(`User ${user.id} (${user.username}) activity:`, {
+            totalPoints,
+            expectedPoints,
+            postTypes,
+            postCount,
+            dayOfWeek,
+            date: yesterday.toISOString(),
+          });
+
+          if (totalPoints < expectedPoints) {
+            const postsByType = await db
+              .select({
+                type: posts.type,
+                count: sql<number>`count(*)::integer`,
+              })
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, user.id),
+                  gte(posts.createdAt, yesterday),
+                  lt(posts.createdAt, today),
+                  isNull(posts.parentId),
+                ),
+              )
+              .groupBy(posts.type);
+
+            const counts: Record<string, number> = {
+              food: 0,
+              workout: 0,
+              scripture: 0,
+              memory_verse: 0,
+            };
+
+            postsByType.forEach((post) => {
+              if (post.type in counts) {
+                counts[post.type] = post.count;
+              }
+            });
+
+            const missedItems = [];
+            const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+            if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
+              missedItems.push(`${3 - counts.food} meals`);
+            }
+
+            if (yesterdayDayOfWeek !== 0 && counts.workout < 1) {
+              missedItems.push("your workout");
+            }
+
+            if (counts.scripture < 1) {
+              missedItems.push("your scripture reading");
+            }
+
+            if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
+              missedItems.push("your memory verse");
+            }
+
+            let message = "";
+            if (missedItems.length > 0) {
+              message = "Yesterday you missed posting ";
+
+              if (missedItems.length === 1) {
+                message += missedItems[0] + ".";
+              } else if (missedItems.length === 2) {
+                message += missedItems[0] + " and " + missedItems[1] + ".";
+              } else {
+                const lastItem = missedItems.pop();
+                message += missedItems.join(", ") + ", and " + lastItem + ".";
+              }
+            } else {
+              message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
+            }
+
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            const existingNotifications = await db
+              .select()
+              .from(notifications)
+              .where(
+                and(
+                  eq(notifications.userId, user.id),
+                  eq(notifications.type, "reminder"),
+                  gte(notifications.createdAt, startOfToday),
+                ),
+              );
+
+            const notificationTimeParts = user.notificationTime
+              ? user.notificationTime.split(":")
+              : ["8", "00"];
+            const preferredHour = parseInt(notificationTimeParts[0]);
+            const preferredMinute = parseInt(notificationTimeParts[1] || "0");
+
+            const isPreferredTimeWindow =
+              (currentHour === preferredHour &&
+                currentMinute >= preferredMinute &&
+                currentMinute < preferredMinute + 10) ||
+              (currentHour === preferredHour + 1 &&
+                preferredMinute >= 50 &&
+                currentMinute < (preferredMinute + 10) % 60);
+
+            logger.info(`Notification time check for user ${user.id}:`, {
+              userId: user.id,
+              currentTime: `${currentHour}:${currentMinute}`,
+              preferredTime: `${preferredHour}:${preferredMinute}`,
+              isPreferredTimeWindow,
+              existingNotificationsToday: existingNotifications.length,
+            });
+
+            if (existingNotifications.length === 0 && isPreferredTimeWindow) {
+              const notification = {
+                userId: user.id,
+                title: "Daily Reminder",
+                message,
+                read: false,
+                createdAt: new Date(),
+                type: "reminder",
+                sound: "default",
+              };
+
+              const [insertedNotification] = await db
+                .insert(notifications)
+                .values(notification)
+                .returning();
+
+              logger.info(`Created notification for user ${user.id}:`, {
+                notificationId: insertedNotification.id,
+                userId: user.id,
+                message: notification.message,
+              });
+
+              const userClients = clients.get(user.id);
+              if (userClients && userClients.size > 0) {
+                const notificationData = {
+                  id: insertedNotification.id,
+                  title: notification.title,
+                  message: notification.message,
+                  sound: notification.sound,
+                  type: notification.type,
+                };
+
+                broadcastNotification(user.id, notificationData);
+              }
+            } else {
+              logger.info(`Skipping notification for user ${user.id} - already sent today`, {
+                userId: user.id,
+                existingNotifications: existingNotifications.length,
+              });
+            }
+          } else {
+            logger.info(`No notification needed for user ${user.id}, met daily goal`);
+          }
+        } catch (userError) {
+          logger.error(`Error processing user ${user.id}:`, userError);
+          continue;
+        }
+      }
+
+      res.json({ message: "Daily score check completed" });
+    } catch (error) {
+      logger.error("Error in daily score check:", error);
+      res.status(500).json({
+        message: "Failed to check daily scores",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  };
+
   // Update team endpoint
   router.patch("/api/teams/:id", authenticate, async (req, res) => {
     try {

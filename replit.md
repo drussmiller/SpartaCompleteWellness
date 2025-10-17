@@ -148,6 +148,7 @@ Changelog:
 - July 03, 2025. Fixed mobile video loading issue in comment pages - VideoPlayer was navigating to separate video player page that wasn't using createMediaUrl. Added createMediaUrl import to video player page for proper Object Storage URL formatting and updated video source handling for consistent mobile playback.
 - July 03, 2025. Fixed admin page "can't find variable Users" error - Added missing Users and FileText icon imports from lucide-react to resolve undefined variable errors in admin page components.
 - August 22, 2025. Fixed critical password change functionality - Added missing server endpoints /api/user/change-password for user password changes and /api/users/:userId/password for admin password resets. Created updateUser function in storage.ts to handle password updates. Both user profile password change and admin dashboard password reset now work properly with proper authentication and validation.
+- October 17, 2025. Fixed critical notification system failure - Restored accidentally deleted /api/check-daily-scores endpoint that was preventing ALL notifications from being sent. The endpoint checks all users (including admins) for missed posts at their preferred notification time. System now reliably sends daily reminders at 8:00 AM (or user's set time) about missing food, workout, scripture, and memory verse posts from the previous day. Also implemented Facebook-style image viewer popup with zoom, pan, rotate, and fullscreen capabilities for post images.
 ```
 
 ## User Preferences
