@@ -2394,6 +2394,51 @@ export const registerRoutes = async (
     }
   });
 
+  // Test endpoint to force notification check (simulates user's notification time)
+  router.post("/api/test-notification/:userId", authenticate, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      // Only admin can test notifications
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Only admins can test notifications" });
+      }
+
+      // Get the user's notification time
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const notificationTimeParts = user.notificationTime
+        ? user.notificationTime.split(":")
+        : ["8", "00"];
+      const preferredHour = parseInt(notificationTimeParts[0]);
+      const preferredMinute = parseInt(notificationTimeParts[1] || "0");
+
+      logger.info(`Testing notification for user ${userId} at their preferred time ${preferredHour}:${preferredMinute}`);
+
+      // Call checkDailyScores with the user's preferred time
+      await checkDailyScores({ 
+        body: { 
+          currentHour: preferredHour, 
+          currentMinute: preferredMinute 
+        } 
+      } as Request, res);
+    } catch (error) {
+      logger.error("Error in test notification:", error);
+      res.status(500).json({
+        message: "Failed to test notification",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Main function to check daily scores
   const checkDailyScores = async (req: Request, res: Response) => {
     try {

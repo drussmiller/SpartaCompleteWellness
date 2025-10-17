@@ -153,20 +153,31 @@ scheduleDailyScoreCheck = () => {
     }
   };
 
-  // Run check every hour (3600000ms)
-  // This ensures reliable once-daily delivery:
-  // - Checks 24 times per day (every hour on the hour)
-  // - Sends notification once per user after their selected hour
-  // - User receives exactly 1 notification per day
-  notificationCheckInterval = setInterval(() => {
-    console.log(`[NOTIFICATION SCHEDULER] Hourly check triggered at ${new Date().toISOString()}`);
+  // Calculate time until next hour (at :00 minutes)
+  const now = new Date();
+  const minutesUntilNextHour = 60 - now.getMinutes();
+  const secondsUntilNextHour = 60 - now.getSeconds();
+  const msUntilNextHour = (minutesUntilNextHour - 1) * 60000 + secondsUntilNextHour * 1000;
+  
+  logger.info(`Current time: ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`);
+  logger.info(`Scheduling first check in ${Math.round(msUntilNextHour / 1000)} seconds (at next :00 mark)`);
+  
+  // Run first check at the next hour
+  setTimeout(() => {
+    console.log(`[NOTIFICATION SCHEDULER] First hourly check at ${new Date().toISOString()}`);
     checkNotifications();
-  }, 3600000);
+    
+    // Then run every hour on the hour
+    notificationCheckInterval = setInterval(() => {
+      console.log(`[NOTIFICATION SCHEDULER] Hourly check triggered at ${new Date().toISOString()}`);
+      checkNotifications();
+    }, 3600000);
+  }, msUntilNextHour);
   
   // Also run an immediate check on startup
   checkNotifications();
   
-  console.log('[NOTIFICATION SCHEDULER] Interval set successfully - will check every hour');
+  console.log('[NOTIFICATION SCHEDULER] Interval set successfully - will check every hour on the hour');
   logger.info('Daily notification scheduler started successfully');
 };
 
