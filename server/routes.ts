@@ -2635,6 +2635,24 @@ export const registerRoutes = async (
             });
 
             if (isPreferredTimeWindow && recentNotifications.length === 0) {
+              // Final race condition check: verify no notification was created during processing
+              // This catches duplicates if scheduler runs concurrently
+              const finalCheck = await db
+                .select()
+                .from(notifications)
+                .where(
+                  and(
+                    eq(notifications.userId, user.id),
+                    eq(notifications.type, "reminder"),
+                    gte(notifications.createdAt, oneHourAgo),
+                  ),
+                );
+              
+              if (finalCheck.length > 0) {
+                logger.info(`User ${user.id} - race condition detected, notification was created during processing. Skipping.`);
+                continue;
+              }
+
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
