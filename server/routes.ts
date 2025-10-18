@@ -2601,13 +2601,16 @@ export const registerRoutes = async (
             const preferredLocalMinute = parseInt(notificationTimeParts[1] || "0");
 
             // Convert user's local notification time to UTC
-            // timezoneOffset is in minutes (e.g., -300 for EST)
+            // timezoneOffset is in minutes (e.g., -300 for EST which is UTC-5)
+            // Negative offset means local time is BEHIND UTC
+            // To convert local to UTC: UTC = local - offset
+            // For EST: offset = -300 min = -5 hours
+            // Example: 14:00 local - (-5) = 14:00 + 5 = 19:00 UTC
             const timezoneOffsetMinutes = user.timezoneOffset || 0;
-            const timezoneOffsetHours = Math.floor(timezoneOffsetMinutes / 60);
+            const timezoneOffsetHours = timezoneOffsetMinutes / 60;
             
-            // UTC = local_time - offset
-            // For EST (offset = -300 = -5 hours): 7:00 AM local = 7 - (-5) = 12:00 PM UTC
-            const preferredUTCHour = (preferredLocalHour - timezoneOffsetHours + 24) % 24;
+            // Convert local time to UTC
+            const preferredUTCHour = Math.floor((preferredLocalHour - timezoneOffsetHours + 24) % 24);
             const preferredUTCMinute = preferredLocalMinute;
 
             const isPreferredTimeWindow =
@@ -2618,12 +2621,15 @@ export const registerRoutes = async (
                 preferredUTCMinute >= 50 &&
                 currentMinute < (preferredUTCMinute + 10) % 60);
 
-            logger.info(`Notification time check for user ${user.id}:`, {
+            logger.info(`Notification time check for user ${user.id} (${user.username}):`, {
               userId: user.id,
-              currentTime: `${currentHour}:${currentMinute} UTC`,
-              preferredLocalTime: `${preferredLocalHour}:${preferredLocalMinute}`,
-              preferredUTCTime: `${preferredUTCHour}:${preferredUTCMinute}`,
-              timezoneOffset: timezoneOffsetMinutes,
+              username: user.username,
+              currentTime: `${currentHour}:${String(currentMinute).padStart(2, '0')} UTC`,
+              preferredLocalTime: `${String(preferredLocalHour).padStart(2, '0')}:${String(preferredLocalMinute).padStart(2, '0')}`,
+              preferredUTCTime: `${String(preferredUTCHour).padStart(2, '0')}:${String(preferredUTCMinute).padStart(2, '0')} UTC`,
+              timezoneOffsetMinutes: timezoneOffsetMinutes,
+              timezoneOffsetHours: timezoneOffsetHours,
+              calculation: `(${preferredLocalHour} - (${timezoneOffsetHours}) + 24) % 24 = ${preferredUTCHour}`,
               isPreferredTimeWindow,
               existingNotificationsToday: existingNotifications.length,
             });
