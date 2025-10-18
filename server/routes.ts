@@ -2580,20 +2580,6 @@ export const registerRoutes = async (
               message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
             }
 
-            const startOfToday = new Date();
-            startOfToday.setHours(0, 0, 0, 0);
-
-            const existingNotifications = await db
-              .select()
-              .from(notifications)
-              .where(
-                and(
-                  eq(notifications.userId, user.id),
-                  eq(notifications.type, "reminder"),
-                  gte(notifications.createdAt, startOfToday),
-                ),
-              );
-
             const notificationTimeParts = user.notificationTime
               ? user.notificationTime.split(":")
               : ["8", "00"];
@@ -2631,10 +2617,9 @@ export const registerRoutes = async (
               timezoneOffsetHours: timezoneOffsetHours,
               calculation: `(${preferredLocalHour} - (${timezoneOffsetHours}) + 24) % 24 = ${preferredUTCHour}`,
               isPreferredTimeWindow,
-              existingNotificationsToday: existingNotifications.length,
             });
 
-            if (existingNotifications.length === 0 && isPreferredTimeWindow) {
+            if (isPreferredTimeWindow) {
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
@@ -2669,10 +2654,7 @@ export const registerRoutes = async (
                 broadcastNotification(user.id, notificationData);
               }
             } else {
-              logger.info(`Skipping notification for user ${user.id} - already sent today`, {
-                userId: user.id,
-                existingNotifications: existingNotifications.length,
-              });
+              logger.debug(`User ${user.id} - not in preferred time window (current: ${currentHour}:${String(currentMinute).padStart(2, '0')}, preferred: ${String(preferredUTCHour).padStart(2, '0')}:${String(preferredUTCMinute).padStart(2, '0')})`);
             }
           } else {
             logger.info(`No notification needed for user ${user.id}, met daily goal`);
