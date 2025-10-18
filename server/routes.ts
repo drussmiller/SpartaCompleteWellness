@@ -2635,24 +2635,6 @@ export const registerRoutes = async (
             });
 
             if (isPreferredTimeWindow && recentNotifications.length === 0) {
-              // Final race condition check: verify no notification was created during processing
-              // This catches duplicates if scheduler runs concurrently
-              const finalCheck = await db
-                .select()
-                .from(notifications)
-                .where(
-                  and(
-                    eq(notifications.userId, user.id),
-                    eq(notifications.type, "reminder"),
-                    gte(notifications.createdAt, oneHourAgo),
-                  ),
-                );
-              
-              if (finalCheck.length > 0) {
-                logger.info(`User ${user.id} - race condition detected, notification was created during processing. Skipping.`);
-                continue;
-              }
-
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
@@ -2663,28 +2645,51 @@ export const registerRoutes = async (
                 sound: "default",
               };
 
-              const [insertedNotification] = await db
-                .insert(notifications)
-                .values(notification)
-                .returning();
+              try {
+                // Use try-catch to handle potential race conditions
+                // Do a final check right before insert to catch concurrent creations
+                const finalCheck = await db
+                  .select()
+                  .from(notifications)
+                  .where(
+                    and(
+                      eq(notifications.userId, user.id),
+                      eq(notifications.type, "reminder"),
+                      gte(notifications.createdAt, oneHourAgo),
+                    ),
+                  );
+                
+                if (finalCheck.length > 0) {
+                  logger.info(`User ${user.id} - race condition detected, notification exists. Skipping.`);
+                  continue;
+                }
 
-              logger.info(`Created notification for user ${user.id}:`, {
-                notificationId: insertedNotification.id,
-                userId: user.id,
-                message: notification.message,
-              });
+                const [insertedNotification] = await db
+                  .insert(notifications)
+                  .values(notification)
+                  .returning();
 
-              const userClients = clients.get(user.id);
-              if (userClients && userClients.size > 0) {
-                const notificationData = {
-                  id: insertedNotification.id,
-                  title: notification.title,
+                logger.info(`Created notification for user ${user.id}:`, {
+                  notificationId: insertedNotification.id,
+                  userId: user.id,
                   message: notification.message,
-                  sound: notification.sound,
-                  type: notification.type,
-                };
+                });
 
-                broadcastNotification(user.id, notificationData);
+                const userClients = clients.get(user.id);
+                if (userClients && userClients.size > 0) {
+                  const notificationData = {
+                    id: insertedNotification.id,
+                    title: notification.title,
+                    message: notification.message,
+                    sound: notification.sound,
+                    type: notification.type,
+                  };
+
+                  broadcastNotification(user.id, notificationData);
+                }
+              } catch (insertError) {
+                // If insert fails (e.g., race condition), log and continue
+                logger.warn(`Failed to insert notification for user ${user.id}:`, insertError);
               }
             } else {
               if (!isPreferredTimeWindow) {

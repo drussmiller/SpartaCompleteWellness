@@ -174,9 +174,6 @@ scheduleDailyScoreCheck = () => {
     }, 3600000);
   }, msUntilNextHour);
   
-  // Also run an immediate check on startup
-  checkNotifications();
-  
   console.log('[NOTIFICATION SCHEDULER] Interval set successfully - will check every hour on the hour');
   logger.info('Daily notification scheduler started successfully');
 };
