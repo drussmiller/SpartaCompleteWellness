@@ -2607,6 +2607,20 @@ export const registerRoutes = async (
                 preferredUTCMinute >= 50 &&
                 currentMinute < (preferredUTCMinute + 10) % 60);
 
+            // Check if a notification was already sent in the last hour
+            // This prevents duplicate notifications within the same scheduled time slot
+            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+            const recentNotifications = await db
+              .select()
+              .from(notifications)
+              .where(
+                and(
+                  eq(notifications.userId, user.id),
+                  eq(notifications.type, "reminder"),
+                  gte(notifications.createdAt, oneHourAgo),
+                ),
+              );
+
             logger.info(`Notification time check for user ${user.id} (${user.username}):`, {
               userId: user.id,
               username: user.username,
@@ -2617,9 +2631,10 @@ export const registerRoutes = async (
               timezoneOffsetHours: timezoneOffsetHours,
               calculation: `(${preferredLocalHour} - (${timezoneOffsetHours}) + 24) % 24 = ${preferredUTCHour}`,
               isPreferredTimeWindow,
+              recentNotifications: recentNotifications.length,
             });
 
-            if (isPreferredTimeWindow) {
+            if (isPreferredTimeWindow && recentNotifications.length === 0) {
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
@@ -2654,7 +2669,11 @@ export const registerRoutes = async (
                 broadcastNotification(user.id, notificationData);
               }
             } else {
-              logger.debug(`User ${user.id} - not in preferred time window (current: ${currentHour}:${String(currentMinute).padStart(2, '0')}, preferred: ${String(preferredUTCHour).padStart(2, '0')}:${String(preferredUTCMinute).padStart(2, '0')})`);
+              if (!isPreferredTimeWindow) {
+                logger.debug(`User ${user.id} - not in preferred time window`);
+              } else if (recentNotifications.length > 0) {
+                logger.info(`User ${user.id} - skipping duplicate notification (already sent ${recentNotifications.length} in last hour)`);
+              }
             }
           } else {
             logger.info(`No notification needed for user ${user.id}, met daily goal`);
