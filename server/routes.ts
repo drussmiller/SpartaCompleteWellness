@@ -5447,6 +5447,56 @@ export const registerRoutes = async (
     }
   });
 
+  // Mark a single notification as read
+  router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.notificationId);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.id, notificationId),
+          ),
+        );
+
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      logger.error("Error marking notification as read:", error);
+      res.status(500).json({
+        message: "Failed to mark notification as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Mark all notifications as read
+  router.post("/api/notifications/read-all", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.userId, req.user.id));
+
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      logger.error("Error marking all notifications as read:", error);
+      res.status(500).json({
+        message: "Failed to mark all notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Get messages with a specific user
   router.get("/api/messages/:userId", authenticate, async (req, res) => {
     try {
