@@ -14,29 +14,6 @@ export default function NotificationsPage() {
 
   const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
-    queryFn: async () => {
-      // Mark all as read when loading notifications page
-      await apiRequest("POST", "/api/notifications/read-all");
-      // Then fetch notifications
-      const response = await apiRequest("GET", "/api/notifications");
-      if (!response.ok) {
-        try {
-          const error = await response.json();
-          throw new Error(error.message || "Failed to fetch notifications");
-        } catch (jsonError) {
-          console.error("Error parsing response:", jsonError);
-          throw new Error("Failed to parse server response");
-        }
-      }
-      // Invalidate unread count
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
-      try {
-        return await response.json();
-      } catch (jsonError) {
-        console.error("Error parsing notifications JSON:", jsonError);
-        return [];
-      }
-    },
     enabled: !!user,
   });
 
