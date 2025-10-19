@@ -2646,24 +2646,8 @@ export const registerRoutes = async (
               };
 
               try {
-                // Use try-catch to handle potential race conditions
-                // Do a final check right before insert to catch concurrent creations
-                const finalCheck = await db
-                  .select()
-                  .from(notifications)
-                  .where(
-                    and(
-                      eq(notifications.userId, user.id),
-                      eq(notifications.type, "reminder"),
-                      gte(notifications.createdAt, oneHourAgo),
-                    ),
-                  );
-                
-                if (finalCheck.length > 0) {
-                  logger.info(`User ${user.id} - race condition detected, notification exists. Skipping.`);
-                  continue;
-                }
-
+                // Database-level unique constraint will prevent duplicates
+                // If a duplicate is attempted, PostgreSQL will throw a unique violation error (23505)
                 const [insertedNotification] = await db
                   .insert(notifications)
                   .values(notification)
@@ -2687,9 +2671,14 @@ export const registerRoutes = async (
 
                   broadcastNotification(user.id, notificationData);
                 }
-              } catch (insertError) {
-                // If insert fails (e.g., race condition), log and continue
-                logger.warn(`Failed to insert notification for user ${user.id}:`, insertError);
+              } catch (insertError: any) {
+                // PostgreSQL unique constraint violation (error code 23505)
+                // This means a notification was already created for this user today
+                if (insertError?.code === '23505') {
+                  logger.info(`User ${user.id} - notification already exists for today (caught by DB constraint)`);
+                } else {
+                  logger.error(`Failed to insert notification for user ${user.id}:`, insertError);
+                }
               }
             } else {
               if (!isPreferredTimeWindow) {
