@@ -70,14 +70,11 @@ export function useNotifications(suppressToasts = false) {
         }
 
         // Handle other message types (e.g., notifications)
-        if (data.type === "new_notification" && shouldShowToasts) {
-          toast({
-            title: "New Notification",
-            description: data.content,
-          });
+        if (data.type === "notification") {
+          // Invalidate notifications query to trigger refetch
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
         }
-        // Update the query cache with the new notification
-        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       } catch (error) {
         console.error("Failed to process WebSocket message:", error);
       }
