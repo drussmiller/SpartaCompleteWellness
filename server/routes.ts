@@ -2607,9 +2607,9 @@ export const registerRoutes = async (
                 preferredUTCMinute >= 50 &&
                 currentMinute < (preferredUTCMinute + 10) % 60);
 
-            // Check if a notification was already sent in the last hour
-            // This prevents duplicate notifications within the same scheduled time slot
-            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+            // Check if a notification was already sent in the last 55 minutes
+            // This allows multiple notifications per day if users change their schedule
+            const fiftyFiveMinutesAgo = new Date(now.getTime() - 55 * 60 * 1000);
             const recentNotifications = await db
               .select()
               .from(notifications)
@@ -2617,7 +2617,7 @@ export const registerRoutes = async (
                 and(
                   eq(notifications.userId, user.id),
                   eq(notifications.type, "reminder"),
-                  gte(notifications.createdAt, oneHourAgo),
+                  gte(notifications.createdAt, fiftyFiveMinutesAgo),
                 ),
               );
 
@@ -2646,8 +2646,6 @@ export const registerRoutes = async (
               };
 
               try {
-                // Database-level unique constraint will prevent duplicates
-                // If a duplicate is attempted, PostgreSQL will throw a unique violation error (23505)
                 const [insertedNotification] = await db
                   .insert(notifications)
                   .values(notification)
@@ -2672,19 +2670,13 @@ export const registerRoutes = async (
                   broadcastNotification(user.id, notificationData);
                 }
               } catch (insertError: any) {
-                // PostgreSQL unique constraint violation (error code 23505)
-                // This means a notification was already created for this user today
-                if (insertError?.code === '23505') {
-                  logger.info(`User ${user.id} - notification already exists for today (caught by DB constraint)`);
-                } else {
-                  logger.error(`Failed to insert notification for user ${user.id}:`, insertError);
-                }
+                logger.error(`Failed to insert notification for user ${user.id}:`, insertError);
               }
             } else {
               if (!isPreferredTimeWindow) {
                 logger.debug(`User ${user.id} - not in preferred time window`);
               } else if (recentNotifications.length > 0) {
-                logger.info(`User ${user.id} - skipping duplicate notification (already sent ${recentNotifications.length} in last hour)`);
+                logger.info(`User ${user.id} - skipping duplicate notification (already sent ${recentNotifications.length} in last 55 minutes)`);
               }
             }
           } else {
