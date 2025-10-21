@@ -4354,6 +4354,52 @@ export const registerRoutes = async (
     }
   });
 
+  // Upload user profile image
+  router.post("/api/user/image", authenticate, upload.single("image"), async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      if (!req.file) return res.status(400).json({ message: "No image file provided" });
+
+      console.log("[PROFILE IMAGE] User", req.user.id, "uploading profile image");
+
+      // Process and compress the image
+      const processedImage = await sharp(req.file.buffer)
+        .resize(300, 300, {
+          fit: "cover",
+          position: "center",
+        })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      // Upload to Object Storage
+      const fileName = `profile-images/${req.user.id}-${Date.now()}.jpg`;
+      await spartaStorage.uploadFile(fileName, processedImage, "image/jpeg");
+
+      // Store the path in the database (not a full URL)
+      const imageUrl = `shared/${fileName}`;
+
+      // Update user's imageUrl in database
+      const [updatedUser] = await db
+        .update(users)
+        .set({ imageUrl })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      console.log("[PROFILE IMAGE] Successfully uploaded and updated imageUrl to:", imageUrl);
+
+      res.json({
+        message: "Profile image uploaded successfully",
+        imageUrl: updatedUser.imageUrl,
+      });
+    } catch (error) {
+      console.error("[PROFILE IMAGE] Error uploading profile image:", error);
+      res.status(500).json({
+        message: "Failed to upload profile image",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Update user preferred name
   router.patch("/api/user/preferred-name", authenticate, async (req, res) => {
     try {
