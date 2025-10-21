@@ -4372,9 +4372,8 @@ export const registerRoutes = async (
         .jpeg({ quality: 85 })
         .toBuffer();
 
-      // Upload to Object Storage using storeBuffer
-      const fileName = `profile-${req.user.id}-${Date.now()}.jpg`;
-      const imageUrl = await spartaStorage.storeBuffer(processedImage, fileName, "image/jpeg");
+      // Convert to base64 data URL
+      const imageUrl = `data:image/jpeg;base64,${processedImage.toString('base64')}`;
 
       // Update user's imageUrl in database
       const [updatedUser] = await db
@@ -4383,7 +4382,7 @@ export const registerRoutes = async (
         .where(eq(users.id, req.user.id))
         .returning();
 
-      console.log("[PROFILE IMAGE] Successfully uploaded and updated imageUrl to:", imageUrl);
+      console.log("[PROFILE IMAGE] Successfully saved profile image to database for user:", req.user.id);
 
       res.json({
         message: "Profile image uploaded successfully",
