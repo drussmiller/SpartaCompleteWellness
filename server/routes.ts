@@ -2636,12 +2636,18 @@ export const registerRoutes = async (
             });
 
             if (isPreferredTimeWindow && recentNotifications.length === 0) {
+              // Calculate the intended notification time using the user's preferred time
+              // Use the preferredUTCHour which is already correctly calculated
+              // This ensures the timestamp reflects when they WANTED the notification, not when it was actually sent
+              const intendedNotificationTime = new Date(today);
+              intendedNotificationTime.setUTCHours(preferredUTCHour, preferredUTCMinute, 0, 0);
+              
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
                 message,
                 read: false,
-                createdAt: new Date(),
+                createdAt: intendedNotificationTime,
                 type: "reminder",
                 sound: "default",
               };
