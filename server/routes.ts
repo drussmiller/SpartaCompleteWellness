@@ -4372,12 +4372,9 @@ export const registerRoutes = async (
         .jpeg({ quality: 85 })
         .toBuffer();
 
-      // Upload to Object Storage
-      const fileName = `profile-images/${req.user.id}-${Date.now()}.jpg`;
-      await spartaStorage.uploadFile(fileName, processedImage, "image/jpeg");
-
-      // Store the path in the database (not a full URL)
-      const imageUrl = `shared/${fileName}`;
+      // Upload to Object Storage using storeBuffer
+      const fileName = `profile-${req.user.id}-${Date.now()}.jpg`;
+      const imageUrl = await spartaStorage.storeBuffer(processedImage, fileName, "image/jpeg");
 
       // Update user's imageUrl in database
       const [updatedUser] = await db
