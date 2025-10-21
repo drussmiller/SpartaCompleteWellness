@@ -47,6 +47,7 @@ import {
   insertWorkoutTypeSchema,
   messages,
   insertMessageSchema,
+  systemState,
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
 import express, { Request, Response, NextFunction } from "express";
@@ -2686,6 +2687,23 @@ export const registerRoutes = async (
           logger.error(`Error processing user ${user.id}:`, userError);
           continue;
         }
+      }
+
+      // Record the last notification check time
+      try {
+        const now = new Date();
+        // Use raw SQL for reliable upsert
+        await db.execute(sql`
+          INSERT INTO system_state (key, value, updated_at)
+          VALUES ('last_notification_check', ${now.toISOString()}, ${now})
+          ON CONFLICT (key)
+          DO UPDATE SET 
+            value = ${now.toISOString()},
+            updated_at = ${now}
+        `);
+        console.log(`[NOTIFICATION] Recorded last check time: ${now.toISOString()}`);
+      } catch (stateError) {
+        console.error("[NOTIFICATION] Failed to record last check time:", stateError);
       }
 
       res.json({ message: "Daily score check completed" });

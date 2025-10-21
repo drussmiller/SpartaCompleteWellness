@@ -491,3 +491,13 @@ export const insertUserAchievementSchema = createInsertSchema(userAchievements)
 
 export type InsertAchievementType = z.infer<typeof insertAchievementTypeSchema>;
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+
+// System state table to track notification scheduler state
+export const systemState = pgTable("system_state", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SystemState = typeof systemState.$inferSelect;

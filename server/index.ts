@@ -153,6 +153,103 @@ scheduleDailyScoreCheck = () => {
     }
   };
 
+  // Function to check for and send missed notifications on startup
+  const checkForMissedNotifications = async () => {
+    try {
+      logger.info('[CATCH-UP] Checking for missed notifications since last check...');
+      
+      // Get the last check time from database
+      const lastCheckRecord = await db
+        .select()
+        .from(await import('@shared/schema').then(m => m.systemState))
+        .where(sql`key = 'last_notification_check'`)
+        .limit(1);
+      
+      if (!lastCheckRecord || lastCheckRecord.length === 0) {
+        logger.info('[CATCH-UP] No previous check time found - this is first run');
+        return;
+      }
+      
+      const lastCheckTime = new Date(lastCheckRecord[0].value!);
+      const now = new Date();
+      const hoursSinceLastCheck = (now.getTime() - lastCheckTime.getTime()) / (1000 * 60 * 60);
+      
+      logger.info(`[CATCH-UP] Last check was at ${lastCheckTime.toISOString()}`);
+      logger.info(`[CATCH-UP] Time elapsed: ${hoursSinceLastCheck.toFixed(2)} hours`);
+      
+      // If less than 55 minutes, no catch-up needed
+      if (hoursSinceLastCheck < (55 / 60)) {
+        logger.info('[CATCH-UP] Less than 55 minutes since last check, no catch-up needed');
+        return;
+      }
+      
+      // Calculate which hourly windows were missed
+      const missedHours = [];
+      const lastCheckHour = new Date(lastCheckTime);
+      lastCheckHour.setMinutes(0, 0, 0);
+      lastCheckHour.setHours(lastCheckHour.getHours() + 1); // Start from next hour after last check
+      
+      const currentHour = new Date(now);
+      currentHour.setMinutes(0, 0, 0);
+      
+      let checkHour = new Date(lastCheckHour);
+      while (checkHour < currentHour) {
+        missedHours.push({
+          hour: checkHour.getUTCHours(),
+          minute: 0,
+          timestamp: new Date(checkHour)
+        });
+        checkHour = new Date(checkHour.getTime() + 3600000); // Add 1 hour
+      }
+      
+      if (missedHours.length === 0) {
+        logger.info('[CATCH-UP] No missed hourly windows found');
+        return;
+      }
+      
+      logger.info(`[CATCH-UP] Found ${missedHours.length} missed hourly windows`);
+      
+      // Send notifications for each missed hour
+      for (const missed of missedHours) {
+        try {
+          logger.info(`[CATCH-UP] Checking missed hour: ${missed.hour}:00 UTC`);
+          
+          const response = await fetch(`http://localhost:${port}/api/check-daily-scores`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              currentHour: missed.hour,
+              currentMinute: missed.minute,
+            }),
+            signal: AbortSignal.timeout(30000),
+          });
+          
+          if (!response.ok) {
+            logger.error(`[CATCH-UP] Failed to check missed hour ${missed.hour}:00`);
+          } else {
+            logger.info(`[CATCH-UP] Successfully processed missed hour ${missed.hour}:00`);
+          }
+          
+          // Small delay between checks to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          logger.error(`[CATCH-UP] Error processing missed hour ${missed.hour}:00:`, error);
+        }
+      }
+      
+      logger.info('[CATCH-UP] Finished processing missed notifications');
+    } catch (error) {
+      logger.error('[CATCH-UP] Error checking for missed notifications:', error);
+    }
+  };
+
+  // Check for missed notifications on startup (don't await - run in background)
+  checkForMissedNotifications().catch(err => {
+    logger.error('[CATCH-UP] Failed to check for missed notifications:', err);
+  });
+
   // Calculate time until next hour (at :00 minutes)
   const now = new Date();
   const minutesUntilNextHour = 60 - now.getMinutes();
