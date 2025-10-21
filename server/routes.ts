@@ -54,6 +54,7 @@ import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
+import sharp from "sharp";
 import { z } from "zod";
 import { requestLogger } from "./middleware/request-logger";
 import { errorHandler } from "./middleware/error-handler";
