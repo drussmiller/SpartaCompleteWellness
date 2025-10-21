@@ -144,6 +144,26 @@ export function useNotifications(suppressToasts = false) {
     };
   }, [user, connectWebSocket]);
 
+  // Refresh notifications when the page becomes visible (e.g., after waking from sleep)
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Page became visible, refreshing notifications');
+        // Invalidate and refetch notifications
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
+
   // Helper function to fix memory verse thumbnails
   const fixMemoryVerseThumbnails = useCallback(async () => {
     try {

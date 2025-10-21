@@ -32,7 +32,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         return 0;
       }
     },
-    refetchInterval: 30000 // Refetch every 30 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true // Refetch when window regains focus
   });
 
   // Check if user's program has started
