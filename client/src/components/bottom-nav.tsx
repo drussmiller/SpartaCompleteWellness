@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useEffect } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -19,7 +20,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   console.log('BottomNav render - isVisible:', isVisible);
 
   // Query for unread notifications count
-  const { data: unreadCount = 0 } = useQuery({
+  const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
     queryKey: ["/api/notifications/unread"],
     queryFn: async () => {
       try {
@@ -33,8 +34,34 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       }
     },
     refetchInterval: 30000, // Refetch every 30 seconds
-    refetchOnWindowFocus: true // Refetch when window regains focus
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    enabled: !!user
   });
+
+  // Refresh notification count when page becomes visible or window gains focus
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Bottom nav: Page became visible, refreshing notification count');
+        refetchNotificationCount();
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('Bottom nav: Window gained focus, refreshing notification count');
+      refetchNotificationCount();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user, refetchNotificationCount]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
