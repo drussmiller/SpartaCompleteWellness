@@ -157,10 +157,19 @@ export function useNotifications(suppressToasts = false) {
       }
     };
 
+    const handleFocus = () => {
+      console.log('Window gained focus, refreshing notifications');
+      // Invalidate and refetch notifications
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [user]);
 
