@@ -386,7 +386,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       onTouchEnd={handleTouchEnd}
     >
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
-        <div className="p-4 flex items-center">
+        <div className="p-4 px-4 md:px-44 md:pl-80 flex items-center">
           {onClose && (
             <Button
               variant="ghost"
@@ -401,7 +401,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pt-24 md:pt-16 pb-80 px-4 space-y-6 max-w-4xl mx-auto w-full">
+      <main className="flex-1 overflow-y-auto pt-24 md:pt-16 pb-80 px-4 md:px-44 md:pl-56 space-y-6 max-w-4xl mx-auto w-full"></main>
         <div className="hidden md:block lg:w-64">
           <BottomNav orientation="vertical" />
         </div>
