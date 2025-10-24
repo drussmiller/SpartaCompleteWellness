@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { MessagesSquare, ChevronLeft } from "lucide-react";
+import { MessagesSquare, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -70,7 +70,7 @@ export function MessageSlideCard() {
   });
 
   // Query for team members
-  const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
+  const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
     queryKey: ["/api/users", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
@@ -505,7 +505,12 @@ export function MessageSlideCard() {
               }}
             >
               <div className="space-y-2 p-4 pb-16 bg-white">
-                {teamMembers.length === 0 ? (
+                {teamMembersLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 bg-white">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-2" />
+                    <p className="text-gray-500 text-sm">Loading team members...</p>
+                  </div>
+                ) : teamMembers.length === 0 ? (
                   <div className="text-center text-gray-500 py-8 bg-white">
                     No team members available
                   </div>
