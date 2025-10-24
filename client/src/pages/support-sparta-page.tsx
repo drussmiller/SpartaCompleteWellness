@@ -55,22 +55,22 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
       onTouchEnd={handleTouchEnd}
       data-swipe-enabled="true"
     >
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-        <div className="container flex items-center p-4 pt-16">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="flex items-center p-4">
           <Button
             variant="ghost"
             size="icon"
-            className="mr-2 scale-125"
+            className="mr-2"
             onClick={handleBackClick}
           >
-            <ChevronLeft className="h-8 w-8 scale-125" />
+            <ChevronLeft className="h-6 w-6" />
           </Button>
           <h1 className="text-lg font-semibold">Support Sparta</h1>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pt-32 pb-24">
-        <div className="container py-6 max-w-4xl mx-auto">
+      <main className="flex-1 overflow-y-auto pb-24">
+        <div className="py-6 px-4 max-w-4xl mx-auto">
           <Card className="flex flex-col">
             <ScrollArea className="flex-1">
               <CardContent className="space-y-6">
