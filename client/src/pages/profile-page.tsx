@@ -385,7 +385,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <header className="sticky top-0 z-10 bg-background border-b border-border">
+      <header className="sticky top-0 z-10 bg-background border-b border-border pt-12">
         <div className="p-4 flex items-center">
           {onClose && (
             <Button

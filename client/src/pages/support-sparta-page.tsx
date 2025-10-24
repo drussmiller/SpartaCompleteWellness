@@ -55,7 +55,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
       onTouchEnd={handleTouchEnd}
       data-swipe-enabled="true"
     >
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
+      <header className="sticky top-0 z-50 bg-background border-b border-border pt-12">
         <div className="flex items-center p-4">
           <Button
             variant="ghost"
