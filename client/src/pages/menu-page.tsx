@@ -27,18 +27,16 @@ export default function MenuPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col p-6 md:px-44 md:pl-56">
-        <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
-          {/* This div is an empty spacer, which you can style as necessary */}
-        </div>
-        <div className="fixed top-10 z-50 left-0 right-0 bg-background border-b border-border text-lg">
-          <div className="p-4 px-4 md:px-44 md:pl-80">
+      <div className="flex flex-col min-h-screen">
+        {/* Header */}
+        <div className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="max-w-2xl mx-auto p-4">
             <h1 className="text-xl font-bold">Menu</h1>
           </div>
         </div>
 
         {/* Navigation Section */}
-        <div className="w-full space-y-2 pt-8 md:pt-24">
+        <div className="max-w-2xl mx-auto w-full p-6 space-y-2">
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
@@ -59,7 +57,7 @@ export default function MenuPage() {
                 </div>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+            <SheetContent side="right" className="p-0">
               {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -78,7 +76,7 @@ export default function MenuPage() {
                 {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+            <SheetContent side="right" className="p-0">
               {notificationSettingsOpen && <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -97,7 +95,7 @@ export default function MenuPage() {
                 {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+            <SheetContent side="right" className="p-0">
               {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -110,7 +108,7 @@ export default function MenuPage() {
                 Support Sparta
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+            <SheetContent side="right" className="p-0">
               {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -124,7 +122,7 @@ export default function MenuPage() {
                   Invite Code
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              <SheetContent side="right" className="p-0">
                 {inviteCodeOpen && <InviteCodePage onClose={() => setInviteCodeOpen(false)} />}
               </SheetContent>
             </Sheet>
@@ -139,7 +137,7 @@ export default function MenuPage() {
                   Admin Dashboard
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-[640px] p-0">
+              <SheetContent side="right" className="p-0">
                 {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
               </SheetContent>
             </Sheet>
