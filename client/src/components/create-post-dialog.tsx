@@ -852,7 +852,7 @@ export function CreatePostDialog({
                             accept="video/*"
                             ref={videoInputRef}
                             className="hidden"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (file) {
                                 if (file.size > 100 * 1024 * 1024) { // 100MB limit
@@ -871,7 +871,9 @@ export function CreatePostDialog({
                                 // Generate a thumbnail for the video
                                 console.log("Starting thumbnail generation for video:", file.name, file.type);
                                 setVideoThumbnail(null); // Reset thumbnail state
-                                generateVideoThumbnail(file).then(thumbnailUrl => {
+                                
+                                try {
+                                  const thumbnailUrl = await generateVideoThumbnail(file);
                                   console.log("Thumbnail generation result:", thumbnailUrl ? "SUCCESS" : "FAILED");
                                   if (thumbnailUrl) {
                                     setVideoThumbnail(thumbnailUrl);
@@ -879,9 +881,9 @@ export function CreatePostDialog({
                                   } else {
                                     console.log("Failed to generate video thumbnail");
                                   }
-                                }).catch(error => {
-                                  console.error("Error in thumbnail generation promise:", error);
-                                });
+                                } catch (error) {
+                                  console.error("Error in thumbnail generation:", error);
+                                }
 
                                 // Important: we need to set the field value to a marker so we know to use the video file
                                 const marker = "VIDEO_FILE_UPLOAD";
@@ -1170,7 +1172,7 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
 
       // Create a video element
       const video = document.createElement('video');
-      video.preload = 'auto';
+      video.preload = 'metadata';
       video.muted = true;
       video.playsInline = true;
       video.autoplay = false;
@@ -1180,12 +1182,12 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
       // Add timeout to prevent hanging
       const timeout = setTimeout(() => {
         if (!hasResolved) {
-          console.warn('⏰ Video thumbnail generation timed out after 15 seconds');
+          console.warn('⏰ Video thumbnail generation timed out after 10 seconds');
           hasResolved = true;
           URL.revokeObjectURL(video.src);
           resolve(null);
         }
-      }, 15000); // 15 second timeout
+      }, 10000); // 10 second timeout
 
       // Create a URL for the video file
       const videoUrl = URL.createObjectURL(videoFile);
@@ -1239,49 +1241,6 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
         }
       };
 
-      // When video can play through, try multiple methods
-      video.oncanplaythrough = () => {
-        console.log('🎥 Video can play through - attempting thumbnail generation');
-
-        // Try generating thumbnail immediately
-        if (generateThumbnailFromCurrentFrame()) return;
-
-        // If immediate capture failed, try seeking to a specific time
-        setTimeout(() => {
-          if (hasResolved) return;
-
-          // For memory verse videos, try to seek to a better position
-          const seekTime = video.duration > 0
-            ? Math.min(video.duration * 0.15, 3) // 15% into video or 3 seconds max
-            : 1;
-          console.log(`🔍 Seeking to ${seekTime} seconds for thumbnail (duration: ${video.duration}s)`);
-          video.currentTime = seekTime;
-
-          // Try again after seeking
-          setTimeout(() => {
-            if (!hasResolved) {
-              generateThumbnailFromCurrentFrame();
-            }
-          }, 100);
-        }, 100);
-      };
-
-      // When seeking completes
-      video.onseeked = () => {
-        console.log('✨ Video seeking completed');
-        if (!hasResolved) {
-          generateThumbnailFromCurrentFrame();
-        }
-      };
-
-      // When video loads enough data
-      video.onloadeddata = () => {
-        console.log('📊 Video data loaded - trying thumbnail generation');
-        if (!hasResolved) {
-          generateThumbnailFromCurrentFrame();
-        }
-      };
-
       // When metadata is loaded
       video.onloadedmetadata = () => {
         console.log('📋 Video metadata loaded:', {
@@ -1290,6 +1249,21 @@ async function generateVideoThumbnail(videoFile: File): Promise<string | null> {
           videoHeight: video.videoHeight,
           readyState: video.readyState
         });
+        
+        // Seek to 1 second (or 10% of duration, whichever is less)
+        const seekTime = Math.min(1, video.duration * 0.1);
+        console.log(`🔍 Seeking to ${seekTime} seconds for thumbnail`);
+        video.currentTime = seekTime;
+      };
+
+      // When seeking completes
+      video.onseeked = () => {
+        console.log('✨ Video seeking completed at', video.currentTime);
+        setTimeout(() => {
+          if (!hasResolved) {
+            generateThumbnailFromCurrentFrame();
+          }
+        }, 100);
       };
 
       // Handle errors
