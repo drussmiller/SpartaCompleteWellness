@@ -10,21 +10,27 @@ const ToastProvider = ToastPrimitives.Provider
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
->(({ className, style, ...props }, ref) => (
-  <ToastPrimitives.Viewport
-    ref={ref}
-    className={cn(
-      "fixed top-0 z-[999999] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
-      className
-    )}
-    style={{
-      ...style,
-      zIndex: 2147483647,
-      position: 'fixed',
-    }}
-    {...props}
-  />
-))
+>(({ className, style, ...props }, ref) => {
+  const portalContainer = typeof document !== 'undefined' 
+    ? document.getElementById('toast-portal-root') 
+    : null;
+  
+  return (
+    <ToastPrimitives.Viewport
+      ref={ref}
+      className={cn(
+        "fixed top-0 z-[999999] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+        className
+      )}
+      style={{
+        ...style,
+        pointerEvents: 'auto',
+      }}
+      {...(portalContainer ? { container: portalContainer } : {})}
+      {...props}
+    />
+  );
+})
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
@@ -54,8 +60,7 @@ const Toast = React.forwardRef<
       className={cn(toastVariants({ variant }), className)}
       style={{
         ...style,
-        zIndex: 2147483647,
-        position: 'relative',
+        pointerEvents: 'auto',
       }}
       {...props}
     />
