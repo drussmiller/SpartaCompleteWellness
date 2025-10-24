@@ -5171,16 +5171,14 @@ export const registerRoutes = async (
         teamId: req.user?.teamId
       });
 
-      // Allow both full admins, group admins, and team leads
-      if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
-        console.log('Access denied - not admin, group admin, or team lead');
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
       let users = await storage.getAllUsers();
 
+      // Filter users based on role
+      if (req.user.isAdmin) {
+        // Admins can see all users - no filtering needed
+      }
       // Filter users for group admins - only show users in their group's teams
-      if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
+      else if (req.user.isGroupAdmin && req.user.adminGroupId) {
         // Get teams in the admin's group
         const groupTeams = await db
           .select({ id: teams.id })
@@ -5193,8 +5191,16 @@ export const registerRoutes = async (
         users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
       }
       // Filter users for team leads - only show users in their team
-      else if (req.user.isTeamLead && !req.user.isAdmin && !req.user.isGroupAdmin && req.user.teamId) {
+      else if (req.user.isTeamLead && req.user.teamId) {
         users = users.filter(user => user.teamId === req.user.teamId);
+      }
+      // Filter users for regular users - only show users in their team (excluding themselves)
+      else if (req.user.teamId) {
+        users = users.filter(user => user.teamId === req.user.teamId && user.id !== req.user.id);
+      }
+      // If user has no team, return empty array
+      else {
+        users = [];
       }
 
       res.json(users);
