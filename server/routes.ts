@@ -3497,53 +3497,6 @@ export const registerRoutes = async (
       res.status(201).json({ code, type: "group_admin" });
     } catch (error) {
       logger.error("Error creating group admin invite code:", error);
-
-
-// Get team members endpoint - allows any user to see their team members
-router.get("/api/users/team-members", authenticate, async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    if (!req.user.teamId) {
-      return res.json([]); // Return empty array if user has no team
-    }
-
-    // Get all users in the same team, excluding the current user
-    const teamMembers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        preferredName: users.preferredName,
-        email: users.email,
-        imageUrl: users.imageUrl,
-        teamId: users.teamId,
-        isAdmin: users.isAdmin,
-        isTeamLead: users.isTeamLead,
-        isGroupAdmin: users.isGroupAdmin,
-        status: users.status,
-      })
-      .from(users)
-      .where(
-        and(
-          eq(users.teamId, req.user.teamId),
-          ne(users.id, req.user.id),
-          eq(users.status, 1) // Only show active users
-        )
-      );
-
-    logger.info(`User ${req.user.id} fetched ${teamMembers.length} team members from team ${req.user.teamId}`);
-    res.json(teamMembers);
-  } catch (error) {
-    logger.error("Error fetching team members:", error);
-    res.status(500).json({
-      message: "Failed to fetch team members",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
-
       res.status(500).json({ message: "Failed to create invite code" });
     }
   });

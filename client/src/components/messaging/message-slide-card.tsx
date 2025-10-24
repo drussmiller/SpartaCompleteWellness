@@ -69,26 +69,38 @@ export function MessageSlideCard() {
     }
   });
 
-  // Query for team members using dedicated endpoint
+  // Query for team members
   const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
-    queryKey: ["/api/users/team-members", user?.teamId],
+    queryKey: ["/api/users", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
-        return []; // Return empty array if user has no team
+        return []; // Return empty array instead of throwing error
       }
       try {
-        const response = await apiRequest("GET", "/api/users/team-members");
+        const response = await apiRequest("GET", "/api/users");
 
-        if (!response.ok) {
-          console.log("Failed to fetch team members, returning empty array");
+        // If user is not authorized (not admin), return empty array
+        if (response.status === 403) {
+          console.log("User not authorized to fetch all users, returning empty team members list");
           return [];
         }
 
-        const members = await response.json();
-        console.log(`Fetched ${members.length} team members for messaging`);
-        return members;
+        if (!response.ok) {
+          console.log("Failed to fetch users, returning empty array");
+          return [];
+        }
+
+        const users = await response.json();
+
+        // Filter users to only show team members (excluding current user)
+        const filteredUsers = users.filter((member: User) => {
+          return member.teamId === user.teamId && member.id !== user.id;
+        });
+
+        return filteredUsers;
       } catch (error) {
-        console.error("Error fetching team members:", error);
+        console.error("Error fetching users:", error);
+        // Return empty array instead of throwing error
         return [];
       }
     },
