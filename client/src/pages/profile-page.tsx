@@ -401,7 +401,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 space-y-6 bg-background">
+      <main className="flex-1 overflow-y-auto p-6 pb-24 space-y-6 bg-background">
         <div className="flex-1 space-y-4">
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
