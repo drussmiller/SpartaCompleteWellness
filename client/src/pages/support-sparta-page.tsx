@@ -63,7 +63,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
             className="mr-2"
             onClick={handleBackClick}
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold">Support Sparta</h1>
         </div>

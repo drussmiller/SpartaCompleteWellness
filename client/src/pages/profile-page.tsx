@@ -394,7 +394,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               onClick={onClose}
               className="mr-2"
             >
-              <ChevronLeft className="h-6 w-6" />
+              <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
           <h1 className="text-xl font-bold">Profile</h1>
