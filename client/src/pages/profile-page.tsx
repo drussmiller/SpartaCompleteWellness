@@ -389,7 +389,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         {/* This div is an empty spacer */}
       </div>
       <header className="fixed top-10 left-0 right-0 z-50 bg-background border-b border-border">
-        <div className="p-4 px-4 md:px-44 md:pl-28 flex items-center">
+        <div className="p-4 px-4 md:px-44 md:pl-80 flex items-center">
           {onClose && (
             <Button
               variant="ghost"
