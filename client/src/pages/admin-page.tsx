@@ -1302,16 +1302,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         onTouchEnd={handleTouchEnd}
       >
         {/* Fixed title bar */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border pt-12">
+        <div className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="p-4 flex items-center">
             {onClose && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="mr-2"
+                className="mr-2 scale-125"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-8 w-8 scale-125" />
               </Button>
             )}
             <h1 className="text-xl font-bold">Admin Dashboard</h1>

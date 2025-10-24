@@ -392,9 +392,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="mr-2"
+              className="mr-2 scale-125"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-8 w-8 scale-125" />
             </Button>
           )}
           <h1 className="text-xl font-bold">Profile</h1>

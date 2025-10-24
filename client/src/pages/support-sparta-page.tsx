@@ -60,10 +60,10 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
           <Button
             variant="ghost"
             size="icon"
-            className="mr-2"
+            className="mr-2 scale-125"
             onClick={handleBackClick}
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-8 w-8 scale-125" />
           </Button>
           <h1 className="text-lg font-semibold">Support Sparta</h1>
         </div>
