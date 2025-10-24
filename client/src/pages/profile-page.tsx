@@ -404,7 +404,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pt-8 md:pt-32 pb-80 px-4 md:px-44 md:pl-28 space-y-6 max-w-4xl mx-auto w-full">
+      <main className="flex-1 overflow-y-auto pt-8 md:pt-32 pb-80 px-4 md:px-44 md:pl-80 space-y-6 max-w-4xl mx-auto w-full">
         <div className="flex-1 space-y-4">
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
@@ -1003,10 +1003,6 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
             {logoutMutation.isPending ? "Logging out..." : "Logout"}
             <LogOut className="ml-2 h-4 w-4" />
           </Button>
-        </div>
-
-        <div className="hidden md:block lg:w-64">
-          <BottomNav orientation="vertical" />
         </div>
       </main>
 
