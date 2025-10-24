@@ -119,9 +119,9 @@ export default function NotificationsPage() {
   if (isLoading) {
     return (
       <AppLayout>
-        {/* Fixed title bar */}
+        {/* Header */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="px-6 py-4">
+          <div className="max-w-2xl mx-auto p-4">
             <h1 className="text-xl font-bold">Notifications</h1>
           </div>
         </div>
@@ -135,9 +135,9 @@ export default function NotificationsPage() {
   if (error) {
     return (
       <AppLayout>
-        {/* Fixed title bar */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border text-lg">
-          <div className="px-6 py-4">
+        {/* Header */}
+        <div className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="max-w-2xl mx-auto p-4">
             <h1 className="text-xl font-bold">Notifications</h1>
           </div>
         </div>
@@ -150,17 +150,14 @@ export default function NotificationsPage() {
 
   return (
     <AppLayout>
-      {/* Fixed title bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
-        {/* This div is an empty spacer, which you can style as necessary */}
-      </div>
-      <div className="fixed top-10 z-50 left-0 right-0 bg-background border-b border-border text-lg">
-        <div className="p-4 px-4 md:px-44 md:pl-80">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="max-w-2xl mx-auto p-4">
           <h1 className="text-xl font-bold">Notifications</h1>
         </div>
       </div>
 
-      <main className="p-4 pb-24 space-y-4 max-w-[1000px] mx-auto w-full text-lg md:px-44 md:pl-56">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full p-6 text-lg">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
