@@ -401,7 +401,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pt-24 md:pt-16 pb-80 px-4 md:px-44 md:pl-56 space-y-6 max-w-4xl mx-auto w-full"></main>
+      <main className="flex-1 overflow-y-auto pt-24 md:pt-16 pb-80 px-4 md:px-44 md:pl-56 space-y-6 max-w-4xl mx-auto w-full">
         <div className="hidden md:block lg:w-64">
           <BottomNav orientation="vertical" />
         </div>
