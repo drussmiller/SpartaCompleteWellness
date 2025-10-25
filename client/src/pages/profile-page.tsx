@@ -763,7 +763,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
           <Card>
             <CardContent>
               <h3 className="text-lg font-semibold mb-4">My Stats</h3>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-1">
                 <div className="flex flex-col items-center">
                   <div className="text-base text-muted-foreground">
                     Daily Total
