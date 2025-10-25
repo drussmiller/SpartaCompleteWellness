@@ -6,6 +6,9 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 declare global {
   namespace Express {
@@ -132,16 +135,17 @@ export function setupAuth(app: Express) {
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      // Only log deserialization errors, not routine operations
-      const user = await storage.getUser(id);
+      // Fetch user directly from database to ensure fresh status check
+      const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      
       if (!user) {
         console.log('User not found during deserialization:', id);
         return done(null, false);
       }
       
-      // Check if user is inactive - if so, invalidate the session
+      // CRITICAL: Check if user is inactive - if so, invalidate the session immediately
       if (user.status === 0) {
-        console.log('Inactive user attempted to use session:', id);
+        console.log('BLOCKED: Inactive user (status=0) attempted to use session:', id, user.username);
         return done(null, false);
       }
       
