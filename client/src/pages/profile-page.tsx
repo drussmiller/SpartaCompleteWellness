@@ -668,19 +668,16 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                             </>
                           )}
 
-                        <div className="flex justify-between items-center">
-                          <span className="text-lg text-muted-foreground">
-                            Activity Type
-                          </span>
+                        <div>
                           {isEditingActivityType ? (
-                            <div className="flex items-center gap-2">
+                            <div className="space-y-2">
                               <Select
                                 value={selectedActivityTypeId.toString()}
                                 onValueChange={(value) =>
                                   setSelectedActivityTypeId(parseInt(value))
                                 }
                               >
-                                <SelectTrigger className="w-32">
+                                <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -694,57 +691,64 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  updateActivityTypeMutation.mutate(
-                                    selectedActivityTypeId,
-                                  )
-                                }
-                                disabled={updateActivityTypeMutation.isPending}
-                                className="h-6 px-2 text-xs"
-                              >
-                                {updateActivityTypeMutation.isPending
-                                  ? "Saving..."
-                                  : "Save"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedActivityTypeId(
-                                    user?.preferredActivityTypeId || 1,
-                                  );
-                                  setIsEditingActivityType(false);
-                                }}
-                                className="h-6 px-2 text-xs"
-                              >
-                                Cancel
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    updateActivityTypeMutation.mutate(
+                                      selectedActivityTypeId,
+                                    )
+                                  }
+                                  disabled={updateActivityTypeMutation.isPending}
+                                >
+                                  {updateActivityTypeMutation.isPending
+                                    ? "Saving..."
+                                    : "Save"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedActivityTypeId(
+                                      user?.preferredActivityTypeId || 1,
+                                    );
+                                    setIsEditingActivityType(false);
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {workoutTypes?.find(
-                                  (wt) =>
-                                    wt.id ===
-                                    (user?.preferredActivityTypeId || 1),
-                                )?.type || "Bands"}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setSelectedActivityTypeId(
-                                    user?.preferredActivityTypeId || 1,
-                                  );
-                                  setIsEditingActivityType(true);
-                                }}
-                                className="h-6 px-2 text-xs"
-                                data-testid="button-edit-activity-type"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
+                            <div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-lg text-muted-foreground">
+                                  Activity Type
+                                </span>
+                                <span className="font-medium">
+                                  {workoutTypes?.find(
+                                    (wt) =>
+                                      wt.id ===
+                                      (user?.preferredActivityTypeId || 1),
+                                  )?.type || "Bands"}
+                                </span>
+                              </div>
+                              <div className="flex justify-end mt-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setSelectedActivityTypeId(
+                                      user?.preferredActivityTypeId || 1,
+                                    );
+                                    setIsEditingActivityType(true);
+                                  }}
+                                  className="h-6 px-2 text-xs"
+                                  data-testid="button-edit-activity-type"
+                                >
+                                  Edit
+                                </Button>
+                              </div>
                             </div>
                           )}
                         </div>
