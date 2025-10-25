@@ -534,12 +534,14 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg text-muted-foreground">Preferred Name</span>
-                      <div className="flex items-center gap-2">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg text-muted-foreground">Preferred Name</span>
                         <span className="text-sm font-medium">
                           {user?.preferredName || preferredNameValue || "Not set"}
                         </span>
+                      </div>
+                      <div className="flex justify-end mt-1">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -599,12 +601,14 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg text-muted-foreground">Email</span>
-                      <div className="flex items-center gap-2">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg text-muted-foreground">Email</span>
                         <span className="text-sm font-medium">
                           {user?.email}
                         </span>
+                      </div>
+                      <div className="flex justify-end mt-1">
                         <Button
                           size="sm"
                           variant="ghost"
