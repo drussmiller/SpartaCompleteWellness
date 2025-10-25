@@ -404,90 +404,88 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       <main className="flex-1 overflow-y-auto p-6 pb-60 space-y-6 bg-background">
         <div className="flex-1 space-y-4">
           <Card>
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-shrink-0">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage
-                      src={
-                        user?.imageUrl ||
-                        `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`
-                      }
-                      alt={user?.username}
-                    />
-                    <AvatarFallback>
-                      {user?.username?.[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-full">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                      disabled={uploading}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
+            <CardContent className="flex flex-col items-center p-6 space-y-4">
+              <div className="relative">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage
+                    src={
+                      user?.imageUrl ||
+                      `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`
+                    }
+                    alt={user?.username}
+                  />
+                  <AvatarFallback>
+                    {user?.username?.[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-full">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    disabled={uploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
 
-                        const formData = new FormData();
-                        formData.append("image", file);
+                      const formData = new FormData();
+                      formData.append("image", file);
 
-                        try {
-                          setUploading(true);
-                          const res = await fetch("/api/user/image", {
-                            method: "POST",
-                            body: formData,
-                          });
+                      try {
+                        setUploading(true);
+                        const res = await fetch("/api/user/image", {
+                          method: "POST",
+                          body: formData,
+                        });
 
-                          if (!res.ok) {
-                            throw new Error("Failed to update profile image");
-                          }
-
-                          await refetchUser();
-                          // Invalidate all queries to ensure profile image is updated everywhere
-                          await queryClient.invalidateQueries({
-                            queryKey: ["/api/posts"],
-                          });
-                          await queryClient.invalidateQueries({
-                            queryKey: ["/api/posts/comments"],
-                          });
-
-                          // Clear the entire cache to make sure everything refreshes
-                          queryClient.clear();
-
-                          // Force refresh the home page data
-                          await queryClient.refetchQueries({
-                            queryKey: ["/api/posts"],
-                          });
-
-                          toast({
-                            title: "Success",
-                            description: "Profile image updated successfully",
-                          });
-                        } catch (error) {
-                          toast({
-                            title: "Error",
-                            description: "Failed to update profile image",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setUploading(false);
+                        if (!res.ok) {
+                          throw new Error("Failed to update profile image");
                         }
-                      }}
-                    />
-                    {uploading ? (
-                      <Loader2 className="h-6 w-6 animate-spin text-white" />
-                    ) : (
-                      <div className="text-center text-white text-xs">
-                        <p>Click to</p>
-                        <p>Upload Photo</p>
-                      </div>
-                    )}
-                  </div>
+
+                        await refetchUser();
+                        // Invalidate all queries to ensure profile image is updated everywhere
+                        await queryClient.invalidateQueries({
+                          queryKey: ["/api/posts"],
+                        });
+                        await queryClient.invalidateQueries({
+                          queryKey: ["/api/posts/comments"],
+                        });
+
+                        // Clear the entire cache to make sure everything refreshes
+                        queryClient.clear();
+
+                        // Force refresh the home page data
+                        await queryClient.refetchQueries({
+                          queryKey: ["/api/posts"],
+                        });
+
+                        toast({
+                          title: "Success",
+                          description: "Profile image updated successfully",
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to update profile image",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setUploading(false);
+                      }
+                    }}
+                  />
+                  {uploading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-white" />
+                  ) : (
+                    <div className="text-center text-white text-xs">
+                      <p>Click to</p>
+                      <p>Upload Photo</p>
+                    </div>
+                  )}
                 </div>
-                
-                <h2 className="text-xl font-semibold">{user?.username}</h2>
               </div>
+              
+              <h2 className="text-xl font-semibold text-center">{user?.username}</h2>
               
               <div className="w-full space-y-3">
                 <div>
