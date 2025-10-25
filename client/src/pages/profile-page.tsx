@@ -724,7 +724,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">
+                              <span className="font-medium">
                                 {workoutTypes?.find(
                                   (wt) =>
                                     wt.id ===
