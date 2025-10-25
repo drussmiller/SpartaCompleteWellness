@@ -230,20 +230,30 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: "Invalid username/email or password" });
       }
       
-      // Final check: ensure user is still active before creating session
-      // This catches cases where the user was made inactive between the strategy check and here
-      if (user.status === 0) {
-        console.log('Login blocked for inactive user after authentication:', user.username);
-        return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
-      }
-      
-      req.login(user, (err) => {
+      // Fetch the user again from database to ensure we have the most current status
+      // This prevents race conditions where status changed after authentication
+      storage.getUser(user.id).then((freshUser) => {
+        if (!freshUser) {
+          console.log('User no longer exists:', user.username);
+          return res.status(401).json({ message: "Invalid username/email or password" });
+        }
+        
+        if (freshUser.status === 0) {
+          console.log('Login blocked for inactive user:', freshUser.username);
+          return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
+        }
+        
+        req.login(freshUser, (err) => {
         if (err) {
           console.error('Session creation error:', err);
           return next(err);
         }
-        console.log('Login successful for:', user.username);
-        res.json(user);
+        console.log('Login successful for:', freshUser.username);
+          res.json(freshUser);
+        });
+      }).catch((error) => {
+        console.error('Error fetching user during login:', error);
+        return res.status(500).json({ message: "Login failed" });
       });
     })(req, res, next);
   });
