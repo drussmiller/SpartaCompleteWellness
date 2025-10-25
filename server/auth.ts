@@ -106,6 +106,7 @@ export function setupAuth(app: Express) {
         }
 
         // Check if user is inactive
+        console.log(`User ${username} status check - status value:`, user.status, 'type:', typeof user.status);
         if (user.status === 0) {
           console.log('User is inactive:', username);
           return done(null, false);
