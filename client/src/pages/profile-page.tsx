@@ -640,7 +640,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           <span className="text-lg text-muted-foreground">
                             Team
                           </span>
-                          <span className="text-sm font-medium">
+                          <span className="font-medium">
                             {teams?.find((t) => t.id === user.teamId)?.name ||
                               "Loading..."}
                           </span>
