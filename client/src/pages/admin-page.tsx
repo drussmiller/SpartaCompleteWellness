@@ -462,10 +462,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       toast({
         title: "Success",
         description: "User's team updated successfully",
+      });
+      // Update the users cache with the updated user data
+      queryClient.setQueryData(["/api/users"], (oldUsers: any) => {
+        if (!oldUsers) return oldUsers;
+        return oldUsers.map((user: any) =>
+          user.id === updatedUser.id ? updatedUser : user
+        );
       });
     },
     onError: (error: Error) => {
