@@ -404,7 +404,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       <main className="flex-1 overflow-y-auto p-6 pb-60 space-y-6 bg-background">
         <div className="flex-1 space-y-4">
           <Card>
-            <CardContent className="flex items-center gap-4 p-6">
+            <CardContent className="flex flex-col items-center p-6 space-y-4">
               <div className="relative">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
@@ -484,9 +484,11 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   )}
                 </div>
               </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold">{user?.username}</h2>
-                <div className="mt-2">
+              
+              <h2 className="text-xl font-semibold text-center">{user?.username}</h2>
+              
+              <div className="w-full space-y-3">
+                <div>
                   {isEditingPreferredName ? (
                     <div className="space-y-2">
                       <Input
@@ -532,11 +534,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        Preferred Name:{" "}
-                        {user?.preferredName || preferredNameValue || "Not set"}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm text-muted-foreground block">Preferred Name</span>
+                        <span className="text-base">
+                          {user?.preferredName || preferredNameValue || "Not set"}
+                        </span>
+                      </div>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -544,14 +548,15 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           setPreferredNameValue(user?.preferredName || "");
                           setIsEditingPreferredName(true);
                         }}
-                        className="h-6 px-2 text-xs"
+                        className="h-8 px-3 text-xs"
                       >
                         Edit
                       </Button>
                     </div>
                   )}
                 </div>
-                <div className="mt-2">
+                
+                <div>
                   {isEditingEmail ? (
                     <div className="space-y-2">
                       <Input
@@ -594,10 +599,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <p className="text-muted-foreground">
-                        {user?.email}
-                      </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm text-muted-foreground block">Email</span>
+                        <span className="text-base">
+                          {user?.email}
+                        </span>
+                      </div>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -605,7 +613,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           setEmailValue(user?.email || "");
                           setIsEditingEmail(true);
                         }}
-                        className="h-6 px-2 text-xs"
+                        className="h-8 px-3 text-xs"
                       >
                         Edit
                       </Button>
