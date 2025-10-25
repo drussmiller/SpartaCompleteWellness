@@ -277,36 +277,47 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
-  const deleteTeamMutation = useMutation({
-    mutationFn: async (teamId: number) => {
-      // Only proceed if we have confirmation (teamToDelete is set)
-      if (!teamToDelete) {
-        // First fetch delete info to show in confirmation
-        const infoRes = await apiRequest("GET", `/api/teams/${teamId}/delete-info`);
-        if (!infoRes.ok) {
-          throw new Error("Failed to get deletion info");
-        }
-        const deleteInfo = await infoRes.json();
-
-        const team = teams?.find(t => t.id === teamId);
-        if (!team) {
-          throw new Error("Team not found");
-        }
-
-        // Show confirmation dialog
-        setTeamToDelete({
-          id: teamId,
-          name: team.name,
-          userCount: deleteInfo.userCount,
-          postCount: deleteInfo.postCount,
-          mediaCount: deleteInfo.mediaCount,
+  const handleDeleteTeamClick = async (teamId: number) => {
+    try {
+      const infoRes = await apiRequest("GET", `/api/teams/${teamId}/delete-info`);
+      if (!infoRes.ok) {
+        toast({
+          title: "Error",
+          description: "Failed to get deletion info",
+          variant: "destructive",
         });
+        return;
+      }
+      const deleteInfo = await infoRes.json();
 
-        // Don't proceed with deletion yet
-        return null;
+      const team = teams?.find(t => t.id === teamId);
+      if (!team) {
+        toast({
+          title: "Error",
+          description: "Team not found",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // User confirmed, proceed with deletion
+      setTeamToDelete({
+        id: teamId,
+        name: team.name,
+        userCount: deleteInfo.userCount,
+        postCount: deleteInfo.postCount,
+        mediaCount: deleteInfo.mediaCount,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to prepare team deletion",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => {
       const res = await apiRequest("DELETE", `/api/teams/${teamId}`);
       if (!res.ok) {
         const errorMessage = await getErrorMessage(res, "Failed to delete team");
@@ -314,18 +325,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
       return res.json();
     },
-    onSuccess: (data) => {
-      if (!data) return; // No success message if we're just showing confirmation
-
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Team deleted successfully",
       });
 
-      // Clear confirmation state
       setTeamToDelete(null);
 
-      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
@@ -2737,49 +2744,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogTitle>
-                                    Delete Team?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete the team "
-                                    {team.name}"? This action cannot be undone.
-                                    {sortedUsers?.filter(
-                                      (u) => u.teamId === team.id,
-                                    ).length > 0 && (
-                                      <p className="mt-2 text-amber-600 font-medium">
-                                        Warning: This team has{" "}
-                                        {
-                                          sortedUsers?.filter(
-                                            (u) => u.teamId === team.id,
-                                          ).length
-                                        }{" "}
-                                        members. Deleting it will remove these
-                                        users from the team.
-                                      </p>
-                                    )}
-                                  </AlertDialogDescription>
-                                  <div className="flex items-center justify-end gap-2 mt-4">
-                                    <AlertDialogCancel className="h-10 px-4 py-2 flex items-center justify-center">
-                                      Cancel
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-red-600 hover:bg-red-700 text-white h-10 px-4 py-2 flex items-center justify-center"
-                                      onClick={() =>
-                                        deleteTeamMutation.mutate(team.id)
-                                      }
-                                    >
-                                      Delete Team
-                                    </AlertDialogAction>
-                                  </div>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleDeleteTeamClick(team.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </CardHeader>
