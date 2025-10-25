@@ -137,6 +137,13 @@ export function setupAuth(app: Express) {
         console.log('User not found during deserialization:', id);
         return done(null, false);
       }
+      
+      // Check if user is inactive - if so, invalidate the session
+      if (user.status === 0) {
+        console.log('Inactive user attempted to use session:', id);
+        return done(null, false);
+      }
+      
       done(null, user);
     } catch (error) {
       console.error('Deserialization error:', error);
@@ -213,17 +220,6 @@ export function setupAuth(app: Express) {
   app.post("/api/login", async (req, res, next) => {
     console.log('Login attempt for:', req.body.username);
     
-    // Check if user exists and is inactive before attempting authentication
-    let user = await storage.getUserByUsername(req.body.username);
-    if (!user) {
-      user = await storage.getUserByEmail(req.body.username);
-    }
-    
-    if (user && user.status === 0) {
-      console.log('Login blocked for inactive user:', req.body.username);
-      return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
-    }
-    
     passport.authenticate("local", (err, user) => {
       if (err) {
         console.error('Login error:', err);
@@ -233,6 +229,14 @@ export function setupAuth(app: Express) {
         console.log('Login failed for:', req.body.username);
         return res.status(401).json({ message: "Invalid username/email or password" });
       }
+      
+      // Final check: ensure user is still active before creating session
+      // This catches cases where the user was made inactive between the strategy check and here
+      if (user.status === 0) {
+        console.log('Login blocked for inactive user after authentication:', user.username);
+        return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
+      }
+      
       req.login(user, (err) => {
         if (err) {
           console.error('Session creation error:', err);
