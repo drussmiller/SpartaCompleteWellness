@@ -595,7 +595,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <p className="text-lg text-muted-foreground">
+                      <p className="text-muted-foreground">
                         {user?.email}
                       </p>
                       <Button
@@ -638,18 +638,18 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           activityProgress.currentDay && (
                             <>
                               <div className="flex justify-between items-center">
-                                <span className="text-lg text-muted-foreground">
+                                <span className="text-muted-foreground">
                                   Current Week
                                 </span>
-                                <span className="text-lg font-medium">
+                                <span className="font-medium">
                                   Week {activityProgress.currentWeek}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-lg text-muted-foreground">
+                                <span className="text-muted-foreground">
                                   Current Day
                                 </span>
-                                <span className="text-lg font-medium">
+                                <span className="font-medium">
                                   Day {activityProgress.currentDay}
                                 </span>
                               </div>
@@ -756,7 +756,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   <div className="text-base text-muted-foreground">
                     Daily Total
                   </div>
-                  <div className="text-2xl font-bold">
+                  <div className="text-lg font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -769,7 +769,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   <div className="text-base text-muted-foreground">
                     Week Total
                   </div>
-                  <div className="text-2xl font-bold">
+                  <div className="text-lg font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
@@ -782,7 +782,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                   <div className="text-base text-muted-foreground">
                     Monthly Avg
                   </div>
-                  <div className="text-2xl font-bold">
+                  <div className="text-lg font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
