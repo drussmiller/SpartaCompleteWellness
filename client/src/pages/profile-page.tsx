@@ -534,24 +534,24 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm text-muted-foreground block">Preferred Name</span>
-                        <span className="text-base">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg text-muted-foreground">Preferred Name</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
                           {user?.preferredName || preferredNameValue || "Not set"}
                         </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setPreferredNameValue(user?.preferredName || "");
+                            setIsEditingPreferredName(true);
+                          }}
+                          className="h-6 px-2 text-xs"
+                        >
+                          Edit
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setPreferredNameValue(user?.preferredName || "");
-                          setIsEditingPreferredName(true);
-                        }}
-                        className="h-8 px-3 text-xs"
-                      >
-                        Edit
-                      </Button>
                     </div>
                   )}
                 </div>
@@ -599,24 +599,24 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm text-muted-foreground block">Email</span>
-                        <span className="text-base">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg text-muted-foreground">Email</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
                           {user?.email}
                         </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEmailValue(user?.email || "");
+                            setIsEditingEmail(true);
+                          }}
+                          className="h-6 px-2 text-xs"
+                        >
+                          Edit
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEmailValue(user?.email || "");
-                          setIsEditingEmail(true);
-                        }}
-                        className="h-8 px-3 text-xs"
-                      >
-                        Edit
-                      </Button>
                     </div>
                   )}
                 </div>
