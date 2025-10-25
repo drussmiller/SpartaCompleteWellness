@@ -82,6 +82,11 @@ export function setupAuth(app: Express) {
         if (username.toLowerCase() === 'admin') {
           const adminUser = await storage.getUserByUsername('admin');
           if (adminUser && await comparePasswords(password, adminUser.password)) {
+            // Check if admin is inactive
+            if (adminUser.status === 0) {
+              console.log('Admin user is inactive:', username);
+              return done(null, false);
+            }
             return done(null, adminUser);
           }
           return done(null, false);
@@ -97,6 +102,12 @@ export function setupAuth(app: Express) {
 
         if (!user) {
           console.log('User not found:', username);
+          return done(null, false);
+        }
+
+        // Check if user is inactive
+        if (user.status === 0) {
+          console.log('User is inactive:', username);
           return done(null, false);
         }
 
@@ -199,8 +210,20 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", async (req, res, next) => {
     console.log('Login attempt for:', req.body.username);
+    
+    // Check if user exists and is inactive before attempting authentication
+    let user = await storage.getUserByUsername(req.body.username);
+    if (!user) {
+      user = await storage.getUserByEmail(req.body.username);
+    }
+    
+    if (user && user.status === 0) {
+      console.log('Login blocked for inactive user:', req.body.username);
+      return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
+    }
+    
     passport.authenticate("local", (err, user) => {
       if (err) {
         console.error('Login error:', err);
