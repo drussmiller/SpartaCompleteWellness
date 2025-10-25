@@ -705,7 +705,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                                 className="h-6 px-2 text-xs"
                               >
                                 {updateActivityTypeMutation.isPending
-                                  ? "..."
+                                  ? "Saving..."
                                   : "Save"}
                               </Button>
                               <Button
