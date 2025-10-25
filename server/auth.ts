@@ -79,51 +79,60 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        console.log('Attempting login for:', username);
+        console.log('[AUTH] Attempting login for:', username);
 
         // Special handling for admin user
         if (username.toLowerCase() === 'admin') {
+          console.log('[AUTH] Admin login path');
           const adminUser = await storage.getUserByUsername('admin');
           if (adminUser && await comparePasswords(password, adminUser.password)) {
             // Check if admin is inactive
             if (adminUser.status === 0) {
-              console.log('Admin user is inactive:', username);
+              console.log('[AUTH] BLOCKED: Admin user is inactive:', username);
               return done(null, false);
             }
+            console.log('[AUTH] Admin login successful');
             return done(null, adminUser);
           }
+          console.log('[AUTH] Admin login failed - invalid credentials');
           return done(null, false);
         }
 
         // Try to find user by username (case insensitive)
+        console.log('[AUTH] Looking up user by username:', username);
         let user = await storage.getUserByUsername(username);
 
         // If not found by username, try email (case insensitive)
         if (!user) {
+          console.log('[AUTH] Not found by username, trying email lookup');
           user = await storage.getUserByEmail(username);
         }
 
         if (!user) {
-          console.log('User not found:', username);
+          console.log('[AUTH] User not found:', username);
           return done(null, false);
         }
 
-        // Check if user is inactive
-        console.log(`User ${username} status check - status value:`, user.status, 'type:', typeof user.status);
-        if (user.status === 0) {
-          console.log('User is inactive:', username);
+        console.log('[AUTH] User found:', user.username, 'ID:', user.id);
+        
+        // CRITICAL: Check if user is inactive - must happen before password check
+        console.log('[AUTH] Status check - value:', user.status, 'type:', typeof user.status, 'is zero?:', user.status === 0);
+        if (user.status === 0 || user.status === null || user.status === undefined) {
+          console.log('[AUTH] BLOCKED: User is inactive (status=' + user.status + '):', username);
           return done(null, false);
         }
 
+        console.log('[AUTH] Status check passed, verifying password');
         const isValid = await comparePasswords(password, user.password);
         if (!isValid) {
-          console.log('Invalid password for user:', username);
+          console.log('[AUTH] Invalid password for user:', username);
           return done(null, false);
         }
 
+        console.log('[AUTH] Authentication successful for:', username);
         return done(null, user);
       } catch (error) {
-        console.error('Login error:', error);
+        console.error('[AUTH] Login error:', error);
         return done(error);
       }
     }),
