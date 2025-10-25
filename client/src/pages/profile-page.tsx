@@ -537,7 +537,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     <div>
                       <div className="flex justify-between items-center">
                         <span className="text-lg text-muted-foreground">Preferred Name</span>
-                        <span className="text-sm font-medium">
+                        <span className="font-medium">
                           {user?.preferredName || preferredNameValue || "Not set"}
                         </span>
                       </div>
@@ -604,7 +604,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     <div>
                       <div className="flex justify-between items-center">
                         <span className="text-lg text-muted-foreground">Email</span>
-                        <span className="text-sm font-medium">
+                        <span className="font-medium">
                           {user?.email}
                         </span>
                       </div>
