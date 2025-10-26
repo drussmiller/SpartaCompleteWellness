@@ -65,7 +65,7 @@ export default function HelpPage() {
           <CardContent className="space-y-4">
             <p>You wiil be provided an invite code or you will be placed in a Team. You are an important part of this Team. Every time you post a meal pic, commentary, sweaty selfie, you inspire the other men on your Team. In the spirit of competition, and accountability, points will be accumulated by you, and your Team, that will guarantee healthy change for a lifetime.</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Take two pictures of yourself, one from the front and one from the side. These will be used for you to document your great results. We will remind you to retake these picture each time you go to the next level.<br>
+              <li>Take two pictures of yourself, one from the front and one from the side. These will be used for you to document your great results. We will remind you to retake these picture each time you go to the next level.<br />
                (You are not required to post these photos.  Take pictures dressed in shorts and fitted t-shirt.)</li>
               <li>Start sharing your wellness journey through posts</li>
               <li>Track your measurements in your profile</li>
@@ -162,7 +162,7 @@ export default function HelpPage() {
               <li>Successfully memorize and share weekly verses</li>
               <li>Help your team reach collective goals</li>
             </ul>
-            
+
             <AchievementDemo />
           </CardContent>
         </Card>
@@ -178,7 +178,7 @@ export default function HelpPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Test the notification system to see if you would receive a daily reminder 
+                Test the notification system to see if you would receive a daily reminder
                 based on today's posting activity. The test simulates checking at your preferred notification time.
               </p>
               <Button
