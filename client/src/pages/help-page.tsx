@@ -42,7 +42,7 @@ export default function HelpPage() {
         </div>
       </div>
 
-      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full p-6 text-lg">
+      <main className="pb-28 space-y-4 max-w-2xl mx-auto w-full p-6 text-lg">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export default function HelpPage() {
           <CardContent className="space-y-4">
             <p>Welcome to Sparta Complete Wellness! Here's how to get started:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Your administrator will assign you to a team</li>
+              <li>You will be provided an invite code to join a team or your administrator will assign you to a team</li>
               <li>Start sharing your wellness journey through posts</li>
               <li>Track your measurements in your profile</li>
               <li>Engage with your team members</li>
@@ -90,8 +90,7 @@ export default function HelpPage() {
           <CardContent className="space-y-4">
             <p>Track your fitness progress through:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Regular weight measurements</li>
-              <li>Waist measurements</li>
+              <li>Regular weight and waist measurements</li>
               <li>Progress graphs in your profile</li>
               <li>Daily activity posts</li>
             </ul>
