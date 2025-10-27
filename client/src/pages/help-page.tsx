@@ -48,18 +48,6 @@ export default function HelpPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Messages
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>You can message only members of your team</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
               Activity Page
             </CardTitle>
@@ -87,6 +75,18 @@ export default function HelpPage() {
                 If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week. All posts and points Week/Day and after will be forfeited.
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Messages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>You can message only members of your team</p>
           </CardContent>
         </Card>
       </main>
