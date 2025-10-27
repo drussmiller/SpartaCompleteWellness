@@ -64,6 +64,19 @@ export default function MenuPage() {
             </SheetContent>
           </Sheet>
 
+          {/* Welcome */}
+          <Sheet open={welcomeOpen} onOpenChange={setWelcomeOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Users className="mr-2 h-5 w-5" />
+                Welcome
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="p-0">
+              {welcomeOpen && <WelcomePage onClose={() => setWelcomeOpen(false)} />}
+            </SheetContent>
+          </Sheet>
+
           {/* Notification Settings */}
           <Sheet open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
             <SheetTrigger asChild>
@@ -99,19 +112,6 @@ export default function MenuPage() {
             </SheetTrigger>
             <SheetContent side="right" className="p-0">
               {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
-            </SheetContent>
-          </Sheet>
-
-          {/* Welcome */}
-          <Sheet open={welcomeOpen} onOpenChange={setWelcomeOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
-                <Users className="mr-2 h-5 w-5" />
-                Welcome
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="p-0">
-              {welcomeOpen && <WelcomePage onClose={() => setWelcomeOpen(false)} />}
             </SheetContent>
           </Sheet>
 
