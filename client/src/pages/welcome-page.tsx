@@ -121,27 +121,31 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
               <CardTitle className="text-lg">Scoring System</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 items-start">
                   <span className="font-medium">Workouts</span>
-                  <span className="text-muted-foreground">3 points each, 15 total for the week</span>
+                  <span className="text-sm text-muted-foreground text-right">3 points each, 15 total for the week</span>
                 </div>
-                <div className="flex justify-between items-center">
+                
+                <div className="grid grid-cols-2 gap-2 items-start">
                   <span className="font-medium">Scripture Reading</span>
-                  <span className="text-muted-foreground">3 points, 7 days a week, 21 total for the week</span>
+                  <span className="text-sm text-muted-foreground text-right">3 points, 7 days a week, 21 total for the week</span>
                 </div>
-                <div className="flex justify-between items-center">
+                
+                <div className="grid grid-cols-2 gap-2 items-start">
                   <span className="font-medium">Compliant Meals</span>
-                  <span className="text-muted-foreground">3 points each, 6 days, 3 per day, 54 total for the week</span>
+                  <span className="text-sm text-muted-foreground text-right">3 points each, 6 days, 3 per day, 54 total for the week</span>
                 </div>
-                <div className="flex justify-between items-center">
+                
+                <div className="grid grid-cols-2 gap-2 items-start">
                   <span className="font-medium">Scripture Memorization</span>
-                  <span className="text-muted-foreground">10 points</span>
+                  <span className="text-sm text-muted-foreground text-right">10 points</span>
                 </div>
-                <div className="border-t pt-2 mt-2">
-                  <div className="flex justify-between items-center font-bold">
+                
+                <div className="border-t pt-3 mt-3">
+                  <div className="grid grid-cols-2 gap-2 items-center font-bold">
                     <span>TOTAL SCORE</span>
-                    <span className="text-primary">100 points</span>
+                    <span className="text-primary text-right text-xl">100 points</span>
                   </div>
                 </div>
               </div>
