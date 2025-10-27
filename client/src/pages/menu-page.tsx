@@ -10,6 +10,7 @@ import { LeaderboardPage } from "./leaderboard-page";
 import { SupportSpartaPage } from "./support-sparta-page";
 import InviteCodePage from "./invite-code-page";
 import { NotificationSettings } from "@/components/notification-settings";
+import { WelcomePage } from "./welcome-page";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -21,6 +22,7 @@ export default function MenuPage() {
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [location, setLocation] = useLocation();
 
   if (!user) return null;
@@ -97,6 +99,19 @@ export default function MenuPage() {
             </SheetTrigger>
             <SheetContent side="right" className="p-0">
               {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
+            </SheetContent>
+          </Sheet>
+
+          {/* Welcome */}
+          <Sheet open={welcomeOpen} onOpenChange={setWelcomeOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg">
+                <Trophy className="mr-2 h-5 w-5" />
+                Welcome
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="p-0">
+              {welcomeOpen && <WelcomePage onClose={() => setWelcomeOpen(false)} />}
             </SheetContent>
           </Sheet>
 
