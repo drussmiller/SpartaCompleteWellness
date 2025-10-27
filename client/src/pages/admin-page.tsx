@@ -130,6 +130,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>("all");
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>("all");
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
+  const [userSearchQuery, setUserSearchQuery] = useState<string>("");
   const [showInactiveOrgs, setShowInactiveOrgs] = useState(false);
   const [showInactiveGroups, setShowInactiveGroups] = useState(false);
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
@@ -1259,6 +1260,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   // Apply filters to users for display
   const filteredUsersForDisplay = sortedUsers.filter((user) => {
+    // Search filter
+    if (userSearchQuery.trim() !== "") {
+      const searchLower = userSearchQuery.toLowerCase();
+      const matchesPreferredName = user.preferredName?.toLowerCase().includes(searchLower);
+      const matchesUsername = user.username?.toLowerCase().includes(searchLower);
+      const matchesEmail = user.email?.toLowerCase().includes(searchLower);
+      const matchesId = user.id.toString().includes(searchLower);
+      
+      if (!matchesPreferredName && !matchesUsername && !matchesEmail && !matchesId) {
+        return false;
+      }
+    }
+
     // Organization filter
     if (selectedOrgFilter !== "all") {
       const userTeam = sortedTeams.find((t) => t.id === user.teamId);
@@ -2926,7 +2940,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </Select>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center">
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium mb-2">
+                            Search
+                          </label>
+                          <Input
+                            type="text"
+                            placeholder="Search by name, email, or user ID..."
+                            value={userSearchQuery}
+                            onChange={(e) => setUserSearchQuery(e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="flex justify-between items-center mt-4">
                           <div className="flex items-center gap-4">
                             <div className="text-sm text-gray-600">
                               Showing {visibleUsers?.length || 0} of{" "}
@@ -2948,6 +2974,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   setSelectedGroupFilter("all");
                                 }
                                 setSelectedTeamFilter("all");
+                                setUserSearchQuery("");
                               }}
                             >
                               Clear Filters
