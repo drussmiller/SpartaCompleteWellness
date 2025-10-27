@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings, Trophy, Heart, Key, QrCode, BookOpen } from "lucide-react";
+import { Menu, Bell, Settings, Trophy, Heart, Key, QrCode, Users } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
@@ -106,7 +106,7 @@ export default function MenuPage() {
           <Sheet open={welcomeOpen} onOpenChange={setWelcomeOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" className="w-full justify-start" size="lg">
-                <BookOpen className="mr-2 h-5 w-5" />
+                <Users className="mr-2 h-5 w-5" />
                 Welcome
               </Button>
             </SheetTrigger>
