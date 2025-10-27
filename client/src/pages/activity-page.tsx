@@ -18,7 +18,7 @@ export default function ActivityPage() {
   const { toast } = useToast();
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [selectedDay, setSelectedDay] = useState<number>(1);
-  const [weekContentOpen, setWeekContentOpen] = useState(false); // Week content defaults to closed
+  const [weekContentOpen, setWeekContentOpen] = useState(true); // Week content defaults to open
   const [weekDayContentOpen, setWeekDayContentOpen] = useState(true); // Week and Day content defaults to open
   const [reengageOpen, setReengageOpen] = useState(false);
   const [reengageWeek, setReengageWeek] = useState<string>("");
