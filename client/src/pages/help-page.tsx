@@ -162,6 +162,21 @@ export default function HelpPage() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Your First Post</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>Once you are in a team your first post will be an intro video.</p>
+            <p className="font-semibold">Tell us:</p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Why you joined Sparta</li>
+              <li>A little about yourself</li>
+              <li>What are you expecting to get out of the program</li>
+            </ul>
+          </CardContent>
+        </Card>
       </main>
     </AppLayout>
   );
