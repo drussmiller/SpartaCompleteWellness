@@ -33,6 +33,18 @@ export default function ActivityPage() {
     enabled: !!user?.teamId,
   });
 
+  // Check if user's team is in a competitive group
+  const { data: competitiveStatus } = useQuery({
+    queryKey: ["/api/teams", user?.teamId, "competitive"],
+    queryFn: async () => {
+      if (!user?.teamId) return { competitive: false };
+      const response = await fetch(`/api/teams/${user.teamId}/competitive`);
+      if (!response.ok) throw new Error("Failed to fetch competitive status");
+      return response.json();
+    },
+    enabled: !!user?.teamId,
+  });
+
   // Get all activities including Bible verses (activityTypeId = 0)
   const { data: allActivities, isLoading: activitiesLoading, error: activitiesError } = useQuery<Activity[]>({
     queryKey: ["/api/activities"],
@@ -514,58 +526,60 @@ export default function ActivityPage() {
           </Card>
         </Collapsible>
 
-        {/* Re-engage Section */}
-        <Collapsible open={reengageOpen} onOpenChange={setReengageOpen} className="mt-6">
-          <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Re-engage</CardTitle>
-                  <ChevronDown
-                    className={`h-5 w-5 transition-transform ${
-                      reengageOpen ? "transform rotate-180" : ""
-                    }`}
-                  />
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-4">
-                <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground space-y-2">
-                    <p>Select a week to restart the program today.</p>
-                    <p>(Resetting the current week to a previous week will clear all posts and points for that Week/Day and after.)</p>
+        {/* Re-engage Section - Hidden for competitive groups */}
+        {!competitiveStatus?.competitive && (
+          <Collapsible open={reengageOpen} onOpenChange={setReengageOpen} className="mt-6">
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Re-engage</CardTitle>
+                    <ChevronDown
+                      className={`h-5 w-5 transition-transform ${
+                        reengageOpen ? "transform rotate-180" : ""
+                      }`}
+                    />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Select Week</label>
-                    <Select value={reengageWeek} onValueChange={setReengageWeek}>
-                      <SelectTrigger data-testid="select-reengage-week">
-                        <SelectValue placeholder="Choose a week" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: activityStatus?.currentWeek || 1 }, (_, i) => i + 1).map((week) => (
-                          <SelectItem key={week} value={week.toString()}>
-                            Week {week}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <p>Select a week to restart the program today.</p>
+                      <p>(Resetting the current week to a previous week will clear all posts and points for that Week/Day and after.)</p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select Week</label>
+                      <Select value={reengageWeek} onValueChange={setReengageWeek}>
+                        <SelectTrigger data-testid="select-reengage-week">
+                          <SelectValue placeholder="Choose a week" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: activityStatus?.currentWeek || 1 }, (_, i) => i + 1).map((week) => (
+                            <SelectItem key={week} value={week.toString()}>
+                              Week {week}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  <Button 
-                    onClick={handleReengage} 
-                    disabled={reengageMutation.isPending || !reengageWeek}
-                    className="w-full"
-                    data-testid="button-reengage-reset"
-                  >
-                    {reengageMutation.isPending ? "Resetting..." : "Reset Program"}
-                  </Button>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
+                    <Button 
+                      onClick={handleReengage} 
+                      disabled={reengageMutation.isPending || !reengageWeek}
+                      className="w-full"
+                      data-testid="button-reengage-reset"
+                    >
+                      {reengageMutation.isPending ? "Resetting..." : "Reset Program"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
       </main>
     </AppLayout>
   );
