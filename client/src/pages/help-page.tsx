@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, MessageSquare, Activity } from "lucide-react";
+import { Home, Activity } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 
 export default function HelpPage() {
@@ -42,6 +42,9 @@ export default function HelpPage() {
                 <strong>Note:</strong> Deleting a post with points will remove the points also
               </p>
             </div>
+
+            <h3 className="font-semibold mt-4">Messages</h3>
+            <p>You can message only members of your team</p>
           </CardContent>
         </Card>
 
@@ -75,18 +78,6 @@ export default function HelpPage() {
                 If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week. All posts and points Week/Day and after will be forfeited.
               </p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Messages
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>You can message only members of your team</p>
           </CardContent>
         </Card>
       </main>
