@@ -265,7 +265,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="flex gap-2 items-center">
           <Avatar className="h-10 w-10 border">
             <AvatarImage src={post.author?.imageUrl || undefined} alt={post.author?.username || "User"} key={avatarKey} />
-            <AvatarFallback>
+            <AvatarFallback
+              style={{ backgroundColor: post.author?.avatarColor || '#6366F1' }}
+              className="text-white"
+            >
               {post.author?.username?.[0]?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>

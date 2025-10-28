@@ -344,7 +344,12 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             <AvatarImage
               src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
             />
-            <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
+            <AvatarFallback
+              style={{ backgroundColor: comment.author?.avatarColor || '#6366F1' }}
+              className="text-white"
+            >
+              {comment.author?.username?.[0].toUpperCase()}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1 flex flex-col gap-2">
             <Card

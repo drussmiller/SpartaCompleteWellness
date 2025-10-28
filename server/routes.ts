@@ -963,6 +963,7 @@ export const registerRoutes = async (
             username: users.username,
             email: users.email,
             imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
             isAdmin: users.isAdmin,
           },
         })
@@ -1925,6 +1926,7 @@ export const registerRoutes = async (
             username: users.username,
             email: users.email,
             imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
             isAdmin: users.isAdmin,
           },
         })

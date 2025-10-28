@@ -414,7 +414,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     }
                     alt={user?.username}
                   />
-                  <AvatarFallback>
+                  <AvatarFallback
+                    style={{ backgroundColor: user?.avatarColor || '#6366F1' }}
+                    className="text-white"
+                  >
                     {user?.username?.[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

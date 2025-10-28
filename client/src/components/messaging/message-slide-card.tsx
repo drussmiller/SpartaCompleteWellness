@@ -526,7 +526,10 @@ export function MessageSlideCard() {
                           src={member.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${member.username}`}
                           alt={member.username}
                         />
-                        <AvatarFallback className="bg-gray-200 text-black">
+                        <AvatarFallback
+                          style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                          className="text-white"
+                        >
                           {member.username[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -566,7 +569,10 @@ export function MessageSlideCard() {
                             src={message.sender.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${message.sender.username}`}
                             alt={message.sender.username || "Unknown User"}
                           />
-                          <AvatarFallback>
+                          <AvatarFallback
+                            style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
+                            className="text-white"
+                          >
                             {message.sender.username?.[0].toUpperCase() || "?"}
                           </AvatarFallback>
                         </Avatar>

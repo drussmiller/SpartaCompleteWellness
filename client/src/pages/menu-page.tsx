@@ -49,7 +49,10 @@ export default function MenuPage() {
                       src={user.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
                       alt={user.username}
                     />
-                    <AvatarFallback>
+                    <AvatarFallback
+                      style={{ backgroundColor: user.avatarColor || '#6366F1' }}
+                      className="text-white"
+                    >
                       {user.username?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
