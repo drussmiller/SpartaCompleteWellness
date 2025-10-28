@@ -297,6 +297,7 @@ export function setupAuth(app: Express) {
     }
     
     console.log('Authenticated user:', req.user.id);
+    console.log('User data being returned:', JSON.stringify({ id: req.user.id, username: req.user.username, avatarColor: req.user.avatarColor }));
     res.json(req.user);
   });
 
