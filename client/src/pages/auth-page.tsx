@@ -67,6 +67,7 @@ export default function AuthPage() {
 
   const forgotPasswordForm = useForm<z.infer<typeof forgotPasswordSchema>>({
     resolver: zodResolver(forgotPasswordSchema),
+    mode: "onChange",
     defaultValues: {
       userIdentifier: "",
     },
@@ -163,7 +164,10 @@ export default function AuthPage() {
                         type="button" 
                         variant="link" 
                         className="w-full" 
-                        onClick={() => setShowForgotPassword(true)}
+                        onClick={() => {
+                          forgotPasswordForm.reset({ userIdentifier: "" });
+                          setShowForgotPassword(true);
+                        }}
                         data-testid="button-forgot-password"
                       >
                         Forgot Password?
@@ -171,7 +175,7 @@ export default function AuthPage() {
                     </form>
                   </Form>
                 ) : (
-                  <Form {...forgotPasswordForm}>
+                  <Form {...forgotPasswordForm} key="forgot-password-form">
                     <form onSubmit={forgotPasswordForm.handleSubmit((data) => forgotPasswordMutation.mutate(data))} className="space-y-4">
                       <div className="mb-4">
                         <h3 className="font-semibold text-lg mb-2">Reset Password</h3>
