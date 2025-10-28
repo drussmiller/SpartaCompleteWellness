@@ -222,7 +222,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-20">
+      <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-[60]">
         <Button
           variant="ghost"
           size="icon"
