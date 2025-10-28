@@ -406,17 +406,35 @@ export function setupAuth(app: Express) {
   // Forgot password endpoint - generates temporary password and emails it
   app.post("/api/forgot-password", async (req, res) => {
     try {
-      const { username } = req.body;
+      const { userIdentifier } = req.body;
       
-      if (!username) {
-        return res.status(400).json({ message: "Username is required" });
+      if (!userIdentifier) {
+        return res.status(400).json({ message: "User ID or Preferred Name is required" });
       }
 
-      // Find user by username
-      const user = await storage.getUserByUsername(username);
+      // Try to find user by ID first (if it's a number), then by preferred name
+      let user = null;
+      const userId = parseInt(userIdentifier);
+      
+      if (!isNaN(userId)) {
+        // If it's a valid number, try to find by ID
+        user = await storage.getUser(userId);
+      }
+      
+      // If not found by ID, try by preferred name
       if (!user) {
-        // For security, don't reveal if username exists or not
-        return res.json({ message: "If an account with that username exists, a password reset email has been sent." });
+        user = await storage.getUserByPreferredName(userIdentifier);
+      }
+      
+      if (!user) {
+        // For security, don't reveal if user exists or not
+        return res.json({ message: "If an account with that user ID or preferred name exists, a password reset email has been sent." });
+      }
+
+      // Check if user has an email
+      if (!user.email) {
+        console.log(`User ${user.id} has no email address registered`);
+        return res.json({ message: "If an account with that user ID or preferred name exists, a password reset email has been sent." });
       }
 
       // Generate a temporary password (8 characters: mix of letters and numbers)
@@ -431,8 +449,8 @@ export function setupAuth(app: Express) {
       // Send email with temporary password to the user's registered email
       await emailService.sendPasswordResetEmail(user.email, tempPassword);
       
-      console.log(`Temporary password generated and sent to email for username: ${username}`);
-      res.json({ message: "If an account with that username exists, a password reset email has been sent." });
+      console.log(`Temporary password generated and sent to email for user ID/name: ${userIdentifier}`);
+      res.json({ message: "If an account with that user ID or preferred name exists, a password reset email has been sent." });
       
     } catch (error) {
       console.error('Error in forgot password:', error);

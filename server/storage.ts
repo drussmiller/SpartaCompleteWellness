@@ -75,6 +75,20 @@ export const storage = {
       throw error;
     }
   },
+
+  async getUserByPreferredName(preferredName: string): Promise<User | null> {
+    try {
+      const result = await db
+        .select()
+        .from(users)
+        .where(sql`LOWER(${users.preferredName}) = LOWER(${preferredName})`)
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      logger.error(`Failed to get user by preferred name ${preferredName}: ${error}`);
+      throw error;
+    }
+  },
   async getUser(id: number): Promise<User | null> {
     try {
       const result = await db
