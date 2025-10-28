@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,7 +35,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   });
 
   // Load user's saved notification time
-  useState(() => {
+  useEffect(() => {
     if (user?.notificationTime) {
       const [savedHour, savedMinute] = user.notificationTime.split(':');
       const hourNum = parseInt(savedHour);
@@ -54,7 +54,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         setPeriod("PM");
       }
     }
-  });
+  }, [user?.notificationTime]);
 
   // Convert hour + period to 24-hour format (always at :00 minutes)
   const convertTo24Hour = (hour: string, period: "AM" | "PM"): string => {
