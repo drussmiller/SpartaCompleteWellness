@@ -9,6 +9,7 @@ import { User as SelectUser } from "@shared/schema";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { emailService } from "./email-service";
 
 declare global {
   namespace Express {
@@ -399,6 +400,43 @@ export function setupAuth(app: Express) {
     } catch (error) {
       console.error('Error resetting password:', error);
       res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  // Forgot password endpoint - generates temporary password and emails it
+  app.post("/api/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // For security, don't reveal if email exists or not
+        return res.json({ message: "If an account with that email exists, a password reset email has been sent." });
+      }
+
+      // Generate a temporary password (8 characters: mix of letters and numbers)
+      const tempPassword = randomBytes(4).toString('hex').toUpperCase();
+      
+      // Hash the temporary password
+      const hashedTempPassword = await hashPassword(tempPassword);
+      
+      // Update user's password in database
+      await storage.updateUser(user.id, { password: hashedTempPassword });
+      
+      // Send email with temporary password
+      await emailService.sendPasswordResetEmail(user.email, tempPassword);
+      
+      console.log(`Temporary password generated and sent to: ${email}`);
+      res.json({ message: "If an account with that email exists, a password reset email has been sent." });
+      
+    } catch (error) {
+      console.error('Error in forgot password:', error);
+      res.status(500).json({ message: "Failed to process password reset request" });
     }
   });
 }
