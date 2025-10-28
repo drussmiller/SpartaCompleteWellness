@@ -74,12 +74,15 @@ export default function AuthPage() {
 
   const forgotPasswordMutation = useMutation({
     mutationFn: async (data: z.infer<typeof forgotPasswordSchema>) => {
-      const response = await apiRequest('/api/forgot-password', {
+      const response = await fetch('/api/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      return response;
+      if (!response.ok) {
+        throw new Error('Failed to send reset email');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
