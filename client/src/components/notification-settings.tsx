@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   ChevronLeft,
+  Smartphone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,6 +31,8 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [hour, setHour] = useState("9");
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
+  const [smsEnabled, setSmsEnabled] = useState(user?.smsEnabled || false);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
@@ -214,6 +218,60 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     retry: 0, // Don't retry - we'll handle errors directly
   });
 
+  const testSMSMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/user/sms/test", {
+        phoneNumber,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to test SMS");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "SMS Test Successful!",
+        description: `Carrier detected: ${data.gateway}. Check your phone for the test message.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      setSmsEnabled(true);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "SMS Test Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateSMSSettingsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("PATCH", "/api/user/sms", {
+        phoneNumber,
+        smsEnabled,
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update SMS settings");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        description: "SMS settings updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div 
       className="flex flex-col h-full overflow-y-auto"
@@ -309,10 +367,87 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           </ul>
         </div>
 
+        <div className="space-y-4 border-t pt-6">
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            <h3 className="text-lg font-medium">SMS Text Notifications</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone-number" className="text-lg">
+                Phone Number
+              </Label>
+              <Input
+                id="phone-number"
+                type="tel"
+                placeholder="(555) 123-4567"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="text-lg"
+                data-testid="input-phone-number"
+              />
+              <p className="text-sm text-muted-foreground">
+                Enter your 10-digit phone number to receive SMS notifications
+              </p>
+            </div>
+
+            {user?.smsCarrierGateway && (
+              <div className="bg-muted p-3 rounded-lg">
+                <p className="text-sm font-medium">Carrier Detected</p>
+                <p className="text-sm text-muted-foreground">
+                  {user.smsCarrierGateway}
+                </p>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              onClick={() => testSMSMutation.mutate()}
+              disabled={!phoneNumber || testSMSMutation.isPending}
+              variant="outline"
+              data-testid="button-test-sms"
+            >
+              {testSMSMutation.isPending ? "Testing..." : "Test SMS & Detect Carrier"}
+            </Button>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="sms-enabled" className="text-lg">
+                Enable SMS Notifications
+              </Label>
+              <Switch
+                id="sms-enabled"
+                checked={smsEnabled}
+                onCheckedChange={setSmsEnabled}
+                disabled={!user?.smsCarrierGateway}
+                data-testid="switch-sms-enabled"
+              />
+            </div>
+            
+            {!user?.smsCarrierGateway && (
+              <p className="text-sm text-amber-600">
+                Test SMS first to detect your carrier before enabling notifications
+              </p>
+            )}
+
+            <p className="text-sm text-muted-foreground">
+              SMS notifications work by sending emails to your carrier's SMS gateway. 
+              We'll automatically detect which carrier you use (Verizon, AT&T, T-Mobile, etc.) 
+              when you test your number.
+            </p>
+          </div>
+        </div>
+
         <Button
           className="w-full"
-          onClick={handleSave}
-          disabled={updateScheduleMutation.isPending}
+          onClick={() => {
+            handleSave();
+            if (phoneNumber && (smsEnabled !== user?.smsEnabled)) {
+              updateSMSSettingsMutation.mutate();
+            }
+          }}
+          disabled={updateScheduleMutation.isPending || updateSMSSettingsMutation.isPending}
+          data-testid="button-save-settings"
         >
           Save Settings
         </Button>
