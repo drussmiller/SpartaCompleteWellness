@@ -32,6 +32,7 @@ export const users = pgTable("users", {
   waiverSignature: text("waiver_signature"),
   preferredActivityTypeId: integer("preferred_activity_type_id").default(1), // Default to "Bands" workout type
   status: integer("status").default(1), // 1 = active, 0 = inactive
+  avatarColor: text("avatar_color"), // Color for avatar fallback background
 });
 
 // Organizations table (top level)

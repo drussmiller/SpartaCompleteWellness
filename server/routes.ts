@@ -5826,6 +5826,7 @@ export const registerRoutes = async (
           id: users.id,
           username: users.username,
           imageUrl: users.imageUrl,
+          avatarColor: users.avatarColor,
           points: sql<number>`COALESCE((
             SELECT SUM(p.points)
             FROM posts p
