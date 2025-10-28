@@ -345,7 +345,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
             />
             <AvatarFallback
-              style={{ '--avatar-bg-color': comment.author?.avatarColor || '#6366F1' } as React.CSSProperties}
+              style={{ backgroundColor: comment.author?.avatarColor || '#6366F1' }}
               className="text-white"
             >
               {comment.author?.username?.[0].toUpperCase()}

@@ -420,7 +420,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                       alt={originalPost.author.username}
                     />
                     <AvatarFallback
-                      style={{ '--avatar-bg-color': originalPost.author.avatarColor || '#6366F1' } as React.CSSProperties}
+                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
                       className="text-white"
                     >
                       {originalPost.author.username?.[0].toUpperCase()}

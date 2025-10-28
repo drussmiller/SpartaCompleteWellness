@@ -19,11 +19,6 @@ html, body {
   -webkit-touch-callout: none !important;
 }
 
-/* Force avatar fallback colors to display */
-[data-radix-avatar-fallback] {
-  background-color: var(--avatar-bg-color) !important;
-}
-
 /* Base container styles */
 .post-content,
 .post-card {
