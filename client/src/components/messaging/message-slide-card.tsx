@@ -91,6 +91,15 @@ export function MessageSlideCard() {
         }
 
         const users = await response.json();
+        
+        // Debug log to verify avatarColor is in the data
+        if (users.length > 0) {
+          console.log('Frontend received user data:', {
+            id: users[0].id,
+            username: users[0].username,
+            avatarColor: users[0].avatarColor
+          });
+        }
 
         // Filter users to only show team members (excluding current user)
         const filteredUsers = users.filter((member: User) => {
@@ -106,7 +115,7 @@ export function MessageSlideCard() {
     },
     enabled: isOpen && !!user?.teamId,
     retry: 2,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Force fresh data every time
     gcTime: 10 * 60 * 1000 // 10 minutes
   });
 
