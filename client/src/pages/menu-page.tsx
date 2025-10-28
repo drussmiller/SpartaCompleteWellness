@@ -51,7 +51,7 @@ export default function MenuPage() {
                       alt={user.username}
                     />
                     <AvatarFallback
-                      style={{ backgroundColor: user.avatarColor || '#6366F1' }}
+                      style={{ '--avatar-bg-color': user.avatarColor || '#6366F1' } as React.CSSProperties}
                       className="text-white"
                     >
                       {user.username?.[0].toUpperCase()}

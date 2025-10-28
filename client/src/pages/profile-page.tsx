@@ -416,7 +416,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     alt={user?.username}
                   />
                   <AvatarFallback
-                    style={{ backgroundColor: (console.log('[PROFILE AVATAR] avatarColor:', user?.avatarColor), user?.avatarColor || '#6366F1') }}
+                    style={{ '--avatar-bg-color': user?.avatarColor || '#6366F1' } as React.CSSProperties}
                     className="text-white"
                   >
                     {user?.username?.[0].toUpperCase()}

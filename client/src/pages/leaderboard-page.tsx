@@ -142,7 +142,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                         <Avatar>
                           <AvatarImage src={member.imageUrl || ""} />
                           <AvatarFallback 
-                            style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                            style={{ '--avatar-bg-color': member.avatarColor || '#6366F1' } as React.CSSProperties}
                             className="text-white"
                           >
                             {member.username.charAt(0).toUpperCase()}

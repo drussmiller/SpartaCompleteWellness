@@ -536,7 +536,7 @@ export function MessageSlideCard() {
                           alt={member.username}
                         />
                         <AvatarFallback
-                          style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                          style={{ '--avatar-bg-color': member.avatarColor || '#6366F1' } as React.CSSProperties}
                           className="text-white"
                         >
                           {member.username[0].toUpperCase()}
@@ -579,7 +579,7 @@ export function MessageSlideCard() {
                             alt={message.sender.username || "Unknown User"}
                           />
                           <AvatarFallback
-                            style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
+                            style={{ '--avatar-bg-color': message.sender.avatarColor || '#6366F1' } as React.CSSProperties}
                             className="text-white"
                           >
                             {message.sender.username?.[0].toUpperCase() || "?"}
