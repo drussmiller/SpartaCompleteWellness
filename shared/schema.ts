@@ -26,6 +26,9 @@ export const users = pgTable("users", {
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
   timezoneOffset: integer("timezone_offset"), // Timezone offset in minutes (e.g., -300 for Central Time)
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
+  phoneNumber: text("phone_number"), // Phone number for SMS notifications
+  smsCarrierGateway: text("sms_carrier_gateway"), // Detected carrier gateway (e.g., "vtext.com", "txt.att.net")
+  smsEnabled: boolean("sms_enabled").default(false), // Whether SMS notifications are enabled
   lastPrayerRequestView: timestamp("last_prayer_request_view"), // Track when user last viewed prayer requests
   waiverSigned: boolean("waiver_signed").default(false),
   waiverSignedAt: timestamp("waiver_signed_at"),
