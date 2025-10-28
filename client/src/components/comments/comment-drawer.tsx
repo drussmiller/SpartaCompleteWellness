@@ -419,7 +419,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                       src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`}
                       alt={originalPost.author.username}
                     />
-                    <AvatarFallback>
+                    <AvatarFallback
+                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                      className="text-white"
+                    >
                       {originalPost.author.username?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
