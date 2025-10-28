@@ -256,6 +256,17 @@ export async function runMigrations() {
       console.error('Error adding status column to teams:', columnError);
     }
 
+    // Add avatar_color column to users table
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS avatar_color TEXT
+      `);
+      console.log('Added avatar_color column to users table');
+    } catch (columnError) {
+      console.error('Error adding avatar_color column:', columnError);
+    }
+
     // Add competitive column to groups table
     try {
       await db.execute(sql`
