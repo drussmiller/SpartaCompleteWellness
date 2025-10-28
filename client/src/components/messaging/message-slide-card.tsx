@@ -536,7 +536,7 @@ export function MessageSlideCard() {
                           alt={member.username}
                         />
                         <AvatarFallback
-                          style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                          style={{ backgroundColor: (console.log(`[MSG] ${member.username} avatarColor:`, member.avatarColor), member.avatarColor || '#6366F1') }}
                           className="text-white"
                         >
                           {member.username[0].toUpperCase()}
