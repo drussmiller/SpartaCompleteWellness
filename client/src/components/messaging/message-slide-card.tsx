@@ -531,12 +531,9 @@ export function MessageSlideCard() {
                       onClick={() => setSelectedMember(member)}
                     >
                       <Avatar>
-                        <AvatarImage
-                          src={member.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${member.username}`}
-                          alt={member.username}
-                        />
+                        {member.imageUrl && <AvatarImage src={member.imageUrl} alt={member.username} />}
                         <AvatarFallback
-                          style={{ backgroundColor: (console.log(`[MSG] ${member.username} avatarColor:`, member.avatarColor), member.avatarColor || '#6366F1') }}
+                          style={{ backgroundColor: member.avatarColor || '#6366F1' }}
                           className="text-white"
                         >
                           {member.username[0].toUpperCase()}
@@ -574,10 +571,7 @@ export function MessageSlideCard() {
                     >
                       {message.sender.id !== user?.id && (
                         <Avatar className="mr-2">
-                          <AvatarImage
-                            src={message.sender.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${message.sender.username}`}
-                            alt={message.sender.username || "Unknown User"}
-                          />
+                          {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
                           <AvatarFallback
                             style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
                             className="text-white"

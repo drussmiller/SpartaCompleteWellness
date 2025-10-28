@@ -46,10 +46,7 @@ export default function MenuPage() {
               <Button variant="outline" className="w-full justify-start py-6" size="lg">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={user.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
-                      alt={user.username}
-                    />
+                    {user.imageUrl && <AvatarImage src={user.imageUrl} alt={user.username} />}
                     <AvatarFallback
                       style={{ backgroundColor: user.avatarColor || '#6366F1' }}
                       className="text-white"

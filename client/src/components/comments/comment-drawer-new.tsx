@@ -295,11 +295,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 {/* User info and time */}
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`}
-                      alt={originalPost.author.username}
-                    />
-                    <AvatarFallback>
+                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                    <AvatarFallback
+                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                      className="text-white"
+                    >
                       {originalPost.author.username?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

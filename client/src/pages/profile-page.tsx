@@ -408,13 +408,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
             <CardContent className="flex flex-col items-center p-6 space-y-4">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage
-                    src={
-                      user?.imageUrl ||
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`
-                    }
-                    alt={user?.username}
-                  />
+                  {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={user?.username} />}
                   <AvatarFallback
                     style={{ backgroundColor: user?.avatarColor || '#6366F1' }}
                     className="text-white"

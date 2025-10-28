@@ -415,10 +415,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
               <div className="flex flex-col items-start justify-center h-full ml-14 pt-2">
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`}
-                      alt={originalPost.author.username}
-                    />
+                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
                     <AvatarFallback
                       style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
                       className="text-white"
