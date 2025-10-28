@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 
 export default function MenuPage() {
   const { user } = useAuth();
+  console.log('[MENU PAGE] User avatar color:', user?.avatarColor);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
