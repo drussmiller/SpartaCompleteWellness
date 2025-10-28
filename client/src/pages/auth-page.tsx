@@ -187,13 +187,9 @@ export default function AuthPage() {
                             <FormLabel>User ID or Preferred Name</FormLabel>
                             <FormControl>
                               <Input 
-                                type="text" 
                                 {...field}
-                                value={field.value || ""}
-                                onChange={field.onChange}
                                 placeholder="Enter your User ID or Preferred Name"
                                 data-testid="input-reset-identifier"
-                                autoComplete="off"
                               />
                             </FormControl>
                             <FormMessage />
