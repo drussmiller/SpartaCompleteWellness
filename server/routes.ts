@@ -5165,10 +5165,11 @@ export const registerRoutes = async (
   // User stats endpoint for simplified My Stats section
   router.get("/api/users", authenticate, async (req, res) => {
     try {
-      // Prevent caching to ensure fresh data with avatarColor
+      // Disable ETag and caching completely to force fresh data
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
+      res.removeHeader('ETag');
       
       // Debug logging for authorization
       console.log('GET /api/users - User authorization check:', {
@@ -5180,6 +5181,15 @@ export const registerRoutes = async (
       });
 
       let users = await storage.getAllUsers();
+      
+      // Log first user to verify avatarColor is present
+      if (users.length > 0) {
+        console.log('Sample user data:', {
+          id: users[0].id,
+          username: users[0].username,
+          avatarColor: users[0].avatarColor
+        });
+      }
 
       // Filter users based on role
       if (req.user.isAdmin) {
@@ -5211,7 +5221,8 @@ export const registerRoutes = async (
         users = [];
       }
 
-      res.json(users);
+      // Explicitly set status to 200 to prevent 304
+      res.status(200).json(users);
     } catch (error) {
       logger.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
