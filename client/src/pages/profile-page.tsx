@@ -407,11 +407,11 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
           <Card>
             <CardContent className="flex flex-col items-center p-6 space-y-4">
               <div className="relative">
-                <Avatar className="h-20 w-20">
+                <Avatar className="h-16 w-16">
                   {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={user?.username} />}
                   <AvatarFallback
                     style={{ backgroundColor: user?.avatarColor || '#6366F1' }}
-                    className="text-white"
+                    className="text-white text-2xl"
                   >
                     {user?.username?.[0].toUpperCase()}
                   </AvatarFallback>
