@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InsertUser, insertUserSchema } from "@shared/schema";
@@ -188,12 +188,15 @@ export default function AuthPage() {
                             <FormControl>
                               <Input 
                                 type="text" 
-                                {...field} 
+                                {...field}
+                                value={field.value || ""}
+                                onChange={field.onChange}
                                 placeholder="Enter your User ID or Preferred Name"
                                 data-testid="input-reset-identifier"
                                 autoComplete="off"
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
