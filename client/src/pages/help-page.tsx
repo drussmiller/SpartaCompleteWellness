@@ -59,7 +59,7 @@ export default function HelpPage() {
             <div>
               <h3 className="font-semibold">Week Content</h3>
               <ul className="list-disc pl-6 space-y-1 mt-2">
-                <li>Memory Verse for the week is listed at the top of the section.</li>
+                <li>The Memory Verse for the week is at the top of the section.</li>
                 <li>Follow the instructions in the section to have a successful week.</li>
               </ul>
             </div>
@@ -75,7 +75,7 @@ export default function HelpPage() {
             <div>
               <h3 className="font-semibold">Re-Engage (Non-competitive teams only)</h3>
               <p className="mt-2">
-                If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week. All posts and points Week/Day and after will be forfeited.
+                If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week (If the current day is Day 4, you will resart on the selected week/Day 4). All posts and points on the Week/Day and after will be deleted.
               </p>
             </div>
           </CardContent>
