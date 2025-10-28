@@ -80,6 +80,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   );
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [emailValue, setEmailValue] = useState(user?.email || "");
+  const [isEditingPhoneNumber, setIsEditingPhoneNumber] = useState(false);
+  const [phoneNumberValue, setPhoneNumberValue] = useState(user?.phoneNumber || "");
 
   useEffect(() => {
     setPreferredNameValue(user?.preferredName || "");
@@ -88,6 +90,10 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   useEffect(() => {
     setEmailValue(user?.email || "");
   }, [user?.email]);
+
+  useEffect(() => {
+    setPhoneNumberValue(user?.phoneNumber || "");
+  }, [user?.phoneNumber]);
 
   useEffect(() => {
     setSelectedActivityTypeId(user?.preferredActivityTypeId || 1);
@@ -173,6 +179,49 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to update email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePhoneNumberMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      console.log("Updating phone number to:", phoneNumber);
+      const res = await apiRequest("PATCH", "/api/user/sms", {
+        phoneNumber,
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to update phone number:", errorText);
+        throw new Error("Failed to update phone number");
+      }
+      
+      try {
+        return await res.json();
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        return { success: true };
+      }
+    },
+    onSuccess: async (data) => {
+      console.log("Phone number update successful:", data);
+      setIsEditingPhoneNumber(false);
+      
+      // Invalidate and refetch user data to get fresh data from server
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      await refetchUser();
+      
+      toast({
+        title: "Success",
+        description: "Phone number updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Phone number update error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update phone number",
         variant: "destructive",
       });
     },
@@ -613,6 +662,73 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           onClick={() => {
                             setEmailValue(user?.email || "");
                             setIsEditingEmail(true);
+                          }}
+                          className="h-6 px-2 text-xs"
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  {isEditingPhoneNumber ? (
+                    <div className="space-y-2">
+                      <Input
+                        type="tel"
+                        value={phoneNumberValue}
+                        onChange={(e) => setPhoneNumberValue(e.target.value)}
+                        placeholder="Enter phone number"
+                        className="text-base w-full"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updatePhoneNumberMutation.mutate(phoneNumberValue);
+                          } else if (e.key === "Escape") {
+                            setPhoneNumberValue(user?.phoneNumber || "");
+                            setIsEditingPhoneNumber(false);
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            updatePhoneNumberMutation.mutate(phoneNumberValue)
+                          }
+                          disabled={updatePhoneNumberMutation.isPending}
+                        >
+                          {updatePhoneNumberMutation.isPending
+                            ? "Saving..."
+                            : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setPhoneNumberValue(user?.phoneNumber || "");
+                            setIsEditingPhoneNumber(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg text-muted-foreground">Phone Number</span>
+                        <span className="font-medium">
+                          {user?.phoneNumber || "Not set"}
+                        </span>
+                      </div>
+                      <div className="flex justify-end mt-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setPhoneNumberValue(user?.phoneNumber || "");
+                            setIsEditingPhoneNumber(true);
                           }}
                           className="h-6 px-2 text-xs"
                         >
