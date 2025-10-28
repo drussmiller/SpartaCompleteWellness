@@ -140,14 +140,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                         <div className="font-bold w-6 text-center">{index + 1}</div>
                         <Avatar>
                           <AvatarImage src={member.imageUrl || ""} />
-                          <AvatarFallback 
-                            style={{
-                              backgroundColor: `hsl(${(member.id * 137.508) % 360}, 70%, 50%)`,
-                              color: 'white'
-                            }}
-                          >
-                            {member.username.charAt(0).toUpperCase()}
-                          </AvatarFallback>
+                          <AvatarFallback>{member.username.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="font-medium">{member.username}</div>
                       </div>
