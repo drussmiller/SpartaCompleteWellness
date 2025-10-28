@@ -18,6 +18,7 @@ type TeamMember = {
   username: string;
   imageUrl: string | null;
   points: number;
+  color: string | null; // Added color field
 };
 
 type TeamStat = {
@@ -140,14 +141,21 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                         <div className="font-bold w-6 text-center">{index + 1}</div>
                         <Avatar>
                           <AvatarImage src={member.imageUrl || ""} />
-                          <AvatarFallback>{member.username.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback 
+                            style={{
+                              backgroundColor: member.color || '#6366f1',
+                              color: 'white'
+                            }}
+                          >
+                            {member.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="font-medium">{member.username}</div>
                       </div>
                       <div className="font-bold text-primary">{member.points} pts</div>
                     </div>
                   ))}
-                  
+
                   {(!data?.teamMembers || (Array.isArray(data?.teamMembers) && data?.teamMembers.length === 0)) && (
                     <div className="text-center py-4 text-gray-500">
                       No team members found
@@ -181,7 +189,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                       <div className="font-bold text-primary">{team.avg_points}%</div>
                     </div>
                   ))}
-                  
+
                   {(!data?.teamStats || 
                     (Array.isArray(data?.teamStats) && data?.teamStats.length === 0) || 
                     (data?.teamStats && 'rows' in data.teamStats && data.teamStats.rows.length === 0)) && (

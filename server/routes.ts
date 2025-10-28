@@ -1159,7 +1159,7 @@ export const registerRoutes = async (
   router.get("/api/prayer-requests/unread", authenticate, async (req, res) => {
     try {
       res.setHeader("Content-Type", "application/json");
-      
+
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -1329,7 +1329,7 @@ export const registerRoutes = async (
       // 3. post_scope is 'team' and they're in the target team, OR
       // 4. post_scope is 'group' and they're in a team within the target group, OR
       // 5. post_scope is 'organization' and they're in a group within the target organization
-      
+
       if (req.user.teamId) {
         // Get user's team info to check group and organization
         const [userTeam] = await db
@@ -1338,9 +1338,9 @@ export const registerRoutes = async (
           })
           .from(teams)
           .where(eq(teams.id, req.user.teamId));
-        
+
         const userGroupId = userTeam?.groupId;
-        
+
         let userOrganizationId = null;
         if (userGroupId) {
           const [userGroup] = await db
@@ -1349,7 +1349,7 @@ export const registerRoutes = async (
             })
             .from(groups)
             .where(eq(groups.id, userGroupId));
-          
+
           userOrganizationId = userGroup?.organizationId;
         }
 
@@ -1358,7 +1358,7 @@ export const registerRoutes = async (
           .select({ id: users.id })
           .from(users)
           .where(eq(users.teamId, req.user.teamId));
-        
+
         const memberIds = teamMemberIds.map(member => member.id);
 
         // Build scope filter conditions
@@ -1401,7 +1401,7 @@ export const registerRoutes = async (
         if (scopeConditions.length > 0) {
           conditions.push(or(...scopeConditions));
         }
-        
+
         logger.info(`[SCOPE FILTER] User ${req.user.id} (team ${req.user.teamId}) - Scope conditions count: ${scopeConditions.length}`);
       } else {
         // User has no team - only show 'everyone' posts
@@ -2400,7 +2400,7 @@ export const registerRoutes = async (
   router.post("/api/test-notification/:userId", authenticate, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      
+
       // Only admin can test notifications
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Only admins can test notifications" });
@@ -2596,7 +2596,7 @@ export const registerRoutes = async (
             // Example: 14:00 local - (-5) = 14:00 + 5 = 19:00 UTC
             const timezoneOffsetMinutes = user.timezoneOffset || 0;
             const timezoneOffsetHours = timezoneOffsetMinutes / 60;
-            
+
             // Convert local time to UTC
             const preferredUTCHour = Math.floor((preferredLocalHour - timezoneOffsetHours + 24) % 24);
             const preferredUTCMinute = preferredLocalMinute;
@@ -2642,7 +2642,7 @@ export const registerRoutes = async (
               // This ensures the timestamp reflects when they WANTED the notification, not when it was actually sent
               const intendedNotificationTime = new Date(today);
               intendedNotificationTime.setUTCHours(preferredUTCHour, preferredUTCMinute, 0, 0);
-              
+
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",
@@ -2776,7 +2776,7 @@ export const registerRoutes = async (
       let usersUpdated = 0;
       if (updateData.status === 0 && makeUsersInactive) {
         logger.info(`Making users inactive for team ${teamId}, makeUsersInactive flag: ${makeUsersInactive}`);
-        
+
         // First, check how many active users are in the team
         const activeUsersCheck = await db
           .select()
@@ -2787,9 +2787,9 @@ export const registerRoutes = async (
               eq(users.status, 1)
             )
           );
-        
+
         logger.info(`Found ${activeUsersCheck.length} active user(s) in team ${teamId} before update`);
-        
+
         const updatedUsers = await db
           .update(users)
           .set({ status: 0 })
@@ -2800,14 +2800,14 @@ export const registerRoutes = async (
             )
           )
           .returning();
-        
+
         usersUpdated = updatedUsers.length;
         logger.info(`Set ${usersUpdated} user(s) to inactive for team ${teamId}`);
         logger.info(`Updated user IDs: ${updatedUsers.map(u => u.id).join(', ')}`);
       }
 
       logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);
-      
+
       // Return the team data with info about users updated
       res.status(200).json({
         ...updatedTeam,
@@ -5826,18 +5826,18 @@ export const registerRoutes = async (
           id: users.id,
           username: users.username,
           imageUrl: users.imageUrl,
-          points: sql<number>`COALESCE((
-            SELECT SUM(p.points)
-            FROM posts p
-            WHERE p.user_id = users.id
-            AND p.created_at >= ${startOfWeek}
-            AND p.created_at <= ${endOfWeek}
-            AND p.parent_id IS NULL
-          ), 0)::integer AS points`,
+          color: users.color, // Include user color
+          points: sql<number>`COALESCE(SUM(${posts.points}), 0)::integer AS points`,
         })
         .from(users)
+        .leftJoin(posts, and(
+          eq(posts.userId, users.id),
+          gte(posts.createdAt, startOfWeek),
+          lte(posts.createdAt, endOfWeek)
+        ))
         .where(eq(users.teamId, currentUser.teamId))
-        .orderBy(sql`points DESC`);
+        .groupBy(users.id)
+        .orderBy(desc(sql`points`));
 
       // Get team average points - only from the same group as the user's team
       const teamStats = await db.execute(sql`
