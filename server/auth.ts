@@ -406,17 +406,17 @@ export function setupAuth(app: Express) {
   // Forgot password endpoint - generates temporary password and emails it
   app.post("/api/forgot-password", async (req, res) => {
     try {
-      const { email } = req.body;
+      const { username } = req.body;
       
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
+      if (!username) {
+        return res.status(400).json({ message: "Username is required" });
       }
 
-      // Find user by email
-      const user = await storage.getUserByEmail(email);
+      // Find user by username
+      const user = await storage.getUserByUsername(username);
       if (!user) {
-        // For security, don't reveal if email exists or not
-        return res.json({ message: "If an account with that email exists, a password reset email has been sent." });
+        // For security, don't reveal if username exists or not
+        return res.json({ message: "If an account with that username exists, a password reset email has been sent." });
       }
 
       // Generate a temporary password (8 characters: mix of letters and numbers)
@@ -428,11 +428,11 @@ export function setupAuth(app: Express) {
       // Update user's password in database
       await storage.updateUser(user.id, { password: hashedTempPassword });
       
-      // Send email with temporary password
+      // Send email with temporary password to the user's registered email
       await emailService.sendPasswordResetEmail(user.email, tempPassword);
       
-      console.log(`Temporary password generated and sent to: ${email}`);
-      res.json({ message: "If an account with that email exists, a password reset email has been sent." });
+      console.log(`Temporary password generated and sent to email for username: ${username}`);
+      res.json({ message: "If an account with that username exists, a password reset email has been sent." });
       
     } catch (error) {
       console.error('Error in forgot password:', error);

@@ -32,7 +32,7 @@ const registerSchema = z.object({
 
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  username: z.string().min(1, "Username is required"),
 });
 
 export default function AuthPage() {
@@ -68,7 +68,7 @@ export default function AuthPage() {
   const forgotPasswordForm = useForm<z.infer<typeof forgotPasswordSchema>>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
-      email: "",
+      username: "",
     },
   });
 
@@ -87,7 +87,7 @@ export default function AuthPage() {
     onSuccess: () => {
       toast({
         title: "Email Sent",
-        description: "If an account with that email exists, a password reset email has been sent. Please check your inbox.",
+        description: "If that username exists, a password reset email has been sent to the registered email address. Please check your inbox.",
       });
       setShowForgotPassword(false);
       forgotPasswordForm.reset();
@@ -176,21 +176,22 @@ export default function AuthPage() {
                       <div className="mb-4">
                         <h3 className="font-semibold text-lg mb-2">Reset Password</h3>
                         <p className="text-sm text-muted-foreground">
-                          Enter your email address and we'll send you a temporary password.
+                          Enter your username and we'll send a temporary password to your registered email address.
                         </p>
                       </div>
                       <FormField
                         control={forgotPasswordForm.control}
-                        name="email"
+                        name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel>Username</FormLabel>
                             <FormControl>
                               <Input 
-                                type="email" 
+                                type="text" 
                                 {...field} 
-                                placeholder="Enter your email address"
-                                data-testid="input-reset-email"
+                                placeholder="Enter your username"
+                                data-testid="input-reset-username"
+                                autoComplete="username"
                               />
                             </FormControl>
                           </FormItem>
