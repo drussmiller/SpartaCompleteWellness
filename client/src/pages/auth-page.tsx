@@ -4,13 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InsertUser, insertUserSchema } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 type LoginForm = {
   username: string; // Will be used for either username or email
@@ -29,10 +31,15 @@ const registerSchema = z.object({
 });
 
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -58,6 +65,39 @@ export default function AuthPage() {
     },
   });
 
+  const forgotPasswordForm = useForm<z.infer<typeof forgotPasswordSchema>>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof forgotPasswordSchema>) => {
+      const response = await apiRequest('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email Sent",
+        description: "If an account with that email exists, a password reset email has been sent. Please check your inbox.",
+      });
+      setShowForgotPassword(false);
+      forgotPasswordForm.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to process password reset request. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="flex items-center justify-center p-8">
@@ -72,46 +112,111 @@ export default function AuthPage() {
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
               <TabsContent value="login">
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
-                    <FormField
-                      control={loginForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username or Email</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="Enter your username or email" 
-                              autoComplete="username"
-                            />
-                          </FormControl>
-                        </FormItem>
+                {!showForgotPassword ? (
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username or Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="Enter your username or email" 
+                                autoComplete="username"
+                                data-testid="input-username"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password" 
+                                {...field} 
+                                data-testid="input-password"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      {loginMutation.error && (
+                        <p className="text-red-500 text-sm mb-2">
+                          Please check your username/email and password and try again.
+                        </p>
                       )}
-                    />
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    {loginMutation.error && (
-                      <p className="text-red-500 text-sm mb-2">
-                        Please check your username/email and password and try again.
-                      </p>
-                    )}
-                    <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                      {loginMutation.isPending ? "Logging in..." : "Login"}
-                    </Button>
-                  </form>
-                </Form>
+                      <Button type="submit" className="w-full" disabled={loginMutation.isPending} data-testid="button-login">
+                        {loginMutation.isPending ? "Logging in..." : "Login"}
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        className="w-full" 
+                        onClick={() => setShowForgotPassword(true)}
+                        data-testid="button-forgot-password"
+                      >
+                        Forgot Password?
+                      </Button>
+                    </form>
+                  </Form>
+                ) : (
+                  <Form {...forgotPasswordForm}>
+                    <form onSubmit={forgotPasswordForm.handleSubmit((data) => forgotPasswordMutation.mutate(data))} className="space-y-4">
+                      <div className="mb-4">
+                        <h3 className="font-semibold text-lg mb-2">Reset Password</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Enter your email address and we'll send you a temporary password.
+                        </p>
+                      </div>
+                      <FormField
+                        control={forgotPasswordForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email" 
+                                {...field} 
+                                placeholder="Enter your email address"
+                                data-testid="input-reset-email"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          type="submit" 
+                          className="flex-1" 
+                          disabled={forgotPasswordMutation.isPending}
+                          data-testid="button-send-reset"
+                        >
+                          {forgotPasswordMutation.isPending ? "Sending..." : "Send Reset Email"}
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowForgotPassword(false);
+                            forgotPasswordForm.reset();
+                          }}
+                          data-testid="button-cancel-reset"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                )}
               </TabsContent>
               <TabsContent value="register">
                 <Form {...registerForm}>
