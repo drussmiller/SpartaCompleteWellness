@@ -8,7 +8,7 @@ import { LogOut, ChevronLeft } from "lucide-react";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
-import { Measurement } from "@shared/schema";
+import { Measurement, User as SelectUser } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import ChangePasswordForm from "@/components/change-password-form";
 import { insertMeasurementSchema } from "@shared/schema";
@@ -67,10 +67,11 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
     },
   );
 
-  const { data: user, refetch: refetchUser } = useQuery({
+  const { data: user, refetch: refetchUser } = useQuery<SelectUser | null>({
     queryKey: ["/api/user"],
     staleTime: 0,
     enabled: !!authUser,
+    refetchOnMount: 'always',
   });
 
   const [isEditingPreferredName, setIsEditingPreferredName] = useState(false);
@@ -415,7 +416,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     alt={user?.username}
                   />
                   <AvatarFallback
-                    style={{ backgroundColor: user?.avatarColor || '#6366F1' }}
+                    style={{ backgroundColor: (console.log('[PROFILE AVATAR] avatarColor:', user?.avatarColor), user?.avatarColor || '#6366F1') }}
                     className="text-white"
                   >
                     {user?.username?.[0].toUpperCase()}
