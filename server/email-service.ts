@@ -8,12 +8,11 @@ interface EmailOptions {
 }
 
 class EmailService {
-  private transporter: nodemailer.Transporter;
   private lastEmailTime: number = 0;
   private readonly minDelayMs = 1000; // 1 second minimum delay between emails
 
-  constructor() {
-    this.transporter = nodemailer.createTransport({
+  private createTransporter() {
+    return nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.GMAIL_USER,
@@ -38,6 +37,8 @@ class EmailService {
     await this.waitForThrottle();
 
     try {
+      const transporter = this.createTransporter();
+      
       const mailOptions = {
         from: `"Sparta Complete Wellness" <${process.env.GMAIL_USER}>`,
         to: options.to,
@@ -46,7 +47,7 @@ class EmailService {
         text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
       };
 
-      const info = await this.transporter.sendMail(mailOptions);
+      const info = await transporter.sendMail(mailOptions);
       console.log(`Email sent successfully to ${options.to}:`, info.messageId);
     } catch (error) {
       console.error(`Failed to send email to ${options.to}:`, error);
