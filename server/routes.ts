@@ -5165,6 +5165,11 @@ export const registerRoutes = async (
   // User stats endpoint for simplified My Stats section
   router.get("/api/users", authenticate, async (req, res) => {
     try {
+      // Prevent caching to ensure fresh data with avatarColor
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       // Debug logging for authorization
       console.log('GET /api/users - User authorization check:', {
         userId: req.user?.id,
