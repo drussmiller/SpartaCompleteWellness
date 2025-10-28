@@ -5621,6 +5621,7 @@ export const registerRoutes = async (
             id: users.id,
             username: users.username,
             imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
           },
         })
         .from(messages)
