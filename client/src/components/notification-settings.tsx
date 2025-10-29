@@ -18,6 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 
 interface NotificationSettingsProps {
   onClose: () => void;
@@ -56,7 +63,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     if (user?.notificationTime) {
       const [savedHour, savedMinute] = user.notificationTime.split(':');
       const hourNum = parseInt(savedHour);
-      
+
       if (hourNum === 0) {
         setHour("12");
         setPeriod("AM");
@@ -89,7 +96,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       const time = convertTo24Hour(hour, period);
       // Get user's timezone offset in minutes
       const timezoneOffset = new Date().getTimezoneOffset();
-      
+
       const response = await apiRequest(
         "POST",
         "/api/users/notification-schedule",
@@ -233,7 +240,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
 
   return (
-    <div 
+    <div
       className="flex flex-col h-full overflow-y-auto"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -248,10 +255,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         >
           <ChevronLeft className="h-8 w-8 scale-125" />
         </Button>
-        <h2 className="text-lg font-semibold">Notification Settings</h2>
+        <SheetHeader>
+          <SheetTitle>Notification Settings</SheetTitle>
+          <SheetDescription>
+            Configure when you want to receive daily reminder notifications
+          </SheetDescription>
+        </SheetHeader>
       </div>
 
-      <div 
+      <div
         className="p-6 space-y-6 pb-24 overflow-y-auto"
       >
         {/* Achievement notification toggle */}
