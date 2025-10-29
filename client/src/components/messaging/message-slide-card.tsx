@@ -603,7 +603,7 @@ export function MessageSlideCard() {
                             <VideoPlayer
                               src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
                               className="max-w-full rounded mt-2"
-                              onError={(error) => console.error("Error loading message video:", message.imageUrl || message.mediaUrl, error)}
+                              onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
                             />
                           ) : (
                             <img
