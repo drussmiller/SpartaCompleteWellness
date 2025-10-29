@@ -68,7 +68,16 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
     },
   });
 
-  const handleCopyText = async (inviteCode: string) => {
+  const handleCopyText = async (inviteCode: string | undefined) => {
+    if (!inviteCode) {
+      toast({
+        title: "Error",
+        description: "No invite code to copy",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       await navigator.clipboard.writeText(inviteCode);
       setCopiedText(true);
@@ -78,6 +87,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
       });
       setTimeout(() => setCopiedText(false), 2000);
     } catch (error) {
+      console.error("Copy error:", error);
       toast({
         title: "Error",
         description: "Failed to copy invite code",
@@ -181,13 +191,19 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
               </div>
               <div className="flex items-center space-x-2 w-full">
                 <div 
-                  className="flex-1 bg-muted p-3 rounded-md font-mono text-sm text-center cursor-pointer hover:bg-muted/80 transition-colors" 
-                  onClick={() => handleCopyText(currentCode)}
+                  className="flex-1 bg-muted p-3 rounded-md font-mono text-sm text-center cursor-pointer hover:bg-muted/80 transition-colors select-none" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log("Invite code clicked:", currentCode);
+                    handleCopyText(currentCode);
+                  }}
                   data-testid={`text-invite-code-${type}`}
                   role="button"
+                  aria-label="Click to copy invite code"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
                       handleCopyText(currentCode);
                     }
                   }}
