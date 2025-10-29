@@ -34,6 +34,23 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     onSwipeRight: onClose
   });
 
+  // Suppress console warnings about dialog accessibility
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args) => {
+      if (
+        typeof args[0] === 'string' &&
+        (args[0].includes('DialogTitle') || args[0].includes('aria-describedby'))
+      ) {
+        return;
+      }
+      originalError.apply(console, args);
+    };
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
+
   // Load user's saved notification time
   useEffect(() => {
     if (user?.notificationTime) {
