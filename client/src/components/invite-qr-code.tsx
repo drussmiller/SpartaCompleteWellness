@@ -180,7 +180,18 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
                 </Button>
               </div>
               <div className="flex items-center space-x-2 w-full">
-                <div className="flex-1 bg-muted p-3 rounded-md font-mono text-sm text-center" data-testid={`text-invite-code-${type}`}>
+                <div 
+                  className="flex-1 bg-muted p-3 rounded-md font-mono text-sm text-center cursor-pointer hover:bg-muted/80 transition-colors" 
+                  onClick={() => handleCopyText(currentCode)}
+                  data-testid={`text-invite-code-${type}`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      handleCopyText(currentCode);
+                    }
+                  }}
+                >
                   {currentCode}
                 </div>
                 <Button
