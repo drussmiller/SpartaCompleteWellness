@@ -12,7 +12,7 @@ export default function HelpPage() {
         </div>
       </div>
 
-      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full p-6 text-lg mt-[84px]">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full p-6 text-lg mt-[72px]">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
