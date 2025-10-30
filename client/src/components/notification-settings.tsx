@@ -36,6 +36,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
   const [hour, setHour] = useState("9");
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
+  const [dailyNotificationsEnabled, setDailyNotificationsEnabled] = useState(true);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
@@ -58,7 +59,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     };
   }, []);
 
-  // Load user's saved notification time
+  // Load user's saved notification time and daily notifications enabled setting
   useEffect(() => {
     if (user?.notificationTime) {
       const [savedHour, savedMinute] = user.notificationTime.split(':');
@@ -78,7 +79,12 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         setPeriod("PM");
       }
     }
-  }, [user?.notificationTime]);
+    
+    // Load daily notifications enabled state
+    if (user?.dailyNotificationsEnabled !== undefined && user?.dailyNotificationsEnabled !== null) {
+      setDailyNotificationsEnabled(user.dailyNotificationsEnabled);
+    }
+  }, [user?.notificationTime, user?.dailyNotificationsEnabled]);
 
   // Convert hour + period to 24-hour format (always at :00 minutes)
   const convertTo24Hour = (hour: string, period: "AM" | "PM"): string => {
@@ -104,6 +110,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           notificationTime: time,
           timezoneOffset: -timezoneOffset, // Negate because getTimezoneOffset returns opposite sign
           achievementNotificationsEnabled: notificationsEnabled,
+          dailyNotificationsEnabled: dailyNotificationsEnabled,
         },
       );
       if (!response.ok) {
@@ -266,6 +273,29 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       <div
         className="p-6 space-y-6 pb-24 overflow-y-auto"
       >
+        {/* Daily Notifications toggle */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Daily Reminders</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="daily-notifications"
+              className="text-lg text-muted-foreground"
+            >
+              Enable daily notifications
+            </Label>
+            <Switch
+              id="daily-notifications"
+              checked={dailyNotificationsEnabled}
+              onCheckedChange={setDailyNotificationsEnabled}
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {dailyNotificationsEnabled
+              ? "Daily reminder notifications are enabled. You will receive notifications if you miss posts."
+              : "Daily reminder notifications are disabled. You won't receive any daily reminder notifications."}
+          </p>
+        </div>
+
         {/* Achievement notification toggle */}
         <div className="space-y-2">
           <h3 className="text-lg font-medium">Achievement Notifications</h3>

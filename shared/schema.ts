@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
   timezoneOffset: integer("timezone_offset"), // Timezone offset in minutes (e.g., -300 for Central Time)
+  dailyNotificationsEnabled: boolean("daily_notifications_enabled").default(true), // Whether daily reminder notifications are enabled
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
   phoneNumber: text("phone_number"), // Phone number for SMS notifications
   smsCarrierGateway: text("sms_carrier_gateway"), // Detected carrier gateway (e.g., "vtext.com", "txt.att.net")

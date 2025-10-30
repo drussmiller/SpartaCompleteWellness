@@ -2469,6 +2469,7 @@ export const registerRoutes = async (
           teamId: users.teamId,
           notificationTime: users.notificationTime,
           timezoneOffset: users.timezoneOffset,
+          dailyNotificationsEnabled: users.dailyNotificationsEnabled,
         })
         .from(users);
 
@@ -2641,48 +2642,55 @@ export const registerRoutes = async (
             });
 
             if (isPreferredTimeWindow && recentNotifications.length === 0) {
-              // Calculate the intended notification time using the user's preferred time
-              // Use the preferredUTCHour which is already correctly calculated
-              // This ensures the timestamp reflects when they WANTED the notification, not when it was actually sent
-              const intendedNotificationTime = new Date(today);
-              intendedNotificationTime.setUTCHours(preferredUTCHour, preferredUTCMinute, 0, 0);
+              // Check if user has daily notifications enabled (default to true if undefined)
+              const dailyNotificationsEnabled = user.dailyNotificationsEnabled !== false;
               
-              const notification = {
-                userId: user.id,
-                title: "Daily Reminder",
-                message,
-                read: false,
-                createdAt: intendedNotificationTime,
-                type: "reminder",
-                sound: "default",
-              };
-
-              try {
-                const [insertedNotification] = await db
-                  .insert(notifications)
-                  .values(notification)
-                  .returning();
-
-                logger.info(`Created notification for user ${user.id}:`, {
-                  notificationId: insertedNotification.id,
+              if (!dailyNotificationsEnabled) {
+                logger.info(`User ${user.id} has daily notifications disabled - skipping notification`);
+              } else {
+                // Calculate the intended notification time using the user's preferred time
+                // Use the preferredUTCHour which is already correctly calculated
+                // This ensures the timestamp reflects when they WANTED the notification, not when it was actually sent
+                const intendedNotificationTime = new Date(today);
+                intendedNotificationTime.setUTCHours(preferredUTCHour, preferredUTCMinute, 0, 0);
+                
+                const notification = {
                   userId: user.id,
-                  message: notification.message,
-                });
+                  title: "Daily Reminder",
+                  message,
+                  read: false,
+                  createdAt: intendedNotificationTime,
+                  type: "reminder",
+                  sound: "default",
+                };
 
-                const userClients = clients.get(user.id);
-                if (userClients && userClients.size > 0) {
-                  const notificationData = {
-                    id: insertedNotification.id,
-                    title: notification.title,
+                try {
+                  const [insertedNotification] = await db
+                    .insert(notifications)
+                    .values(notification)
+                    .returning();
+
+                  logger.info(`Created notification for user ${user.id}:`, {
+                    notificationId: insertedNotification.id,
+                    userId: user.id,
                     message: notification.message,
-                    sound: notification.sound,
-                    type: notification.type,
-                  };
+                  });
 
-                  broadcastNotification(user.id, notificationData);
+                  const userClients = clients.get(user.id);
+                  if (userClients && userClients.size > 0) {
+                    const notificationData = {
+                      id: insertedNotification.id,
+                      title: notification.title,
+                      message: notification.message,
+                      sound: notification.sound,
+                      type: notification.type,
+                    };
+
+                    broadcastNotification(user.id, notificationData);
+                  }
+                } catch (insertError: any) {
+                  logger.error(`Failed to insert notification for user ${user.id}:`, insertError);
                 }
-              } catch (insertError: any) {
-                logger.error(`Failed to insert notification for user ${user.id}:`, insertError);
               }
             } else {
               if (!isPreferredTimeWindow) {
@@ -4644,11 +4652,12 @@ export const registerRoutes = async (
       try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-        const { notificationTime, achievementNotificationsEnabled, timezoneOffset } = req.body;
+        const { notificationTime, achievementNotificationsEnabled, dailyNotificationsEnabled, timezoneOffset } = req.body;
         // Define update data with proper typing
         const updateData: {
           notificationTime?: string;
           achievementNotificationsEnabled?: boolean;
+          dailyNotificationsEnabled?: boolean;
           timezoneOffset?: number;
         } = {};
 
@@ -4673,6 +4682,12 @@ export const registerRoutes = async (
         if (achievementNotificationsEnabled !== undefined) {
           updateData.achievementNotificationsEnabled =
             achievementNotificationsEnabled;
+        }
+
+        // Add daily notifications enabled setting if provided
+        if (dailyNotificationsEnabled !== undefined) {
+          updateData.dailyNotificationsEnabled = dailyNotificationsEnabled;
+          logger.info(`Updating daily notifications for user ${req.user.id} to ${dailyNotificationsEnabled}`);
         }
 
         // Update user notification preferences
