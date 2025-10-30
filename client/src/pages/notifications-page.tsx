@@ -120,12 +120,12 @@ export default function NotificationsPage() {
     return (
       <AppLayout>
         {/* Header */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
           <div className="max-w-2xl mx-auto p-4">
             <h1 className="text-xl font-bold">Notifications</h1>
           </div>
         </div>
-        <div className="flex justify-center items-center h-full">
+        <div className="flex justify-center items-center h-full mt-[88px]">
           <div className="animate-spin">Loading...</div>
         </div>
       </AppLayout>
@@ -136,12 +136,12 @@ export default function NotificationsPage() {
     return (
       <AppLayout>
         {/* Header */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
           <div className="max-w-2xl mx-auto p-4">
             <h1 className="text-xl font-bold">Notifications</h1>
           </div>
         </div>
-        <div className="text-center py-8 text-destructive">
+        <div className="text-center py-8 text-destructive mt-[88px]">
           <p>Error loading notifications: {error instanceof Error ? error.message : 'Unknown error'}</p>
         </div>
       </AppLayout>
@@ -151,13 +151,13 @@ export default function NotificationsPage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
         <div className="max-w-2xl mx-auto p-4">
           <h1 className="text-xl font-bold">Notifications</h1>
         </div>
       </div>
 
-      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full p-6 text-lg">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full p-6 text-lg mt-[88px]">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
