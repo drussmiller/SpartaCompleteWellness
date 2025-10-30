@@ -248,7 +248,7 @@ export default function ActivityPage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-4">
         <div className="max-w-2xl mx-auto p-4">
           <h1 className="text-xl font-bold">Daily Activity</h1>
         </div>
