@@ -183,7 +183,7 @@ export default function ActivityPage() {
       });
       return;
     }
-
+    
     const targetWeek = parseInt(reengageWeek);
     if (targetWeek < 1 || targetWeek > (activityStatus?.currentWeek || 1)) {
       toast({
@@ -248,7 +248,7 @@ export default function ActivityPage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-16">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-12">
         <div className="max-w-2xl mx-auto p-4">
           <h1 className="text-xl font-bold">Daily Activity</h1>
         </div>
@@ -372,14 +372,14 @@ export default function ActivityPage() {
                           {selectedBibleVerse.contentFields?.map((item: any, index: number) => {
                             if (item.type === 'text') {
                               let content = item.content || '';
-
+                              
                               // Check if this content already has links from server-side processing
                               const hasLinks = content.includes('<a href=');
-
+                              
                               if (!hasLinks) {
                                 // Match Bible verses - prioritize comma-separated chapters, then ranges, then single chapters/verses
                                 const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+(?:\d+(?:\s*,\s*\d+)+|\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*)\b/gi;
-
+                                
                                 content = content.replace(bibleVerseRegex, (match) => {
                                   const bookMap: { [key: string]: string } = {
                                     'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
@@ -397,18 +397,18 @@ export default function ActivityPage() {
                                     'Titus': 'TIT', 'Philemon': 'PHM', 'Hebrews': 'HEB', 'James': 'JAS', '1 Peter': '1PE',
                                     '2 Peter': '2PE', '1 John': '1JN', '2 John': '2JN', '3 John': '3JN', 'Jude': 'JUD', 'Revelation': 'REV'
                                   };
-
+                                  
                                   // Extract book name and reference
                                   const parts = match.match(/^(.+?)\s+(\d+.*)$/);
                                   if (parts) {
                                     const bookName = parts[1].trim();
                                     const reference = parts[2].trim();
                                     const bookAbbr = bookMap[bookName] || bookName;
-
+                                    
                                     // Check for comma-separated chapters: "30, 60, 90, 120"
                                     if (reference.includes(',') && !reference.includes(':')) {
                                       const chapters = reference.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
-
+                                      
                                       if (chapters.length > 1) {
                                         const links = chapters.map(chapter => {
                                           const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
@@ -417,7 +417,7 @@ export default function ActivityPage() {
                                         return `${bookName} ${links.join(', ')}`;
                                       }
                                     }
-
+                                    
                                     // Check for chapter range: "33-34"
                                     const chapterRangeMatch = reference.match(/^(\d+)-(\d+)$/);
                                     if (chapterRangeMatch) {
@@ -427,17 +427,17 @@ export default function ActivityPage() {
                                       const url2 = `https://www.bible.com/bible/111/${bookAbbr}.${chapter2}.NIV`;
                                       return `${bookName} <a href="${url1}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter1}</a>-<a href="${url2}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter2}</a>`;
                                     }
-
+                                    
                                     // Single chapter or verse reference
                                     const formattedRef = reference.replace(/:/g, '.');
                                     const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
                                     return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
                                   }
-
+                                  
                                   return match;
                                 });
                               }
-
+                              
                               return (
                                 <div key={`bible-${index}`}>
                                   <div 
@@ -549,7 +549,7 @@ export default function ActivityPage() {
                       <p>Select a week to restart the program today.</p>
                       <p>(Resetting the current week to a previous week will clear all posts and points for that Week/Day and after.)</p>
                     </div>
-
+                    
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Select Week</label>
                       <Select value={reengageWeek} onValueChange={setReengageWeek}>
