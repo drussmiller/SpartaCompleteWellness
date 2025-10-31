@@ -10,7 +10,6 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 
 export default function CommentsPage() {
@@ -19,14 +18,6 @@ export default function CommentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const keyboardHeight = useKeyboardAdjustment();
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      // Reset any styles if needed
-    };
-  }, []);
 
   // Add swipe-to-close functionality - detect swipe right anywhere on the page
   useEffect(() => {
@@ -203,22 +194,10 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div 
-        className="flex flex-col bg-white w-full"
-        style={{
-          minHeight: '100dvh',
-          paddingTop: '4rem',
-          overflow: 'hidden'
-        }}
-      >
+      <div className="flex flex-col h-[calc(100vh-4rem)] bg-white w-full overflow-hidden">
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        <ScrollArea 
-          className="flex-1 overflow-y-auto"
-          style={{
-            paddingBottom: `${keyboardHeight}px`
-          }}
-        >
+        <ScrollArea className="flex-1 overflow-y-auto pb-48">
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
               <PostView post={originalPost} />
@@ -230,16 +209,10 @@ export default function CommentsPage() {
                 <CommentList comments={comments} postId={parseInt(postId)} />
               </div>
             )}
-            <div style={{ height: '200px' }}></div>
           </div>
         </ScrollArea>
         
-        <div 
-          className="border-t border-gray-200 p-4 bg-white fixed bottom-0 left-0 right-0"
-          style={{
-            transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : 'none'
-          }}
-        >
+        <div className="border-t border-gray-200 p-4 bg-white">
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {

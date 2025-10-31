@@ -15,7 +15,6 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -58,7 +57,6 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -556,9 +554,8 @@ export function MessageSlideCard() {
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea
-                className="flex-1 bg-white overflow-y-auto"
+                className="flex-1 bg-white overflow-y-auto pb-48"
                 style={{
-                  paddingBottom: `calc(8rem + ${keyboardHeight}px)`,
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
                 }}
@@ -628,10 +625,9 @@ export function MessageSlideCard() {
 
               {/* Message Input - Positioned at bottom of container */}
               <div 
-                className="p-4 border-t bg-white border-gray-200 fixed bottom-0 left-0 right-0"
+                className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : 'none',
                   marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
