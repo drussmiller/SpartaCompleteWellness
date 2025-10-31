@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 
+interface KeyboardState {
+  viewportHeight: number;
+  keyboardInset: number;
+}
+
 export function useKeyboardAdjustment() {
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [state, setState] = useState<KeyboardState>({
+    viewportHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
+    keyboardInset: 0
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) {
@@ -9,27 +17,29 @@ export function useKeyboardAdjustment() {
     }
 
     const viewport = window.visualViewport;
-    let initialHeight = viewport.height;
 
-    const handleResize = () => {
-      const currentHeight = viewport.height;
-      const heightDiff = initialHeight - currentHeight;
+    const updateViewport = () => {
+      const viewportHeight = viewport.height;
+      const keyboardInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
       
-      if (heightDiff > 150) {
-        setKeyboardHeight(heightDiff);
-      } else {
-        setKeyboardHeight(0);
-      }
+      setState({ viewportHeight, keyboardInset });
+      
+      document.documentElement.style.setProperty('--visual-viewport-height', `${viewportHeight}px`);
+      document.documentElement.style.setProperty('--keyboard-inset', `${keyboardInset}px`);
     };
 
-    viewport.addEventListener('resize', handleResize);
-    viewport.addEventListener('scroll', handleResize);
+    updateViewport();
+
+    viewport.addEventListener('resize', updateViewport);
+    viewport.addEventListener('scroll', updateViewport);
 
     return () => {
-      viewport.removeEventListener('resize', handleResize);
-      viewport.removeEventListener('scroll', handleResize);
+      viewport.removeEventListener('resize', updateViewport);
+      viewport.removeEventListener('scroll', updateViewport);
+      document.documentElement.style.removeProperty('--visual-viewport-height');
+      document.documentElement.style.removeProperty('--keyboard-inset');
     };
   }, []);
 
-  return keyboardHeight;
+  return state;
 }

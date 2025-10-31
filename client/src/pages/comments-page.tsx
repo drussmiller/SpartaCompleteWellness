@@ -197,10 +197,10 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full h-[calc(100vh-4rem)] overflow-hidden"
+        className="flex flex-col bg-white w-full overflow-hidden"
         style={{
-          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-          transition: 'padding-bottom 0.2s ease-in-out'
+          height: 'var(--visual-viewport-height, calc(100vh - 4rem))',
+          transition: 'height 0.2s ease-in-out'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
@@ -220,7 +220,13 @@ export default function CommentsPage() {
           </div>
         </ScrollArea>
         
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+        <div 
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            transform: keyboardHeight.keyboardInset > 0 ? `translateY(-${keyboardHeight.keyboardInset}px)` : 'none',
+            transition: 'transform 0.2s ease-in-out'
+          }}
+        >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {
