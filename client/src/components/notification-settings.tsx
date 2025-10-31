@@ -277,28 +277,30 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
 
   return (
-    <div
-      className="flex flex-col h-full overflow-y-auto"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-[60]">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="mr-2 scale-125"
+    <Sheet open={true} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-[640px] p-0">
+        <div
+          className="flex flex-col h-full overflow-y-auto"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
-          <ChevronLeft className="h-8 w-8 scale-125" />
-        </Button>
-        <SheetHeader>
-          <SheetTitle>Notification Settings</SheetTitle>
-          <SheetDescription>
-            Configure when you want to receive daily reminder notifications
-          </SheetDescription>
-        </SheetHeader>
-      </div>
+          <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-[60]">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="mr-2 scale-125"
+            >
+              <ChevronLeft className="h-8 w-8 scale-125" />
+            </Button>
+            <SheetHeader>
+              <SheetTitle>Notification Settings</SheetTitle>
+              <SheetDescription>
+                Configure when you want to receive daily reminder notifications
+              </SheetDescription>
+            </SheetHeader>
+          </div>
 
       <div
         className="p-6 space-y-6 pb-24 overflow-y-auto"
@@ -428,9 +430,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             <li>Sunday: If you haven't posted your memory verse on Saturday</li>
           </ul>
         </div>
-
-
+      </div>
         </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
