@@ -468,12 +468,11 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[100000] overflow-hidden`}
+        } z-[100000] overflow-hidden`}
         style={{
           height: '100vh',
           width: '100vw',
           backgroundColor: '#ffffff',
-          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
           touchAction: 'pan-y',
           overscrollBehavior: 'contain'
         }}
@@ -481,9 +480,9 @@ export function MessageSlideCard() {
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
-        <Card className="h-full w-full rounded-none bg-white border-none shadow-none">
-          {/* Header */}
-          <div className="flex items-center p-4 border-b bg-white border-gray-200">
+        <Card className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col">
+          {/* Header - Fixed at top */}
+          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -507,7 +506,7 @@ export function MessageSlideCard() {
           {!selectedMember ? (
             // Team Members List
             <ScrollArea
-              className="h-[calc(100vh-5rem)] bg-white"
+              className="flex-1 bg-white overflow-y-auto"
               style={{
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain'
@@ -551,12 +550,12 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col h-[calc(100vh-5rem)] bg-white">
+            <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea
-                className="flex-1 bg-white"
+                className="flex-1 bg-white overflow-y-auto"
                 style={{
-                  paddingBottom: 'calc(10rem + env(safe-area-inset-bottom))',
+                  paddingBottom: '8rem',
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
                 }}
@@ -624,13 +623,12 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input */}
+              {/* Message Input - Positioned at bottom of container */}
               <div 
-                className="p-4 border-t bg-white border-gray-200 fixed left-0 right-0 z-[100000]" 
+                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
-                  bottom: 'calc(5rem + env(safe-area-inset-bottom))',
                   backgroundColor: '#ffffff',
-                  position: 'fixed'
+                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
