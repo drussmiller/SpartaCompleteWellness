@@ -626,8 +626,7 @@ export function MessageSlideCard() {
               <div 
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
-                  backgroundColor: '#ffffff',
-                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
+                  backgroundColor: '#ffffff'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
