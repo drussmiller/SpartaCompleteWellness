@@ -191,6 +191,17 @@ export async function runMigrations() {
       console.error('Error adding daily_notifications_enabled column:', columnError);
     }
 
+    // Add confirmation_messages_enabled column to users table
+    try {
+      await db.execute(sql`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS confirmation_messages_enabled BOOLEAN DEFAULT true
+      `);
+      console.log('Added confirmation_messages_enabled column to users table');
+    } catch (columnError) {
+      console.error('Error adding confirmation_messages_enabled column:', columnError);
+    }
+
     // Add program_start_date column to users table
     try {
       await db.execute(sql`
