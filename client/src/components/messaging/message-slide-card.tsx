@@ -476,7 +476,13 @@ export function MessageSlideCard() {
           width: '100vw',
           backgroundColor: '#ffffff',
           overscrollBehavior: 'none',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          touchAction: 'none'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -486,7 +492,9 @@ export function MessageSlideCard() {
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
           style={{
             paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-            transition: 'padding-bottom 0.2s ease-in-out'
+            transition: 'padding-bottom 0.2s ease-in-out',
+            touchAction: 'none',
+            overscrollBehavior: 'none'
           }}
         >
           {/* Header - Fixed at top */}
@@ -558,9 +566,16 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden">
+            <div className="flex flex-col flex-1 bg-white overflow-hidden" style={{ touchAction: 'none' }}>
               {/* Messages List */}
-              <ScrollArea className="flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
+              <ScrollArea 
+                className="flex-1 overflow-y-auto" 
+                style={{ 
+                  overscrollBehavior: 'contain',
+                  touchAction: 'pan-y',
+                  WebkitOverflowScrolling: 'touch'
+                }}
+              >
                 <div className="space-y-4 mt-16 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div
@@ -629,7 +644,8 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  marginBottom: keyboardHeight > 0 ? '0px' : 'calc(5rem + env(safe-area-inset-bottom))'
+                  marginBottom: keyboardHeight > 0 ? '0px' : 'calc(5rem + env(safe-area-inset-bottom))',
+                  touchAction: 'none'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
