@@ -42,7 +42,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   const ensureTextareaFocus = () => {
     const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
     if (textarea) {
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
       console.log("Refocusing textarea");
     }
   };
@@ -51,7 +51,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     setTimeout(() => {
       const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
       if (textarea) {
-        textarea.focus();
+        textarea.focus({ preventScroll: true });
         console.log("Focus in CommentForm component mount");
       }
     }, 200);

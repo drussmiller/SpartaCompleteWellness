@@ -20,6 +20,20 @@ html, body {
   }
 }
 
+/* Prevent scroll when focusing input/textarea on mobile */
+input:focus,
+textarea:focus {
+  scroll-margin: 0 !important;
+}
+
+/* Prevent automatic scroll on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
 /* Aggressive prevention on all elements */
 *, *::before, *::after {
   overscroll-behavior-x: none !important;
