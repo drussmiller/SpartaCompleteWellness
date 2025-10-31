@@ -14,7 +14,8 @@ import { MessageForm } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
-import { Badge } from "@/components/ui/badge"; // Assuming Badge component is available
+import { Badge } from "@/components/ui/badge";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -57,6 +58,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -474,7 +476,9 @@ export function MessageSlideCard() {
           width: '100vw',
           backgroundColor: '#ffffff',
           touchAction: 'pan-y',
-          overscrollBehavior: 'contain'
+          overscrollBehavior: 'contain',
+          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+          transition: 'padding-bottom 0.2s ease-in-out'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
