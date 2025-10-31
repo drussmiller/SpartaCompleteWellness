@@ -1,15 +1,7 @@
 import { useEffect, useState } from 'react';
 
-interface KeyboardState {
-  viewportHeight: number;
-  keyboardInset: number;
-}
-
 export function useKeyboardAdjustment() {
-  const [state, setState] = useState<KeyboardState>({
-    viewportHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
-    keyboardInset: 0
-  });
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) {
@@ -17,29 +9,24 @@ export function useKeyboardAdjustment() {
     }
 
     const viewport = window.visualViewport;
+    const initialHeight = window.innerHeight;
 
     const updateViewport = () => {
-      const viewportHeight = viewport.height;
-      const keyboardInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      // Calculate how much smaller the viewport has become
+      const currentHeight = viewport.height;
+      const heightDiff = Math.max(0, initialHeight - currentHeight);
       
-      setState({ viewportHeight, keyboardInset });
-      
-      document.documentElement.style.setProperty('--visual-viewport-height', `${viewportHeight}px`);
-      document.documentElement.style.setProperty('--keyboard-inset', `${keyboardInset}px`);
+      setKeyboardHeight(heightDiff);
     };
 
     updateViewport();
 
     viewport.addEventListener('resize', updateViewport);
-    viewport.addEventListener('scroll', updateViewport);
 
     return () => {
       viewport.removeEventListener('resize', updateViewport);
-      viewport.removeEventListener('scroll', updateViewport);
-      document.documentElement.style.removeProperty('--visual-viewport-height');
-      document.documentElement.style.removeProperty('--keyboard-inset');
     };
   }, []);
 
-  return state;
+  return keyboardHeight;
 }
