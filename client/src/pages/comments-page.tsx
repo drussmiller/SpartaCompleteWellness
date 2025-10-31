@@ -200,7 +200,8 @@ export default function CommentsPage() {
         className="flex flex-col bg-white w-full h-[calc(100vh-4rem)]"
         style={{
           overflow: 'hidden',
-          overscrollBehavior: 'none'
+          overscrollBehavior: 'none',
+          touchAction: 'none'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
@@ -231,7 +232,7 @@ export default function CommentsPage() {
           style={{
             backgroundColor: '#ffffff',
             paddingBottom: keyboardHeight > 0 ? '3rem' : '2rem',
-            marginBottom: keyboardHeight > 0 ? '8rem' : 'calc(1rem + env(safe-area-inset-bottom))'
+            marginBottom: keyboardHeight > 0 ? '5rem' : 'calc(5rem + env(safe-area-inset-bottom))'
           }}
         >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
