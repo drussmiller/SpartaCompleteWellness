@@ -15,6 +15,7 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -57,6 +58,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -468,20 +470,21 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100000] flex flex-col`}
+        } pt-12 z-[100000] overflow-hidden`}
         style={{
-          minHeight: '100dvh',
+          height: '100vh',
           width: '100vw',
           backgroundColor: '#ffffff',
           touchAction: 'pan-y',
           overscrollBehavior: 'contain',
-          paddingTop: '3rem'
+          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+          transition: 'padding-bottom 0.2s ease-in-out'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
-        <Card className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col min-h-[100dvh]">
+        <Card className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col">
           {/* Header - Fixed at top */}
           <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
@@ -554,8 +557,9 @@ export function MessageSlideCard() {
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea
-                className="flex-1 bg-white overflow-y-auto pb-[200px]"
+                className="flex-1 bg-white overflow-y-auto"
                 style={{
+                  paddingBottom: '8rem',
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
                 }}
@@ -625,7 +629,7 @@ export function MessageSlideCard() {
 
               {/* Message Input - Positioned at bottom of container */}
               <div 
-                className="p-4 border-t bg-white border-gray-200"
+                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
                   marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'

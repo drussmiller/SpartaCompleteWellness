@@ -327,7 +327,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             placeholder={placeholder}
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
             rows={1}
-            style={{ height: '38px', minHeight: '38px', fontSize: '16px' }}
+            style={{ height: '38px', minHeight: '38px' }}
             id="message-textarea"
           />
         </div>
