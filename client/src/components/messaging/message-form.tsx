@@ -41,7 +41,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     // Focus the textarea by ID instead of ref
     const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
     if (textarea) {
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
     }
   };
 
@@ -50,7 +50,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     setTimeout(() => {
       const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
       if (textarea) {
-        textarea.focus();
+        textarea.focus({ preventScroll: true });
       }
     }, 200);
   }, []);
