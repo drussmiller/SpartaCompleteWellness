@@ -37,6 +37,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const [hour, setHour] = useState("9");
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
   const [dailyNotificationsEnabled, setDailyNotificationsEnabled] = useState(true);
+  const [confirmationMessagesEnabled, setConfirmationMessagesEnabled] = useState(true);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
@@ -84,7 +85,12 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     if (user?.dailyNotificationsEnabled !== undefined && user?.dailyNotificationsEnabled !== null) {
       setDailyNotificationsEnabled(user.dailyNotificationsEnabled);
     }
-  }, [user?.notificationTime, user?.dailyNotificationsEnabled]);
+    
+    // Load confirmation messages enabled state
+    if (user?.confirmationMessagesEnabled !== undefined && user?.confirmationMessagesEnabled !== null) {
+      setConfirmationMessagesEnabled(user.confirmationMessagesEnabled);
+    }
+  }, [user?.notificationTime, user?.dailyNotificationsEnabled, user?.confirmationMessagesEnabled]);
 
   // Convert hour + period to 24-hour format (always at :00 minutes)
   const convertTo24Hour = (hour: string, period: "AM" | "PM"): string => {
@@ -101,6 +107,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     mutationFn: async (updates: {
       notificationTime?: string;
       dailyNotificationsEnabled?: boolean;
+      confirmationMessagesEnabled?: boolean;
     }) => {
       // Get user's timezone offset in minutes
       const timezoneOffset = new Date().getTimezoneOffset();
@@ -115,6 +122,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           dailyNotificationsEnabled: updates.dailyNotificationsEnabled !== undefined 
             ? updates.dailyNotificationsEnabled 
             : dailyNotificationsEnabled,
+          confirmationMessagesEnabled: updates.confirmationMessagesEnabled !== undefined
+            ? updates.confirmationMessagesEnabled
+            : confirmationMessagesEnabled,
         },
       );
       if (!response.ok) {
@@ -145,6 +155,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const handleDailyNotificationsChange = (enabled: boolean) => {
     setDailyNotificationsEnabled(enabled);
     updateScheduleMutation.mutate({ dailyNotificationsEnabled: enabled });
+  };
+
+  // Auto-save when confirmation messages toggle changes
+  const handleConfirmationMessagesChange = (enabled: boolean) => {
+    setConfirmationMessagesEnabled(enabled);
+    updateScheduleMutation.mutate({ confirmationMessagesEnabled: enabled });
+    
+    // Store in localStorage so toast system can check it
+    localStorage.setItem('confirmationMessagesEnabled', enabled.toString());
   };
 
   const testNotificationTimeMutation = useMutation({
@@ -302,6 +321,29 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             {dailyNotificationsEnabled
               ? "Daily reminder notifications are enabled. You will receive notifications if you miss posts."
               : "Daily reminder notifications are disabled. You won't receive any daily reminder notifications."}
+          </p>
+        </div>
+
+        {/* Confirmation Messages toggle */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Confirmation Messages</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="confirmation-messages"
+              className="text-lg text-muted-foreground"
+            >
+              Show success messages
+            </Label>
+            <Switch
+              id="confirmation-messages"
+              checked={confirmationMessagesEnabled}
+              onCheckedChange={handleConfirmationMessagesChange}
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {confirmationMessagesEnabled
+              ? "You will see confirmation messages when you complete actions (e.g., 'Message sent successfully')."
+              : "Confirmation messages are disabled. Actions will complete silently without pop-up messages."}
           </p>
         </div>
 
