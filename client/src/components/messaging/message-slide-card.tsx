@@ -512,13 +512,14 @@ export function MessageSlideCard() {
           {!selectedMember ? (
             // Team Members List
             <ScrollArea
-              className="flex-1 bg-white overflow-y-auto"
+              className="flex-1 bg-white"
               style={{
                 touchAction: 'pan-y',
-                overscrollBehavior: 'contain'
+                overscrollBehavior: 'contain',
+                overflow: 'auto'
               }}
             >
-              <div className="space-y-2 p-4 pb-16 bg-white">
+              <div className="space-y-2 p-4 pb-32 bg-white">
                 {teamMembersLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 bg-white">
                     <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-2" />
