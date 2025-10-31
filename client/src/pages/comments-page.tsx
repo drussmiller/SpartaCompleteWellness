@@ -194,40 +194,38 @@ export default function CommentsPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-white z-[60] overflow-hidden">
-      <AppLayout title="Comments">
-        <div className="flex flex-col bg-white w-full h-full overflow-hidden">
-          {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
-          
-          <ScrollArea className="flex-1 overflow-y-auto">
-            <div className="container mx-auto px-4 py-6 space-y-6 bg-white">
-              <div className="bg-white">
-                <PostView post={originalPost} />
-              </div>
-              
-              {comments.length > 0 && (
-                <div className="border-t border-gray-200 pt-6 bg-white">
-                  <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
-                  <CommentList comments={comments} postId={parseInt(postId)} />
-                </div>
-              )}
+    <AppLayout title="Comments">
+      <div className="flex-1 bg-white min-h-screen w-full relative">
+        {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
+        
+        <ScrollArea className="h-[calc(100vh-6rem)]">
+          <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
+            <div className="bg-white">
+              <PostView post={originalPost} />
             </div>
-          </ScrollArea>
-          
-          <div className="border-t border-gray-200 p-4 bg-white shrink-0">
-            <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
-            <CommentForm
-              onSubmit={async (content) => {
-                await createCommentMutation.mutateAsync({
-                  content: content,
-                  postId: parseInt(postId)
-                });
-              }}
-              isSubmitting={createCommentMutation.isPending}
-            />
+            
+            {comments.length > 0 && (
+              <div className="border-t border-gray-200 pt-6 bg-white">
+                <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
+                <CommentList comments={comments} postId={parseInt(postId)} />
+              </div>
+            )}
+            
+            <div className="border-t border-gray-200 pt-6 bg-white">
+              <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
+              <CommentForm
+                onSubmit={async (content) => {
+                  await createCommentMutation.mutateAsync({
+                    content: content,
+                    postId: parseInt(postId)
+                  });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+              />
+            </div>
           </div>
-        </div>
-      </AppLayout>
-    </div>
+        </ScrollArea>
+      </div>
+    </AppLayout>
   );
 }
