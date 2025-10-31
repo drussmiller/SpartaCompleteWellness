@@ -472,13 +472,14 @@ export function MessageSlideCard() {
           isOpen ? "translate-x-0" : "translate-x-full"
         } pt-12 z-[100000] overflow-hidden`}
         style={{
-          height: '100vh',
+          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
           width: '100vw',
           backgroundColor: '#ffffff',
           touchAction: 'pan-y',
-          overscrollBehavior: 'contain',
-          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-          transition: 'padding-bottom 0.2s ease-in-out'
+          overscrollBehavior: 'none',
+          transition: 'height 0.2s ease-in-out',
+          top: 0,
+          bottom: 'auto'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -561,7 +562,8 @@ export function MessageSlideCard() {
                 style={{
                   paddingBottom: '8rem',
                   touchAction: 'pan-y',
-                  overscrollBehavior: 'contain'
+                  overscrollBehavior: 'contain',
+                  WebkitOverflowScrolling: 'touch'
                 }}
               >
                 <div className="space-y-4 mt-16 p-4 bg-white min-h-full">
@@ -632,7 +634,9 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
+                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))',
+                  position: 'relative',
+                  zIndex: 10
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}

@@ -9,7 +9,7 @@ export function useKeyboardAdjustment() {
     }
 
     const viewport = window.visualViewport;
-    let initialHeight = viewport.height;
+    const initialHeight = window.innerHeight;
 
     const handleResize = () => {
       const currentHeight = viewport.height;
@@ -17,17 +17,22 @@ export function useKeyboardAdjustment() {
       
       if (heightDiff > 150) {
         setKeyboardHeight(heightDiff);
+        
+        // Prevent page scroll when keyboard opens
+        requestAnimationFrame(() => {
+          window.scrollTo(0, 0);
+          document.body.scrollTop = 0;
+          document.documentElement.scrollTop = 0;
+        });
       } else {
         setKeyboardHeight(0);
       }
     };
 
     viewport.addEventListener('resize', handleResize);
-    viewport.addEventListener('scroll', handleResize);
 
     return () => {
       viewport.removeEventListener('resize', handleResize);
-      viewport.removeEventListener('scroll', handleResize);
     };
   }, []);
 
