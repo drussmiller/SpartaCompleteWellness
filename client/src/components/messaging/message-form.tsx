@@ -51,6 +51,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
       if (textarea) {
         textarea.focus({ preventScroll: true });
+        
+        // Scroll the focused element into view on mobile to handle keyboard
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', () => {
+            textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          });
+        }
       }
     }, 200);
   }, []);

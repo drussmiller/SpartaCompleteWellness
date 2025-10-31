@@ -13,6 +13,13 @@ html, body {
   position: relative !important;
 }
 
+/* Fix for mobile keyboard pushing fixed elements */
+@supports (height: 100dvh) {
+  html, body {
+    min-height: 100dvh;
+  }
+}
+
 /* Aggressive prevention on all elements */
 *, *::before, *::after {
   overscroll-behavior-x: none !important;

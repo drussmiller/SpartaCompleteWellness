@@ -625,7 +625,14 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t bg-white border-gray-200 fixed bottom-0 left-0 right-0 z-[100000]" style={{ marginBottom: 'calc(5rem + env(safe-area-inset-bottom))', backgroundColor: '#ffffff' }}>
+              <div 
+                className="p-4 border-t bg-white border-gray-200 fixed left-0 right-0 z-[100000]" 
+                style={{ 
+                  bottom: 'calc(5rem + env(safe-area-inset-bottom))',
+                  backgroundColor: '#ffffff',
+                  position: 'fixed'
+                }}
+              >
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm
                   onSubmit={async (content, imageData, isVideo = false) => {
