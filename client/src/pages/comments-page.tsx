@@ -200,12 +200,21 @@ export default function CommentsPage() {
         className="flex flex-col bg-white w-full h-[calc(100vh-4rem)] overflow-hidden"
         style={{
           paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-          transition: 'padding-bottom 0.2s ease-in-out'
+          transition: 'padding-bottom 0.2s ease-in-out',
+          overflow: 'hidden',
+          touchAction: 'pan-x',
+          overscrollBehavior: 'none'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        <ScrollArea className="flex-1 overflow-y-auto">
+        <ScrollArea 
+          className="flex-1 overflow-y-auto"
+          style={{
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white pb-32">
             <div className="bg-white">
               <PostView post={originalPost} />
