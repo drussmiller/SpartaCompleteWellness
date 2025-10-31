@@ -470,13 +470,14 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[100000] overflow-hidden`}
+        } pt-12 z-[100000]`}
         style={{
           height: 'var(--visual-viewport-height, 100vh)',
           width: '100vw',
           backgroundColor: '#ffffff',
           touchAction: 'pan-y',
           overscrollBehavior: 'contain',
+          overflow: 'hidden',
           transition: 'height 0.2s ease-in-out'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
@@ -558,7 +559,7 @@ export function MessageSlideCard() {
               <ScrollArea
                 className="flex-1 bg-white overflow-y-auto"
                 style={{
-                  paddingBottom: '8rem',
+                  paddingBottom: `calc(8rem + ${keyboardHeight.keyboardInset}px)`,
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
                 }}
@@ -631,9 +632,8 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))',
-                  transform: keyboardHeight.keyboardInset > 0 ? `translateY(-${keyboardHeight.keyboardInset}px)` : 'none',
-                  transition: 'transform 0.2s ease-in-out'
+                  paddingBottom: `calc(1rem + ${keyboardHeight.keyboardInset}px)`,
+                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}

@@ -21,6 +21,14 @@ export default function CommentsPage() {
   const { toast } = useToast();
   const keyboardHeight = useKeyboardAdjustment();
 
+  // Prevent document scrolling while this page is mounted
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   // Add swipe-to-close functionality - detect swipe right anywhere on the page
   useEffect(() => {
     let startX = 0;
@@ -197,15 +205,21 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full overflow-hidden"
+        className="flex flex-col bg-white w-full fixed inset-0 top-16"
         style={{
           height: 'var(--visual-viewport-height, calc(100vh - 4rem))',
+          overflow: 'hidden',
           transition: 'height 0.2s ease-in-out'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        <ScrollArea className="flex-1 overflow-y-auto">
+        <ScrollArea 
+          className="flex-1 overflow-y-auto"
+          style={{
+            paddingBottom: `calc(${keyboardHeight.keyboardInset}px)`
+          }}
+        >
           <div className="container mx-auto px-4 py-6 space-y-6 bg-white pb-32">
             <div className="bg-white">
               <PostView post={originalPost} />
@@ -223,8 +237,7 @@ export default function CommentsPage() {
         <div 
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
-            transform: keyboardHeight.keyboardInset > 0 ? `translateY(-${keyboardHeight.keyboardInset}px)` : 'none',
-            transition: 'transform 0.2s ease-in-out'
+            paddingBottom: `calc(1rem + ${keyboardHeight.keyboardInset}px)`
           }}
         >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
