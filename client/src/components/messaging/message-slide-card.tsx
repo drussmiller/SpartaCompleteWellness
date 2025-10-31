@@ -468,7 +468,7 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-16 z-[100000] overflow-hidden`}
+        } pt-12 z-[100000] overflow-hidden`}
         style={{
           height: '100vh',
           width: '100vw',
