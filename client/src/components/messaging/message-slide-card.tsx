@@ -474,7 +474,10 @@ export function MessageSlideCard() {
         style={{
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          overflow: 'hidden',
+          touchAction: 'pan-x',
+          overscrollBehavior: 'none'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -516,7 +519,8 @@ export function MessageSlideCard() {
               style={{
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
-                overflow: 'auto'
+                overflow: 'auto',
+                WebkitOverflowScrolling: 'touch'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -559,7 +563,13 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea className="flex-1 overflow-y-auto">
+              <ScrollArea 
+                className="flex-1 overflow-y-auto"
+                style={{
+                  touchAction: 'pan-y',
+                  WebkitOverflowScrolling: 'touch'
+                }}
+              >
                 <div className="space-y-4 mt-16 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div
@@ -628,8 +638,8 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  marginBottom: keyboardHeight > 0 ? '2rem' : 'calc(5rem + env(safe-area-inset-bottom))',
-                  paddingBottom: keyboardHeight > 0 ? '1rem' : '0px'
+                  paddingBottom: keyboardHeight > 0 ? '2rem' : '1rem',
+                  marginBottom: keyboardHeight > 0 ? '3rem' : 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
