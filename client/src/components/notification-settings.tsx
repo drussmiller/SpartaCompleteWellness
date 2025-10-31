@@ -98,8 +98,10 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   };
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async () => {
-      const time = convertTo24Hour(hour, period);
+    mutationFn: async (updates: {
+      notificationTime?: string;
+      dailyNotificationsEnabled?: boolean;
+    }) => {
       // Get user's timezone offset in minutes
       const timezoneOffset = new Date().getTimezoneOffset();
 
@@ -107,10 +109,12 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         "POST",
         "/api/users/notification-schedule",
         {
-          notificationTime: time,
+          notificationTime: updates.notificationTime,
           timezoneOffset: -timezoneOffset, // Negate because getTimezoneOffset returns opposite sign
           achievementNotificationsEnabled: notificationsEnabled,
-          dailyNotificationsEnabled: dailyNotificationsEnabled,
+          dailyNotificationsEnabled: updates.dailyNotificationsEnabled !== undefined 
+            ? updates.dailyNotificationsEnabled 
+            : dailyNotificationsEnabled,
         },
       );
       if (!response.ok) {
@@ -119,9 +123,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        description: "Notification schedule updated successfully",
-      });
       // Refresh user data to get updated settings
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
@@ -134,8 +135,16 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     },
   });
 
-  const handleSave = () => {
-    updateScheduleMutation.mutate();
+  // Auto-save when time changes
+  const handleTimeChange = (newHour: string, newPeriod: "AM" | "PM") => {
+    const time = convertTo24Hour(newHour, newPeriod);
+    updateScheduleMutation.mutate({ notificationTime: time });
+  };
+
+  // Auto-save when daily notifications toggle changes
+  const handleDailyNotificationsChange = (enabled: boolean) => {
+    setDailyNotificationsEnabled(enabled);
+    updateScheduleMutation.mutate({ dailyNotificationsEnabled: enabled });
   };
 
   const testNotificationTimeMutation = useMutation({
@@ -286,7 +295,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             <Switch
               id="daily-notifications"
               checked={dailyNotificationsEnabled}
-              onCheckedChange={setDailyNotificationsEnabled}
+              onCheckedChange={handleDailyNotificationsChange}
             />
           </div>
           <p className="text-base text-muted-foreground mt-1">
@@ -324,7 +333,10 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             Daily Notification Time
           </Label>
           <div className="flex gap-2 justify-center items-center">
-            <Select value={hour} onValueChange={setHour}>
+            <Select value={hour} onValueChange={(newHour) => {
+              setHour(newHour);
+              handleTimeChange(newHour, period);
+            }}>
               <SelectTrigger className="w-20 text-lg">
                 <SelectValue placeholder="Hour" />
               </SelectTrigger>
@@ -339,7 +351,11 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
                 })}
               </SelectContent>
             </Select>
-            <Select value={period} onValueChange={(v) => setPeriod(v as "AM" | "PM")}>
+            <Select value={period} onValueChange={(v) => {
+              const newPeriod = v as "AM" | "PM";
+              setPeriod(newPeriod);
+              handleTimeChange(hour, newPeriod);
+            }}>
               <SelectTrigger className="w-24 text-lg">
                 <SelectValue placeholder="AM/PM" />
               </SelectTrigger>
@@ -370,15 +386,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         </div>
 
 
-        <Button
-          className="w-full"
-          onClick={handleSave}
-          disabled={updateScheduleMutation.isPending}
-          data-testid="button-save-settings"
-        >
-          Save Settings
-        </Button>
-      </div>
+        </div>
     </div>
   );
 }
