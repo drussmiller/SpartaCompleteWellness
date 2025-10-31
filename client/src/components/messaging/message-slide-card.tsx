@@ -474,7 +474,9 @@ export function MessageSlideCard() {
         style={{
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          overscrollBehavior: 'none',
+          overflow: 'hidden'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -558,7 +560,7 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea className="flex-1 overflow-y-auto">
+              <ScrollArea className="flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
                 <div className="space-y-4 mt-16 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div
