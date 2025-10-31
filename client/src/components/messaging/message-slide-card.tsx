@@ -468,7 +468,7 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100000] overflow-hidden`}
+        } pt-16 z-[100000] overflow-hidden`}
         style={{
           height: '100vh',
           width: '100vw',
@@ -482,7 +482,7 @@ export function MessageSlideCard() {
       >
         <Card className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col">
           {/* Header - Fixed at top */}
-          <div className="flex items-center p-4 pt-16 border-b bg-white border-gray-200 flex-shrink-0">
+          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
