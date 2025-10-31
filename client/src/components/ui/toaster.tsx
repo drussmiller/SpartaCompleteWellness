@@ -7,11 +7,19 @@ import {
   ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast"
+import { createPortal } from "react-dom"
+import { useEffect, useState } from "react"
 
 export function Toaster() {
   const { toasts } = useToast()
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
 
-  return (
+  useEffect(() => {
+    const container = document.getElementById('toast-portal-root')
+    setPortalContainer(container)
+  }, [])
+
+  const toasterContent = (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
@@ -30,4 +38,10 @@ export function Toaster() {
       <ToastViewport />
     </ToastProvider>
   )
+
+  if (!portalContainer) {
+    return toasterContent
+  }
+
+  return createPortal(toasterContent, portalContainer)
 }

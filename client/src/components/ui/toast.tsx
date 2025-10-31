@@ -11,10 +11,6 @@ const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
 >(({ className, style, ...props }, ref) => {
-  const portalContainer = typeof document !== 'undefined' 
-    ? document.getElementById('toast-portal-root') 
-    : null;
-  
   return (
     <ToastPrimitives.Viewport
       ref={ref}
@@ -26,7 +22,6 @@ const ToastViewport = React.forwardRef<
         ...style,
         zIndex: 2147483647,
       }}
-      {...(portalContainer ? { container: portalContainer } : {})}
       {...props}
     />
   );
