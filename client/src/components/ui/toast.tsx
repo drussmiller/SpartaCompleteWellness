@@ -57,6 +57,7 @@ const Toast = React.forwardRef<
         ...style,
         pointerEvents: 'auto',
       }}
+      duration={5000}
       {...props}
     />
   )
