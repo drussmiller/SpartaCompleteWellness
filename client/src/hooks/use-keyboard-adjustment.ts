@@ -4,47 +4,46 @@ export function useKeyboardAdjustment() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    console.log('🎹 useKeyboardAdjustment hook initialized');
-    
-    if (typeof window === 'undefined' || !window.visualViewport) {
-      console.log('⚠️ visualViewport not available');
+    if (typeof window === 'undefined') {
       return;
     }
 
-    const viewport = window.visualViewport;
+    // Use window resize instead of visualViewport for better iOS compatibility
     const initialHeight = window.innerHeight;
-    console.log('🎹 Initial viewport height:', initialHeight);
+    let currentInputElement: HTMLElement | null = null;
 
-    const handleResize = () => {
-      const currentHeight = viewport.height;
-      const heightDiff = initialHeight - currentHeight;
-      console.log('🎹 Viewport resize detected - currentHeight:', currentHeight, 'heightDiff:', heightDiff);
-      
-      if (heightDiff > 150) {
-        console.log('✅ Keyboard detected! Setting height to:', heightDiff);
-        setKeyboardHeight(heightDiff);
-        
-        // Prevent page scroll when keyboard opens
-        requestAnimationFrame(() => {
-          window.scrollTo(0, 0);
-          document.body.scrollTop = 0;
-          document.documentElement.scrollTop = 0;
-        });
-      } else {
-        console.log('❌ Keyboard closed or small change');
-        setKeyboardHeight(0);
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        currentInputElement = target;
+        // Wait for keyboard to appear
+        setTimeout(() => {
+          const newHeight = window.innerHeight;
+          const heightDiff = initialHeight - newHeight;
+          
+          if (heightDiff > 100) {
+            setKeyboardHeight(heightDiff);
+          }
+        }, 300);
       }
     };
 
-    viewport.addEventListener('resize', handleResize);
-    console.log('🎹 Resize listener added');
+    const handleFocusOut = () => {
+      currentInputElement = null;
+      // Wait for keyboard to dismiss
+      setTimeout(() => {
+        setKeyboardHeight(0);
+      }, 100);
+    };
+
+    window.addEventListener('focusin', handleFocusIn);
+    window.addEventListener('focusout', handleFocusOut);
 
     return () => {
-      console.log('🎹 Cleaning up keyboard adjustment hook');
-      viewport.removeEventListener('resize', handleResize);
+      window.removeEventListener('focusin', handleFocusIn);
+      window.removeEventListener('focusout', handleFocusOut);
     };
   }, []);
 
-  console.log('🎹 Current keyboardHeight:', keyboardHeight);
   return keyboardHeight;
 }
