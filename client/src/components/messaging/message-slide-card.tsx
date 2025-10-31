@@ -16,7 +16,6 @@ import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
 import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
-import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -59,10 +58,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { keyboardHeight } = useKeyboardAdjustment();
-  
-  useBodyScrollLock(isOpen);
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -74,19 +70,6 @@ export function MessageSlideCard() {
       }
     }
   });
-
-  const handlePanelTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isOpen) return;
-    
-    const target = e.target as HTMLElement;
-    const scrollArea = scrollAreaRef.current;
-    
-    if (scrollArea && scrollArea.contains(target)) {
-      return;
-    }
-    
-    handleTouchMove(e);
-  }, [isOpen, handleTouchMove]);
 
   // Query for team members
   const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
@@ -491,11 +474,10 @@ export function MessageSlideCard() {
         style={{
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff',
-          overscrollBehavior: 'contain'
+          backgroundColor: '#ffffff'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
-        onTouchMove={isOpen ? handlePanelTouchMove : undefined}
+        onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
         <Card 
@@ -530,7 +512,6 @@ export function MessageSlideCard() {
           {!selectedMember ? (
             // Team Members List
             <ScrollArea
-              ref={scrollAreaRef}
               className="flex-1 bg-white overflow-y-auto"
               style={{
                 touchAction: 'pan-y',
@@ -577,7 +558,7 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-y-auto">
+              <ScrollArea className="flex-1 overflow-y-auto">
                 <div className="space-y-4 mt-16 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div

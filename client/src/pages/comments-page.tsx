@@ -19,7 +19,7 @@ export default function CommentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { keyboardHeight } = useKeyboardAdjustment();
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Add swipe-to-close functionality - detect swipe right anywhere on the page
   useEffect(() => {
