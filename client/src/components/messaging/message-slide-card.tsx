@@ -58,7 +58,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustment();
+  const { keyboardHeight } = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -472,16 +472,16 @@ export function MessageSlideCard() {
           isOpen ? "translate-x-0" : "translate-x-full"
         } pt-12 z-[100000]`}
         style={{
-          height: '100vh',
+          height: 'calc(var(--visual-viewport-height, 100vh) * 1px)',
           width: '100vw',
           backgroundColor: '#ffffff',
           overscrollBehavior: 'none',
           overflow: 'hidden',
           position: 'fixed',
-          top: 0,
+          top: 'calc(var(--visual-viewport-offset-top, 0) * 1px)',
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: 'auto',
           touchAction: 'none'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
