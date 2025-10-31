@@ -220,7 +220,13 @@ export default function CommentsPage() {
           </div>
         </ScrollArea>
         
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+        <div 
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            paddingBottom: keyboardHeight > 0 ? '3rem' : '1.5rem',
+            marginBottom: keyboardHeight > 0 ? '5rem' : '0'
+          }}
+        >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {
