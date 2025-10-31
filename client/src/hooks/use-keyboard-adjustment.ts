@@ -24,15 +24,26 @@ export function useKeyboardAdjustment() {
 
     updateViewport();
 
-    // Listen to both resize and scroll events
+    // Listen to multiple events for better compatibility
     viewport.addEventListener('resize', updateViewport);
     viewport.addEventListener('scroll', updateViewport);
-    console.log('[KEYBOARD] Event listeners added');
+    window.addEventListener('resize', updateViewport);
+    
+    // Add focus listener on document to catch keyboard events
+    const handleFocus = () => {
+      console.log('[KEYBOARD] Input focused, checking viewport...');
+      setTimeout(updateViewport, 300);
+    };
+    document.addEventListener('focusin', handleFocus);
+    
+    console.log('[KEYBOARD] Event listeners added (viewport resize/scroll + window resize + focusin)');
 
     return () => {
       console.log('[KEYBOARD] Cleaning up event listeners');
       viewport.removeEventListener('resize', updateViewport);
       viewport.removeEventListener('scroll', updateViewport);
+      window.removeEventListener('resize', updateViewport);
+      document.removeEventListener('focusin', handleFocus);
     };
   }, []);
 
