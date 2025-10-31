@@ -15,7 +15,6 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -58,7 +57,6 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -483,14 +481,9 @@ export function MessageSlideCard() {
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
-        <Card className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col">
+        <Card className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col min-h-[100dvh]">
           {/* Header - Fixed at top */}
-          <div 
-            className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
-            style={{
-              paddingTop: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : '16px'
-            }}
-          >
+          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -561,9 +554,8 @@ export function MessageSlideCard() {
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea
-                className="flex-1 bg-white overflow-y-auto pb-48"
+                className="flex-1 bg-white overflow-y-auto pb-[200px]"
                 style={{
-                  paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
                 }}
