@@ -197,12 +197,9 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full h-[calc(100vh-4rem)] overflow-hidden"
+        className="flex flex-col bg-white w-full h-[calc(100vh-4rem)]"
         style={{
-          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-          transition: 'padding-bottom 0.2s ease-in-out',
           overflow: 'hidden',
-          touchAction: 'pan-x',
           overscrollBehavior: 'none'
         }}
       >
@@ -232,8 +229,9 @@ export default function CommentsPage() {
         <div 
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
-            paddingBottom: keyboardHeight > 0 ? '3rem' : '1.5rem',
-            marginBottom: keyboardHeight > 0 ? '5rem' : '0'
+            backgroundColor: '#ffffff',
+            paddingBottom: keyboardHeight > 0 ? '3rem' : '2rem',
+            marginBottom: keyboardHeight > 0 ? '8rem' : 'calc(1rem + env(safe-area-inset-bottom))'
           }}
         >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
