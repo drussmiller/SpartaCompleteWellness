@@ -199,9 +199,11 @@ export default function CommentsPage() {
       <div 
         className="flex flex-col bg-white w-full h-[calc(100vh-4rem)]"
         style={{
+          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+          transition: 'padding-bottom 0.2s ease-in-out',
           overflow: 'hidden',
-          overscrollBehavior: 'none',
-          touchAction: 'none'
+          touchAction: 'pan-x',
+          overscrollBehavior: 'none'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
@@ -210,6 +212,8 @@ export default function CommentsPage() {
           className="flex-1 overflow-y-auto"
           style={{
             touchAction: 'pan-y',
+            overscrollBehavior: 'contain',
+            overflow: 'auto',
             WebkitOverflowScrolling: 'touch'
           }}
         >
