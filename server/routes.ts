@@ -4652,12 +4652,13 @@ export const registerRoutes = async (
       try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-        const { notificationTime, achievementNotificationsEnabled, dailyNotificationsEnabled, timezoneOffset } = req.body;
+        const { notificationTime, achievementNotificationsEnabled, dailyNotificationsEnabled, confirmationMessagesEnabled, timezoneOffset } = req.body;
         // Define update data with proper typing
         const updateData: {
           notificationTime?: string;
           achievementNotificationsEnabled?: boolean;
           dailyNotificationsEnabled?: boolean;
+          confirmationMessagesEnabled?: boolean;
           timezoneOffset?: number;
         } = {};
 
@@ -4688,6 +4689,12 @@ export const registerRoutes = async (
         if (dailyNotificationsEnabled !== undefined) {
           updateData.dailyNotificationsEnabled = dailyNotificationsEnabled;
           logger.info(`Updating daily notifications for user ${req.user.id} to ${dailyNotificationsEnabled}`);
+        }
+
+        // Add confirmation messages enabled setting if provided
+        if (confirmationMessagesEnabled !== undefined) {
+          updateData.confirmationMessagesEnabled = confirmationMessagesEnabled;
+          logger.info(`Updating confirmation messages for user ${req.user.id} to ${confirmationMessagesEnabled}`);
         }
 
         // Update user notification preferences
