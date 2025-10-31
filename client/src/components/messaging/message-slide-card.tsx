@@ -472,17 +472,9 @@ export function MessageSlideCard() {
           isOpen ? "translate-x-0" : "translate-x-full"
         } pt-12 z-[100000]`}
         style={{
-          height: 'calc(var(--visual-viewport-height, 100vh) * 1px)',
+          height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff',
-          overscrollBehavior: 'none',
-          overflow: 'hidden',
-          position: 'fixed',
-          top: 'calc(var(--visual-viewport-offset-top, 0) * 1px)',
-          left: 0,
-          right: 0,
-          bottom: 'auto',
-          touchAction: 'none'
+          backgroundColor: '#ffffff'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -492,9 +484,7 @@ export function MessageSlideCard() {
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
           style={{
             paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-            transition: 'padding-bottom 0.2s ease-in-out',
-            touchAction: 'none',
-            overscrollBehavior: 'none'
+            transition: 'padding-bottom 0.2s ease-in-out'
           }}
         >
           {/* Header - Fixed at top */}
@@ -566,16 +556,9 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden" style={{ touchAction: 'none' }}>
+            <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea 
-                className="flex-1 overflow-y-auto" 
-                style={{ 
-                  overscrollBehavior: 'contain',
-                  touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch'
-                }}
-              >
+              <ScrollArea className="flex-1 overflow-y-auto">
                 <div className="space-y-4 mt-16 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div
@@ -644,8 +627,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  marginBottom: keyboardHeight > 0 ? '0px' : 'calc(5rem + env(safe-area-inset-bottom))',
-                  touchAction: 'none'
+                  marginBottom: keyboardHeight > 0 ? '0px' : 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
