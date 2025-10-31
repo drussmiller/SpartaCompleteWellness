@@ -89,6 +89,8 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     // Load confirmation messages enabled state
     if (user?.confirmationMessagesEnabled !== undefined && user?.confirmationMessagesEnabled !== null) {
       setConfirmationMessagesEnabled(user.confirmationMessagesEnabled);
+      // Also set in localStorage so toast system can access it
+      localStorage.setItem('confirmationMessagesEnabled', user.confirmationMessagesEnabled.toString());
     }
   }, [user?.notificationTime, user?.dailyNotificationsEnabled, user?.confirmationMessagesEnabled]);
 
