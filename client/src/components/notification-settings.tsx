@@ -18,13 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
 
 interface NotificationSettingsProps {
   onClose: () => void;
@@ -277,30 +270,28 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
 
   return (
-    <Sheet open={true} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-[640px] p-0">
-        <div
-          className="flex flex-col h-full overflow-y-auto"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+    <div
+      className="flex flex-col h-full overflow-y-auto"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-[60]">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="mr-2 scale-125"
         >
-          <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-[60]">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="mr-2 scale-125"
-            >
-              <ChevronLeft className="h-8 w-8 scale-125" />
-            </Button>
-            <SheetHeader>
-              <SheetTitle>Notification Settings</SheetTitle>
-              <SheetDescription>
-                Configure when you want to receive daily reminder notifications
-              </SheetDescription>
-            </SheetHeader>
-          </div>
+          <ChevronLeft className="h-8 w-8 scale-125" />
+        </Button>
+        <div className="flex flex-col space-y-2 text-center sm:text-left">
+          <h2 className="text-lg font-semibold text-foreground">Notification Settings</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure when you want to receive daily reminder notifications
+          </p>
+        </div>
+      </div>
 
       <div
         className="p-6 space-y-6 pb-24 overflow-y-auto"
@@ -431,8 +422,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           </ul>
         </div>
       </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+    </div>
   );
 }
