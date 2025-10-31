@@ -13,6 +13,7 @@ export function useKeyboardAdjustment() {
     const updateViewport = () => {
       // Correct calculation that accounts for viewport offset
       const inset = Math.max(0, window.innerHeight - (viewport.height + viewport.offsetTop));
+      console.log('[KEYBOARD] innerHeight:', window.innerHeight, 'viewport.height:', viewport.height, 'viewport.offsetTop:', viewport.offsetTop, 'calculated inset:', inset);
       setKeyboardInset(inset);
     };
 
