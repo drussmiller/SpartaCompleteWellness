@@ -470,16 +470,14 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100000]`}
+        } z-[100000] flex flex-col`}
         style={{
-          height: '100vh',
+          minHeight: '100dvh',
           width: '100vw',
           backgroundColor: '#ffffff',
           touchAction: 'pan-y',
           overscrollBehavior: 'contain',
-          overflow: 'hidden',
-          paddingTop: '3rem',
-          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px'
+          paddingTop: '3rem'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -560,7 +558,7 @@ export function MessageSlideCard() {
               <ScrollArea
                 className="flex-1 bg-white overflow-y-auto"
                 style={{
-                  paddingBottom: '8rem',
+                  paddingBottom: `calc(8rem + ${keyboardHeight}px)`,
                   touchAction: 'pan-y',
                   overscrollBehavior: 'contain'
                 }}
@@ -630,9 +628,10 @@ export function MessageSlideCard() {
 
               {/* Message Input - Positioned at bottom of container */}
               <div 
-                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
+                className="p-4 border-t bg-white border-gray-200 fixed bottom-0 left-0 right-0"
                 style={{ 
                   backgroundColor: '#ffffff',
+                  transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : 'none',
                   marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >

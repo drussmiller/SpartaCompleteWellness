@@ -21,23 +21,10 @@ export default function CommentsPage() {
   const { toast } = useToast();
   const keyboardHeight = useKeyboardAdjustment();
 
-  // Prevent document scrolling while this page is mounted
+  // Clean up on unmount
   useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalWidth = document.body.style.width;
-    const originalTop = document.body.style.top;
-    
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = '0';
-    
     return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.width = originalWidth;
-      document.body.style.top = originalTop;
+      // Reset any styles if needed
     };
   }, []);
 
@@ -217,17 +204,22 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full h-screen fixed inset-0 top-0"
+        className="flex flex-col bg-white w-full"
         style={{
+          minHeight: '100dvh',
           paddingTop: '4rem',
-          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
           overflow: 'hidden'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="container mx-auto px-4 py-6 space-y-6 bg-white pb-32">
+        <ScrollArea 
+          className="flex-1 overflow-y-auto"
+          style={{
+            paddingBottom: `${keyboardHeight}px`
+          }}
+        >
+          <div className="container mx-auto px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
               <PostView post={originalPost} />
             </div>
@@ -238,10 +230,16 @@ export default function CommentsPage() {
                 <CommentList comments={comments} postId={parseInt(postId)} />
               </div>
             )}
+            <div style={{ height: '200px' }}></div>
           </div>
         </ScrollArea>
         
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+        <div 
+          className="border-t border-gray-200 p-4 bg-white fixed bottom-0 left-0 right-0"
+          style={{
+            transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : 'none'
+          }}
+        >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {
