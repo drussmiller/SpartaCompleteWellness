@@ -651,11 +651,11 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'fixed',
-                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '80px',
+                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+                  paddingBottom: keyboardHeight > 0 ? '1rem' : 'max(env(safe-area-inset-bottom, 0px), 5rem)',
                   zIndex: 50,
                   transition: 'bottom 0.2s ease-in-out'
                 }}
