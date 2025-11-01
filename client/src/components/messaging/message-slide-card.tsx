@@ -485,10 +485,6 @@ export function MessageSlideCard() {
       >
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
-          style={{
-            paddingBottom: keyboardHeight > 0 ? `${Math.min(keyboardHeight - 60, 250)}px` : '0px',
-            transition: 'padding-bottom 0.2s ease-in-out'
-          }}
         >
           {/* Header - Fixed at top */}
           <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
@@ -561,16 +557,17 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden">
+            <div className="flex flex-col flex-1 bg-white overflow-hidden relative">
               {/* Messages List */}
               <ScrollArea 
                 className="flex-1 overflow-y-auto"
                 style={{
                   touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch'
+                  WebkitOverflowScrolling: 'touch',
+                  paddingBottom: `${120 + (keyboardHeight > 0 ? keyboardHeight : 0)}px`
                 }}
               >
-                <div className="space-y-4 mt-16 p-4 bg-white pb-32">
+                <div className="space-y-4 mt-16 p-4 bg-white">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -633,13 +630,17 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Positioned at bottom of container */}
+              {/* Message Input - Fixed at bottom */}
               <div 
-                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
+                className="p-4 border-t bg-white border-gray-200"
                 style={{ 
+                  position: 'fixed',
+                  left: 0,
+                  right: 0,
+                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : 'max(5rem, env(safe-area-inset-bottom))',
                   backgroundColor: '#ffffff',
-                  paddingBottom: '1rem',
-                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
+                  zIndex: 10,
+                  transition: 'bottom 0.2s ease-in-out'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
