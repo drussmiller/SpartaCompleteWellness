@@ -491,7 +491,13 @@ export function MessageSlideCard() {
           }}
         >
           {/* Header - Fixed at top */}
-          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
+          <div 
+            className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
+            style={{
+              paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '1rem',
+              transition: 'padding-top 0.2s ease-in-out'
+            }}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -567,7 +573,9 @@ export function MessageSlideCard() {
                 className="flex-1 overflow-y-auto"
                 style={{
                   touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch'
+                  WebkitOverflowScrolling: 'touch',
+                  paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+                  transition: 'padding-top 0.2s ease-in-out'
                 }}
               >
                 <div 
@@ -638,18 +646,9 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Fixed at bottom of viewport */}
+              {/* Message Input - Natural position */}
               <div 
                 className="p-4 border-t bg-white border-gray-200"
-                style={{ 
-                  position: 'fixed',
-                  bottom: keyboardHeight === 0 ? '80px' : '0px',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#ffffff',
-                  paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
-                  zIndex: 50
-                }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm
