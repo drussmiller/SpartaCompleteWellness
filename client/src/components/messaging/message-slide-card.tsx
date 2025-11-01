@@ -486,7 +486,7 @@ export function MessageSlideCard() {
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
           style={{
-            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+            paddingBottom: '0px',
             transition: 'padding-bottom 0.2s ease-in-out'
           }}
         >
@@ -494,7 +494,7 @@ export function MessageSlideCard() {
           <div 
             className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
             style={{
-              paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '1rem',
+              paddingTop: '1rem',
               transition: 'padding-top 0.2s ease-in-out'
             }}
           >
@@ -574,7 +574,7 @@ export function MessageSlideCard() {
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+                  paddingTop: '0px',
                   transition: 'padding-top 0.2s ease-in-out'
                 }}
               >
@@ -652,7 +652,7 @@ export function MessageSlideCard() {
 
                 style={{ 
                   position: 'fixed',
-                  bottom: keyboardHeight === 0 ? '80px' : '0px',
+                  bottom: keyboardHeight === 0 ? '80px' : '80px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
