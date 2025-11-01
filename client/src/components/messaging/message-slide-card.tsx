@@ -568,19 +568,14 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden" style={{ position: 'relative' }}>
+            <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea 
                 className="flex-1 overflow-y-auto"
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  overflowY: 'auto',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: '100px'
+                  marginBottom: '100px'
                 }}
               >
                 <div 
