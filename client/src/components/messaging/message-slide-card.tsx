@@ -633,13 +633,17 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Positioned at bottom of container */}
+              {/* Message Input - Fixed at bottom of viewport */}
               <div 
-                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
+                className="p-4 border-t bg-white border-gray-200"
                 style={{ 
+                  position: 'fixed',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? '3rem' : '1rem',
-                  marginBottom: keyboardHeight > 0 ? '5rem' : 'calc(5rem + env(safe-area-inset-bottom))'
+                  paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+                  zIndex: 50
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
