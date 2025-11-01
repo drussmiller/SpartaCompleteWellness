@@ -433,6 +433,7 @@ export function MessageSlideCard() {
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
+      document.body.style.top = '0';
       document.addEventListener('mousedown', handleClickOutside);
 
       return () => {
@@ -440,10 +441,28 @@ export function MessageSlideCard() {
         document.body.style.overflow = '';
         document.body.style.position = '';
         document.body.style.width = '';
+        document.body.style.top = '';
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
   }, [isOpen]);
+  
+  // Prevent scroll when keyboard opens
+  useEffect(() => {
+    if (!selectedMember) return;
+    
+    const preventScroll = (e: Event) => {
+      if (keyboardHeight > 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+    
+    window.addEventListener('scroll', preventScroll, { passive: false });
+    
+    return () => {
+      window.removeEventListener('scroll', preventScroll);
+    };
+  }, [keyboardHeight, selectedMember]);
 
   return (
     <>
