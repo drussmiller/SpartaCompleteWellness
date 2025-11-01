@@ -17,6 +17,13 @@ export function useKeyboardAdjustment() {
       
       if (heightDiff > 150) {
         setKeyboardHeight(heightDiff);
+        
+        // Prevent page scroll when keyboard opens
+        requestAnimationFrame(() => {
+          window.scrollTo(0, 0);
+          document.body.scrollTop = 0;
+          document.documentElement.scrollTop = 0;
+        });
       } else {
         setKeyboardHeight(0);
       }
