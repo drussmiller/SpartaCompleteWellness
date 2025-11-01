@@ -485,18 +485,10 @@ export function MessageSlideCard() {
       >
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
-          style={{
-            paddingBottom: '0px',
-            transition: 'padding-bottom 0.2s ease-in-out'
-          }}
         >
           {/* Header - Fixed at top */}
           <div 
             className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
-            style={{
-              paddingTop: '1rem',
-              transition: 'padding-top 0.2s ease-in-out'
-            }}
           >
             <Button
               variant="ghost"
@@ -573,9 +565,7 @@ export function MessageSlideCard() {
                 className="flex-1 overflow-y-auto"
                 style={{
                   touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch',
-                  paddingTop: '0px',
-                  transition: 'padding-top 0.2s ease-in-out'
+                  WebkitOverflowScrolling: 'touch'
                 }}
               >
                 <div 
@@ -651,13 +641,12 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'fixed',
-                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '80px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? '1rem' : 'max(env(safe-area-inset-bottom, 0px), 5rem)',
-                  zIndex: 50,
-                  transition: 'bottom 0.2s ease-in-out'
+                  paddingBottom: '1rem',
+                  zIndex: 50
                 }}
             >
                 {/* Use the MessageForm component instead of the Input + Button */}
