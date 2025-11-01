@@ -570,7 +570,12 @@ export function MessageSlideCard() {
                   WebkitOverflowScrolling: 'touch'
                 }}
               >
-                <div className="space-y-4 mt-16 p-4 bg-white pb-32">
+                <div 
+                  className="space-y-4 mt-16 p-4 bg-white"
+                  style={{
+                    paddingBottom: keyboardHeight === 0 ? '8rem' : '1rem'
+                  }}
+                >
                   {messages.map((message) => (
                     <div
                       key={message.id}
