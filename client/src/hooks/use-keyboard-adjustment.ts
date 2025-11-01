@@ -29,10 +29,20 @@ export function useKeyboardAdjustment() {
       }
     };
 
+    // Call immediately to handle initial state
+    handleResize();
+
+    // Add multiple event listeners for better coverage
     viewport.addEventListener('resize', handleResize);
+    viewport.addEventListener('scroll', handleResize);
+    
+    // Also listen to window focus events (keyboard often triggers these)
+    window.addEventListener('resize', handleResize);
 
     return () => {
       viewport.removeEventListener('resize', handleResize);
+      viewport.removeEventListener('scroll', handleResize);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
