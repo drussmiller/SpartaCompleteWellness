@@ -504,10 +504,14 @@ export function MessageSlideCard() {
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
-        onFocusCapture={() => setIsKeyboardOpen(true)}
+        onFocusCapture={() => {
+          console.log('🎹 Keyboard opened');
+          setIsKeyboardOpen(true);
+        }}
         onBlurCapture={(e) => {
           // Only close keyboard state if we're not focusing another input
           if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            console.log('🎹 Keyboard closed');
             setIsKeyboardOpen(false);
           }
         }}
@@ -595,12 +599,17 @@ export function MessageSlideCard() {
                   minHeight: 0,
                   scrollPaddingBottom: 'calc(env(safe-area-inset-bottom) + 60px)'
                 }}
-                onClick={() => {
+                onClick={(e) => {
                   // Re-focus textarea when tapping messages area to keep keyboard open
-                  const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
-                  if (textarea && isKeyboardOpen) {
-                    textarea.focus({ preventScroll: true });
-                  }
+                  // Prevent default to stop any blur events
+                  e.preventDefault();
+                  setTimeout(() => {
+                    const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
+                    if (textarea) {
+                      console.log('📱 Clicked messages area - refocusing textarea');
+                      textarea.focus({ preventScroll: true });
+                    }
+                  }, 10);
                 }}
               >
                 <div className="space-y-4 mt-4 p-4 pb-4 bg-white">
@@ -673,11 +682,17 @@ export function MessageSlideCard() {
                   position: 'sticky',
                   bottom: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: isKeyboardOpen 
-                    ? '300px' 
-                    : 'env(safe-area-inset-bottom, 1rem)',
+                  paddingBottom: (()=> {
+                    const padding = isKeyboardOpen ? '300px' : 'env(safe-area-inset-bottom, 1rem)';
+                    console.log(`⬇️ Input paddingBottom: ${padding} (isKeyboardOpen: ${isKeyboardOpen})`);
+                    return padding;
+                  })(),
                   transition: 'padding-bottom 0.2s ease-in-out',
                   zIndex: 10
+                }}
+                onClick={(e) => {
+                  // Prevent click from bubbling up and triggering parent's onClick
+                  e.stopPropagation();
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
