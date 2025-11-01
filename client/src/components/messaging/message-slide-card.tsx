@@ -446,23 +446,6 @@ export function MessageSlideCard() {
       };
     }
   }, [isOpen]);
-  
-  // Prevent scroll when keyboard opens
-  useEffect(() => {
-    if (!selectedMember) return;
-    
-    const preventScroll = (e: Event) => {
-      if (keyboardHeight > 0) {
-        window.scrollTo(0, 0);
-      }
-    };
-    
-    window.addEventListener('scroll', preventScroll, { passive: false });
-    
-    return () => {
-      window.removeEventListener('scroll', preventScroll);
-    };
-  }, [keyboardHeight, selectedMember]);
 
   return (
     <>
