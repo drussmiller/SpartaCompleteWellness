@@ -667,8 +667,8 @@ export function MessageSlideCard() {
                   bottom: 0,
                   backgroundColor: '#ffffff',
                   paddingBottom: isKeyboardOpen 
-                    ? 'max(env(safe-area-inset-bottom), 300px)' 
-                    : 'max(1rem, env(safe-area-inset-bottom))',
+                    ? '300px' 
+                    : 'env(safe-area-inset-bottom, 1rem)',
                   transition: 'padding-bottom 0.2s ease-in-out',
                   zIndex: 10
                 }}
