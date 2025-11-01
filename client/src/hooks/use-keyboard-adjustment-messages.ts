@@ -28,7 +28,7 @@ export function useKeyboardAdjustmentMessages() {
         // Calculate keyboard height: baseHeight - (viewport height + top offset)
         const calculatedHeight = baseInnerHeight - (viewport.height + viewport.offsetTop);
         
-        console.log('🎹 Keyboard detection:', {
+        console.log('🎹 Keyboard detection (geometrychange):', {
           baseInnerHeight,
           viewportHeight: viewport.height,
           viewportOffsetTop: viewport.offsetTop,
@@ -44,34 +44,15 @@ export function useKeyboardAdjustmentMessages() {
       }
     };
 
-    // Use geometrychange event instead of resize/scroll
+    // Use geometrychange event - this fires whenever viewport size changes (including keyboard)
     window.visualViewport.addEventListener('geometrychange', updateKeyboardHeight);
-
-    const handleFocusIn = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-        console.log('📝 Input focused, checking keyboard...');
-        setTimeout(updateKeyboardHeight, 300);
-      }
-    };
-
-    const handleFocusOut = () => {
-      console.log('📝 Input blurred, hiding keyboard...');
-      setTimeout(() => {
-        setKeyboardHeight(0);
-      }, 100);
-    };
-
-    // Attach to document, not window (focus events bubble to document)
-    document.addEventListener('focusin', handleFocusIn);
-    document.addEventListener('focusout', handleFocusOut);
+    
+    console.log('🎯 Listeners attached - waiting for keyboard to appear');
 
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('geometrychange', updateKeyboardHeight);
       }
-      document.removeEventListener('focusin', handleFocusIn);
-      document.removeEventListener('focusout', handleFocusOut);
     };
   }, []);
 
