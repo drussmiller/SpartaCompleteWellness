@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { MessagesSquare, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -488,9 +487,7 @@ export function MessageSlideCard() {
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
-        <Card 
-          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
-        >
+        <div className="h-full w-full flex flex-col overflow-hidden">
           {/* Header - Fixed at top */}
           <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
@@ -743,7 +740,7 @@ export function MessageSlideCard() {
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </>
   );
