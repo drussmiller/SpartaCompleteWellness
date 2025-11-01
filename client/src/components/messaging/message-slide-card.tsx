@@ -486,7 +486,7 @@ export function MessageSlideCard() {
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
           style={{
-            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+            paddingBottom: '0px',
             transition: 'padding-bottom 0.2s ease-in-out'
           }}
         >
@@ -581,7 +581,7 @@ export function MessageSlideCard() {
                 <div 
                   className="space-y-4 mt-16 p-4 bg-white"
                   style={{
-                    paddingBottom: keyboardHeight === 0 ? '8rem' : '1rem'
+                    paddingBottom: '1rem'
                   }}
                 >
                   {messages.map((message) => (
