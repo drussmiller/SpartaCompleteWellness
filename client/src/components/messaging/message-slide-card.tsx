@@ -479,7 +479,10 @@ export function MessageSlideCard() {
           backgroundColor: '#ffffff',
           overflow: 'hidden',
           touchAction: 'pan-x',
-          overscrollBehavior: 'none'
+          overscrollBehavior: 'none',
+          position: 'fixed',
+          top: 0,
+          left: 0
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -487,6 +490,10 @@ export function MessageSlideCard() {
       >
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
+          style={{
+            position: 'relative',
+            height: '100%'
+          }}
         >
           {/* Header - Fixed at top */}
           <div 
