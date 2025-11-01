@@ -55,9 +55,27 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Set viewport height CSS variable on mount and resize
+  useEffect(() => {
+    const updateViewportHeight = () => {
+      const vh = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--viewport-height', `${vh}px`);
+    };
+    
+    updateViewportHeight();
+    window.addEventListener('resize', updateViewportHeight);
+    window.addEventListener('orientationchange', updateViewportHeight);
+    
+    return () => {
+      window.removeEventListener('resize', updateViewportHeight);
+      window.removeEventListener('orientationchange', updateViewportHeight);
+    };
+  }, []);
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -477,7 +495,7 @@ export function MessageSlideCard() {
           right: 0,
           bottom: 0,
           width: '100vw',
-          height: '100vh',
+          minHeight: 'var(--viewport-height, 100dvh)',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
           touchAction: 'pan-x',
@@ -486,6 +504,13 @@ export function MessageSlideCard() {
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
+        onFocusCapture={() => setIsKeyboardOpen(true)}
+        onBlurCapture={(e) => {
+          // Only close keyboard state if we're not focusing another input
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setIsKeyboardOpen(false);
+          }
+        }}
       >
         <div className="h-full w-full flex flex-col overflow-hidden">
           {/* Header - Fixed at top */}
@@ -567,7 +592,8 @@ export function MessageSlideCard() {
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'contain',
-                  minHeight: 0
+                  minHeight: 0,
+                  scrollPaddingBottom: 'calc(env(safe-area-inset-bottom) + 60px)'
                 }}
               >
                 <div className="space-y-4 mt-4 p-4 pb-32 bg-white">
@@ -635,10 +661,16 @@ export function MessageSlideCard() {
 
               {/* Message Input - Sticky at bottom */}
               <div 
-                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
+                className="p-4 border-t bg-white border-gray-200"
                 style={{ 
+                  position: 'sticky',
+                  bottom: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: 'max(1rem, env(safe-area-inset-bottom))'
+                  paddingBottom: isKeyboardOpen 
+                    ? 'max(env(safe-area-inset-bottom), 300px)' 
+                    : 'max(1rem, env(safe-area-inset-bottom))',
+                  transition: 'padding-bottom 0.2s ease-in-out',
+                  zIndex: 10
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
