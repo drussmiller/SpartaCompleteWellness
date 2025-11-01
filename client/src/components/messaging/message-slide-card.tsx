@@ -49,6 +49,8 @@ interface Message {
 }
 
 export function MessageSlideCard() {
+  console.log('🚀 MessageSlideCard component rendering');
+  
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -59,6 +61,8 @@ export function MessageSlideCard() {
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
   const keyboardHeight = useKeyboardAdjustmentMessages();
+  
+  console.log('🔧 keyboardHeight value:', keyboardHeight);
   
   // Debug log to verify keyboardHeight changes
   useEffect(() => {
