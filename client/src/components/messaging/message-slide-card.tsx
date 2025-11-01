@@ -649,6 +649,16 @@ export function MessageSlideCard() {
               {/* Message Input - Natural position */}
               <div 
                 className="p-4 border-t bg-white border-gray-200"
+
+                style={{ 
+                  position: 'fixed',
+                  bottom: '80px',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: '#ffffff',
+                  paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+                  zIndex: 50
+                }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm
