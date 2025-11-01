@@ -516,12 +516,21 @@ export function MessageSlideCard() {
               {selectedMember ? selectedMember.username : "Messages"}
             </h2>
             
-            {/* Debug Panel - VISIBLE ON SCREEN */}
-            <div className="fixed top-14 right-0 bg-red-600 text-white text-[10px] p-1 z-[200000] font-mono leading-tight">
+            {/* Debug Panel - VISIBLE ON SCREEN - stays in viewport */}
+            <div 
+              className="bg-red-600 text-white text-[10px] p-1 font-mono leading-tight"
+              style={{
+                position: 'fixed',
+                top: '60px',
+                right: '0',
+                zIndex: 999999,
+                pointerEvents: 'none'
+              }}
+            >
               <div>Hook: {keyboardHeight !== undefined ? 'OK' : 'FAIL'}</div>
               <div>KB: {keyboardHeight}px</div>
-              <div>Win: {window.innerHeight}px</div>
-              <div>VP: {window.visualViewport?.height || 'NO'}px</div>
+              <div>Win: {typeof window !== 'undefined' ? window.innerHeight : 'N/A'}px</div>
+              <div>VP: {typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : 'NO'}px</div>
             </div>
           </div>
 

@@ -28,12 +28,11 @@ export function useKeyboardAdjustmentMessages() {
         // Calculate keyboard height: baseHeight - (viewport height + top offset)
         const calculatedHeight = baseInnerHeight - (viewport.height + viewport.offsetTop);
         
-        console.log('🎹 Keyboard detection (geometrychange):', {
-          baseInnerHeight,
-          viewportHeight: viewport.height,
-          viewportOffsetTop: viewport.offsetTop,
-          calculatedHeight,
-          willSetKeyboard: calculatedHeight > 50
+        console.log('🎹 Keyboard check:', {
+          base: baseInnerHeight,
+          vpHeight: viewport.height,
+          vpTop: viewport.offsetTop,
+          calc: calculatedHeight
         });
         
         if (calculatedHeight > 50) {
@@ -44,15 +43,23 @@ export function useKeyboardAdjustmentMessages() {
       }
     };
 
-    // Use geometrychange event - this fires whenever viewport size changes (including keyboard)
+    // Use geometrychange event
     window.visualViewport.addEventListener('geometrychange', updateKeyboardHeight);
+    window.visualViewport.addEventListener('resize', updateKeyboardHeight);
+    window.visualViewport.addEventListener('scroll', updateKeyboardHeight);
     
-    console.log('🎯 Listeners attached - waiting for keyboard to appear');
+    // Poll every 200ms as fallback for iOS Safari
+    const pollInterval = setInterval(updateKeyboardHeight, 200);
+    
+    console.log('🎯 Listeners + polling active');
 
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('geometrychange', updateKeyboardHeight);
+        window.visualViewport.removeEventListener('resize', updateKeyboardHeight);
+        window.visualViewport.removeEventListener('scroll', updateKeyboardHeight);
       }
+      clearInterval(pollInterval);
     };
   }, []);
 
