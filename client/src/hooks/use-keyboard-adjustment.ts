@@ -4,44 +4,35 @@ export function useKeyboardAdjustment() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !window.visualViewport) {
       return;
     }
 
-    // Use window resize instead of visualViewport for better iOS compatibility
+    const viewport = window.visualViewport;
     const initialHeight = window.innerHeight;
-    let currentInputElement: HTMLElement | null = null;
 
-    const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-        currentInputElement = target;
-        // Wait for keyboard to appear
-        setTimeout(() => {
-          const newHeight = window.innerHeight;
-          const heightDiff = initialHeight - newHeight;
-          
-          if (heightDiff > 100) {
-            setKeyboardHeight(heightDiff);
-          }
-        }, 300);
+    const handleResize = () => {
+      const currentHeight = viewport.height;
+      const heightDiff = initialHeight - currentHeight;
+      
+      if (heightDiff > 150) {
+        setKeyboardHeight(heightDiff);
+        
+        // Prevent page scroll when keyboard opens
+        requestAnimationFrame(() => {
+          window.scrollTo(0, 0);
+          document.body.scrollTop = 0;
+          document.documentElement.scrollTop = 0;
+        });
+      } else {
+        setKeyboardHeight(0);
       }
     };
 
-    const handleFocusOut = () => {
-      currentInputElement = null;
-      // Wait for keyboard to dismiss
-      setTimeout(() => {
-        setKeyboardHeight(0);
-      }, 100);
-    };
-
-    window.addEventListener('focusin', handleFocusIn);
-    window.addEventListener('focusout', handleFocusOut);
+    viewport.addEventListener('resize', handleResize);
 
     return () => {
-      window.removeEventListener('focusin', handleFocusIn);
-      window.removeEventListener('focusout', handleFocusOut);
+      viewport.removeEventListener('resize', handleResize);
     };
   }, []);
 
