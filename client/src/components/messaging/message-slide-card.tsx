@@ -59,6 +59,11 @@ export function MessageSlideCard() {
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
   const keyboardHeight = useKeyboardAdjustmentMessages();
+  
+  // Debug log to verify keyboardHeight changes
+  useEffect(() => {
+    console.log('🔢 keyboardHeight changed:', keyboardHeight);
+  }, [keyboardHeight]);
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({

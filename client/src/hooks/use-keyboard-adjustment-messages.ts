@@ -4,12 +4,23 @@ export function useKeyboardAdjustmentMessages() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.visualViewport) {
+    console.log('⚡ useKeyboardAdjustmentMessages hook initialized');
+    
+    if (typeof window === 'undefined') {
+      console.log('⚠️ Window is undefined');
+      return;
+    }
+    
+    if (!window.visualViewport) {
+      console.log('⚠️ visualViewport not supported');
       return;
     }
 
+    console.log('✅ visualViewport supported, setting up listeners');
+    
     // Capture baseline height before keyboard appears
     const baseInnerHeight = window.innerHeight;
+    console.log('📏 Baseline height:', baseInnerHeight);
 
     const updateKeyboardHeight = () => {
       if (window.visualViewport) {
