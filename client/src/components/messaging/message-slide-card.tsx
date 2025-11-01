@@ -647,7 +647,7 @@ export function MessageSlideCard() {
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: '3rem',
+                  paddingBottom: '2rem',
                   zIndex: 50
                 }}
             >
