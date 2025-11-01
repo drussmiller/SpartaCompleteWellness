@@ -486,7 +486,7 @@ export function MessageSlideCard() {
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
           style={{
-            paddingBottom: '0px',
+            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
             transition: 'padding-bottom 0.2s ease-in-out'
           }}
         >
@@ -652,14 +652,14 @@ export function MessageSlideCard() {
 
                 style={{ 
                   position: 'fixed',
-                  bottom: '80px',
+                  bottom: keyboardHeight === 0 ? '80px' : '0px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
                   paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
                   zIndex: 50
                 }}
-              >
+            >
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm
                   onSubmit={async (content, imageData, isVideo = false) => {
