@@ -652,12 +652,13 @@ export function MessageSlideCard() {
 
                 style={{ 
                   position: 'fixed',
-                  bottom: keyboardHeight === 0 ? '80px' : '80px',
+                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '80px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
                   paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
-                  zIndex: 50
+                  zIndex: 50,
+                  transition: 'bottom 0.2s ease-in-out'
                 }}
             >
                 {/* Use the MessageForm component instead of the Input + Button */}
