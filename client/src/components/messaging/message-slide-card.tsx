@@ -637,7 +637,7 @@ export function MessageSlideCard() {
                   position: 'fixed',
                   left: 0,
                   right: 0,
-                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : 'max(5rem, env(safe-area-inset-bottom))',
+                  bottom: keyboardHeight > 0 ? '0px' : 'max(5rem, env(safe-area-inset-bottom))',
                   backgroundColor: '#ffffff',
                   zIndex: 10,
                   transition: 'bottom 0.2s ease-in-out'
