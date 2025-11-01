@@ -595,8 +595,15 @@ export function MessageSlideCard() {
                   minHeight: 0,
                   scrollPaddingBottom: 'calc(env(safe-area-inset-bottom) + 60px)'
                 }}
+                onClick={() => {
+                  // Re-focus textarea when tapping messages area to keep keyboard open
+                  const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
+                  if (textarea && isKeyboardOpen) {
+                    textarea.focus({ preventScroll: true });
+                  }
+                }}
               >
-                <div className="space-y-4 mt-4 p-4 pb-32 bg-white">
+                <div className="space-y-4 mt-4 p-4 pb-4 bg-white">
                   {messages.map((message) => (
                     <div
                       key={message.id}
