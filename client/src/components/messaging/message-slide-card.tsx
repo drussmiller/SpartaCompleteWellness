@@ -15,7 +15,6 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
-import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -60,14 +59,6 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustmentMessages();
-  
-  console.log('🔧 keyboardHeight value:', keyboardHeight);
-  
-  // Debug log to verify keyboardHeight changes
-  useEffect(() => {
-    console.log('🔢 keyboardHeight changed:', keyboardHeight);
-  }, [keyboardHeight]);
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -481,13 +472,17 @@ export function MessageSlideCard() {
           isOpen ? "translate-x-0" : "translate-x-full"
         } pt-12 z-[100000]`}
         style={{
-          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           width: '100vw',
+          height: '100vh',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
           touchAction: 'pan-x',
-          overscrollBehavior: 'none',
-          transition: 'height 0.2s ease-in-out'
+          overscrollBehavior: 'none'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -515,23 +510,6 @@ export function MessageSlideCard() {
             <h2 className="text-lg font-semibold text-black">
               {selectedMember ? selectedMember.username : "Messages"}
             </h2>
-            
-            {/* Debug Panel - VISIBLE ON SCREEN - stays in viewport */}
-            <div 
-              className="bg-red-600 text-white text-[10px] p-1 font-mono leading-tight"
-              style={{
-                position: 'fixed',
-                top: '60px',
-                right: '0',
-                zIndex: 999999,
-                pointerEvents: 'none'
-              }}
-            >
-              <div>Hook: {keyboardHeight !== undefined ? 'OK' : 'FAIL'}</div>
-              <div>KB: {keyboardHeight}px</div>
-              <div>Win: {typeof window !== 'undefined' ? window.innerHeight : 'N/A'}px</div>
-              <div>VP: {typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : 'NO'}px</div>
-            </div>
           </div>
 
           {/* Content Area */}
@@ -584,17 +562,18 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden relative">
-              {/* Messages List */}
-              <ScrollArea 
+            <div className="flex flex-col h-full bg-white overflow-hidden">
+              {/* Messages List - Flexible area that shrinks when keyboard appears */}
+              <div 
                 className="flex-1 overflow-y-auto"
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  paddingBottom: `${120 + (keyboardHeight > 0 ? keyboardHeight : 0)}px`
+                  overscrollBehavior: 'contain',
+                  minHeight: 0
                 }}
               >
-                <div className="space-y-4 mt-16 p-4 bg-white">
+                <div className="space-y-4 mt-4 p-4 pb-32 bg-white">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -655,18 +634,14 @@ export function MessageSlideCard() {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
 
-              {/* Message Input - Fixed at bottom */}
+              {/* Message Input - Sticky at bottom */}
               <div 
-                className="p-4 border-t bg-white border-gray-200"
+                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: keyboardHeight > 0 ? '0px' : 'max(5rem, env(safe-area-inset-bottom))',
                   backgroundColor: '#ffffff',
-                  zIndex: 10
+                  paddingBottom: 'max(1rem, env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
