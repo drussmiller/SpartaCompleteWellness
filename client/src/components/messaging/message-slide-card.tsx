@@ -485,10 +485,6 @@ export function MessageSlideCard() {
       >
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
-          style={{
-            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-            transition: 'padding-bottom 0.2s ease-in-out'
-          }}
         >
           {/* Header - Fixed at top */}
           <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
@@ -638,8 +634,8 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? '3rem' : '1rem',
-                  marginBottom: keyboardHeight > 0 ? '5rem' : 'calc(5rem + env(safe-area-inset-bottom))'
+                  paddingBottom: '1rem',
+                  marginBottom: keyboardHeight > 0 ? `${Math.min(keyboardHeight, 300)}px` : 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
