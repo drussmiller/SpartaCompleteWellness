@@ -14,6 +14,13 @@ export function useKeyboardAdjustmentMessages() {
         const visualHeight = window.visualViewport.height;
         const diff = layoutHeight - visualHeight;
         
+        console.log('🎹 Keyboard detection:', {
+          layoutHeight,
+          visualHeight,
+          diff,
+          willSetKeyboard: diff > 100
+        });
+        
         if (diff > 100) {
           setKeyboardHeight(diff);
         } else {
