@@ -18,13 +18,6 @@ export function useKeyboardAdjustment() {
       // Only set keyboard height if difference is significant (keyboard is open)
       if (heightDiff > 150) {
         setKeyboardHeight(heightDiff);
-        
-        // Prevent any scroll behavior when keyboard opens
-        requestAnimationFrame(() => {
-          if (viewport.offsetTop > 0) {
-            window.scrollTo(0, 0);
-          }
-        });
       } else {
         setKeyboardHeight(0);
       }

@@ -568,13 +568,19 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden">
+            <div className="flex flex-col flex-1 bg-white overflow-hidden" style={{ position: 'relative' }}>
               {/* Messages List */}
               <ScrollArea 
                 className="flex-1 overflow-y-auto"
                 style={{
                   touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch'
+                  WebkitOverflowScrolling: 'touch',
+                  overflowY: 'auto',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: '100px'
                 }}
               >
                 <div 
@@ -650,13 +656,13 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'fixed',
-                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '80px',
+                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? '1rem' : '2rem',
+                  paddingBottom: '1rem',
                   zIndex: 50,
-                  transition: 'bottom 0.1s ease-out'
+                  transition: 'bottom 0.15s ease-out'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
