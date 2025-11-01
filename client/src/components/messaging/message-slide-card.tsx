@@ -647,10 +647,11 @@ export function MessageSlideCard() {
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: '2rem',
-                  zIndex: 50
+                  paddingBottom: keyboardHeight > 0 ? '1rem' : '2rem',
+                  zIndex: 50,
+                  transition: 'bottom 0.1s ease-out'
                 }}
-            >
+              >
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm
                   onSubmit={async (content, imageData, isVideo = false) => {
