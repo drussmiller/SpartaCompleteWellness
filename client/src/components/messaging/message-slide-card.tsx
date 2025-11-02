@@ -645,13 +645,13 @@ export function MessageSlideCard() {
 
               {/* Message Input - Natural position */}
               <div 
-                className="p-4 border-t bg-white border-gray-200"
+                className="p-4 border-t border-gray-200"
                 style={{ 
                   position: 'absolute',
                   bottom: keyboardHeight > 0 ? `${keyboardHeight + 10}px` : '80px',
                   left: 0,
                   right: 0,
-                  backgroundColor: '#ffffff',
+                  backgroundColor: '#22c55e',
                   paddingBottom: '1rem',
                   zIndex: 50
                 }}
