@@ -487,7 +487,7 @@ export function MessageSlideCard() {
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
         <Card 
-          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
+          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
             paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
             transition: 'padding-bottom 0.2s ease-in-out'
