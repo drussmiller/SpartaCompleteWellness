@@ -429,19 +429,9 @@ export function MessageSlideCard() {
     }
 
     if (isOpen) {
-      // Prevent body scrolling when message overlay is open
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.top = '0';
       document.addEventListener('mousedown', handleClickOutside);
 
       return () => {
-        // Restore body scrolling when overlay is closed
-        document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
-        document.body.style.top = '';
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
@@ -470,19 +460,21 @@ export function MessageSlideCard() {
       {/* Full screen slide-out panel */}
       <div
         ref={cardRef}
-        className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
+        className={`fixed bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[100000]`}
+        } z-[100000]`}
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           height: '100vh',
           width: '100vw',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
-          touchAction: 'pan-x',
-          overscrollBehavior: 'none',
-          position: 'fixed',
-          top: 0,
-          left: 0
+          touchAction: 'none',
+          overscrollBehavior: 'none'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -575,7 +567,8 @@ export function MessageSlideCard() {
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  marginBottom: '100px'
+                  overflowY: 'auto',
+                  paddingBottom: '100px'
                 }}
               >
                 <div 
