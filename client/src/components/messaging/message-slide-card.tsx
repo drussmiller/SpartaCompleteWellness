@@ -55,7 +55,6 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false); // State to track input focus
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -650,7 +649,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'fixed',
-                  bottom: isInputFocused ? 0 : '60px',
+                  bottom: keyboardHeight > 0 ? 0 : '60px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
@@ -753,8 +752,6 @@ export function MessageSlideCard() {
                   isSubmitting={createMessageMutation.isPending}
                   placeholder="Enter a message"
                   defaultValue={messageText}
-                  onFocus={() => setIsInputFocused(true)} // Set focus state to true on focus
-                  onBlur={() => setIsInputFocused(false)} // Set focus state to false on blur
                 />
               </div>
             </div>
