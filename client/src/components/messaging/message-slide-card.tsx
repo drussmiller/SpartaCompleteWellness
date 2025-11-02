@@ -563,83 +563,80 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden">
+            <>
               {/* Messages List */}
-              <ScrollArea className="flex-1 overflow-y-auto">
-                <div className="space-y-4 mt-16 p-4 bg-white pb-32">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${
-                        message.sender.id === user?.id ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      {message.sender.id !== user?.id && (
-                        <Avatar className="mr-2">
-                          {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
-                          <AvatarFallback
-                            style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
-                            className="text-white"
-                          >
-                            {message.sender.username?.[0].toUpperCase() || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
+              <div className="flex-1 bg-white relative">
+                <ScrollArea className="absolute inset-0">
+                  <div className="space-y-4 mt-16 p-4 bg-white pb-32">
+                    {messages.map((message) => (
                       <div
-                        className={`max-w-[70%] p-3 rounded-lg ${
-                          message.sender.id === user?.id
-                            ? "bg-[#8A2BE2] text-white ml-2"
-                            : "bg-muted mr-2"
+                        key={message.id}
+                        className={`flex ${
+                          message.sender.id === user?.id ? "justify-end" : "justify-start"
                         }`}
                       >
-                        {message.content && (
-                          <p
-                            className="break-words"
-                            dangerouslySetInnerHTML={{
-                              __html: convertUrlsToLinks(message.content || '')
-                            }}
-                          />
+                        {message.sender.id !== user?.id && (
+                          <Avatar className="mr-2">
+                            {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
+                            <AvatarFallback
+                              style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
+                              className="text-white"
+                            >
+                              {message.sender.username?.[0].toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
                         )}
-
-                        {(message.imageUrl || message.mediaUrl) &&
-                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
-                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
-                          message.is_video ? (
-                            <VideoPlayer
-                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                              className="max-w-full rounded mt-2"
-                              onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
-                            />
-                          ) : (
-                            <img
-                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                              alt="Message image"
-                              className="max-w-full rounded mt-2"
-                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
-                              onError={(e) => {
-                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                e.currentTarget.style.display = 'none';
+                        <div
+                          className={`max-w-[70%] p-3 rounded-lg ${
+                            message.sender.id === user?.id
+                              ? "bg-[#8A2BE2] text-white ml-2"
+                              : "bg-muted mr-2"
+                          }`}
+                        >
+                          {message.content && (
+                            <p
+                              className="break-words"
+                              dangerouslySetInnerHTML={{
+                                __html: convertUrlsToLinks(message.content || '')
                               }}
                             />
-                          )
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                          )}
 
-              {/* Message Input - Positioned at bottom of container */}
+                          {(message.imageUrl || message.mediaUrl) &&
+                           (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
+                           (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
+                            message.is_video ? (
+                              <VideoPlayer
+                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                className="max-w-full rounded mt-2"
+                                onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
+                              />
+                            ) : (
+                              <img
+                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                alt="Message image"
+                                className="max-w-full rounded mt-2"
+                                onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
+                                onError={(e) => {
+                                  console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Message Input - Fixed at bottom */}
               <div 
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
-                  zIndex: 10
+                  paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
@@ -739,7 +736,7 @@ export function MessageSlideCard() {
                   defaultValue={messageText}
                 />
               </div>
-            </div>
+            </>
           )}
         </Card>
       </div>
