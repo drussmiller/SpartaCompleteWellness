@@ -469,7 +469,7 @@ export function MessageSlideCard() {
           left: 0,
           right: 0,
           bottom: 0,
-          height: '100vh',
+          height: '100dvh', // Use dynamic viewport height instead of static vh
           width: '100vw',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
@@ -642,13 +642,15 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'fixed',
-                  bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '80px',
+                  bottom: keyboardHeight > 0 ? `${keyboardHeight + 10}px` : '80px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
                   paddingBottom: '1rem',
                   zIndex: 50,
-                  transition: 'bottom 0.15s ease-out'
+                  transition: 'bottom 0.1s ease-out',
+                  transform: 'translateZ(0)', // Force GPU acceleration
+                  willChange: 'bottom' // Optimize for bottom changes
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
