@@ -469,8 +469,7 @@ export function MessageSlideCard() {
           left: 0,
           right: 0,
           bottom: 0,
-          height: '100dvh', // Use dynamic viewport height instead of static vh
-          width: '100vw',
+          top: 0,
           backgroundColor: '#ffffff',
           overflow: 'hidden',
           touchAction: 'pan-y',
@@ -483,12 +482,18 @@ export function MessageSlideCard() {
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
-            overflow: 'hidden'
+            overflow: 'hidden',
+            position: 'relative'
           }}
         >
           {/* Header - Fixed at top */}
           <div 
             className="flex items-center p-4 pt-12 border-b bg-white border-gray-200 flex-shrink-0"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 10
+            }}
           >
             <Button
               variant="ghost"
@@ -641,16 +646,13 @@ export function MessageSlideCard() {
               <div 
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
-                  position: 'fixed',
+                  position: 'absolute',
                   bottom: keyboardHeight > 0 ? `${keyboardHeight + 10}px` : '80px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
                   paddingBottom: '1rem',
-                  zIndex: 50,
-                  transition: 'bottom 0.1s ease-out',
-                  transform: 'translateZ(0)', // Force GPU acceleration
-                  willChange: 'bottom' // Optimize for bottom changes
+                  zIndex: 50
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
