@@ -11,40 +11,28 @@ export function useKeyboardAdjustment() {
     const viewport = window.visualViewport;
     const initialHeight = window.innerHeight;
 
-    const updateKeyboardHeight = () => {
+    const handleResize = () => {
       const currentHeight = viewport.height;
       const heightDiff = initialHeight - currentHeight;
       
-      // Only set keyboard height if difference is significant (keyboard is open)
       if (heightDiff > 150) {
         setKeyboardHeight(heightDiff);
+        
+        // Prevent page scroll when keyboard opens
+        requestAnimationFrame(() => {
+          window.scrollTo(0, 0);
+          document.body.scrollTop = 0;
+          document.documentElement.scrollTop = 0;
+        });
       } else {
         setKeyboardHeight(0);
       }
     };
 
-    // Add multiple event listeners for faster detection
-    viewport.addEventListener('resize', updateKeyboardHeight);
-    viewport.addEventListener('scroll', updateKeyboardHeight);
-    
-    // geometrychange event fires earlier than resize on some browsers
-    if ('ongeometrychange' in viewport) {
-      viewport.addEventListener('geometrychange', updateKeyboardHeight);
-    }
-
-    // Also listen to window resize as fallback
-    window.addEventListener('resize', updateKeyboardHeight);
-
-    // Run initial check
-    updateKeyboardHeight();
+    viewport.addEventListener('resize', handleResize);
 
     return () => {
-      viewport.removeEventListener('resize', updateKeyboardHeight);
-      viewport.removeEventListener('scroll', updateKeyboardHeight);
-      if ('ongeometrychange' in viewport) {
-        viewport.removeEventListener('geometrychange', updateKeyboardHeight);
-      }
-      window.removeEventListener('resize', updateKeyboardHeight);
+      viewport.removeEventListener('resize', handleResize);
     };
   }, []);
 

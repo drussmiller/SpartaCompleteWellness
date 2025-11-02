@@ -41,19 +41,33 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     // Focus the textarea by ID instead of ref
     const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
     if (textarea) {
-      // Prevent any scroll when focusing
-      const scrollY = window.scrollY;
       textarea.focus({ preventScroll: true });
-      window.scrollTo(0, scrollY);
     }
   };
 
   useEffect(() => {
-    // Don't auto-focus on mount to prevent initial keyboard popup
+    // Focus the textarea after component mounts
+    setTimeout(() => {
+      const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus({ preventScroll: true });
+      }
+    }, 200);
   }, []);
 
-  // Note: Removed scroll prevention as it was causing issues on iOS Safari
-  // The position: fixed input should handle positioning correctly
+  // Prevent scroll into view on focus
+  useEffect(() => {
+    const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const handleFocus = (e: FocusEvent) => {
+      e.preventDefault();
+      window.scrollTo(0, 0);
+    };
+
+    textarea.addEventListener('focus', handleFocus);
+    return () => textarea.removeEventListener('focus', handleFocus);
+  }, []);
 
   // Handle paste events for images
   useEffect(() => {
