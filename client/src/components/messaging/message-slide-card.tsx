@@ -563,11 +563,11 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <>
-              {/* Messages List */}
-              <div className="flex-1 bg-white relative">
-                <ScrollArea className="absolute inset-0">
-                  <div className="space-y-4 mt-16 p-4 bg-white pb-32">
+            <div className="flex flex-col flex-1 bg-white">
+              {/* Messages List - Scrollable */}
+              <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="space-y-4 p-4 bg-white pb-32">
                     {messages.map((message) => (
                       <div
                         key={message.id}
@@ -736,7 +736,7 @@ export function MessageSlideCard() {
                   defaultValue={messageText}
                 />
               </div>
-            </>
+            </div>
           )}
         </Card>
       </div>
