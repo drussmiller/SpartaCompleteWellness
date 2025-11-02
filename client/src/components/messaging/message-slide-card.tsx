@@ -15,7 +15,6 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -58,7 +57,6 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -565,7 +563,7 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white" style={{ overflow: 'hidden', paddingBottom: '180px' }}>
+            <div className="flex flex-col flex-1 bg-white" style={{ overflow: 'hidden' }}>
               {/* Messages List */}
               <ScrollArea 
                 className="flex-1"
@@ -576,9 +574,10 @@ export function MessageSlideCard() {
                 }}
               >
                 <div 
-                  className="space-y-4 mt-16 p-4 bg-white"
+                  className="space-y-4 p-4 bg-white"
                   style={{
-                    paddingBottom: '1rem'
+                    paddingTop: '80px',
+                    paddingBottom: '140px'
                   }}
                 >
                   {messages.map((message) => (
@@ -643,16 +642,16 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Natural position */}
+              {/* Message Input - Fixed position */}
               <div 
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
-                  position: 'absolute',
-                  bottom: keyboardHeight > 0 ? `${keyboardHeight + 10}px` : '80px',
+                  position: 'fixed',
+                  bottom: '60px',
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: '1rem',
+                  paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
                   zIndex: 50
                 }}
               >
