@@ -464,6 +464,13 @@ export function MessageSlideCard() {
           isOpen ? "translate-x-0" : "translate-x-full"
         } z-[100000]`}
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: '100vh',
+          width: '100vw',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
           touchAction: 'pan-y',
@@ -638,13 +645,13 @@ export function MessageSlideCard() {
 
               {/* Message Input - Natural position */}
               <div 
-                className="p-4 border-t border-gray-200"
+                className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'absolute',
                   bottom: keyboardHeight > 0 ? `${keyboardHeight + 10}px` : '80px',
                   left: 0,
                   right: 0,
-                  backgroundColor: '#22c55e',
+                  backgroundColor: '#ffffff',
                   paddingBottom: '1rem',
                   zIndex: 50
                 }}
