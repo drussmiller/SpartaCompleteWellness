@@ -282,7 +282,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
       >
         <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
           {/* Fixed header bar */}
-          <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000] pt-8">
+          <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
             {/* Back button */}
             <SheetClose className="absolute top-7 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <ChevronLeft className="text-xl" />
@@ -342,7 +342,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 </div>
 
                 {/* Fixed comment form at the bottom */}
-                <div className="p-4 border-t bg-background fixed left-0 right-0 z-[100001]" style={{ bottom: '60px', paddingBottom: '1rem' }}>
+                <div className="p-4 pb-28 border-t bg-background fixed bottom-0 left-0 right-0">
                   <CommentForm
                     onSubmit={async (content) => {
                       await createCommentMutation.mutateAsync(content);

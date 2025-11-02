@@ -487,14 +487,14 @@ export function MessageSlideCard() {
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
         <Card 
-          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col"
+          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
           style={{
             paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
             transition: 'padding-bottom 0.2s ease-in-out'
           }}
         >
           {/* Header - Fixed at top */}
-          <div className="flex items-center p-4 pt-12 border-b bg-white border-gray-200 flex-shrink-0">
+          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -563,80 +563,83 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white">
-              {/* Messages List - Scrollable */}
-              <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="space-y-4 p-4 bg-white pb-32">
-                    {messages.map((message) => (
+            <div className="flex flex-col flex-1 bg-white overflow-hidden">
+              {/* Messages List */}
+              <ScrollArea className="flex-1 overflow-y-auto">
+                <div className="space-y-4 mt-16 p-4 bg-white pb-32">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${
+                        message.sender.id === user?.id ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      {message.sender.id !== user?.id && (
+                        <Avatar className="mr-2">
+                          {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
+                          <AvatarFallback
+                            style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
+                            className="text-white"
+                          >
+                            {message.sender.username?.[0].toUpperCase() || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       <div
-                        key={message.id}
-                        className={`flex ${
-                          message.sender.id === user?.id ? "justify-end" : "justify-start"
+                        className={`max-w-[70%] p-3 rounded-lg ${
+                          message.sender.id === user?.id
+                            ? "bg-[#8A2BE2] text-white ml-2"
+                            : "bg-muted mr-2"
                         }`}
                       >
-                        {message.sender.id !== user?.id && (
-                          <Avatar className="mr-2">
-                            {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
-                            <AvatarFallback
-                              style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
-                              className="text-white"
-                            >
-                              {message.sender.username?.[0].toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
+                        {message.content && (
+                          <p
+                            className="break-words"
+                            dangerouslySetInnerHTML={{
+                              __html: convertUrlsToLinks(message.content || '')
+                            }}
+                          />
                         )}
-                        <div
-                          className={`max-w-[70%] p-3 rounded-lg ${
-                            message.sender.id === user?.id
-                              ? "bg-[#8A2BE2] text-white ml-2"
-                              : "bg-muted mr-2"
-                          }`}
-                        >
-                          {message.content && (
-                            <p
-                              className="break-words"
-                              dangerouslySetInnerHTML={{
-                                __html: convertUrlsToLinks(message.content || '')
+
+                        {(message.imageUrl || message.mediaUrl) &&
+                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
+                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
+                          message.is_video ? (
+                            <VideoPlayer
+                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                              className="max-w-full rounded mt-2"
+                              onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
+                            />
+                          ) : (
+                            <img
+                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                              alt="Message image"
+                              className="max-w-full rounded mt-2"
+                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
+                              onError={(e) => {
+                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
+                                e.currentTarget.style.display = 'none';
                               }}
                             />
-                          )}
-
-                          {(message.imageUrl || message.mediaUrl) &&
-                           (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
-                           (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
-                            message.is_video ? (
-                              <VideoPlayer
-                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                                className="max-w-full rounded mt-2"
-                                onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
-                              />
-                            ) : (
-                              <img
-                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                                alt="Message image"
-                                className="max-w-full rounded mt-2"
-                                onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
-                                onError={(e) => {
-                                  console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            )
-                          )}
-                        </div>
+                          )
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
 
-              {/* Message Input - Fixed at bottom */}
+              {/* Message Input - Positioned at bottom of container */}
               <div 
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))'
+                  paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
+                  zIndex: 10
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
