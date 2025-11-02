@@ -460,7 +460,7 @@ export function MessageSlideCard() {
       {/* Full screen slide-out panel */}
       <div
         ref={cardRef}
-        className={`fixed bg-white transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         } z-[100000]`}
         style={{
@@ -469,7 +469,8 @@ export function MessageSlideCard() {
           left: 0,
           right: 0,
           bottom: 0,
-          top: 0,
+          height: '100vh',
+          width: '100vw',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
           touchAction: 'pan-y',
