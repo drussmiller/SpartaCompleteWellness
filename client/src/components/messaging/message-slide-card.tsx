@@ -470,11 +470,17 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[100000]`}
+        } z-[100000]`}
         style={{
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : 'env(safe-area-inset-bottom)'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -627,9 +633,13 @@ export function MessageSlideCard() {
               <div 
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? '1rem' : '1rem',
-                  marginBottom: keyboardHeight > 0 ? '2rem' : 'calc(5rem + env(safe-area-inset-bottom))'
+                  paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
+                  zIndex: 10
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
