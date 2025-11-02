@@ -479,7 +479,6 @@ export function MessageSlideCard() {
           height: '100vh',
           width: '100vw',
           backgroundColor: '#ffffff',
-          paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : 'env(safe-area-inset-bottom)'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
@@ -494,7 +493,15 @@ export function MessageSlideCard() {
           }}
         >
           {/* Header - Fixed at top */}
-          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
+          <div 
+            className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 20,
+              paddingTop: 'calc(1rem + env(safe-area-inset-top))'
+            }}
+          >
             <Button
               variant="ghost"
               size="icon"
