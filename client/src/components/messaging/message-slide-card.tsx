@@ -473,18 +473,17 @@ export function MessageSlideCard() {
           width: '100vw',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
-          touchAction: 'none',
-          overscrollBehavior: 'none'
+          touchAction: 'pan-y',
+          overscrollBehavior: 'contain'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
         <Card 
-          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
+          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
-            position: 'relative',
-            height: '100%'
+            overflow: 'hidden'
           }}
         >
           {/* Header - Fixed at top */}
@@ -560,15 +559,14 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden">
+            <div className="flex flex-col flex-1 bg-white" style={{ overflow: 'hidden', paddingBottom: '180px' }}>
               {/* Messages List */}
               <ScrollArea 
-                className="flex-1 overflow-y-auto"
+                className="flex-1"
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  overflowY: 'auto',
-                  paddingBottom: '100px'
+                  overflow: 'auto'
                 }}
               >
                 <div 
