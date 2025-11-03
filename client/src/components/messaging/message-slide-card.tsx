@@ -55,6 +55,7 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false); // State to track keyboard visibility
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -572,14 +573,15 @@ export function MessageSlideCard() {
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  overflow: 'auto'
+                  overflow: 'auto',
+                  // Adjust padding based on keyboard state
+                  paddingBottom: isKeyboardOpen ? `calc(70px + env(safe-area-inset-bottom))` : `calc(170px + env(safe-area-inset-bottom))`
                 }}
               >
                 <div 
                   className="space-y-4 p-4 bg-white"
                   style={{
                     paddingTop: '80px',
-                    paddingBottom: '140px'
                   }}
                 >
                   {messages.map((message) => (
@@ -649,12 +651,13 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'fixed',
-                  bottom: 0,
+                  bottom: isKeyboardOpen ? `0` : '68px', // Adjust bottom position based on keyboard state
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
                   paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
-                  zIndex: 50
+                  zIndex: 50,
+                  transition: 'bottom 0.3s ease-in-out' // Smooth transition for bottom property
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
@@ -752,6 +755,8 @@ export function MessageSlideCard() {
                   isSubmitting={createMessageMutation.isPending}
                   placeholder="Enter a message"
                   defaultValue={messageText}
+                  onFocus={() => setIsKeyboardOpen(true)} // Set keyboard open on focus
+                  onBlur={() => setIsKeyboardOpen(false)} // Set keyboard closed on blur
                 />
               </div>
             </div>

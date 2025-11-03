@@ -11,6 +11,8 @@ interface MessageFormProps {
   defaultValue?: string;
   onCancel?: () => void;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({ 
@@ -19,7 +21,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   placeholder = "Enter a comment",
   defaultValue = "",
   onCancel,
-  inputRef
+  inputRef,
+  onFocus: parentOnFocus,
+  onBlur: parentOnBlur
 }: MessageFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
@@ -49,19 +53,11 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   };
 
   const onFocus = () => {
-    // Set bottom to 0px when the input is focused, assuming the keyboard is up
-    const container = document.querySelector('.flex.flex-col.gap-2.w-full') as HTMLElement;
-    if (container) {
-      container.style.bottom = '0px';
-    }
+    parentOnFocus?.();
   };
 
   const onBlur = () => {
-    // Reset bottom to default when the input is blurred
-    const container = document.querySelector('.flex.flex-col.gap-2.w-full') as HTMLElement;
-    if (container) {
-      container.style.bottom = '60px'; // Default value
-    }
+    parentOnBlur?.();
   };
 
   useEffect(() => {
