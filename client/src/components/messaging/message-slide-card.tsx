@@ -649,7 +649,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200"
                 style={{ 
                   position: 'fixed',
-                  bottom: keyboardHeight > 0 ? 0 : '60px',
+                  bottom: keyboardHeight > 0 ? 0 : 0,
                   left: 0,
                   right: 0,
                   backgroundColor: '#ffffff',
