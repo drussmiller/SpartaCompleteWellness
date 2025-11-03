@@ -652,7 +652,7 @@ export function MessageSlideCard() {
                   bottom: keyboardHeight > 0 ? 0 : '60px',
                   left: 0,
                   right: 0,
-                  backgroundColor: '#ffffff',
+                  backgroundColor: '#ffff00',
                   paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
                   zIndex: 50
                 }}
