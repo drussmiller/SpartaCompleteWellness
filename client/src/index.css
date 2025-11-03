@@ -210,8 +210,7 @@ div[data-post-id] .video-container {
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     scroll-behavior: smooth;
