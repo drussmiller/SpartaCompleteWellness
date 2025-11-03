@@ -197,12 +197,31 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full h-[calc(100vh-4rem)] overflow-hidden"
+        className="flex flex-col bg-white w-full overflow-hidden"
+        style={{
+          position: 'fixed',
+          top: '4rem',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 100
+        }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="container mx-auto px-4 py-6 space-y-6 bg-white pb-32">
+        {/* Fixed Title Box at Top */}
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+          <h3 className="text-lg font-semibold">Original Post</h3>
+        </div>
+        
+        {/* Scrollable Content */}
+        <ScrollArea 
+          className="flex-1 overflow-y-auto"
+          style={{
+            height: `calc(100vh - 4rem - 60px - ${keyboardHeight > 0 ? '200px' : '260px'})`
+          }}
+        >
+          <div className="px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
               <PostView post={originalPost} />
             </div>
@@ -216,11 +235,12 @@ export default function CommentsPage() {
           </div>
         </ScrollArea>
         
+        {/* Fixed Comment Form at Bottom */}
         <div 
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
-            position: 'fixed',
-            bottom: keyboardHeight > 0 ? 0 : '60px',
+            position: 'absolute',
+            bottom: keyboardHeight > 0 ? keyboardHeight : 60,
             left: 0,
             right: 0,
             zIndex: 50
