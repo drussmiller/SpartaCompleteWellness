@@ -572,6 +572,7 @@ export function MessageSlideCard() {
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
+                  backgroundColor: '#ffff00',
                   overflow: 'auto'
                 }}
               >
