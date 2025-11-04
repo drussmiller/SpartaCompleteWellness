@@ -464,11 +464,18 @@ export function MessageSlideCard() {
       {/* Full screen slide-out panel */}
       <div
         ref={cardRef}
-        className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
+        className={`transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100000]`}
+        }`}
         style={{
-          backgroundColor: '#ffffff'
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: '#ffffff',
+          zIndex: 2147483647,
+          isolation: 'isolate'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
