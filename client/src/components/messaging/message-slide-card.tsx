@@ -622,7 +622,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  paddingBottom: '68px'
+                  paddingBottom: '80px'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
