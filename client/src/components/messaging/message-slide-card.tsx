@@ -474,7 +474,10 @@ export function MessageSlideCard() {
         style={{
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          overflow: 'hidden',
+          touchAction: 'pan-x',
+          overscrollBehavior: 'none'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -488,7 +491,13 @@ export function MessageSlideCard() {
           }}
         >
           {/* Header - Fixed at top */}
-          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
+          <div 
+            className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
+            style={{
+              paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '1rem',
+              transition: 'padding-top 0.2s ease-in-out'
+            }}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -516,7 +525,8 @@ export function MessageSlideCard() {
               style={{
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
-                overflow: 'auto'
+                overflow: 'auto',
+                WebkitOverflowScrolling: 'touch'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -559,8 +569,21 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea className="flex-1 overflow-y-auto">
-                <div className="space-y-4 mt-16 p-4 bg-white pb-32">
+              <ScrollArea 
+                className="flex-1 overflow-y-auto"
+                style={{
+                  touchAction: 'pan-y',
+                  WebkitOverflowScrolling: 'touch',
+                  paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+                  transition: 'padding-top 0.2s ease-in-out'
+                }}
+              >
+                <div 
+                  className="space-y-4 mt-16 p-4 bg-white"
+                  style={{
+                    paddingBottom: keyboardHeight === 0 ? '8rem' : '1rem'
+                  }}
+                >
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -623,13 +646,18 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Positioned at bottom of container */}
+              {/* Message Input - Natural position */}
               <div 
-                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
+                className="p-4 border-t bg-white border-gray-200"
+
                 style={{ 
+                  position: 'fixed',
+                  bottom: keyboardHeight === 0 ? '80px' : '0px',
+                  left: 0,
+                  right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? '2rem' : '1rem',
-                  marginBottom: keyboardHeight > 0 ? '3rem' : 'calc(5rem + env(safe-area-inset-bottom))'
+                  paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+                  zIndex: 50
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
