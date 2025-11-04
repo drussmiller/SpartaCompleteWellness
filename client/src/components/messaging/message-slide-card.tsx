@@ -15,7 +15,7 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
-import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -55,11 +55,10 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false); // State to track keyboard visibility
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustmentMessages(); // Still kept for potential future use or debugging
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -94,7 +93,7 @@ export function MessageSlideCard() {
         }
 
         const users = await response.json();
-
+        
         // Debug log to verify avatarColor is in the data
         if (users.length > 0) {
           console.log('Frontend received user data:', {
@@ -391,7 +390,7 @@ export function MessageSlideCard() {
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/by-sender"] });
 
-      // Clean up states
+      // Clean up stored states
       setMessageText("");
       setPastedImage(null);
       setIsVideoFile(false);
@@ -430,9 +429,17 @@ export function MessageSlideCard() {
     }
 
     if (isOpen) {
+      // Prevent body scrolling when message overlay is open
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
       document.addEventListener('mousedown', handleClickOutside);
 
       return () => {
+        // Restore body scrolling when overlay is closed
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
@@ -463,40 +470,25 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100000]`}
+        } pt-12 z-[100000]`}
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff',
-          overflow: 'hidden',
-          touchAction: 'pan-y',
-          overscrollBehavior: 'contain'
+          backgroundColor: '#ffffff'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
         <Card 
-          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col"
+          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
           style={{
-            overflow: 'hidden',
-            position: 'relative'
+            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+            transition: 'padding-bottom 0.2s ease-in-out'
           }}
         >
           {/* Header - Fixed at top */}
-          <div 
-            className="flex items-center p-4 pt-12 border-b bg-white border-gray-200 flex-shrink-0"
-            style={{
-              position: 'sticky',
-              top: 0,
-              zIndex: 10
-            }}
-          >
+          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -524,8 +516,7 @@ export function MessageSlideCard() {
               style={{
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
-                overflow: 'auto',
-                WebkitOverflowScrolling: 'touch'
+                overflow: 'auto'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -566,24 +557,10 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white" style={{ overflow: 'hidden' }}>
+            <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea 
-                className="flex-1"
-                style={{
-                  touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch',
-                  overflow: 'auto',
-                  // Adjust padding based on keyboard state
-                  paddingBottom: isKeyboardOpen ? `calc(70px + env(safe-area-inset-bottom))` : `calc(170px + env(safe-area-inset-bottom))`
-                }}
-              >
-                <div 
-                  className="space-y-4 p-4 bg-white"
-                  style={{
-                    paddingTop: '80px',
-                  }}
-                >
+              <ScrollArea className="flex-1 overflow-y-auto">
+                <div className="space-y-4 mt-16 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -646,18 +623,13 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Fixed position */}
+              {/* Message Input - Positioned at bottom of container */}
               <div 
-                className="p-4 border-t bg-white border-gray-200"
+                className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
-                  position: 'fixed',
-                  bottom: isKeyboardOpen ? `0` : '68px', // Adjust bottom position based on keyboard state
-                  left: 0,
-                  right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
-                  zIndex: 50,
-                  transition: 'bottom 0.3s ease-in-out' // Smooth transition for bottom property
+                  paddingBottom: keyboardHeight > 0 ? '2rem' : '1rem',
+                  marginBottom: keyboardHeight > 0 ? '3rem' : 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
@@ -755,8 +727,6 @@ export function MessageSlideCard() {
                   isSubmitting={createMessageMutation.isPending}
                   placeholder="Enter a message"
                   defaultValue={messageText}
-                  onFocus={() => setIsKeyboardOpen(true)} // Set keyboard open on focus
-                  onBlur={() => setIsKeyboardOpen(false)} // Set keyboard closed on blur
                 />
               </div>
             </div>

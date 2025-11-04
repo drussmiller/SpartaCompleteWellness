@@ -259,13 +259,10 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               target.style.height = `${newHeight}px`;
             }}
             onFocus={(e) => {
-              // Only prevent scroll on mobile/touch devices
-              if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-                e.preventDefault();
-                window.scrollTo(0, 0);
-                document.body.scrollTop = 0;
-                document.documentElement.scrollTop = 0;
-              }
+              e.preventDefault();
+              window.scrollTo(0, 0);
+              document.body.scrollTop = 0;
+              document.documentElement.scrollTop = 0;
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
