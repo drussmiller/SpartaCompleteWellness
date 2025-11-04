@@ -15,7 +15,6 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -58,7 +57,6 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -470,34 +468,22 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[100000]`}
+        } z-[100000] flex flex-col`}
         style={{
-          height: '100vh',
+          minHeight: '100dvh',
           width: '100vw',
           backgroundColor: '#ffffff',
-          overflow: 'hidden',
-          touchAction: 'pan-x',
-          overscrollBehavior: 'none'
+          touchAction: 'pan-y',
+          overscrollBehavior: 'contain',
+          paddingTop: '3rem'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
-        <Card 
-          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
-          style={{
-            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-            transition: 'padding-bottom 0.2s ease-in-out'
-          }}
-        >
+        <Card className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col min-h-[100dvh]">
           {/* Header - Fixed at top */}
-          <div 
-            className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
-            style={{
-              paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '1rem',
-              transition: 'padding-top 0.2s ease-in-out'
-            }}
-          >
+          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -521,15 +507,13 @@ export function MessageSlideCard() {
           {!selectedMember ? (
             // Team Members List
             <ScrollArea
-              className="flex-1 bg-white"
+              className="flex-1 bg-white overflow-y-auto"
               style={{
                 touchAction: 'pan-y',
-                overscrollBehavior: 'contain',
-                overflow: 'auto',
-                WebkitOverflowScrolling: 'touch'
+                overscrollBehavior: 'contain'
               }}
             >
-              <div className="space-y-2 p-4 pb-32 bg-white">
+              <div className="space-y-2 p-4 pb-16 bg-white">
                 {teamMembersLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 bg-white">
                     <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-2" />
@@ -569,21 +553,14 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea 
-                className="flex-1 overflow-y-auto"
+              <ScrollArea
+                className="flex-1 bg-white overflow-y-auto pb-[200px]"
                 style={{
                   touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch',
-                  paddingTop: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-                  transition: 'padding-top 0.2s ease-in-out'
+                  overscrollBehavior: 'contain'
                 }}
               >
-                <div 
-                  className="space-y-4 mt-16 p-4 bg-white"
-                  style={{
-                    paddingBottom: keyboardHeight === 0 ? '8rem' : '1rem'
-                  }}
-                >
+                <div className="space-y-4 mt-16 p-4 bg-white min-h-full">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -646,18 +623,12 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Natural position */}
+              {/* Message Input - Positioned at bottom of container */}
               <div 
                 className="p-4 border-t bg-white border-gray-200"
-
                 style={{ 
-                  position: 'fixed',
-                  bottom: keyboardHeight === 0 ? '80px' : '0px',
-                  left: 0,
-                  right: 0,
                   backgroundColor: '#ffffff',
-                  paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
-                  zIndex: 50
+                  marginBottom: 'calc(5rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
