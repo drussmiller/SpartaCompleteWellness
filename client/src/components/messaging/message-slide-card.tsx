@@ -431,15 +431,11 @@ export function MessageSlideCard() {
     if (isOpen) {
       // Prevent body scrolling when message overlay is open
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
       document.addEventListener('mousedown', handleClickOutside);
 
       return () => {
         // Restore body scrolling when overlay is closed
         document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
@@ -474,7 +470,9 @@ export function MessageSlideCard() {
         style={{
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          top: 0,
+          left: 0
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -482,10 +480,6 @@ export function MessageSlideCard() {
       >
         <Card 
           className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
-          style={{
-            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-            transition: 'padding-bottom 0.2s ease-in-out'
-          }}
         >
           {/* Header - Fixed at top */}
           <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
@@ -628,8 +622,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? '2rem' : '1rem',
-                  marginBottom: keyboardHeight > 0 ? '2rem' : 'calc(5rem + env(safe-area-inset-bottom))'
+                  paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
