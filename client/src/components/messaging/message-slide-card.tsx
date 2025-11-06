@@ -55,7 +55,6 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
-  const [isViewportShrunk, setIsViewportShrunk] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -71,38 +70,6 @@ export function MessageSlideCard() {
       }
     }
   });
-
-  // Track viewport changes to determine if the keyboard is likely active
-  useEffect(() => {
-    const handleResize = () => {
-      // Compare visual viewport height with layout viewport height
-      // If visual viewport is significantly smaller, assume keyboard is active
-      const visualViewportHeight = window.visualViewport?.height;
-      const layoutViewportHeight = window.innerHeight; // layout viewport height
-
-      if (visualViewportHeight && layoutViewportHeight) {
-        const shrinkRatio = (layoutViewportHeight - visualViewportHeight) / layoutViewportHeight;
-        // A threshold of 0.1 (10%) is often a good starting point
-        setIsViewportShrunk(shrinkRatio > 0.1);
-      } else {
-        // Fallback if visualViewport is not available
-        setIsViewportShrunk(keyboardHeight > 0); // Use keyboardHeight as a fallback
-      }
-    };
-
-    // Initial check
-    handleResize();
-
-    // Add event listener for resize
-    window.visualViewport?.addEventListener('resize', handleResize);
-    window.addEventListener('resize', handleResize); // Fallback for older browsers or different scenarios
-
-    // Cleanup event listener
-    return () => {
-      window.visualViewport?.removeEventListener('resize', handleResize);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [keyboardHeight]); // Depend on keyboardHeight for fallback logic
 
   // Query for team members
   const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
@@ -661,7 +628,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  paddingBottom: isViewportShrunk ? '20px' : '96px'
+                  paddingBottom: '20px'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
