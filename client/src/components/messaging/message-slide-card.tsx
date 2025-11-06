@@ -469,8 +469,8 @@ export function MessageSlideCard() {
         } z-[100000]`}
         style={{
           paddingTop: '48px',
-          height: '100dvh',
-          maxHeight: '100dvh',
+          height: '100vh',
+          maxHeight: '100vh',
           backgroundColor: '#ffffff',
           overflow: 'hidden'
         }}
