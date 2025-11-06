@@ -472,7 +472,8 @@ export function MessageSlideCard() {
           left: 0,
           right: 0,
           paddingTop: '48px',
-          height: '100vh',
+          minHeight: '100vh',
+          height: '200vh',
           backgroundColor: '#ffffff',
           overflow: 'hidden'
         }}
