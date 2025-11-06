@@ -55,10 +55,11 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
+  const [isViewportShrunk, setIsViewportShrunk] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustment();
+  const keyboardHeight = useKeyboardAdjustment(); // This hook is still useful for other potential uses but not directly for padding.
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -70,6 +71,38 @@ export function MessageSlideCard() {
       }
     }
   });
+
+  // Track viewport changes to determine if the keyboard is likely active
+  useEffect(() => {
+    const handleResize = () => {
+      // Compare visual viewport height with layout viewport height
+      // If visual viewport is significantly smaller, assume keyboard is active
+      const visualViewportHeight = window.visualViewport?.height;
+      const layoutViewportHeight = window.innerHeight; // layout viewport height
+
+      if (visualViewportHeight && layoutViewportHeight) {
+        const shrinkRatio = (layoutViewportHeight - visualViewportHeight) / layoutViewportHeight;
+        // A threshold of 0.1 (10%) is often a good starting point
+        setIsViewportShrunk(shrinkRatio > 0.1);
+      } else {
+        // Fallback if visualViewport is not available
+        setIsViewportShrunk(keyboardHeight > 0); // Use keyboardHeight as a fallback
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    // Add event listener for resize
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize); // Fallback for older browsers or different scenarios
+
+    // Cleanup event listener
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [keyboardHeight]); // Depend on keyboardHeight for fallback logic
 
   // Query for team members
   const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
@@ -93,7 +126,7 @@ export function MessageSlideCard() {
         }
 
         const users = await response.json();
-        
+
         // Debug log to verify avatarColor is in the data
         if (users.length > 0) {
           console.log('Frontend received user data:', {
@@ -390,7 +423,7 @@ export function MessageSlideCard() {
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/by-sender"] });
 
-      // Clean up stored states
+      // Clean up states
       setMessageText("");
       setPastedImage(null);
       setIsVideoFile(false);
@@ -628,7 +661,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight === 0 ? '96px' : '20px'
+                  paddingBottom: isViewportShrunk ? '20px' : '96px'
                 }}
               >
                 {/* Use the MessageForm component instead of the Input + Button */}
