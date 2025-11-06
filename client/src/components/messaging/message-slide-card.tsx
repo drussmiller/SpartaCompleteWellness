@@ -471,18 +471,21 @@ export function MessageSlideCard() {
           top: 0,
           left: 0,
           right: 0,
+          bottom: 0,
           paddingTop: '48px',
-          minHeight: '100vh',
-          height: '200vh',
-          backgroundColor: '#ffffff',
-          overflow: 'hidden'
+          backgroundColor: '#ffffff'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
         <Card 
-          className="h-full w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
+          className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
+          style={{
+            height: 'calc(100vh - 48px)',
+            minHeight: 'calc(100vh - 48px)',
+            overflow: 'hidden'
+          }}
         >
           {/* Header - Fixed at top */}
           <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
