@@ -25,8 +25,8 @@ export function useKeyboardAdjustmentMessages() {
     const updateKeyboardHeight = () => {
       if (window.visualViewport) {
         const viewport = window.visualViewport;
-        // Calculate keyboard height: baseHeight - viewport height
-        const calculatedHeight = baseInnerHeight - viewport.height;
+        // Calculate keyboard height: baseHeight - (viewport height + top offset)
+        const calculatedHeight = baseInnerHeight - (viewport.height + viewport.offsetTop);
         
         console.log('🎹 Keyboard check:', {
           base: baseInnerHeight,

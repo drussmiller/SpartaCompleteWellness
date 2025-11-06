@@ -220,11 +220,6 @@ div[data-post-id] .video-container {
     -webkit-user-select: none;
     user-select: none;
     scrollbar-width: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
   }
 
   body::-webkit-scrollbar {

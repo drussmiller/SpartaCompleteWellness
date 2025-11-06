@@ -258,12 +258,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               const newHeight = Math.min(200, target.scrollHeight); 
               target.style.height = `${newHeight}px`;
             }}
-            onFocus={(e) => {
-              e.preventDefault();
-              window.scrollTo(0, 0);
-              document.body.scrollTop = 0;
-              document.documentElement.scrollTop = 0;
-            }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"

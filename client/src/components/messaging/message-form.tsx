@@ -11,8 +11,6 @@ interface MessageFormProps {
   defaultValue?: string;
   onCancel?: () => void;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
-  onFocus?: () => void;
-  onBlur?: () => void;
 }
 
 export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({ 
@@ -21,9 +19,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   placeholder = "Enter a comment",
   defaultValue = "",
   onCancel,
-  inputRef,
-  onFocus: parentOnFocus,
-  onBlur: parentOnBlur
+  inputRef
 }: MessageFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
@@ -50,14 +46,6 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       textarea.focus({ preventScroll: true });
       window.scrollTo(0, scrollY);
     }
-  };
-
-  const onFocus = () => {
-    parentOnFocus?.();
-  };
-
-  const onBlur = () => {
-    parentOnBlur?.();
   };
 
   useEffect(() => {
@@ -112,35 +100,29 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     }
   };
 
-  const adjustTextareaHeight = (textarea: HTMLTextAreaElement) => {
-    textarea.style.height = '38px'; // Reset height to default
-    const newHeight = Math.min(200, textarea.scrollHeight); // Max height of 200px
-    textarea.style.height = `${newHeight}px`;
-  };
-
   const handleSubmit = async () => {
     try {
       if (!content.trim() && !pastedImage) return;
-
+      
       // Determine if this is a video file
       const isVideoBySelectedFile = selectedFile?.type.startsWith('video/') || false;
       // Check for video file in the global window object (set earlier when capturing video preview)
       const hasStoredVideoFile = !!(window as any)._SPARTA_ORIGINAL_VIDEO_FILE;
-
+      
       // Pass the appropriate isVideo flag
       const finalIsVideo = isVideo || isVideoBySelectedFile || hasStoredVideoFile;
-
+      
       // Check if we're trying to send a video but the global variable is missing
       if (finalIsVideo && !(window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
         console.warn("Trying to send a video message but the original video file is missing.");
         // Still proceed, but log a warning
         console.log("Will attempt to send message without the original video file");
       }
-
+      
       console.log("Submitting message with isVideo:", finalIsVideo, 
                  "hasStoredVideo:", hasStoredVideoFile,
                  "originalVideoSize:", (window as any)._SPARTA_ORIGINAL_VIDEO_FILE?.size || 'N/A');
-
+      
       await onSubmit(content, pastedImage, finalIsVideo);
 
       // Reset state
@@ -148,7 +130,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       setPastedImage(null);
       setSelectedFile(null); // Reset selected file
       setIsVideo(false); // Reset isVideo flag
-
+      
       // Clear the global stored video file reference
       if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
         console.log("Clearing original video file reference after successful submission");
@@ -224,24 +206,24 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             if (file.type.startsWith('video/')) {
               // Set the isVideo state to true
               setIsVideo(true);
-
+              
               // Create video element for thumbnail generation
               const video = document.createElement('video');
               video.src = url;
               video.preload = 'metadata';
               video.muted = true;
               video.playsInline = true;
-
+              
               // Store the original video file in global window object for later use
               // This is needed to preserve the actual video file when sending
               (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = file;
               console.log('Stored original video file in window object:', file.name, file.type, file.size, 'isVideo state set to true');
-
+              
               // When the video loads, set the current time to the first frame
               video.onloadedmetadata = () => {
                 video.currentTime = 0.1;  // Set to a small value to ensure we get the first frame
               };
-
+              
               // When the video has seeked to the requested time, capture the frame
               video.onseeked = () => {
                 try {
@@ -252,12 +234,12 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                   const ctx = canvas.getContext('2d');
                   if (ctx) {
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
+                    
                     // Convert to data URL for thumbnail
                     const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
                     setPastedImage(thumbnailUrl);
                     console.log("Generated video thumbnail in message form");
-
+                    
                     // Show toast with video details
                     const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
                     toast({
@@ -269,16 +251,16 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                   console.error("Error generating thumbnail:", error);
                 }
               };
-
+              
               // Start loading the video
               video.load();
             } else {
               // Handle images normally
               setPastedImage(url);
-
+              
               // Reset isVideo state to false for images
               setIsVideo(false);
-
+              
               // Show toast with file details
               toast({
                 description: `Selected file: ${file.name}`,
@@ -334,13 +316,14 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
           <Textarea
             ref={setRefs} 
             value={content}
-            onChange={(e) => {
-              setContent(e.target.value);
-              adjustTextareaHeight(e.target);
+            onChange={(e) => setContent(e.target.value)}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = '38px';
+              const newHeight = Math.min(200, target.scrollHeight); // Max height of 200px
+              target.style.height = `${newHeight}px`;
             }}
             onKeyDown={handleKeyDown}
-            onFocus={onFocus}
-            onBlur={onBlur}
             placeholder={placeholder}
             className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
             rows={1}
