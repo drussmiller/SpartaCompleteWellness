@@ -218,7 +218,7 @@ export default function CommentsPage() {
         <ScrollArea 
           className="flex-1 overflow-y-auto"
           style={{
-            height: `calc(100vh - 4rem - 60px - ${keyboardHeight > 0 ? '200px' : '260px'})`
+            height: `calc(100vh - 4rem - 260px)`
           }}
         >
           <div className="px-4 py-6 space-y-6 bg-white">
@@ -239,8 +239,8 @@ export default function CommentsPage() {
         <div 
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
-            position: 'absolute',
-            bottom: keyboardHeight > 0 ? keyboardHeight : 60,
+            position: 'fixed',
+            bottom: 0,
             left: 0,
             right: 0,
             zIndex: 50
