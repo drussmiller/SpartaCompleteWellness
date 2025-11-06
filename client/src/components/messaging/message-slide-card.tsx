@@ -628,6 +628,8 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{ 
                   backgroundColor: '#ffffff',
+                  position: 'sticky',
+                  bottom: 0,
                   paddingBottom: keyboardHeight > 0 ? '20px' : '96px'
                 }}
               >
