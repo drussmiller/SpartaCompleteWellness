@@ -517,8 +517,11 @@ export function MessageSlideCard() {
           left: 0,
           right: 0,
           bottom: 0,
+          height: '100vh',
           paddingTop: '48px',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          transform: isViewportShrunk ? 'translateY(0)' : 'translateY(0)',
+          overflow: 'hidden'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -527,8 +530,9 @@ export function MessageSlideCard() {
         <Card 
           className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
-            height: 'calc(100vh - 48px)',
-            minHeight: 'calc(100vh - 48px)',
+            height: `${window.innerHeight - 48}px`,
+            minHeight: `${window.innerHeight - 48}px`,
+            maxHeight: `${window.innerHeight - 48}px`,
             overflow: 'hidden'
           }}
         >
