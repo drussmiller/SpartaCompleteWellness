@@ -45,10 +45,8 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     // Focus the textarea by ID instead of ref
     const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
     if (textarea) {
-      // Prevent any scroll when focusing
-      const scrollY = window.scrollY;
-      textarea.focus({ preventScroll: true });
-      window.scrollTo(0, scrollY);
+      // Allow natural focus behavior - don't prevent scroll
+      textarea.focus();
     }
   };
 
@@ -195,10 +193,6 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     <div 
       className="flex flex-col gap-2 w-full"
       ref={containerRef}
-      onClick={(e) => {
-        ensureTextareaFocus();
-        e.stopPropagation();
-      }}
     >
       <input
         type="file"
