@@ -545,7 +545,7 @@ export function MessageSlideCard() {
             <div>Shrunk: {isViewportShrunk ? 'Yes' : 'No'}</div>
           </div>
         )}
-      </div>
+        
         <Card 
           className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
