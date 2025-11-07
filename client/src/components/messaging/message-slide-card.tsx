@@ -673,9 +673,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{
                   backgroundColor: '#ffffff',
-                  // This padding is now managed by the MessageForm component itself,
-                  // or ideally by the underlying OS/web view behavior for soft keyboards.
-                  // The direct manipulation of paddingBottom here is removed.
+                  paddingBottom: '96px'
                 }}
               >
                 {/* MessageForm component now handles its own input and submission logic */}
