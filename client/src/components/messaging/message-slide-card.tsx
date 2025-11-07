@@ -687,7 +687,7 @@ export function MessageSlideCard() {
                   right: 0,
                   backgroundColor: '#ffffff',
                   zIndex: 99999,
-                  marginBottom: 'env(safe-area-inset-bottom, 0px)'
+                  paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))'
                 }}
               >
                 {/* MessageForm component now handles its own input and submission logic */}
