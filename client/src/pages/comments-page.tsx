@@ -203,7 +203,7 @@ export default function CommentsPage() {
           top: '4rem',
           left: 0,
           right: 0,
-          height: 'calc(100vh - 4rem)',
+          bottom: 0,
           zIndex: 100
         }}
       >
@@ -218,8 +218,7 @@ export default function CommentsPage() {
         <ScrollArea 
           className="flex-1 overflow-y-auto"
           style={{
-            flex: '1 1 0',
-            minHeight: 0
+            height: `calc(100vh - 4rem - 260px)`
           }}
         >
           <div className="px-4 py-6 space-y-6 bg-white">
@@ -240,7 +239,11 @@ export default function CommentsPage() {
         <div 
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
-            paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50
           }}
         >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
