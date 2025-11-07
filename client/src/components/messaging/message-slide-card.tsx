@@ -678,7 +678,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{
                   backgroundColor: '#ffffff',
-                  paddingBottom: isViewportShrunk ? '20px' : '96px'
+                  paddingBottom: '20px'
                 }}
               >
                 {/* Diagnostic Box - moved below textbox */}
