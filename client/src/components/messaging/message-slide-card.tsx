@@ -524,28 +524,6 @@ export function MessageSlideCard() {
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
-        {/* Diagnostic Box */}
-        {isOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: '10px',
-              left: '10px',
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              color: 'white',
-              padding: '8px',
-              fontSize: '11px',
-              borderRadius: '4px',
-              zIndex: 999999,
-              fontFamily: 'monospace'
-            }}
-          >
-            <div>Bottom: {diagnosticInfo.bottom.toFixed(0)}px</div>
-            <div>Viewport: {diagnosticInfo.viewportHeight}px</div>
-            <div>Shrunk: {isViewportShrunk ? 'Yes' : 'No'}</div>
-          </div>
-        )}
-        
         <Card 
           className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
@@ -798,6 +776,31 @@ export function MessageSlideCard() {
             </div>
           )}
         </Card>
+
+        {/* Diagnostic Box - moved to bottom */}
+        {isOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '0px',
+              left: '0px',
+              right: '0px',
+              backgroundColor: 'rgba(0, 0, 0, 0.9)',
+              color: 'white',
+              padding: '8px',
+              fontSize: '11px',
+              zIndex: 999999,
+              fontFamily: 'monospace',
+              display: 'flex',
+              justifyContent: 'space-around',
+              borderTop: '1px solid rgba(255, 255, 255, 0.2)'
+            }}
+          >
+            <div>Bottom: {diagnosticInfo.bottom.toFixed(0)}px</div>
+            <div>Viewport: {diagnosticInfo.viewportHeight}px</div>
+            <div>Shrunk: {isViewportShrunk ? 'Yes' : 'No'}</div>
+          </div>
+        )}
       </div>
     </>
   );
