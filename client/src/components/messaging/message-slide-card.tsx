@@ -676,6 +676,31 @@ export function MessageSlideCard() {
                   paddingBottom: isViewportShrunk ? '20px' : '96px'
                 }}
               >
+                {/* Diagnostic Box - moved below textbox */}
+                {isOpen && (
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                      color: 'white',
+                      padding: '8px',
+                      fontSize: '10px',
+                      fontFamily: 'monospace',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '4px',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                      marginBottom: '8px'
+                    }}
+                  >
+                    <div>CardBot: {diagnosticInfo.bottom.toFixed(0)}px</div>
+                    <div>VP: {diagnosticInfo.viewportHeight}px</div>
+                    <div>Shrunk: {isViewportShrunk ? 'Y' : 'N'}</div>
+                    <div>VVP: {window.visualViewport?.height.toFixed(0) || 'N/A'}px</div>
+                    <div>InnerH: {window.innerHeight}px</div>
+                    <div>KB: {keyboardHeight.toFixed(0)}px</div>
+                  </div>
+                )}
+
                 {/* Use the MessageForm component instead of the Input + Button */}
                 <MessageForm
                   onSubmit={async (content, imageData, isVideo = false) => {
@@ -776,35 +801,6 @@ export function MessageSlideCard() {
             </div>
           )}
         </Card>
-
-        {/* Diagnostic Box - moved to bottom */}
-        {isOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: '0px',
-              left: '0px',
-              right: '0px',
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              color: 'white',
-              padding: '8px',
-              fontSize: '10px',
-              zIndex: 999999,
-              fontFamily: 'monospace',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '4px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.2)'
-            }}
-          >
-            <div>CardBot: {diagnosticInfo.bottom.toFixed(0)}px</div>
-            <div>VP: {diagnosticInfo.viewportHeight}px</div>
-            <div>Shrunk: {isViewportShrunk ? 'Y' : 'N'}</div>
-            <div>VVP: {window.visualViewport?.height.toFixed(0) || 'N/A'}px</div>
-            <div>InnerH: {window.innerHeight}px</div>
-            <div>KB: {keyboardHeight.toFixed(0)}px</div>
-          </div>
-        )}
       </div>
     </>
   );
