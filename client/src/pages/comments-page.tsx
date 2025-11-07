@@ -204,7 +204,8 @@ export default function CommentsPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 100
+          zIndex: 100,
+          backgroundColor: '#ffffff'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
@@ -240,7 +241,7 @@ export default function CommentsPage() {
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
             position: 'fixed',
-            bottom: 0,
+            bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : 0,
             left: 0,
             right: 0,
             zIndex: 50
