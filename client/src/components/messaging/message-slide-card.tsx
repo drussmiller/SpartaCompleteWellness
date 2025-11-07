@@ -57,6 +57,7 @@ export function MessageSlideCard() {
   const [isVideoFile, setIsVideoFile] = useState(false);
   const [isViewportShrunk, setIsViewportShrunk] = useState(false);
   const [diagnosticInfo, setDiagnosticInfo] = useState({ bottom: 0, viewportHeight: 0 });
+  const [initialHeight] = useState(window.innerHeight); // Capture initial height before keyboard
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -519,7 +520,7 @@ export function MessageSlideCard() {
           left: 0,
           right: 0,
           bottom: 0,
-          height: '100vh',
+          height: `${initialHeight}px`,
           paddingTop: '48px',
           backgroundColor: '#ffffff',
           overflow: 'hidden'
@@ -531,8 +532,8 @@ export function MessageSlideCard() {
         <Card
           className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
-            height: 'calc(100vh - 48px)',
-            minHeight: 'calc(100vh - 48px)',
+            height: `${initialHeight - 48}px`,
+            minHeight: `${initialHeight - 48}px`,
             overflow: 'hidden'
           }}
         >
