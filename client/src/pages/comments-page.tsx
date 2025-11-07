@@ -10,7 +10,7 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
+import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
 
 
 export default function CommentsPage() {
@@ -19,7 +19,7 @@ export default function CommentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const keyboardHeight = useKeyboardAdjustment();
+  const keyboardHeight = useKeyboardAdjustmentMessages();
 
   // Add swipe-to-close functionality - detect swipe right anywhere on the page
   useEffect(() => {
@@ -197,16 +197,32 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full h-[calc(100vh-4rem)] overflow-hidden"
+        className="flex flex-col bg-white w-full overflow-hidden"
         style={{
-          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-          transition: 'padding-bottom 0.2s ease-in-out'
+          position: 'fixed',
+          top: '4rem',
+          left: 0,
+          right: 0,
+          height: 'calc(100vh - 4rem)',
+          zIndex: 100
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="container mx-auto px-4 py-6 space-y-6 bg-white pb-32">
+        {/* Fixed Title Box at Top */}
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+          <h3 className="text-lg font-semibold">Original Post</h3>
+        </div>
+        
+        {/* Scrollable Content */}
+        <ScrollArea 
+          className="flex-1 overflow-y-auto"
+          style={{
+            flex: '1 1 0',
+            minHeight: 0
+          }}
+        >
+          <div className="px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
               <PostView post={originalPost} />
             </div>
@@ -220,7 +236,13 @@ export default function CommentsPage() {
           </div>
         </ScrollArea>
         
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+        {/* Fixed Comment Form at Bottom */}
+        <div 
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
+          }}
+        >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {
