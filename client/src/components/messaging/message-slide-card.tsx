@@ -75,20 +75,17 @@ export function MessageSlideCard() {
 
   // Track viewport changes to determine if the keyboard is likely active
   useEffect(() => {
+    // Store the initial full height
+    const initialHeight = window.innerHeight;
+    
     const handleResize = () => {
-      // Compare visual viewport height with layout viewport height
-      // If visual viewport is significantly smaller, assume keyboard is active
-      const visualViewportHeight = window.visualViewport?.height;
-      const layoutViewportHeight = window.innerHeight; // layout viewport height
-
-      if (visualViewportHeight && layoutViewportHeight) {
-        const shrinkRatio = (layoutViewportHeight - visualViewportHeight) / layoutViewportHeight;
-        // A threshold of 0.1 (10%) is often a good starting point
-        setIsViewportShrunk(shrinkRatio > 0.1);
-      } else {
-        // Fallback if visualViewport is not available
-        setIsViewportShrunk(keyboardHeight > 0); // Use keyboardHeight as a fallback
-      }
+      const visualViewportHeight = window.visualViewport?.height || window.innerHeight;
+      
+      // Check if viewport has shrunk significantly (more than 150px indicates keyboard)
+      const heightDiff = initialHeight - visualViewportHeight;
+      const isShrunk = heightDiff > 150;
+      
+      setIsViewportShrunk(isShrunk);
 
       // Update diagnostic info
       if (cardRef.current) {
@@ -105,16 +102,16 @@ export function MessageSlideCard() {
 
     // Add event listener for resize
     window.visualViewport?.addEventListener('resize', handleResize);
-    window.addEventListener('resize', handleResize); // Fallback for older browsers or different scenarios
-    window.addEventListener('scroll', handleResize);
+    window.visualViewport?.addEventListener('scroll', handleResize);
+    window.addEventListener('resize', handleResize);
 
     // Cleanup event listener
     return () => {
       window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize);
     };
-  }, [keyboardHeight]); // Depend on keyboardHeight for fallback logic
+  }, []); // Run once on mount
 
   // Query for team members
   const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
