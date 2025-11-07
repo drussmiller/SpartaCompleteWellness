@@ -87,14 +87,18 @@ export function MessageSlideCard() {
       
       setIsViewportShrunk(isShrunk);
 
-      // Update diagnostic info
-      if (cardRef.current) {
-        const rect = cardRef.current.getBoundingClientRect();
-        setDiagnosticInfo({
-          bottom: rect.bottom,
-          viewportHeight: window.innerHeight
-        });
-      }
+      // Update diagnostic info - use RAF to ensure layout is complete
+      requestAnimationFrame(() => {
+        if (cardRef.current) {
+          // Force a reflow to get accurate measurements
+          cardRef.current.offsetHeight;
+          const rect = cardRef.current.getBoundingClientRect();
+          setDiagnosticInfo({
+            bottom: rect.bottom,
+            viewportHeight: window.innerHeight
+          });
+        }
+      });
     };
 
     // Initial check
