@@ -513,18 +513,20 @@ export function MessageSlideCard() {
           isOpen ? "translate-x-0" : "translate-x-full"
         } z-[100000]`}
         style={{
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          position: 'fixed',
+          top: '0px',
+          left: '0px',
+          right: '0px',
+          height: `${window.innerHeight}px`,
           paddingTop: '48px',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          overflow: 'hidden'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
-        <Card 
+        <Card
           className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
             height: 'calc(100vh - 48px)',
@@ -669,9 +671,9 @@ export function MessageSlideCard() {
               </ScrollArea>
 
               {/* Message Input - Positioned at bottom of container */}
-              <div 
+              <div
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
-                style={{ 
+                style={{
                   backgroundColor: '#ffffff',
                   paddingBottom: isViewportShrunk ? '20px' : '96px'
                 }}
