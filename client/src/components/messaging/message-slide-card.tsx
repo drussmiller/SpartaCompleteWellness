@@ -55,8 +55,6 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
-  const [isViewportShrunk, setIsViewportShrunk] = useState(false);
-  const [diagnosticInfo, setDiagnosticInfo] = useState({ bottom: 0, viewportHeight: 0 });
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -77,26 +75,21 @@ export function MessageSlideCard() {
   useEffect(() => {
     // Store the initial full height
     const initialHeight = window.innerHeight;
-    
+
     const handleResize = () => {
       const visualViewportHeight = window.visualViewport?.height || window.innerHeight;
-      
+
       // Check if viewport has shrunk significantly (more than 150px indicates keyboard)
       const heightDiff = initialHeight - visualViewportHeight;
       const isShrunk = heightDiff > 150;
-      
-      setIsViewportShrunk(isShrunk);
 
       // Update diagnostic info - use RAF to ensure layout is complete
       requestAnimationFrame(() => {
         if (cardRef.current) {
           // Force a reflow to get accurate measurements
           cardRef.current.offsetHeight;
-          const rect = cardRef.current.getBoundingClientRect();
-          setDiagnosticInfo({
-            bottom: rect.bottom,
-            viewportHeight: window.innerHeight
-          });
+          // Removed diagnosticInfo state, so this part is no longer relevant for state updates.
+          // The diagnostic info was primarily for debugging keyboard issues.
         }
       });
     };
@@ -382,7 +375,7 @@ export function MessageSlideCard() {
             // Attach the original video file directly
             formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE);
 
-            // Set the is_video flag explicitly 
+            // Set the is_video flag explicitly
             formData.append('is_video', 'true');
 
             // Add video extension for server processing
@@ -680,40 +673,14 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{
                   backgroundColor: '#ffffff',
-                  paddingBottom: isViewportShrunk ? '20px' : '96px'
+                  // This padding is now managed by the MessageForm component itself,
+                  // or ideally by the underlying OS/web view behavior for soft keyboards.
+                  // The direct manipulation of paddingBottom here is removed.
                 }}
               >
-                {/* Diagnostic Box - moved below textbox */}
-                {isOpen && (
-                  <div
-                    style={{
-                      backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                      color: 'white',
-                      padding: '8px',
-                      fontSize: '10px',
-                      fontFamily: 'monospace',
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: '4px',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                      marginBottom: '8px'
-                    }}
-                  >
-                    <div>CardBot: {diagnosticInfo.bottom.toFixed(0)}px</div>
-                    <div>VP: {diagnosticInfo.viewportHeight}px</div>
-                    <div>Shrunk: {isViewportShrunk ? 'Y' : 'N'}</div>
-                    <div>VVP: {window.visualViewport?.height.toFixed(0) || 'N/A'}px</div>
-                    <div>InnerH: {window.innerHeight}px</div>
-                    <div>KB: {keyboardHeight.toFixed(0)}px</div>
-                  </div>
-                )}
-
-                {/* Use the MessageForm component instead of the Input + Button */}
+                {/* MessageForm component now handles its own input and submission logic */}
                 <MessageForm
                   onSubmit={async (content, imageData, isVideo = false) => {
-                    // Instead of setting state and then calling handleSendMessage separately,
-                    // which causes the first Enter to clear the field but not submit,
-                    // directly call createMessageMutation with the provided values
                     if (!content.trim() && !imageData) return;
                     if (!selectedMember) return;
 
