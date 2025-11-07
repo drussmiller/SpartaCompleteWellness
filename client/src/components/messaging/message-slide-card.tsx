@@ -612,7 +612,7 @@ export function MessageSlideCard() {
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea className="flex-1 overflow-y-auto">
-                <div className="space-y-4 mt-16 p-4 bg-white pb-32">
+                <div className="space-y-4 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div
                       key={message.id}
