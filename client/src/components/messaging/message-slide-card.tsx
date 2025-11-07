@@ -15,7 +15,7 @@ import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
-import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -60,7 +60,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustmentMessages();
+  const keyboardHeight = useKeyboardAdjustment(); // This hook is still useful for other potential uses but not directly for padding.
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -680,7 +680,7 @@ export function MessageSlideCard() {
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{
                   backgroundColor: '#ffffff',
-                  paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '96px'
+                  paddingBottom: isViewportShrunk ? '20px' : '96px'
                 }}
               >
                 {/* Diagnostic Box - moved below textbox */}
