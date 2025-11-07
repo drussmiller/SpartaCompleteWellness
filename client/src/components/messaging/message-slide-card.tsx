@@ -788,17 +788,21 @@ export function MessageSlideCard() {
               backgroundColor: 'rgba(0, 0, 0, 0.9)',
               color: 'white',
               padding: '8px',
-              fontSize: '11px',
+              fontSize: '10px',
               zIndex: 999999,
               fontFamily: 'monospace',
-              display: 'flex',
-              justifyContent: 'space-around',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '4px',
               borderTop: '1px solid rgba(255, 255, 255, 0.2)'
             }}
           >
-            <div>Bottom: {diagnosticInfo.bottom.toFixed(0)}px</div>
-            <div>Viewport: {diagnosticInfo.viewportHeight}px</div>
-            <div>Shrunk: {isViewportShrunk ? 'Yes' : 'No'}</div>
+            <div>CardBot: {diagnosticInfo.bottom.toFixed(0)}px</div>
+            <div>VP: {diagnosticInfo.viewportHeight}px</div>
+            <div>Shrunk: {isViewportShrunk ? 'Y' : 'N'}</div>
+            <div>VVP: {window.visualViewport?.height.toFixed(0) || 'N/A'}px</div>
+            <div>InnerH: {window.innerHeight}px</div>
+            <div>KB: {keyboardHeight.toFixed(0)}px</div>
           </div>
         )}
       </div>
