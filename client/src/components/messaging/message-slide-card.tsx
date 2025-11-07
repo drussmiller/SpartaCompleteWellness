@@ -514,10 +514,11 @@ export function MessageSlideCard() {
         } z-[100000]`}
         style={{
           position: 'fixed',
-          top: '0px',
-          left: '0px',
-          right: '0px',
-          height: `${window.innerHeight}px`,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: '100vh',
           paddingTop: '48px',
           backgroundColor: '#ffffff',
           overflow: 'hidden'
