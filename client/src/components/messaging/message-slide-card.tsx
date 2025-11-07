@@ -56,6 +56,7 @@ export function MessageSlideCard() {
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
   const [isViewportShrunk, setIsViewportShrunk] = useState(false);
+  const [diagnosticInfo, setDiagnosticInfo] = useState({ bottom: 0, viewportHeight: 0 });
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -88,6 +89,15 @@ export function MessageSlideCard() {
         // Fallback if visualViewport is not available
         setIsViewportShrunk(keyboardHeight > 0); // Use keyboardHeight as a fallback
       }
+
+      // Update diagnostic info
+      if (cardRef.current) {
+        const rect = cardRef.current.getBoundingClientRect();
+        setDiagnosticInfo({
+          bottom: rect.bottom,
+          viewportHeight: window.innerHeight
+        });
+      }
     };
 
     // Initial check
@@ -96,11 +106,13 @@ export function MessageSlideCard() {
     // Add event listener for resize
     window.visualViewport?.addEventListener('resize', handleResize);
     window.addEventListener('resize', handleResize); // Fallback for older browsers or different scenarios
+    window.addEventListener('scroll', handleResize);
 
     // Cleanup event listener
     return () => {
       window.visualViewport?.removeEventListener('resize', handleResize);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize);
     };
   }, [keyboardHeight]); // Depend on keyboardHeight for fallback logic
 
@@ -512,6 +524,28 @@ export function MessageSlideCard() {
         onTouchMove={isOpen ? handleTouchMove : undefined}
         onTouchEnd={isOpen ? handleTouchEnd : undefined}
       >
+        {/* Diagnostic Box */}
+        {isOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '10px',
+              left: '10px',
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              color: 'white',
+              padding: '8px',
+              fontSize: '11px',
+              borderRadius: '4px',
+              zIndex: 999999,
+              fontFamily: 'monospace'
+            }}
+          >
+            <div>Bottom: {diagnosticInfo.bottom.toFixed(0)}px</div>
+            <div>Viewport: {diagnosticInfo.viewportHeight}px</div>
+            <div>Shrunk: {isViewportShrunk ? 'Yes' : 'No'}</div>
+          </div>
+        )}
+      </div>
         <Card 
           className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{
