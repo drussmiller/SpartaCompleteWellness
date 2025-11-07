@@ -529,7 +529,7 @@ export function MessageSlideCard() {
             height: 'calc(100vh - 48px)',
             minHeight: 'calc(100vh - 48px)',
             maxHeight: 'calc(100vh - 48px)',
-            overflow: 'hidden'
+            overflow: 'visible'
           }}
         >
           {/* Header - Fixed at top */}
@@ -561,7 +561,9 @@ export function MessageSlideCard() {
               style={{
                 touchAction: 'pan-y',
                 overscrollBehavior: 'contain',
-                overflow: 'auto'
+                overflow: 'auto',
+                height: '100%',
+                maxHeight: 'calc(100vh - 48px - 60px)'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -604,7 +606,15 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea className="flex-1 overflow-y-auto">
+              <ScrollArea 
+                className="flex-1 overflow-y-auto"
+                style={{
+                  height: '100%',
+                  maxHeight: 'calc(100vh - 48px - 60px - 140px)',
+                  touchAction: 'pan-y',
+                  overscrollBehavior: 'contain'
+                }}
+              >
                 <div className="space-y-4 p-4 bg-white pb-32">
                   {messages.map((message) => (
                     <div
