@@ -204,7 +204,7 @@ export default function CommentsPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 10000
+          zIndex: 2147483647
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
