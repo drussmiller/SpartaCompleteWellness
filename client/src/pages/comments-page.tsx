@@ -198,32 +198,27 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full fixed inset-0"
+        className="flex flex-col bg-white w-full"
         style={{
-          top: '4rem',
           height: keyboardHeight > 0 
             ? `calc(100vh - 4rem - ${keyboardHeight}px)` 
             : `calc(100vh - 4rem)`,
-          overflow: 'hidden',
-          zIndex: 10
+          overflow: 'hidden'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
         {/* Fixed Title Box at Top */}
-        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0" style={{ zIndex: 20 }}>
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
           <h3 className="text-lg font-semibold">Original Post</h3>
         </div>
         
         {/* Scrollable Content */}
         <ScrollArea 
-          className="flex-1 overflow-y-auto"
+          className="flex-1"
           style={{
             overscrollBehavior: 'none',
-            overscrollBehaviorY: 'none',
-            height: keyboardHeight > 0 
-              ? `calc(100vh - 4rem - ${keyboardHeight}px - 60px - 200px)` 
-              : `calc(100vh - 4rem - 60px - 200px)`
+            overscrollBehaviorY: 'none'
           }}
         >
           <div className="px-4 py-6 space-y-6 bg-white">
@@ -241,7 +236,7 @@ export default function CommentsPage() {
         </ScrollArea>
         
         {/* Fixed Comment Form at Bottom */}
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0" style={{ zIndex: 20 }}>
+        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {
