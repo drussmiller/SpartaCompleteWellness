@@ -687,7 +687,7 @@ export function MessageSlideCard() {
                   right: 0,
                   backgroundColor: '#ffffff',
                   zIndex: 99999,
-                  paddingBottom: keyboardHeight > 0 ? '20px' : '96px',
+                  paddingBottom: keyboardHeight > 0 ? '20px' : '20px',
                   marginBottom: 'env(safe-area-inset-bottom, 0px)'
                 }}
               >
