@@ -557,7 +557,8 @@ export function MessageSlideCard() {
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  overscrollBehavior: 'contain',
+                  overscrollBehavior: 'none',
+                  overscrollBehaviorY: 'none',
                   paddingBottom: '16px'
                 }}
               >
