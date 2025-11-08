@@ -111,9 +111,15 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   };
 
   const adjustTextareaHeight = (textarea: HTMLTextAreaElement) => {
-    textarea.style.height = '38px'; // Reset height to default
+    textarea.style.height = 'auto'; // Reset to auto to get correct scrollHeight
     const newHeight = Math.min(200, textarea.scrollHeight); // Max height of 200px
     textarea.style.height = `${newHeight}px`;
+    
+    // Adjust container to expand upwards
+    const container = textarea.closest('.flex-1') as HTMLElement;
+    if (container) {
+      container.style.height = `${newHeight}px`;
+    }
   };
 
   const handleSubmit = async () => {
@@ -191,7 +197,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 
   return (
     <div 
-      className="flex flex-col gap-2 w-full"
+      className="flex flex-col gap-0 w-full"
       ref={containerRef}
     >
       <input
@@ -324,7 +330,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             <path d="M15 9h.01" />
           </svg>
         </Button>
-        <div className="flex-1">
+        <div className="flex-1" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <Textarea
             ref={setRefs} 
             value={content}
@@ -336,9 +342,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
+            className="resize-none bg-gray-100 overflow-hidden rounded-md py-2 px-4 border border-gray-300"
             rows={1}
-            style={{ height: '38px', minHeight: '38px' }}
+            style={{ height: 'auto', minHeight: '38px' }}
             id="message-textarea"
           />
         </div>

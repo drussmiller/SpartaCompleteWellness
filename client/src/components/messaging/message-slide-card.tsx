@@ -626,7 +626,7 @@ export function MessageSlideCard() {
 
               {/* Message Input - Fixed at bottom of container */}
               <div
-                className="px-4 pb-5 pt-2 border-t bg-white border-gray-200 flex-shrink-0"
+                className="px-4 pb-5 pt-0 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{
                   backgroundColor: '#ffffff',
                   position: 'relative'
