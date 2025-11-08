@@ -197,30 +197,18 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full overflow-hidden"
+        className="flex flex-col bg-white w-full"
         style={{
-          position: 'fixed',
-          top: '4rem',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 100
+          height: keyboardHeight > 0 
+            ? `calc(100vh - 4rem - ${keyboardHeight}px)` 
+            : `calc(100vh - 4rem)`,
+          overflow: 'hidden'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        {/* Fixed Title Box at Top - stays visible when keyboard is shown */}
-        <div 
-          className="border-b border-gray-200 p-4 bg-white flex-shrink-0"
-          style={{
-            position: 'fixed',
-            top: '4rem',
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            backgroundColor: 'white'
-          }}
-        >
+        {/* Fixed Title Box at Top */}
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
           <h3 className="text-lg font-semibold">Original Post</h3>
         </div>
         
@@ -228,12 +216,8 @@ export default function CommentsPage() {
         <ScrollArea 
           className="flex-1 overflow-y-auto"
           style={{
-            height: keyboardHeight > 0 
-              ? `calc(100vh - 4rem - 260px - ${keyboardHeight}px)` 
-              : `calc(100vh - 4rem - 260px)`,
             overscrollBehavior: 'none',
-            overscrollBehaviorY: 'none',
-            marginTop: '60px'
+            overscrollBehaviorY: 'none'
           }}
         >
           <div className="px-4 py-6 space-y-6 bg-white">
@@ -251,16 +235,7 @@ export default function CommentsPage() {
         </ScrollArea>
         
         {/* Fixed Comment Form at Bottom */}
-        <div 
-          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 50
-          }}
-        >
+        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {
