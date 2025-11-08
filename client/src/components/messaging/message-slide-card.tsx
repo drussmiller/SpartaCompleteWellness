@@ -558,11 +558,10 @@ export function MessageSlideCard() {
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'contain',
-                  paddingBottom: 0,
-                  marginBottom: 0
+                  paddingBottom: '16px'
                 }}
               >
-                <div className="space-y-4 p-4 bg-white pb-0">
+                <div className="space-y-4 p-4 bg-white pb-4">
                   {messages.map((message) => (
                     <div
                       key={message.id}
