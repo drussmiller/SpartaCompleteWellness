@@ -59,9 +59,6 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const [viewportHeight, setViewportHeight] = useState(() => 
-    window.visualViewport?.height || window.innerHeight
-  );
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -73,32 +70,6 @@ export function MessageSlideCard() {
       }
     }
   });
-
-  // Track viewport height changes directly
-  useEffect(() => {
-    const updateViewportHeight = () => {
-      const height = window.visualViewport?.height || window.innerHeight;
-      setViewportHeight(height);
-    };
-
-    // Initial update
-    updateViewportHeight();
-
-    // Listen to viewport changes
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateViewportHeight);
-      window.visualViewport.addEventListener('scroll', updateViewportHeight);
-    }
-    window.addEventListener('resize', updateViewportHeight);
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateViewportHeight);
-        window.visualViewport.removeEventListener('scroll', updateViewportHeight);
-      }
-      window.removeEventListener('resize', updateViewportHeight);
-    };
-  }, []);
 
   // Query for team members
   const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
@@ -458,23 +429,13 @@ export function MessageSlideCard() {
     }
 
     if (isOpen) {
-      // Prevent body scrolling and lock position when message overlay is open
-      const scrollY = window.scrollY;
+      // Prevent body scrolling when message overlay is open
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      
       document.addEventListener('mousedown', handleClickOutside);
 
       return () => {
-        // Restore body scrolling and position when overlay is closed
+        // Restore body scrolling when overlay is closed
         document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        window.scrollTo(0, scrollY);
-        
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
@@ -504,29 +465,13 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="bg-white transform translate-x-0 transition-transform duration-300 ease-in-out"
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 'auto',
-          zIndex: 2147483647,
-          height: `${viewportHeight}px`,
-          maxHeight: `${viewportHeight}px`,
-          overflow: 'hidden',
-          WebkitOverflowScrolling: 'auto'
-        }}
+        className="fixed inset-0 bg-white z-[2147483647] flex flex-col"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <Card
-          className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
-          style={{
-            height: '100%',
-            overflow: 'visible'
-          }}
+          className="w-full h-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
         >
           {/* Header - Fixed at top */}
           <div className="flex items-center p-4 pt-12 border-b bg-white border-gray-200 flex-shrink-0">
