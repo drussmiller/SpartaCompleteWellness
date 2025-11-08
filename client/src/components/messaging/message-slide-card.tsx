@@ -515,7 +515,6 @@ export function MessageSlideCard() {
           height: `${viewportHeight}px`,
           maxHeight: `${viewportHeight}px`,
           overflow: 'hidden',
-          touchAction: 'none',
           WebkitOverflowScrolling: 'auto'
         }}
         onTouchStart={handleTouchStart}
