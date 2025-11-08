@@ -553,13 +553,15 @@ export function MessageSlideCard() {
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea
-                className="flex-1 overflow-y-auto"
+                className="flex-1 bg-white"
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'none',
                   overscrollBehaviorY: 'none',
-                  paddingBottom: '16px'
+                  paddingBottom: '16px',
+                  overflowY: 'auto',
+                  position: 'relative'
                 }}
               >
                 <div className="space-y-4 p-4 bg-white pb-4">
