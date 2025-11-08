@@ -470,7 +470,6 @@ export function MessageSlideCard() {
         style={{
           height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
           maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-          bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
