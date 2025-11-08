@@ -48,13 +48,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    setTimeout(() => {
-      const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus({ preventScroll: true });
-        console.log("Focus in CommentForm component mount");
-      }
-    }, 200);
+    // Don't auto-focus on mount to prevent keyboard popup
   }, []);
 
   useEffect(() => {
