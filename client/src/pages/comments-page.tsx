@@ -11,7 +11,7 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
+import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
 
 
 export default function CommentsPage() {
@@ -20,7 +20,7 @@ export default function CommentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const keyboardHeight = useKeyboardAdjustment();
+  const keyboardHeight = useKeyboardAdjustmentMessages();
 
   // Add swipe-to-close functionality - detect swipe right anywhere on the page
   useEffect(() => {
@@ -206,10 +206,11 @@ export default function CommentsPage() {
         className="flex flex-col bg-white w-full"
         style={{
           height: keyboardHeight > 0 
-            ? `calc(100vh - 4rem - ${keyboardHeight}px)` 
-            : `calc(100vh - 4rem)`,
+            ? `calc(100dvh - 4rem - ${keyboardHeight}px)` 
+            : `calc(100dvh - 4rem)`,
           overflow: 'hidden',
-          paddingTop: '60px' // Account for fixed title
+          paddingTop: '60px', // Account for fixed title
+          transition: 'height 0.2s ease-out'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
