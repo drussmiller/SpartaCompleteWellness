@@ -213,8 +213,10 @@ export default function CommentsPage() {
         <div 
           className="border-b border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
-            position: 'sticky',
-            top: 0,
+            position: 'fixed',
+            top: '4rem',
+            left: 0,
+            right: 0,
             zIndex: 10,
             backgroundColor: 'white'
           }}
@@ -228,7 +230,8 @@ export default function CommentsPage() {
           style={{
             height: `calc(100vh - 4rem - 260px)`,
             overscrollBehavior: 'none',
-            overscrollBehaviorY: 'none'
+            overscrollBehaviorY: 'none',
+            marginTop: '60px'
           }}
         >
           <div className="px-4 py-6 space-y-6 bg-white">
