@@ -515,8 +515,8 @@ export function MessageSlideCard() {
           maxHeight: '100dvh',
           height: '100dvh',
           overflow: 'hidden',
-          touchAction: 'pan-y',
-          WebkitOverflowScrolling: 'touch',
+          touchAction: 'none',
+          WebkitOverflowScrolling: 'auto',
           position: 'fixed'
         }}
         onTouchStart={handleTouchStart}
@@ -557,13 +557,10 @@ export function MessageSlideCard() {
             <ScrollArea
               className="flex-1 bg-white"
               style={{
-                touchAction: 'pan-y',
+                touchAction: 'auto',
                 overscrollBehavior: 'contain',
-                overflowY: 'auto',
-                overflowX: 'hidden',
                 height: '100%',
-                maxHeight: 'calc(100vh - 48px - 60px)',
-                WebkitOverflowScrolling: 'touch'
+                maxHeight: 'calc(100vh - 48px - 60px)'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -610,12 +607,9 @@ export function MessageSlideCard() {
                 className="flex-1"
                 style={{
                   height: 'calc(100vh - 4rem - 260px)',
-                  touchAction: 'pan-y',
+                  touchAction: 'auto',
                   overscrollBehavior: 'contain',
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                  paddingBottom: '96px',
-                  WebkitOverflowScrolling: 'touch'
+                  paddingBottom: '96px'
                 }}
               >
                 <div className="space-y-4 p-4 bg-white pb-4">
