@@ -505,7 +505,7 @@ export function MessageSlideCard() {
         ref={cardRef}
         className={`fixed bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } z-[100000]`}
+        }`}
         style={{
           position: 'fixed',
           top: 0,
@@ -515,7 +515,8 @@ export function MessageSlideCard() {
           paddingTop: '48px',
           backgroundColor: '#ffffff',
           overflow: 'hidden',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          zIndex: 200000
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
