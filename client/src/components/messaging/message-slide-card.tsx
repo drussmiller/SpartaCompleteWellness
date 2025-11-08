@@ -474,7 +474,7 @@ export function MessageSlideCard() {
           className="w-full h-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
         >
           {/* Header - Fixed at top */}
-          <div className="flex items-center p-4 pt-12 border-b bg-white border-gray-200 flex-shrink-0">
+          <div className="flex items-center px-4 py-4 pt-16 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px]">
             <Button
               variant="ghost"
               size="icon"
@@ -485,11 +485,11 @@ export function MessageSlideCard() {
                   setIsOpen(false);
                 }
               }}
-              className="mr-3 bg-transparent hover:bg-gray-100"
+              className="mr-3 bg-transparent hover:bg-gray-100 flex-shrink-0"
             >
               <ChevronLeft className="h-6 w-6 text-black" />
             </Button>
-            <h2 className="text-xl font-bold text-black">
+            <h2 className="text-2xl font-bold text-black flex-1">
               {selectedMember ? selectedMember.username : "Messages"}
             </h2>
           </div>
