@@ -458,13 +458,23 @@ export function MessageSlideCard() {
     }
 
     if (isOpen) {
-      // Prevent body scrolling when message overlay is open
+      // Prevent body scrolling and lock position when message overlay is open
+      const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      
       document.addEventListener('mousedown', handleClickOutside);
 
       return () => {
-        // Restore body scrolling when overlay is closed
+        // Restore body scrolling and position when overlay is closed
         document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, scrollY);
+        
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
@@ -494,19 +504,19 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed bg-white transform translate-x-0 transition-transform duration-300 ease-in-out"
+        className="bg-white transform translate-x-0 transition-transform duration-300 ease-in-out"
         style={{
+          position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: 'auto',
           zIndex: 2147483647,
           height: `${viewportHeight}px`,
           maxHeight: `${viewportHeight}px`,
           overflow: 'hidden',
           touchAction: 'none',
-          WebkitOverflowScrolling: 'auto',
-          position: 'fixed'
+          WebkitOverflowScrolling: 'auto'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
