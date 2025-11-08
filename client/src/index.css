@@ -209,9 +209,9 @@ div[data-post-id] .video-container {
     min-height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: contain;
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
