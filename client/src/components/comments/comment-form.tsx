@@ -98,12 +98,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (content.trim() && !isSubmitting) {
-        handleSubmit();
-      }
-    }
+    // Allow Enter key to create new lines without submitting
+    // Users must click the send button to submit comments
   };
 
   return (
@@ -260,7 +256,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4 border border-gray-300"
+            className="resize-none bg-gray-100 overflow-hidden rounded-md py-2 px-4 border border-gray-300"
             rows={1}
             style={{ height: '38px', minHeight: '38px' }}
             id="comment-textarea"
