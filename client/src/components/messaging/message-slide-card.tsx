@@ -502,12 +502,10 @@ export function MessageSlideCard() {
       </Button>
 
       {/* Full screen slide-out panel - rendered via Portal at document body level */}
-      {createPortal(
+      {isOpen && createPortal(
         <div
         ref={cardRef}
-        className={`fixed bg-white transform transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className="fixed bg-white transform translate-x-0 transition-transform duration-300 ease-in-out"
         style={{
           top: 0,
           left: 0,
@@ -520,12 +518,11 @@ export function MessageSlideCard() {
           height: '100dvh',
           overflowY: 'hidden',
           touchAction: 'none',
-          WebkitOverflowScrolling: 'auto',
-          pointerEvents: isOpen ? 'auto' : 'none'
+          WebkitOverflowScrolling: 'auto'
         }}
-        onTouchStart={isOpen ? handleTouchStart : undefined}
-        onTouchMove={isOpen ? handleTouchMove : undefined}
-        onTouchEnd={isOpen ? handleTouchEnd : undefined}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <Card
           className="w-full rounded-none bg-white border-none shadow-none flex flex-col"
