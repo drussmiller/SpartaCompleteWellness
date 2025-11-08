@@ -509,16 +509,19 @@ export function MessageSlideCard() {
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         style={{
-          position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          paddingTop: '48px',
-          backgroundColor: '#ffffff',
-          overflow: 'hidden',
-          WebkitOverflowScrolling: 'touch',
-          zIndex: 2147483647
+          zIndex: 2147483647,
+          maxHeight: '100vh',
+          maxHeight: '100dvh',
+          height: '100vh',
+          height: '100dvh',
+          overflowY: 'hidden',
+          touchAction: 'none',
+          WebkitOverflowScrolling: 'auto',
+          pointerEvents: isOpen ? 'auto' : 'none'
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
@@ -605,7 +608,7 @@ export function MessageSlideCard() {
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea 
+              <ScrollArea
                 className="flex-1 overflow-y-auto"
                 style={{
                   height: 'calc(100vh - 4rem - 260px)',
