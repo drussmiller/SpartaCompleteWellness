@@ -466,11 +466,11 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed top-0 left-0 right-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed left-0 right-0 bg-white z-[2147483647] flex flex-col"
         style={{
-          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-          maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-          bottom: 0,
+          top: keyboardHeight > 0 ? `${window.visualViewport?.offsetTop || 0}px` : '0',
+          height: keyboardHeight > 0 ? `${window.visualViewport?.height || window.innerHeight}px` : '100vh',
+          maxHeight: keyboardHeight > 0 ? `${window.visualViewport?.height || window.innerHeight}px` : '100vh',
           transform: 'translate3d(0, 0, 0)',
           WebkitTransform: 'translate3d(0, 0, 0)'
         }}
