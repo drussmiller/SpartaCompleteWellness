@@ -485,11 +485,11 @@ export function MessageSlideCard() {
                   setIsOpen(false);
                 }
               }}
-              className="mr-2 scale-125 bg-transparent hover:bg-gray-100"
+              className="mr-3 bg-transparent hover:bg-gray-100"
             >
-              <ChevronLeft className="h-8 w-8 scale-125 text-black" />
+              <ChevronLeft className="h-6 w-6 text-black" />
             </Button>
-            <h2 className="text-lg font-semibold text-black">
+            <h2 className="text-xl font-bold text-black">
               {selectedMember ? selectedMember.username : "Messages"}
             </h2>
           </div>
