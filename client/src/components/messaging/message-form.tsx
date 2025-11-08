@@ -182,15 +182,8 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (content.trim() || pastedImage) {
-        // Call handleSubmit directly without await to avoid the double-Enter issue
-        // This is because the async nature of the function was causing a delay
-        handleSubmit();
-      }
-      // Do not cancel if content is empty
-    }
+    // Allow Enter key to create new lines without submitting
+    // Users must click the send button to submit messages
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
