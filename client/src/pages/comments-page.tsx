@@ -200,9 +200,10 @@ export default function CommentsPage() {
         className="flex flex-col bg-white w-full"
         style={{
           height: keyboardHeight > 0 
-            ? `calc(100vh - 4rem - ${keyboardHeight}px)` 
-            : `calc(100vh - 4rem)`,
-          overflow: 'hidden'
+            ? `calc(100dvh - 4rem - ${keyboardHeight}px)` 
+            : `calc(100dvh - 4rem)`,
+          overflow: 'hidden',
+          position: 'relative'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
