@@ -465,13 +465,21 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed inset-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed top-0 left-0 right-0 bg-white z-[2147483647] flex flex-col"
+        style={{
+          height: '100dvh',
+          maxHeight: '100dvh'
+        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <Card
-          className="w-full h-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
+          className="w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
+          style={{
+            height: '100%',
+            maxHeight: '100%'
+          }}
         >
           {/* Header - Fixed at top */}
           <div className="flex items-center px-4 py-4 pt-16 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px]">
