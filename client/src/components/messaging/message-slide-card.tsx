@@ -59,7 +59,9 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
-  const keyboardHeight = useKeyboardAdjustment(); // This hook is still useful for other potential uses but not directly for padding.
+  const [viewportHeight, setViewportHeight] = useState(() => 
+    window.visualViewport?.height || window.innerHeight
+  );
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -72,44 +74,31 @@ export function MessageSlideCard() {
     }
   });
 
-  // Track viewport changes to determine if the keyboard is likely active
+  // Track viewport height changes directly
   useEffect(() => {
-    // Store the initial full height
-    const initialHeight = window.innerHeight;
-
-    const handleResize = () => {
-      const visualViewportHeight = window.visualViewport?.height || window.innerHeight;
-
-      // Check if viewport has shrunk significantly (more than 150px indicates keyboard)
-      const heightDiff = initialHeight - visualViewportHeight;
-      const isShrunk = heightDiff > 150;
-
-      // Update diagnostic info - use RAF to ensure layout is complete
-      requestAnimationFrame(() => {
-        if (cardRef.current) {
-          // Force a reflow to get accurate measurements
-          cardRef.current.offsetHeight;
-          // Removed diagnosticInfo state, so this part is no longer relevant for state updates.
-          // The diagnostic info was primarily for debugging keyboard issues.
-        }
-      });
+    const updateViewportHeight = () => {
+      const height = window.visualViewport?.height || window.innerHeight;
+      setViewportHeight(height);
     };
 
-    // Initial check
-    handleResize();
+    // Initial update
+    updateViewportHeight();
 
-    // Add event listener for resize
-    window.visualViewport?.addEventListener('resize', handleResize);
-    window.visualViewport?.addEventListener('scroll', handleResize);
-    window.addEventListener('resize', handleResize);
+    // Listen to viewport changes
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateViewportHeight);
+      window.visualViewport.addEventListener('scroll', updateViewportHeight);
+    }
+    window.addEventListener('resize', updateViewportHeight);
 
-    // Cleanup event listener
     return () => {
-      window.visualViewport?.removeEventListener('resize', handleResize);
-      window.visualViewport?.removeEventListener('scroll', handleResize);
-      window.removeEventListener('resize', handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateViewportHeight);
+        window.visualViewport.removeEventListener('scroll', updateViewportHeight);
+      }
+      window.removeEventListener('resize', updateViewportHeight);
     };
-  }, []); // Run once on mount
+  }, []);
 
   // Query for team members
   const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
@@ -512,8 +501,8 @@ export function MessageSlideCard() {
           right: 0,
           bottom: 0,
           zIndex: 2147483647,
-          maxHeight: '100dvh',
-          height: '100dvh',
+          height: `${viewportHeight}px`,
+          maxHeight: `${viewportHeight}px`,
           overflow: 'hidden',
           touchAction: 'none',
           WebkitOverflowScrolling: 'auto',
@@ -685,7 +674,7 @@ export function MessageSlideCard() {
                   right: 0,
                   backgroundColor: '#ffffff',
                   zIndex: 99999,
-                  paddingBottom: keyboardHeight > 0 ? '20px' : '20px',
+                  paddingBottom: '20px',
                   marginBottom: 'env(safe-area-inset-bottom, 0px)'
                 }}
               >
