@@ -198,18 +198,18 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full"
+        className="flex flex-col bg-white w-full relative"
         style={{
           height: keyboardHeight > 0 
             ? `calc(100dvh - 4rem - ${keyboardHeight}px)` 
             : `calc(100dvh - 4rem)`,
-          overflow: 'hidden'
+          minHeight: '300px'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
         {/* Fixed Title Box at Top */}
-        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0" style={{ minHeight: '60px' }}>
           <h3 className="text-lg font-semibold">Original Post</h3>
         </div>
         
@@ -218,7 +218,8 @@ export default function CommentsPage() {
           className="flex-1"
           style={{
             overscrollBehavior: 'none',
-            overscrollBehaviorY: 'none'
+            overscrollBehaviorY: 'none',
+            minHeight: '100px'
           }}
         >
           <div className="px-4 py-6 space-y-6 bg-white">
