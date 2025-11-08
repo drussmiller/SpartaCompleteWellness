@@ -516,7 +516,7 @@ export function MessageSlideCard() {
           backgroundColor: '#ffffff',
           overflow: 'hidden',
           WebkitOverflowScrolling: 'touch',
-          zIndex: 200000
+          zIndex: 2147483647
         }}
         onTouchStart={isOpen ? handleTouchStart : undefined}
         onTouchMove={isOpen ? handleTouchMove : undefined}
