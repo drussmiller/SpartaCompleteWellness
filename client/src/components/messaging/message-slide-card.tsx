@@ -607,10 +607,11 @@ export function MessageSlideCard() {
                 style={{
                   height: 'calc(100vh - 4rem - 260px)',
                   touchAction: 'pan-y',
-                  overscrollBehavior: 'contain'
+                  overscrollBehavior: 'contain',
+                  paddingBottom: '96px'
                 }}
               >
-                <div className="space-y-4 p-4 bg-white pb-32">
+                <div className="space-y-4 p-4 bg-white pb-4">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -683,7 +684,7 @@ export function MessageSlideCard() {
                   right: 0,
                   backgroundColor: '#ffffff',
                   zIndex: 99999,
-                  paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))'
+                  marginBottom: 'env(safe-area-inset-bottom, 0px)'
                 }}
               >
                 {/* MessageForm component now handles its own input and submission logic */}
