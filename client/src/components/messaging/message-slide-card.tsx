@@ -59,6 +59,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -465,21 +466,17 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed top-0 left-0 right-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed top-0 left-0 right-0 bottom-0 bg-white z-[2147483647] flex flex-col"
         style={{
-          height: '100dvh',
-          maxHeight: '100dvh'
+          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
+          maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <Card
-          className="w-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
-          style={{
-            height: '100%',
-            maxHeight: '100%'
-          }}
+          className="w-full h-full rounded-none bg-white border-none shadow-none flex flex-col overflow-hidden"
         >
           {/* Header - Fixed at top */}
           <div className="flex items-center px-4 py-4 pt-16 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px]">
@@ -626,11 +623,12 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - At bottom of container */}
+              {/* Message Input - Fixed at bottom of container */}
               <div
                 className="px-4 pb-5 pt-2 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{
-                  backgroundColor: '#ffffff'
+                  backgroundColor: '#ffffff',
+                  position: 'relative'
                 }}
               >
                 {/* MessageForm component now handles its own input and submission logic */}
