@@ -228,7 +228,9 @@ export default function CommentsPage() {
         <ScrollArea 
           className="flex-1 overflow-y-auto"
           style={{
-            height: `calc(100vh - 4rem - 260px)`,
+            height: keyboardHeight > 0 
+              ? `calc(100vh - 4rem - 260px - ${keyboardHeight}px)` 
+              : `calc(100vh - 4rem - 260px)`,
             overscrollBehavior: 'none',
             overscrollBehaviorY: 'none',
             marginTop: '60px'
