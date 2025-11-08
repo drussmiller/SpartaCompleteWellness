@@ -278,11 +278,11 @@ export default function HomePage() {
         </div>
 
         {/* Main content layout */}
-        <div className="w-full">
+        <div className="w-full" style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div
             className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
           >
-            <main className="p-4">
+            <main className="p-4" style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
               {/* Header */}
               <div className="mb-6">
                 <div style={{ height: "75px" }}></div>
