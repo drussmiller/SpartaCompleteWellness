@@ -626,10 +626,12 @@ export function MessageSlideCard() {
 
               {/* Message Input - Fixed at bottom of container */}
               <div
-                className="px-4 pb-5 pt-0 border-t bg-white border-gray-200 flex-shrink-0"
+                className="px-4 pb-5 bg-white flex-shrink-0"
                 style={{
                   backgroundColor: '#ffffff',
-                  position: 'relative'
+                  position: 'relative',
+                  paddingTop: 0,
+                  marginTop: 0
                 }}
               >
                 {/* MessageForm component now handles its own input and submission logic */}
