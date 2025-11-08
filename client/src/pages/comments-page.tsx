@@ -197,23 +197,21 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      {/* Fixed Title Box at Top */}
-      <div className="fixed top-16 left-0 right-0 border-b border-gray-200 p-4 bg-white z-10">
-        <h3 className="text-lg font-semibold">Original Post</h3>
-      </div>
-      
       <div 
         className="flex flex-col bg-white w-full"
         style={{
           height: keyboardHeight > 0 
             ? `calc(100dvh - 4rem - ${keyboardHeight}px)` 
             : `calc(100dvh - 4rem)`,
-          overflow: 'hidden',
-          paddingTop: '60px', // Account for fixed title
-          transition: 'height 0.2s ease-out'
+          overflow: 'hidden'
         }}
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
+        
+        {/* Fixed Title Box at Top */}
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+          <h3 className="text-lg font-semibold">Original Post</h3>
+        </div>
         
         {/* Scrollable Content */}
         <ScrollArea 
