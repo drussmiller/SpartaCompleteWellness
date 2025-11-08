@@ -531,7 +531,13 @@ export function MessageSlideCard() {
           }}
         >
           {/* Header - Fixed at top */}
-          <div className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0">
+          <div 
+            className="flex items-center p-4 border-b bg-white border-gray-200 flex-shrink-0"
+            style={{
+              paddingTop: keyboardHeight > 0 ? `${Math.min(keyboardHeight * 0.15, 60)}px` : '16px',
+              transition: 'padding-top 0.2s ease-in-out'
+            }}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -560,7 +566,9 @@ export function MessageSlideCard() {
                 touchAction: 'auto',
                 overscrollBehavior: 'contain',
                 height: '100%',
-                maxHeight: 'calc(100vh - 48px - 60px)'
+                maxHeight: 'calc(100vh - 48px - 60px)',
+                paddingTop: keyboardHeight > 0 ? `${Math.min(keyboardHeight * 0.1, 40)}px` : '0px',
+                transition: 'padding-top 0.2s ease-in-out'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -609,7 +617,9 @@ export function MessageSlideCard() {
                   height: 'calc(100vh - 4rem - 260px)',
                   touchAction: 'auto',
                   overscrollBehavior: 'contain',
-                  paddingBottom: '96px'
+                  paddingBottom: '96px',
+                  paddingTop: keyboardHeight > 0 ? `${Math.min(keyboardHeight * 0.1, 40)}px` : '0px',
+                  transition: 'padding-top 0.2s ease-in-out'
                 }}
               >
                 <div className="space-y-4 p-4 bg-white pb-4">
