@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { MessagesSquare, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -500,8 +501,9 @@ export function MessageSlideCard() {
         )}
       </Button>
 
-      {/* Full screen slide-out panel */}
-      <div
+      {/* Full screen slide-out panel - rendered via Portal at document body level */}
+      {createPortal(
+        <div
         ref={cardRef}
         className={`fixed bg-white transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
@@ -785,7 +787,9 @@ export function MessageSlideCard() {
             </div>
           )}
         </Card>
-      </div>
+      </div>,
+        document.body
+      )}
     </>
   );
 }
