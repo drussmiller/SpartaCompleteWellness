@@ -673,18 +673,12 @@ export function MessageSlideCard() {
                 </div>
               </ScrollArea>
 
-              {/* Message Input - Fixed at bottom like Comments Page */}
+              {/* Message Input - At bottom of container */}
               <div
                 className="p-4 border-t bg-white border-gray-200 flex-shrink-0"
                 style={{
-                  position: 'fixed',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
                   backgroundColor: '#ffffff',
-                  zIndex: 99999,
-                  paddingBottom: '20px',
-                  marginBottom: 'env(safe-area-inset-bottom, 0px)'
+                  paddingBottom: '20px'
                 }}
               >
                 {/* MessageForm component now handles its own input and submission logic */}
