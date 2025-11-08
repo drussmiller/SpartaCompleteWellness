@@ -209,8 +209,16 @@ export default function CommentsPage() {
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        {/* Fixed Title Box at Top */}
-        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+        {/* Fixed Title Box at Top - stays visible when keyboard is shown */}
+        <div 
+          className="border-b border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            backgroundColor: 'white'
+          }}
+        >
           <h3 className="text-lg font-semibold">Original Post</h3>
         </div>
         
