@@ -44,7 +44,7 @@ export default function HomePage() {
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const [scrollOffset, setScrollOffset] = useState(0);
   const lastScrollY = useRef(0);
-  
+
   // Restore scroll position when returning from video player
   useRestoreScroll();
 
@@ -278,14 +278,15 @@ export default function HomePage() {
         </div>
 
         {/* Main content layout */}
-        <div
-          className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
-        >
-          <main className="p-4" style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
-            {/* Header */}
-            <div className="mb-6">
-              <div style={{ height: "75px" }}></div>
-            </div>
+        <div className="w-full">
+          <div
+            className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
+          >
+            <main className="p-4">
+              {/* Header */}
+              <div className="mb-6">
+                <div style={{ height: "75px" }}></div>
+              </div>
 
               <div className="space-y-2">
                 {posts?.length > 0 ? (
@@ -318,6 +319,7 @@ export default function HomePage() {
                 </div>
               </div>
             </main>
+          </div>
         </div>
       </div>
     </AppLayout>
