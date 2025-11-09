@@ -195,13 +195,9 @@ export default function CommentsPage() {
     );
   }
 
-  console.log('CommentsPage render - keyboardHeight:', keyboardHeight);
-
   return (
     <AppLayout title="Comments">
-      <div 
-        className="flex flex-col bg-white w-full h-full"
-      >
+      <div className="flex flex-col h-full bg-white">
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
         {/* Title Box at Top - Always Visible */}
@@ -210,9 +206,7 @@ export default function CommentsPage() {
         </div>
         
         {/* Scrollable Content */}
-        <ScrollArea 
-          className="flex-1 overflow-auto"
-        >
+        <div className="flex-1 overflow-y-auto">
           <div className="px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
               <PostView post={originalPost} />
@@ -225,7 +219,7 @@ export default function CommentsPage() {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
         
         {/* Fixed Comment Form at Bottom */}
         <div 
