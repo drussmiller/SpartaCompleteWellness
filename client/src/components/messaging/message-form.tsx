@@ -124,6 +124,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     const newHeight = Math.min(200, textarea.scrollHeight); // Max height of 200px
     textarea.style.height = `${newHeight}px`;
     
+    // Enable scrolling if content exceeds max height
+    if (textarea.scrollHeight > 200) {
+      textarea.style.overflowY = 'auto';
+    } else {
+      textarea.style.overflowY = 'hidden';
+    }
+    
     // Adjust container to expand upwards
     const container = textarea.closest('.flex-1') as HTMLElement;
     if (container) {
@@ -344,9 +351,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 overflow-hidden rounded-md py-2 px-4 border border-gray-300"
+            className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
-            style={{ height: 'auto', minHeight: '38px' }}
+            style={{ height: 'auto', minHeight: '38px', maxHeight: '200px' }}
             id="message-textarea"
           />
         </div>
