@@ -195,43 +195,23 @@ export default function CommentsPage() {
     );
   }
 
-  // Add console log to debug
   console.log('CommentsPage render - keyboardHeight:', keyboardHeight);
 
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full"
-        style={{
-          height: keyboardHeight > 0 
-            ? `calc(100dvh - 4rem - ${keyboardHeight}px)` 
-            : `calc(100dvh - 4rem)`,
-          minHeight: '400px',
-          overflow: 'hidden'
-        }}
+        className="flex flex-col bg-white w-full h-full"
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
-        {/* Fixed Title Box at Top - Always Visible */}
-        <div 
-          className="border-b border-gray-200 p-4 bg-white flex-shrink-0" 
-          style={{ 
-            minHeight: '60px',
-            backgroundColor: '#fff',
-            zIndex: 1
-          }}
-        >
-          <h3 className="text-lg font-semibold text-black">Original Post</h3>
+        {/* Title Box at Top - Always Visible */}
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+          <h3 className="text-lg font-semibold">Original Post</h3>
         </div>
         
         {/* Scrollable Content */}
         <ScrollArea 
-          className="flex-1"
-          style={{
-            overscrollBehavior: 'none',
-            overscrollBehaviorY: 'none',
-            minHeight: '100px'
-          }}
+          className="flex-1 overflow-auto"
         >
           <div className="px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
@@ -248,7 +228,12 @@ export default function CommentsPage() {
         </ScrollArea>
         
         {/* Fixed Comment Form at Bottom */}
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+        <div 
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '1rem'
+          }}
+        >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
           <CommentForm
             onSubmit={async (content) => {
