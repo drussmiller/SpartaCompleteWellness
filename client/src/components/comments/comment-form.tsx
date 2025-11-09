@@ -104,12 +104,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (content.trim() && !isSubmitting) {
-        handleSubmit();
-      }
-    }
+    // Allow Enter key to create new lines without submitting
+    // Users must click the send button to submit comments
   };
 
   return (
