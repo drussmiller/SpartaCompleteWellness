@@ -404,10 +404,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div 
-          className="w-full flex flex-col"
+          className="h-full w-full flex flex-col"
           style={{
-            height: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100dvh',
-            maxHeight: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100dvh'
+            transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : 'none',
+            transition: 'transform 0.2s ease-out'
           }}
         >
           {/* Fixed header bar */}
@@ -446,12 +446,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           </div>
 
           {/* Content area */}
-          <div 
-            className="flex-1 overflow-y-auto pt-2"
-            style={{
-              paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : 0
-            }}
-          >
+          <div className="flex-1 overflow-y-auto pt-2">
             {/* Show loading state */}
             {(isPostLoading || areCommentsLoading) && (
               <div className="flex items-center justify-center p-8">
@@ -485,9 +480,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
             <div 
               className="sticky bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999] mt-auto" 
               style={{ 
-                paddingBottom: keyboardHeight > 0 
-                  ? `calc(${keyboardHeight}px + env(safe-area-inset-bottom, 0px))` 
-                  : 'env(safe-area-inset-bottom, 0px)'
+                marginBottom: 'env(safe-area-inset-bottom, 0px)'
               }}
             >
               <CommentForm
