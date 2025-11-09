@@ -22,16 +22,16 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
   return (
     <div className="flex h-full" style={{ touchAction: 'pan-y pinch-zoom' }}>
       <div className={cn(
-        "flex flex-col flex-1 min-h-screen"
+        "flex flex-col flex-1 h-screen max-h-screen overflow-hidden"
       )}>
         {title && (
-          <header className="sticky top-0 z-50 border-b border-border bg-background">
+          <header className="flex-shrink-0 border-b border-border bg-background">
             <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6' : 'container'} py-3`}>
               <h1 className="text-lg font-semibold">{title}</h1>
             </div>
           </header>
         )}
-        <main className="flex-1 min-h-0" style={{ touchAction: 'pan-y pinch-zoom' }}>
+        <main className="flex-1 min-h-0 overflow-hidden" style={{ touchAction: 'pan-y pinch-zoom' }}>
           {children}
         </main>
         {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} scrollOffset={scrollOffset} />}

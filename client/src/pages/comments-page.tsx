@@ -200,7 +200,7 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full h-full"
+        className="flex flex-col bg-white w-full h-full overflow-hidden"
       >
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
@@ -211,7 +211,7 @@ export default function CommentsPage() {
         
         {/* Scrollable Content */}
         <ScrollArea 
-          className="flex-1 overflow-auto"
+          className="flex-1 min-h-0"
         >
           <div className="px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
