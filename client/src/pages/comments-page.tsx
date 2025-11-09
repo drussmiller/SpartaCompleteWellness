@@ -197,15 +197,19 @@ export default function CommentsPage() {
 
   return (
     <div 
-      className="fixed inset-0 flex flex-col bg-white"
+      className="fixed inset-0 flex flex-col bg-white z-[100]"
       style={{
         height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
         maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
       }}
     >
       {/* Header with Title */}
-      <header className="flex-shrink-0 sticky top-0 z-50 border-b border-border bg-white">
+      <header className="flex-shrink-0 z-50 border-b border-border bg-white pt-12">
         <div className="container py-4">
           <h1 className="text-xl font-bold text-gray-900">Comments</h1>
         </div>
