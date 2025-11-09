@@ -400,18 +400,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         side="right" 
         ref={drawerRef}
         className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
-        style={{ 
-          width: '100%', 
-          maxWidth: '100%', 
-          overflow: 'hidden', 
-          paddingTop: 'env(safe-area-inset-top, 30px)',
-          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-          maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-          transition: 'height 0.2s ease-out, max-height 0.2s ease-out'
-        }}
+        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 30px)' }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="h-full w-full flex flex-col">
+        <div 
+          className="w-full flex flex-col"
+          style={{
+            height: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100dvh',
+            maxHeight: keyboardHeight > 0 ? `calc(100dvh - ${keyboardHeight}px)` : '100dvh'
+          }}
+        >
           {/* Fixed header bar */}
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
@@ -448,7 +446,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           </div>
 
           {/* Content area */}
-          <div className="flex-1 overflow-y-auto pt-2">
+          <div 
+            className="flex-1 overflow-y-auto pt-2"
+            style={{
+              paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : 0
+            }}
+          >
             {/* Show loading state */}
             {(isPostLoading || areCommentsLoading) && (
               <div className="flex items-center justify-center p-8">
@@ -482,7 +485,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
             <div 
               className="sticky bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999] mt-auto" 
               style={{ 
-                marginBottom: 'env(safe-area-inset-bottom, 0px)'
+                paddingBottom: keyboardHeight > 0 
+                  ? `calc(${keyboardHeight}px + env(safe-area-inset-bottom, 0px))` 
+                  : 'env(safe-area-inset-bottom, 0px)'
               }}
             >
               <CommentForm
