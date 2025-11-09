@@ -480,7 +480,7 @@ export function MessageSlideCard() {
           style={{ overflow: 'hidden' }}
         >
           {/* Header - Sticky at top */}
-          <div className="flex items-center px-4 py-4 pt-16 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] sticky top-0 z-50">
+          <div className="flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] sticky top-0 z-50" style={{ paddingTop: keyboardHeight > 0 ? '1rem' : '4rem' }}>
             <Button
               variant="ghost"
               size="icon"
