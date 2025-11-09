@@ -12,6 +12,7 @@ import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
+import { createPortal } from "react-dom";
 
 
 export default function CommentsPage() {
@@ -195,9 +196,9 @@ export default function CommentsPage() {
     );
   }
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 flex flex-col bg-white z-[100]"
+      className="fixed inset-0 flex flex-col bg-white"
       style={{
         height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
         maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
@@ -205,11 +206,12 @@ export default function CommentsPage() {
         top: 0,
         left: 0,
         right: 0,
-        bottom: 0
+        bottom: 0,
+        zIndex: 100
       }}
     >
       {/* Header with Title */}
-      <header className="flex-shrink-0 z-50 border-b border-border bg-white pt-12">
+      <header className="flex-shrink-0 z-50 border-b border-border bg-white">
         <div className="container py-4">
           <h1 className="text-xl font-bold text-gray-900">Comments</h1>
         </div>
@@ -247,6 +249,7 @@ export default function CommentsPage() {
           isSubmitting={createCommentMutation.isPending}
         />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
