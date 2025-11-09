@@ -403,34 +403,36 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       >
         <div className="h-full w-full flex flex-col">
           {/* Fixed header bar */}
-          <div className="flex items-center px-4 py-4 border-b bg-background flex-shrink-0 min-h-[80px]" style={{ paddingTop: '4rem' }}>
+          <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
-            <SheetClose className="mr-3 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
-              <ChevronLeft className="h-6 w-6 text-black" />
+            <SheetClose className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+              <ChevronLeft className="text-2xl" />
               <span className="sr-only">Close</span>
             </SheetClose>
 
             {/* Post author info */}
             {originalPost?.author && (
-              <div className="flex items-center gap-2">
-                <Avatar className="h-10 w-10">
-                  {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
-                  <AvatarFallback
-                    style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
-                    className="text-white"
-                  >
-                    {originalPost.author.username?.[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xl font-semibold">{originalPost.author.username}</span>
-                {originalPost?.createdAt && (
-                  <>
-                    <span className="text-muted-foreground">-</span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
-                    </span>
-                  </>
-                )}
+              <div className="flex flex-col items-start justify-center h-full ml-14 pt-2">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-10 w-10">
+                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                    <AvatarFallback
+                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                      className="text-white"
+                    >
+                      {originalPost.author.username?.[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xl font-semibold">{originalPost.author.username}</span>
+                  {originalPost?.createdAt && (
+                    <>
+                      <span className="text-muted-foreground">-</span>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
