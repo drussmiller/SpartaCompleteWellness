@@ -31,7 +31,7 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
             </div>
           </header>
         )}
-        <main className="flex-1 min-h-0" style={{ touchAction: 'pan-y pinch-zoom' }}>
+        <main className={`flex-1 ${isMobile ? 'pt-20' : ''} min-h-0`} style={{ touchAction: 'pan-y pinch-zoom' }}>
           {children}
         </main>
         {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} scrollOffset={scrollOffset} />}
