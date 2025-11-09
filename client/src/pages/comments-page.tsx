@@ -196,15 +196,8 @@ export default function CommentsPage() {
   }
 
   return (
-    <AppLayout title="Comments">
-      <div 
-        className="flex flex-col bg-white"
-        style={{
-          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-          maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-          overflow: 'hidden'
-        }}
-      >
+    <AppLayout title="Comments" keyboardHeight={keyboardHeight}>
+      <div className="flex flex-col h-full bg-white">
         {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
         
         {/* Scrollable Content */}
