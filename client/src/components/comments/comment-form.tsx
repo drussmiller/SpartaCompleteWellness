@@ -273,7 +273,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 rounded-full py-2 px-4 border border-gray-300"
+            className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
             style={{ height: '38px', minHeight: '38px', maxHeight: '200px', overflowY: 'auto' }}
             id="comment-textarea"
