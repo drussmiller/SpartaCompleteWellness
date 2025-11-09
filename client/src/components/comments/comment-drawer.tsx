@@ -400,16 +400,18 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         side="right" 
         ref={drawerRef}
         className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
-        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 30px)' }}
+        style={{ 
+          width: '100%', 
+          maxWidth: '100%', 
+          overflow: 'hidden', 
+          paddingTop: 'env(safe-area-inset-top, 30px)',
+          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
+          maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
+          transition: 'height 0.2s ease-out, max-height 0.2s ease-out'
+        }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div 
-          className="h-full w-full flex flex-col"
-          style={{
-            transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : 'none',
-            transition: 'transform 0.2s ease-out'
-          }}
-        >
+        <div className="h-full w-full flex flex-col">
           {/* Fixed header bar */}
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
