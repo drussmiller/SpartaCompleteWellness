@@ -257,6 +257,13 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               target.style.height = '38px';
               const newHeight = Math.min(200, target.scrollHeight); 
               target.style.height = `${newHeight}px`;
+              
+              // Enable scrolling if content exceeds max height
+              if (target.scrollHeight > 200) {
+                target.style.overflowY = 'auto';
+              } else {
+                target.style.overflowY = 'hidden';
+              }
             }}
             onFocus={(e) => {
               e.preventDefault();
@@ -266,9 +273,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4 border border-gray-300"
+            className="resize-none bg-gray-100 rounded-full py-2 px-4 border border-gray-300"
             rows={1}
-            style={{ height: '38px', minHeight: '38px' }}
+            style={{ height: '38px', minHeight: '38px', maxHeight: '200px', overflowY: 'auto' }}
             id="comment-textarea"
           />
         </div>
