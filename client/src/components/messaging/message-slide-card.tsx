@@ -480,8 +480,8 @@ export function MessageSlideCard() {
           className="w-full h-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{ overflow: 'hidden' }}
         >
-          {/* Header - Fixed at top of viewport */}
-          <div className="flex items-center px-4 py-4 pt-16 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] fixed top-0 left-0 right-0 z-50">
+          {/* Header - Fixed at top */}
+          <div className="flex items-center px-4 py-4 pt-16 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px]">
             <Button
               variant="ghost"
               size="icon"
