@@ -10,10 +10,9 @@ interface AppLayoutProps {
   sidebarWidth?: string;
   isBottomNavVisible?: boolean;
   scrollOffset?: number;
-  keyboardHeight?: number;
 }
 
-export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true, scrollOffset = 0, keyboardHeight = 0 }: AppLayoutProps) {
+export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true, scrollOffset = 0 }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
@@ -21,20 +20,10 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
   console.log('AppLayout render - isBottomNavVisible:', isBottomNavVisible, 'isMobile:', isMobile);
 
   return (
-    <div className="flex" style={{ 
-      touchAction: 'pan-y pinch-zoom',
-      height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-      maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
-      overflow: 'hidden'
-    }}>
+    <div className="flex h-full" style={{ touchAction: 'pan-y pinch-zoom' }}>
       <div className={cn(
-        "flex flex-col flex-1"
-      )}
-      style={{
-        height: '100%',
-        maxHeight: '100%'
-      }}
-      >
+        "flex flex-col flex-1 min-h-screen"
+      )}>
         {title && (
           <header className="flex-shrink-0 sticky top-0 z-50 border-b border-border bg-white">
             <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6' : 'container'} py-4`}>

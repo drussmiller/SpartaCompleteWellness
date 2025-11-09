@@ -196,41 +196,53 @@ export default function CommentsPage() {
   }
 
   return (
-    <AppLayout title="Comments" keyboardHeight={keyboardHeight}>
-      <div className="flex flex-col h-full bg-white">
-        {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
-        
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-4 py-6 space-y-6 bg-white">
-            <div className="bg-white">
-              <h3 className="text-lg font-semibold mb-4 pb-4 border-b border-gray-200">Original Post</h3>
-              <PostView post={originalPost} />
-            </div>
-            
-            {comments.length > 0 && (
-              <div className="border-t border-gray-200 pt-6 bg-white">
-                <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
-                <CommentList comments={comments} postId={parseInt(postId)} />
-              </div>
-            )}
-          </div>
+    <div 
+      className="fixed inset-0 flex flex-col bg-white"
+      style={{
+        height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
+        maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Header with Title */}
+      <header className="flex-shrink-0 sticky top-0 z-50 border-b border-border bg-white">
+        <div className="container py-4">
+          <h1 className="text-xl font-bold text-gray-900">Comments</h1>
         </div>
-        
-        {/* Fixed Comment Form at Bottom */}
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
-          <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
-          <CommentForm
-            onSubmit={async (content) => {
-              await createCommentMutation.mutateAsync({
-                content: content,
-                postId: parseInt(postId)
-              });
-            }}
-            isSubmitting={createCommentMutation.isPending}
-          />
+      </header>
+
+      {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
+      
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 py-6 space-y-6 bg-white">
+          <div className="bg-white">
+            <h3 className="text-lg font-semibold mb-4 pb-4 border-b border-gray-200">Original Post</h3>
+            <PostView post={originalPost} />
+          </div>
+          
+          {comments.length > 0 && (
+            <div className="border-t border-gray-200 pt-6 bg-white">
+              <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
+              <CommentList comments={comments} postId={parseInt(postId)} />
+            </div>
+          )}
         </div>
       </div>
-    </AppLayout>
+      
+      {/* Fixed Comment Form at Bottom */}
+      <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+        <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
+        <CommentForm
+          onSubmit={async (content) => {
+            await createCommentMutation.mutateAsync({
+              content: content,
+              postId: parseInt(postId)
+            });
+          }}
+          isSubmitting={createCommentMutation.isPending}
+        />
+      </div>
+    </div>
   );
 }
