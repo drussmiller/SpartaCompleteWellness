@@ -10,17 +10,26 @@ export function useKeyboardAdjustment() {
 
     const viewport = window.visualViewport;
     const initialHeight = window.innerHeight;
+    let debounceTimer: NodeJS.Timeout | null = null;
 
     const updateKeyboardHeight = () => {
-      const currentHeight = viewport.height;
-      const heightDiff = initialHeight - currentHeight;
-      
-      // Only set keyboard height if difference is significant (keyboard is open)
-      if (heightDiff > 150) {
-        setKeyboardHeight(heightDiff);
-      } else {
-        setKeyboardHeight(0);
+      // Clear any existing timer
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
+
+      // Add a small delay to ensure keyboard is fully opened/closed
+      debounceTimer = setTimeout(() => {
+        const currentHeight = viewport.height;
+        const heightDiff = initialHeight - currentHeight;
+        
+        // Only set keyboard height if difference is significant (keyboard is open)
+        if (heightDiff > 150) {
+          setKeyboardHeight(heightDiff);
+        } else {
+          setKeyboardHeight(0);
+        }
+      }, 100); // 100ms delay to ensure keyboard animation completes
     };
 
     // Add multiple event listeners for faster detection
@@ -39,6 +48,9 @@ export function useKeyboardAdjustment() {
     updateKeyboardHeight();
 
     return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
       viewport.removeEventListener('resize', updateKeyboardHeight);
       viewport.removeEventListener('scroll', updateKeyboardHeight);
       if ('ongeometrychange' in viewport) {
