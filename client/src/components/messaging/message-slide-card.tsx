@@ -657,7 +657,7 @@ export function MessageSlideCard() {
 
               {/* Message Input - Fixed at bottom of container */}
               <div
-                className="px-4 pt-3 pb-5 bg-white flex-shrink-0"
+                className={`px-4 pt-3 bg-white flex-shrink-0 ${keyboardHeight > 0 ? 'pb-5' : 'pb-8'}`}
                 style={{
                   backgroundColor: '#ffffff'
                 }}
