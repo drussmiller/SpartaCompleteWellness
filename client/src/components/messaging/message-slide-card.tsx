@@ -466,9 +466,9 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed left-0 right-0 bottom-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed left-0 right-0 top-0 bottom-0 bg-white z-[2147483647] flex flex-col"
         style={{
-          height:'100vh',maxHeight:'100vh',paddingBottom:keyboardHeight > 0 ? `${keyboardHeight}px)` : '0vh',
+          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
@@ -480,7 +480,7 @@ export function MessageSlideCard() {
           style={{ overflow: 'hidden' }}
         >
           {/* Header - Sticky at top */}
-          <div className={`flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 ${keyboardHeight > 0 ? '' : 'sticky'}`} style={{ paddingTop: keyboardHeight > 0 ? '1rem' : '4rem', top: 0 }}>
+          <div className="flex items-center px-4 pt-4 pb-4 border-b bg-white border-gray-200 flex-shrink-0 z-50 sticky top-0" style={{ paddingTop: '1rem' }}>
             <Button
               variant="ghost"
               size="icon"
