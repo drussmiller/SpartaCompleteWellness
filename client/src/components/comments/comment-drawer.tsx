@@ -55,6 +55,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         setViewportHeight(window.innerHeight);
         setViewportTop(0);
       }
+      
+      // Ensure comment box stays visible after orientation changes
+      // Only hide it if actively editing or replying
+      setIsCommentBoxVisible(true);
     };
 
     if (window.visualViewport) {
