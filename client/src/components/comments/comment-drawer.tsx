@@ -12,6 +12,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect, useState } from "react";
 import { getThumbnailUrl } from "@/lib/image-utils";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 interface CommentDrawerProps {
   postId: number;
@@ -37,6 +38,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const [isCommentBoxVisible, setIsCommentBoxVisible] = useState(true);
   const [viewportHeight, setViewportHeight] = useState<number>(window.innerHeight);
   const [viewportTop, setViewportTop] = useState<number>(0);
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Callback to handle visibility
   const handleCommentVisibility = (isEditing: boolean, isReplying: boolean) => {
@@ -505,7 +507,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
           {/* Fixed comment form at the bottom */}
           {isCommentBoxVisible && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className={`fixed bottom-0 left-0 right-0 px-4 pt-4 border-t bg-background z-[99999] ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
                 onSubmit={async (content, file) => {
                   await createCommentMutation.mutateAsync({ content, file });
