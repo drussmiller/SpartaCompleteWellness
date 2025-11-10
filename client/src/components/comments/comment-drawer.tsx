@@ -49,15 +49,31 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   useEffect(() => {
     const updateViewport = () => {
       if (window.visualViewport) {
-        setViewportHeight(window.visualViewport.height);
-        setViewportTop(window.visualViewport.offsetTop);
+        const newHeight = window.visualViewport.height;
+        const newTop = window.visualViewport.offsetTop;
+        
+        // Force a state update to trigger re-render
+        setViewportHeight(newHeight);
+        setViewportTop(newTop);
+        
+        // Force the drawer to recalculate its position
+        if (drawerRef.current) {
+          drawerRef.current.style.height = `${newHeight}px`;
+          drawerRef.current.style.top = `${newTop}px`;
+        }
       } else {
-        setViewportHeight(window.innerHeight);
+        const newHeight = window.innerHeight;
+        setViewportHeight(newHeight);
         setViewportTop(0);
+        
+        // Force the drawer to recalculate its position
+        if (drawerRef.current) {
+          drawerRef.current.style.height = `${newHeight}px`;
+          drawerRef.current.style.top = '0px';
+        }
       }
       
       // Ensure comment box stays visible after orientation changes
-      // Only hide it if actively editing or replying
       setIsCommentBoxVisible(true);
     };
 
@@ -66,6 +82,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       window.visualViewport.addEventListener('scroll', updateViewport);
     }
     window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+
+    // Initial setup
+    updateViewport();
 
     return () => {
       if (window.visualViewport) {
@@ -73,6 +93,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         window.visualViewport.removeEventListener('scroll', updateViewport);
       }
       window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
     };
   }, []);
 
