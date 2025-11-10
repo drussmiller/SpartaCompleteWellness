@@ -49,32 +49,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   useEffect(() => {
     const updateViewport = () => {
       if (window.visualViewport) {
-        const newHeight = window.visualViewport.height;
-        const newTop = window.visualViewport.offsetTop;
-        
-        // Force a state update to trigger re-render
-        setViewportHeight(newHeight);
-        setViewportTop(newTop);
-        
-        // Force the drawer to recalculate its position
-        if (drawerRef.current) {
-          drawerRef.current.style.height = `${newHeight}px`;
-          drawerRef.current.style.top = `${newTop}px`;
-        }
+        setViewportHeight(window.visualViewport.height);
+        setViewportTop(window.visualViewport.offsetTop);
       } else {
-        const newHeight = window.innerHeight;
-        setViewportHeight(newHeight);
+        setViewportHeight(window.innerHeight);
         setViewportTop(0);
-        
-        // Force the drawer to recalculate its position
-        if (drawerRef.current) {
-          drawerRef.current.style.height = `${newHeight}px`;
-          drawerRef.current.style.top = '0px';
-        }
       }
-      
-      // Ensure comment box stays visible after orientation changes
-      setIsCommentBoxVisible(true);
     };
 
     if (window.visualViewport) {
@@ -82,7 +62,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       window.visualViewport.addEventListener('scroll', updateViewport);
     }
     window.addEventListener('resize', updateViewport);
-    window.addEventListener('orientationchange', updateViewport);
 
     // Initial setup
     updateViewport();
@@ -93,7 +72,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         window.visualViewport.removeEventListener('scroll', updateViewport);
       }
       window.removeEventListener('resize', updateViewport);
-      window.removeEventListener('orientationchange', updateViewport);
     };
   }, []);
 
