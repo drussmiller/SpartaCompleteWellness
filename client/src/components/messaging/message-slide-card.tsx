@@ -466,9 +466,10 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed left-0 right-0 top-0 bottom-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed left-0 right-0 top-0 bg-white z-[2147483647] flex flex-col"
         style={{
-          paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+          bottom: 0,
+          height: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
