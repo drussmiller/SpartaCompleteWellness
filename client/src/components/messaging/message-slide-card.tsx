@@ -466,9 +466,8 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed left-0 right-0 bottom-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed inset-0 bg-white z-[2147483647] flex flex-col"
         style={{
-          height:'100vh',maxHeight:'100vh',paddingBottom:keyboardHeight > 0 ? `${keyboardHeight}px)` : '0vh',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
@@ -479,8 +478,8 @@ export function MessageSlideCard() {
           className="w-full h-full rounded-none bg-white border-none shadow-none flex flex-col"
           style={{ overflow: 'hidden' }}
         >
-          {/* Header - Sticky at top */}
-          <div className={`flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 ${keyboardHeight > 0 ? '' : 'sticky'}`} style={{ paddingTop: keyboardHeight > 0 ? '1rem' : '4rem', top: 0 }}>
+          {/* Header - Fixed at top */}
+          <div className="flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50" style={{ paddingTop: '4rem' }}>
             <Button
               variant="ghost"
               size="icon"
@@ -559,8 +558,7 @@ export function MessageSlideCard() {
                   overscrollBehavior: 'none',
                   overscrollBehaviorY: 'none',
                   paddingBottom: '16px',
-                  overflowY: 'auto',
-                  position: 'relative'
+                  overflowY: 'auto'
                 }}
               >
                 <div className="space-y-4 p-4 bg-white pb-4">
@@ -630,10 +628,7 @@ export function MessageSlideCard() {
               <div
                 className="px-4 pb-5 bg-white flex-shrink-0"
                 style={{
-                  backgroundColor: '#ffffff',
-                  position: 'relative',
-                  paddingTop: 0,
-                  marginTop: 0
+                  backgroundColor: '#ffffff'
                 }}
               >
                 {/* MessageForm component now handles its own input and submission logic */}
