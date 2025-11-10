@@ -56,10 +56,36 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number>(window.innerHeight);
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
   const keyboardHeight = useKeyboardAdjustment();
+
+  // Track viewport height changes for keyboard
+  useEffect(() => {
+    const updateHeight = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+      } else {
+        setViewportHeight(window.innerHeight);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateHeight);
+      window.visualViewport.addEventListener('scroll', updateHeight);
+    }
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateHeight);
+        window.visualViewport.removeEventListener('scroll', updateHeight);
+      }
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, []);
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -468,7 +494,7 @@ export function MessageSlideCard() {
         ref={cardRef}
         className="fixed top-0 left-0 right-0 bg-white z-[2147483647] flex flex-col"
         style={{
-          height: '100vh',
+          height: `${viewportHeight}px`,
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
