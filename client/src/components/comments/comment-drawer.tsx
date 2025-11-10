@@ -36,44 +36,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const [commentsError, setCommentsError] = useState<Error | null>(null);
 
   const [isCommentBoxVisible, setIsCommentBoxVisible] = useState(true);
-  const [viewportHeight, setViewportHeight] = useState<number>(window.innerHeight);
-  const [viewportTop, setViewportTop] = useState<number>(0);
   const keyboardHeight = useKeyboardAdjustment();
 
   // Callback to handle visibility
   const handleCommentVisibility = (isEditing: boolean, isReplying: boolean) => {
     setIsCommentBoxVisible(!isEditing && !isReplying);
   };
-
-  // Track viewport height and position changes for keyboard
-  useEffect(() => {
-    const updateViewport = () => {
-      if (window.visualViewport) {
-        setViewportHeight(window.visualViewport.height);
-        setViewportTop(window.visualViewport.offsetTop);
-      } else {
-        setViewportHeight(window.innerHeight);
-        setViewportTop(0);
-      }
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateViewport);
-      window.visualViewport.addEventListener('scroll', updateViewport);
-    }
-    window.addEventListener('resize', updateViewport);
-
-    // Initial setup
-    updateViewport();
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateViewport);
-        window.visualViewport.removeEventListener('scroll', updateViewport);
-      }
-      window.removeEventListener('resize', updateViewport);
-    };
-  }, []);
 
   // Focus on the comment input when the drawer opens
   useEffect(() => {
@@ -431,22 +399,18 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
+        className="!w-full !p-0 !max-w-full comment-drawer !z-[9999]"
         style={{ 
           width: '100%', 
           maxWidth: '100%', 
           overflow: 'hidden', 
-          paddingTop: 'env(safe-area-inset-top, 30px)',
-          position: 'fixed',
-          top: `${viewportTop}px`,
-          left: '0',
-          right: '0',
-          height: `${viewportHeight}px`,
-          maxHeight: `${viewportHeight}px`
+          height: '100dvh',
+          maxHeight: '100dvh',
+          paddingTop: 'env(safe-area-inset-top, 30px)'
         }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="w-full flex flex-col" style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
+        <div className="w-full flex flex-col h-full">
           {/* Fixed header bar */}
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
