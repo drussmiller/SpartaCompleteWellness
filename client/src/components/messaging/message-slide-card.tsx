@@ -466,8 +466,9 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed inset-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed top-0 left-0 right-0 bg-white z-[2147483647] flex flex-col"
         style={{
+          height: '100vh',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
