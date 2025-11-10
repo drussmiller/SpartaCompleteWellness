@@ -437,12 +437,16 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           maxWidth: '100%', 
           overflow: 'hidden', 
           paddingTop: 'env(safe-area-inset-top, 30px)',
+          position: 'fixed',
           top: `${viewportTop}px`,
-          height: `${viewportHeight}px`
+          left: '0',
+          right: '0',
+          height: `${viewportHeight}px`,
+          maxHeight: `${viewportHeight}px`
         }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="h-full w-full flex flex-col">
+        <div className="w-full flex flex-col" style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
           {/* Fixed header bar */}
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
