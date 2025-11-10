@@ -466,8 +466,9 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed left-0 right-0 top-0 bottom-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed left-0 right-0 bottom-0 bg-white z-[2147483647] flex flex-col"
         style={{
+          height:'100vh',maxHeight:'100vh',paddingBottom:keyboardHeight > 0 ? `${keyboardHeight}px)` : '0vh',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
@@ -479,7 +480,7 @@ export function MessageSlideCard() {
           style={{ overflow: 'hidden' }}
         >
           {/* Header - Sticky at top */}
-          <div className="flex items-center px-4 pt-4 pb-4 border-b bg-white border-gray-200 flex-shrink-0 z-50 sticky top-0" style={{ paddingTop: '1rem' }}>
+          <div className={`flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 ${keyboardHeight > 0 ? '' : 'sticky'}`} style={{ paddingTop: keyboardHeight > 0 ? '1rem' : '4rem', top: 0 }}>
             <Button
               variant="ghost"
               size="icon"
@@ -548,84 +549,93 @@ export function MessageSlideCard() {
             </ScrollArea>
           ) : (
             // Messages View
-            <div className="flex flex-col bg-white h-full">
+            <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <div className="flex-1 overflow-hidden">
-                <ScrollArea
-                  className="h-full bg-white"
-                  style={{
-                    touchAction: 'pan-y',
-                    WebkitOverflowScrolling: 'touch',
-                    overscrollBehavior: 'none',
-                    overscrollBehaviorY: 'none'
-                  }}
-                >
-                  <div className="space-y-4 p-4 bg-white pb-4">
-                    {messages.map((message) => (
+              <ScrollArea
+                className="flex-1 bg-white"
+                style={{
+                  touchAction: 'pan-y',
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehavior: 'none',
+                  overscrollBehaviorY: 'none',
+                  paddingBottom: '16px',
+                  overflowY: 'auto',
+                  position: 'relative'
+                }}
+              >
+                <div className="space-y-4 p-4 bg-white pb-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${
+                        message.sender.id === user?.id ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      {message.sender.id !== user?.id && (
+                        <Avatar className="mr-2">
+                          {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
+                          <AvatarFallback
+                            style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
+                            className="text-white"
+                          >
+                            {message.sender.username?.[0].toUpperCase() || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       <div
-                        key={message.id}
-                        className={`flex ${
-                          message.sender.id === user?.id ? "justify-end" : "justify-start"
+                        className={`max-w-[70%] p-3 rounded-lg ${
+                          message.sender.id === user?.id
+                            ? "bg-[#8A2BE2] text-white ml-2"
+                            : "bg-muted mr-2"
                         }`}
                       >
-                        {message.sender.id !== user?.id && (
-                          <Avatar className="mr-2">
-                            {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
-                            <AvatarFallback
-                              style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
-                              className="text-white"
-                            >
-                              {message.sender.username?.[0].toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
+                        {message.content && (
+                          <p
+                            className="break-words"
+                            dangerouslySetInnerHTML={{
+                              __html: convertUrlsToLinks(message.content || '')
+                            }}
+                          />
                         )}
-                        <div
-                          className={`max-w-[70%] p-3 rounded-lg ${
-                            message.sender.id === user?.id
-                              ? "bg-[#8A2BE2] text-white ml-2"
-                              : "bg-muted mr-2"
-                          }`}
-                        >
-                          {message.content && (
-                            <p
-                              className="break-words"
-                              dangerouslySetInnerHTML={{
-                                __html: convertUrlsToLinks(message.content || '')
+
+                        {(message.imageUrl || message.mediaUrl) &&
+                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
+                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
+                          message.is_video ? (
+                            <VideoPlayer
+                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                              className="max-w-full rounded mt-2"
+                              onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
+                            />
+                          ) : (
+                            <img
+                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                              alt="Message image"
+                              className="max-w-full rounded mt-2"
+                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
+                              onError={(e) => {
+                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
+                                e.currentTarget.style.display = 'none';
                               }}
                             />
-                          )}
-
-                          {(message.imageUrl || message.mediaUrl) &&
-                           (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
-                           (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
-                            message.is_video ? (
-                              <VideoPlayer
-                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                                className="max-w-full rounded mt-2"
-                                onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
-                              />
-                            ) : (
-                              <img
-                                src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                                alt="Message image"
-                                className="max-w-full rounded mt-2"
-                                onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
-                                onError={(e) => {
-                                  console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            )
-                          )}
-                        </div>
+                          )
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
 
               {/* Message Input - Fixed at bottom of container */}
-              <div className="px-4 pb-5 pt-2 bg-white border-t border-gray-200">
+              <div
+                className="px-4 pb-5 bg-white flex-shrink-0"
+                style={{
+                  backgroundColor: '#ffffff',
+                  position: 'relative',
+                  paddingTop: 0,
+                  marginTop: 0
+                }}
+              >
                 {/* MessageForm component now handles its own input and submission logic */}
                 <MessageForm
                   onSubmit={async (content, imageData, isVideo = false) => {
