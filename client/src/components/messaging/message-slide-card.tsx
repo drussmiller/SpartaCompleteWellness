@@ -899,6 +899,21 @@ export function MessageSlideCard() {
                               />
                             )}
 
+                            {(() => {
+                              // Debug logging for all messages with media
+                              if (message.imageUrl || message.mediaUrl || message.is_video) {
+                                console.log(`Message ${message.id} media check:`, {
+                                  imageUrl: message.imageUrl,
+                                  mediaUrl: message.mediaUrl,
+                                  is_video: message.is_video,
+                                  passesCheck1: !!(message.imageUrl || message.mediaUrl),
+                                  passesCheck2: (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined'),
+                                  passesCheck3: (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined')
+                                });
+                              }
+                              return null;
+                            })()}
+
                             {(message.imageUrl || message.mediaUrl) &&
                              (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                              (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
