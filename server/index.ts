@@ -41,21 +41,22 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Run migrations BEFORE setting up auth to ensure schema is ready
-async function runMigrations() {
-  console.log("Running database migrations...");
+// Verify database connection BEFORE setting up auth
+async function verifyDatabase() {
+  console.log("Verifying database connection...");
   try {
-    const { runMigrations: executeMigrations } = await import("./db/migrations");
-    await executeMigrations();
-    console.log("Migrations complete.");
+    // Test database connection
+    await db.execute(sql`SELECT 1`);
+    console.log("Database connection verified successfully.");
+    console.log("Note: Schema is managed by Drizzle Kit. Run 'npm run db:push' to sync schema changes.");
   } catch (error) {
-    console.error("Error running migrations:", error);
+    console.error("Error connecting to database:", error);
     throw error;
   }
 }
 
-// Wait for migrations before continuing
-await runMigrations();
+// Wait for database verification before continuing
+await verifyDatabase();
 
 // Setup auth after migrations complete (includes session middleware)
 setupAuth(app);
