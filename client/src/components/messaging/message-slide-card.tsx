@@ -992,8 +992,12 @@ export function MessageSlideCard() {
       {/* Context Menu - rendered via Portal */}
       {contextMenu && (() => {
         const message = messages.find(m => m.id === contextMenu.messageId);
+        console.log('Context menu rendering, message:', message);
         // Defensive check: only show context menu for user's own messages
-        if (!message || message.sender.id !== user?.id) return null;
+        if (!message || message.sender.id !== user?.id) {
+          console.warn('Context menu hidden - message not owned by user');
+          return null;
+        }
         
         return createPortal(
           <div
@@ -1002,11 +1006,14 @@ export function MessageSlideCard() {
               left: `${Math.min(contextMenu.x, window.innerWidth - 150)}px`,
               top: `${Math.min(contextMenu.y, window.innerHeight - 200)}px`,
             }}
+            onClick={() => console.log('Context menu container clicked')}
           >
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden min-w-[140px] border border-gray-200">
               <div className="flex flex-col">
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Edit button clicked, message:', message);
                     if (message) handleEdit(contextMenu.messageId, message.content || '');
                   }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
@@ -1020,7 +1027,11 @@ export function MessageSlideCard() {
                 </button>
                 
                 <button
-                  onClick={() => handleDelete(contextMenu.messageId)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Delete button clicked');
+                    handleDelete(contextMenu.messageId);
+                  }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
                   data-testid="button-delete-message"
                 >
@@ -1033,7 +1044,9 @@ export function MessageSlideCard() {
                 </button>
                 
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Copy button clicked, content:', message?.content);
                     if (message?.content) handleCopy(message.content);
                   }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
