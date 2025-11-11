@@ -630,7 +630,13 @@ export function MessageSlideCard() {
 
   // Close context menu when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      const target = event.target as HTMLElement;
+      // Don't close if clicking inside the context menu
+      const contextMenuElement = document.querySelector('[data-context-menu="true"]');
+      if (contextMenuElement && contextMenuElement.contains(target)) {
+        return;
+      }
       if (contextMenu) {
         setContextMenu(null);
       }
