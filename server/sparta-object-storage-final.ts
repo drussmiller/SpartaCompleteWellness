@@ -150,6 +150,9 @@ export class SpartaObjectStorageFinal {
           if (createdThumbnailFilename) {
             // The thumbnail should already be uploaded to Object Storage by createMovThumbnail
             console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
+            
+            // Set the thumbnail URL
+            result.thumbnailUrl = `shared/uploads/${createdThumbnailFilename}`;
 
             // Clean up temp video file
             fs.unlinkSync(tempVideoPath);
