@@ -185,12 +185,19 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         // Store the full Object Storage key for proper URL construction - same as comments
         if (fileInfo && fileInfo.filename) {
           mediaUrl = `shared/uploads/${fileInfo.filename}`;
+          
+          // Store the thumbnail URL if it was generated for videos
+          if (isVideo && fileInfo.thumbnailUrl) {
+            req.body.posterUrl = fileInfo.thumbnailUrl;
+            console.log(`Video thumbnail generated:`, { posterUrl: fileInfo.thumbnailUrl });
+          }
+          
           console.log(`Stored message media file with full path:`, { url: mediaUrl, isVideo });
         } else {
           console.warn('Invalid fileInfo returned from Object Storage:', fileInfo);
           mediaUrl = null;
         }
-        console.log(`Stored message media file:`, { url: mediaUrl, isVideo, originalFileInfo: fileInfo });
+        console.log(`Stored message media file:`, { url: mediaUrl, isVideo, posterUrl: req.body.posterUrl, originalFileInfo: fileInfo });
       } catch (fileError) {
         console.error('Error processing media file for message:', fileError);
         logger.error('Error processing media file for message:', fileError);
@@ -207,6 +214,7 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         recipientId: parseInt(recipientId),
         content: content || null,
         imageUrl: mediaUrl, // Use the full Object Storage path like comments do
+        posterUrl: req.body.posterUrl || null, // Store the video thumbnail URL
         isRead: false,
         is_video: isVideoFlag,
       })

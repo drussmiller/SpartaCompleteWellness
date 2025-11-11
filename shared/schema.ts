@@ -254,6 +254,7 @@ export const messages = pgTable("messages", {
   recipientId: integer("recipient_id").notNull(),
   content: text("content"),
   imageUrl: text("image_url"),
+  posterUrl: text("poster_url"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   is_video: boolean("is_video").default(false),
