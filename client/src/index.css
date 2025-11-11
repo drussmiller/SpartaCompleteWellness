@@ -271,32 +271,4 @@ div[data-post-id] .video-container {
   max-width: 100%;
   overflow-wrap: break-word;
 }
-
-/* Slide-in animation from right */
-@keyframes slide-in-from-right {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-.animate-slide-in-from-right {
-  animation: slide-in-from-right 0.5s ease-out;
-}
-
-/* Slide-out animation to right */
-@keyframes slide-out-to-right {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-.animate-slide-out-to-right {
-  animation: slide-out-to-right 1s ease-in; /* Increased duration for slower animation */
-}
 }

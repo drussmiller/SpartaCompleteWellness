@@ -51,7 +51,6 @@ interface Message {
 
 export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [messageText, setMessageText] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
@@ -97,22 +96,15 @@ export function MessageSlideCard() {
     };
   }, []);
 
-  // Close handler with animation
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
+  // Swipe to close functionality
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: () => {
       if (selectedMember) {
         setSelectedMember(null);
       } else {
         setIsOpen(false);
       }
-      setIsClosing(false);
-    }, 500); // Match animation duration
-  };
-
-  // Swipe to close functionality
-  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
-    onSwipeRight: handleClose
+    }
   });
 
   // Query for team members
@@ -727,7 +719,7 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className={`fixed left-0 right-0 bg-white z-[2147483647] flex flex-col ${isClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`}
+        className="fixed left-0 right-0 bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
@@ -746,7 +738,13 @@ export function MessageSlideCard() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleClose}
+              onClick={() => {
+                if (selectedMember) {
+                  setSelectedMember(null);
+                } else {
+                  setIsOpen(false);
+                }
+              }}
               className="mr-3 bg-transparent hover:bg-gray-100 flex-shrink-0"
             >
               <ChevronLeft className="text-black" style={{ width: '24px', height: '24px' }} />
