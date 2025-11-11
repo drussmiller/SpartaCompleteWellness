@@ -215,7 +215,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
         accept="image/*,video/*"
         className="hidden"
         onChange={(e) => {
+          console.log('File input changed, files:', e.target.files);
           const file = e.target.files?.[0];
+          console.log('Selected file:', file?.name, file?.type, file?.size);
           if (file) {
             if (file.size > 100 * 1024 * 1024) { // 100MB limit
               toast({
@@ -228,6 +230,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 
             setSelectedFile(file);
             const url = URL.createObjectURL(file);
+            console.log('Created object URL:', url);
 
             // Handle media files
             if (file.type.startsWith('video/')) {
