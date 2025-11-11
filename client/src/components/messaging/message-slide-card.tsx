@@ -508,11 +508,13 @@ export function MessageSlideCard() {
 
   // Long press handlers
   const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, messageId: number, content: string) => {
-    e.preventDefault();
+    console.log('Long press start triggered for message:', messageId);
+    e.stopPropagation();
     const touch = 'touches' in e ? e.touches[0] : e;
     longPressStartPos.current = { x: touch.clientX, y: touch.clientY };
     
     longPressTimer.current = setTimeout(() => {
+      console.log('Long press timer fired, showing context menu');
       setContextMenu({
         messageId,
         x: touch.clientX,
@@ -530,12 +532,14 @@ export function MessageSlideCard() {
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance > 10 && longPressTimer.current) {
+      console.log('Movement detected, canceling long press');
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
   };
 
   const handleLongPressEnd = () => {
+    console.log('Long press end triggered');
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
