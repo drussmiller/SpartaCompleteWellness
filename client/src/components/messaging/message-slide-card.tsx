@@ -903,16 +903,19 @@ export function MessageSlideCard() {
                              (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                              (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
                               message.is_video ? (
-                                <VideoPlayer
-                                  src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                                  className="max-w-full rounded mt-2"
-                                  onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
-                                />
+                                <div style={{ pointerEvents: 'none' }}>
+                                  <VideoPlayer
+                                    src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                    className="max-w-full rounded mt-2"
+                                    onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
+                                  />
+                                </div>
                               ) : (
                                 <img
                                   src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
                                   alt="Message image"
                                   className="max-w-full rounded mt-2"
+                                  style={{ pointerEvents: 'none' }}
                                   onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
                                   onError={(e) => {
                                     console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
