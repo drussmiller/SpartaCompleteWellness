@@ -55,8 +55,40 @@ async function verifyDatabase() {
   }
 }
 
+// Bootstrap admin user if it doesn't exist
+async function bootstrapAdmin() {
+  try {
+    const { users } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const { hashPassword } = await import("./auth");
+    
+    const existingAdmin = await db.select().from(users).where(eq(users.username, 'admin')).limit(1);
+    
+    if (existingAdmin.length === 0) {
+      console.log("No admin user found. Creating default admin...");
+      const hashedPassword = await hashPassword('admin123');
+      await db.insert(users).values({
+        username: 'admin',
+        email: 'admin@example.com',
+        password: hashedPassword,
+        teamId: 1,
+        preferredName: 'Admin',
+        isAdmin: true,
+        status: 1,
+      });
+      console.log("Default admin user created (username: admin, password: admin123)");
+      console.log("IMPORTANT: Change the admin password immediately after first login!");
+    } else {
+      console.log("Admin user already exists.");
+    }
+  } catch (error) {
+    console.log("Admin bootstrap skipped (tables may not exist yet). Run 'npm run db:push' to create schema.");
+  }
+}
+
 // Wait for database verification before continuing
 await verifyDatabase();
+await bootstrapAdmin();
 
 // Setup auth after migrations complete (includes session middleware)
 setupAuth(app);
