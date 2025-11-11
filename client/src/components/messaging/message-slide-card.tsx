@@ -833,9 +833,8 @@ export function MessageSlideCard() {
                             <div className="flex gap-2 justify-end">
                               <Button
                                 size="sm"
-                                variant="outline"
                                 onClick={handleCancelEdit}
-                                className="text-xs"
+                                className="text-xs bg-white text-gray-900 hover:bg-gray-100"
                                 data-testid="button-cancel-edit"
                               >
                                 Cancel
@@ -843,7 +842,7 @@ export function MessageSlideCard() {
                               <Button
                                 size="sm"
                                 onClick={() => handleSaveEdit(message.id)}
-                                className="text-xs"
+                                className="text-xs bg-green-600 hover:bg-green-700 text-white"
                                 disabled={editMessageMutation.isPending}
                                 data-testid="button-save-edit"
                               >
