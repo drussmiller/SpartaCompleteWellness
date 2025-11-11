@@ -331,7 +331,10 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
           type="button"
           variant="ghost"
           size="icon"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            console.log('File picker button clicked, fileInputRef.current:', fileInputRef.current);
+            fileInputRef.current?.click();
+          }}
           className="flex-shrink-0"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
