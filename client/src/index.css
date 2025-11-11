@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Slide-in animation from right */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-from-right {
+  animation: slide-in-from-right 0.5s ease-out;
+}
+
 /* Prevent browser navigation gestures */
 html, body {
   overscroll-behavior-x: none !important;
