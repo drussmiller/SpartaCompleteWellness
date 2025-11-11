@@ -1007,6 +1007,7 @@ export function MessageSlideCard() {
         
         return createPortal(
           <div
+            data-context-menu="true"
             className="fixed z-[2147483648]"
             style={{
               left: `${Math.min(contextMenu.x, window.innerWidth - 150)}px`,
@@ -1021,6 +1022,7 @@ export function MessageSlideCard() {
                     e.stopPropagation();
                     console.log('Edit button clicked, message:', message);
                     if (message) handleEdit(contextMenu.messageId, message.content || '');
+                    setContextMenu(null);
                   }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
                   data-testid="button-edit-message"
@@ -1037,6 +1039,7 @@ export function MessageSlideCard() {
                     e.stopPropagation();
                     console.log('Delete button clicked');
                     handleDelete(contextMenu.messageId);
+                    setContextMenu(null);
                   }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
                   data-testid="button-delete-message"
@@ -1054,6 +1057,7 @@ export function MessageSlideCard() {
                     e.stopPropagation();
                     console.log('Copy button clicked, content:', message?.content);
                     if (message?.content) handleCopy(message.content);
+                    setContextMenu(null);
                   }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
                   data-testid="button-copy-message"
