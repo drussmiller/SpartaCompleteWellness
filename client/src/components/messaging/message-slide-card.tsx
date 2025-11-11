@@ -47,6 +47,7 @@ interface Message {
   // Image URL variants
   imageUrl?: string;    // For compatibility with existing backend
   mediaUrl?: string | null;    // New field name used in other parts of the application
+  posterUrl?: string | null;   // Video thumbnail URL
 }
 
 export function MessageSlideCard() {
@@ -899,21 +900,6 @@ export function MessageSlideCard() {
                               />
                             )}
 
-                            {(() => {
-                              // Debug logging for all messages with media
-                              if (message.imageUrl || message.mediaUrl || message.is_video) {
-                                console.log(`Message ${message.id} media check:`, {
-                                  imageUrl: message.imageUrl,
-                                  mediaUrl: message.mediaUrl,
-                                  is_video: message.is_video,
-                                  passesCheck1: !!(message.imageUrl || message.mediaUrl),
-                                  passesCheck2: (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined'),
-                                  passesCheck3: (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined')
-                                });
-                              }
-                              return null;
-                            })()}
-
                             {(message.imageUrl || message.mediaUrl) &&
                              (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                              (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
@@ -921,6 +907,7 @@ export function MessageSlideCard() {
                                 <div style={{ pointerEvents: 'none' }}>
                                   <VideoPlayer
                                     src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                    poster={message.posterUrl ? createMediaUrl(message.posterUrl) : undefined}
                                     className="max-w-full rounded mt-2"
                                     onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
                                   />
