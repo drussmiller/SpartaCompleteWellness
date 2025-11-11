@@ -64,6 +64,7 @@ export function MessageSlideCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const keyboardHeight = useKeyboardAdjustment();
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -659,6 +660,41 @@ export function MessageSlideCard() {
     }
   }, [contextMenu]);
 
+  // Auto-scroll when editing a message
+  useEffect(() => {
+    if (editingMessageId && scrollAreaRef.current) {
+      // Wait for the edit box to render
+      setTimeout(() => {
+        const editingElement = document.querySelector(`[data-testid="message-bubble-${editingMessageId}"]`);
+        const messageFormElement = document.querySelector('[data-testid="message-form"]');
+        
+        if (editingElement && messageFormElement && scrollAreaRef.current) {
+          // Get the scroll viewport (the actual scrollable div inside ScrollArea)
+          const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+          
+          if (scrollViewport) {
+            // Calculate positions
+            const editingRect = editingElement.getBoundingClientRect();
+            const formRect = messageFormElement.getBoundingClientRect();
+            const viewportRect = scrollViewport.getBoundingClientRect();
+            
+            // Calculate how much to scroll so the bottom of edit box is at top of message form
+            const currentScrollTop = scrollViewport.scrollTop;
+            const editingBottom = editingRect.bottom - viewportRect.top + currentScrollTop;
+            const formTop = formRect.top - viewportRect.top + currentScrollTop;
+            const targetScrollTop = editingBottom - (viewportRect.height - formRect.height);
+            
+            // Scroll to the calculated position
+            scrollViewport.scrollTo({
+              top: targetScrollTop,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 100); // Small delay to ensure DOM is updated
+    }
+  }, [editingMessageId]);
+
   return (
     <>
       <Button
@@ -770,6 +806,7 @@ export function MessageSlideCard() {
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
               <ScrollArea
+                ref={scrollAreaRef}
                 className="flex-1 bg-white"
                 style={{
                   touchAction: 'pan-y',
@@ -898,6 +935,7 @@ export function MessageSlideCard() {
                 style={{
                   backgroundColor: '#ffffff'
                 }}
+                data-testid="message-form"
               >
                 {/* MessageForm component now handles its own input and submission logic */}
                 <MessageForm
