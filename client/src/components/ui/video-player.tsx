@@ -100,6 +100,16 @@ export function VideoPlayer({
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, opening video player dialog");
     setIsDialogOpen(true);
+    
+    // Small delay to ensure video element is rendered before attempting play
+    setTimeout(() => {
+      if (videoRef.current) {
+        console.log("Attempting to play video after dialog open");
+        videoRef.current.play().catch(error => {
+          console.log('Initial play attempt failed:', error);
+        });
+      }
+    }, 100);
   };
 
   // Handle dialog close
@@ -293,6 +303,7 @@ export function VideoPlayer({
               src={src}
               controls
               autoPlay
+              playsInline
               preload="auto"
               controlsList="nodownload noremoteplayback"
               disablePictureInPicture
@@ -317,8 +328,10 @@ export function VideoPlayer({
                 console.log('Video can play');
                 // Ensure autoplay starts when video is ready
                 if (videoRef.current) {
+                  console.log('Attempting to play video via onCanPlay');
                   videoRef.current.play().catch(error => {
                     console.log('Autoplay was prevented:', error);
+                    // On mobile, autoplay might be blocked - user can still use controls
                   });
                 }
               }}
