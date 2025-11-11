@@ -283,8 +283,8 @@ export function VideoPlayer({
       </div>
 
       {/* Video Player Dialog Overlay */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 bg-black border-0">
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 bg-black border-0" style={{ zIndex: 2147483647 }}>
           <div className="relative w-full h-full flex items-center justify-center">
             {/* Close button */}
             <Button
