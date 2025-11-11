@@ -451,3 +451,82 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
     return res.status(500).json({ message: "Failed to fetch messages" });
   }
 });
+
+// Update message content (edit message)
+messageRouter.patch("/api/messages/:messageId", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const messageId = parseInt(req.params.messageId);
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: "Content is required" });
+    }
+
+    // Get the message to verify ownership
+    const [existingMessage] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+
+    if (!existingMessage) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Verify the user owns this message
+    if (existingMessage.senderId !== req.user.id) {
+      return res.status(403).json({ message: "You can only edit your own messages" });
+    }
+
+    // Update the message content
+    const [updatedMessage] = await db
+      .update(messages)
+      .set({ content: content.trim() })
+      .where(eq(messages.id, messageId))
+      .returning();
+
+    logger.info(`Message ${messageId} updated by user ${req.user.id}`);
+    return res.json(updatedMessage);
+  } catch (error) {
+    logger.error("Error updating message:", error);
+    return res.status(500).json({ message: "Failed to update message" });
+  }
+});
+
+// Delete message
+messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const messageId = parseInt(req.params.messageId);
+
+    // Get the message to verify ownership
+    const [existingMessage] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+
+    if (!existingMessage) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Verify the user owns this message
+    if (existingMessage.senderId !== req.user.id) {
+      return res.status(403).json({ message: "You can only delete your own messages" });
+    }
+
+    // Delete the message
+    await db
+      .delete(messages)
+      .where(eq(messages.id, messageId));
+
+    logger.info(`Message ${messageId} deleted by user ${req.user.id}`);
+    return res.json({ success: true, message: "Message deleted" });
+  } catch (error) {
+    logger.error("Error deleting message:", error);
+    return res.status(500).json({ message: "Failed to delete message" });
+  }
+});

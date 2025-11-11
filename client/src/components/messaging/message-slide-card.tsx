@@ -58,10 +58,15 @@ export function MessageSlideCard() {
   const [isVideoFile, setIsVideoFile] = useState(false);
   const [viewportHeight, setViewportHeight] = useState<number>(window.innerHeight);
   const [viewportTop, setViewportTop] = useState<number>(0);
+  const [contextMenu, setContextMenu] = useState<{ messageId: number; x: number; y: number } | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
   const keyboardHeight = useKeyboardAdjustment();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
 
   // Track viewport height and position changes for keyboard
   useEffect(() => {
@@ -449,6 +454,154 @@ export function MessageSlideCard() {
     createMessageMutation.mutate();
   };
 
+  // Delete message mutation
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: number) => {
+      const response = await apiRequest("DELETE", `/api/messages/${messageId}`);
+      if (!response.ok) {
+        throw new Error("Failed to delete message");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        description: "Message deleted",
+      });
+      setContextMenu(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Edit message mutation
+  const editMessageMutation = useMutation({
+    mutationFn: async ({ messageId, content }: { messageId: number; content: string }) => {
+      const response = await apiRequest("PATCH", `/api/messages/${messageId}`, { content });
+      if (!response.ok) {
+        throw new Error("Failed to edit message");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        description: "Message updated",
+      });
+      setEditingMessageId(null);
+      setEditContent("");
+      setContextMenu(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to edit message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Long press handlers
+  const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, messageId: number, content: string) => {
+    e.preventDefault();
+    const touch = 'touches' in e ? e.touches[0] : e;
+    longPressStartPos.current = { x: touch.clientX, y: touch.clientY };
+    
+    longPressTimer.current = setTimeout(() => {
+      setContextMenu({
+        messageId,
+        x: touch.clientX,
+        y: touch.clientY,
+      });
+    }, 500);
+  };
+
+  const handleLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!longPressStartPos.current) return;
+    
+    const touch = 'touches' in e ? e.touches[0] : e;
+    const dx = touch.clientX - longPressStartPos.current.x;
+    const dy = touch.clientY - longPressStartPos.current.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 10 && longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    longPressStartPos.current = null;
+  };
+
+  // Handle context menu actions
+  const handleEdit = (messageId: number, currentContent: string) => {
+    // Defensive check: verify ownership before allowing edit
+    const message = messages.find(m => m.id === messageId);
+    if (!message || message.sender.id !== user?.id) {
+      console.warn("Attempted to edit a message that doesn't belong to the user");
+      setContextMenu(null);
+      return;
+    }
+    
+    setEditingMessageId(messageId);
+    setEditContent(currentContent);
+    setContextMenu(null);
+  };
+
+  const handleDelete = (messageId: number) => {
+    // Defensive check: verify ownership before allowing delete
+    const message = messages.find(m => m.id === messageId);
+    if (!message || message.sender.id !== user?.id) {
+      console.warn("Attempted to delete a message that doesn't belong to the user");
+      setContextMenu(null);
+      return;
+    }
+    
+    deleteMessageMutation.mutate(messageId);
+  };
+
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content).then(() => {
+      toast({
+        description: "Message copied to clipboard",
+      });
+      setContextMenu(null);
+    }).catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to copy message",
+        variant: "destructive",
+      });
+    });
+  };
+
+  const handleSaveEdit = (messageId: number) => {
+    if (!editContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Message cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    editMessageMutation.mutate({ messageId, content: editContent });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditContent("");
+  };
+
   // Close messaging overlay when clicking outside and prevent body scroll
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -470,6 +623,25 @@ export function MessageSlideCard() {
       };
     }
   }, [isOpen]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (contextMenu) {
+        setContextMenu(null);
+      }
+    }
+
+    if (contextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside as any);
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside as any);
+      };
+    }
+  }, [contextMenu]);
 
   return (
     <>
@@ -617,37 +789,81 @@ export function MessageSlideCard() {
                             ? "bg-[#8A2BE2] text-white ml-2"
                             : "bg-muted mr-2"
                         }`}
+                        onTouchStart={message.sender.id === user?.id ? (e) => handleLongPressStart(e, message.id, message.content || '') : undefined}
+                        onTouchMove={message.sender.id === user?.id ? handleLongPressMove : undefined}
+                        onTouchEnd={message.sender.id === user?.id ? handleLongPressEnd : undefined}
+                        onMouseDown={message.sender.id === user?.id ? (e) => handleLongPressStart(e, message.id, message.content || '') : undefined}
+                        onMouseMove={message.sender.id === user?.id ? handleLongPressMove : undefined}
+                        onMouseUp={message.sender.id === user?.id ? handleLongPressEnd : undefined}
+                        onMouseLeave={message.sender.id === user?.id ? handleLongPressEnd : undefined}
+                        data-testid={`message-bubble-${message.id}`}
                       >
-                        {message.content && (
-                          <p
-                            className="break-words"
-                            dangerouslySetInnerHTML={{
-                              __html: convertUrlsToLinks(message.content || '')
-                            }}
-                          />
-                        )}
+                        {editingMessageId === message.id ? (
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              className="w-full p-2 border rounded text-black resize-none"
+                              rows={3}
+                              autoFocus
+                              data-testid="edit-message-textarea"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                                className="text-xs"
+                                data-testid="button-cancel-edit"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveEdit(message.id)}
+                                className="text-xs"
+                                disabled={editMessageMutation.isPending}
+                                data-testid="button-save-edit"
+                              >
+                                {editMessageMutation.isPending ? "Saving..." : "Save"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {message.content && (
+                              <p
+                                className="break-words"
+                                dangerouslySetInnerHTML={{
+                                  __html: convertUrlsToLinks(message.content || '')
+                                }}
+                                data-testid={`message-content-${message.id}`}
+                              />
+                            )}
 
-                        {(message.imageUrl || message.mediaUrl) &&
-                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
-                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
-                          message.is_video ? (
-                            <VideoPlayer
-                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                              className="max-w-full rounded mt-2"
-                              onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
-                            />
-                          ) : (
-                            <img
-                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                              alt="Message image"
-                              className="max-w-full rounded mt-2"
-                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
-                              onError={(e) => {
-                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          )
+                            {(message.imageUrl || message.mediaUrl) &&
+                             (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
+                             (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
+                              message.is_video ? (
+                                <VideoPlayer
+                                  src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                  className="max-w-full rounded mt-2"
+                                  onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
+                                />
+                              ) : (
+                                <img
+                                  src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                  alt="Message image"
+                                  className="max-w-full rounded mt-2"
+                                  onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
+                                  onError={(e) => {
+                                    console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              )
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -762,6 +978,69 @@ export function MessageSlideCard() {
       </div>,
         document.body
       )}
+
+      {/* Context Menu - rendered via Portal */}
+      {contextMenu && (() => {
+        const message = messages.find(m => m.id === contextMenu.messageId);
+        // Defensive check: only show context menu for user's own messages
+        if (!message || message.sender.id !== user?.id) return null;
+        
+        return createPortal(
+          <div
+            className="fixed z-[2147483648]"
+            style={{
+              left: `${Math.min(contextMenu.x, window.innerWidth - 150)}px`,
+              top: `${Math.min(contextMenu.y, window.innerHeight - 200)}px`,
+            }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden min-w-[140px] border border-gray-200">
+              <div className="flex flex-col">
+                <button
+                  onClick={() => {
+                    if (message) handleEdit(contextMenu.messageId, message.content || '');
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
+                  data-testid="button-edit-message"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                    <path d="m15 5 4 4"/>
+                  </svg>
+                  <span className="font-medium text-gray-900">Edit</span>
+                </button>
+                
+                <button
+                  onClick={() => handleDelete(contextMenu.messageId)}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
+                  data-testid="button-delete-message"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                  </svg>
+                  <span className="font-medium text-gray-900">Delete</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    if (message?.content) handleCopy(message.content);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                  data-testid="button-copy-message"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                  </svg>
+                  <span className="font-medium text-gray-900">Copy</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </>
   );
 }
