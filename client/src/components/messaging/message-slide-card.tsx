@@ -904,7 +904,17 @@ export function MessageSlideCard() {
                              (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                              (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
                               message.is_video ? (
-                                <div style={{ pointerEvents: 'none' }}>
+                                <div 
+                                  onClick={(e) => {
+                                    // Stop propagation to prevent long-press menu from interfering
+                                    e.stopPropagation();
+                                  }}
+                                  onTouchStart={(e) => {
+                                    // Stop touch propagation to allow video player interactions
+                                    e.stopPropagation();
+                                  }}
+                                  data-context-menu="true"
+                                >
                                   <VideoPlayer
                                     src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
                                     poster={message.posterUrl ? createMediaUrl(message.posterUrl) : undefined}
