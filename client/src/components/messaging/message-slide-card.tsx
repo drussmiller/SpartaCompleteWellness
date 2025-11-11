@@ -719,7 +719,7 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed left-0 right-0 bg-white z-[2147483647] flex flex-col"
+        className="fixed left-0 right-0 bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
