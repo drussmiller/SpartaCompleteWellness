@@ -21,7 +21,7 @@ const MOBILE_BREAKPOINT = 768;
 const mobileScrollStyles = {
   minHeight: "100vh",
   WebkitOverflowScrolling: "touch",
-  scrollBehavior: "smooth",
+  scrollBehavior: "auto",
   overscrollBehavior: "auto",
   touchAction: "pan-y pinch-zoom",
   WebkitTapHighlightColor: "transparent",
