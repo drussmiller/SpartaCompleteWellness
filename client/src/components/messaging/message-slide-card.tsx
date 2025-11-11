@@ -747,7 +747,7 @@ export function MessageSlideCard() {
               }}
               className="mr-3 bg-transparent hover:bg-gray-100 flex-shrink-0"
             >
-              <ChevronLeft className="text-2xl text-black" />
+              <ChevronLeft className="h-8 w-8 text-black" />
             </Button>
             <h2 className="text-2xl font-bold text-black flex-1">
               {selectedMember ? selectedMember.username : "Messages"}
