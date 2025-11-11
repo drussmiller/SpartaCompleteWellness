@@ -609,6 +609,12 @@ export function MessageSlideCard() {
   // Close messaging overlay when clicking outside and prevent body scroll
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      // Don't close if clicking inside the context menu
+      const contextMenuElement = document.querySelector('[data-context-menu="true"]');
+      if (contextMenuElement && contextMenuElement.contains(target)) {
+        return;
+      }
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSelectedMember(null);
