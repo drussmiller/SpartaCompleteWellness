@@ -793,6 +793,11 @@ export function MessageSlideCard() {
                             ? "bg-[#8A2BE2] text-white ml-2"
                             : "bg-muted mr-2"
                         }`}
+                        style={{
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none',
+                          touchAction: message.sender.id === user?.id ? 'none' : 'auto'
+                        }}
                         onTouchStart={message.sender.id === user?.id ? (e) => handleLongPressStart(e, message.id, message.content || '') : undefined}
                         onTouchMove={message.sender.id === user?.id ? handleLongPressMove : undefined}
                         onTouchEnd={message.sender.id === user?.id ? handleLongPressEnd : undefined}
@@ -800,6 +805,7 @@ export function MessageSlideCard() {
                         onMouseMove={message.sender.id === user?.id ? handleLongPressMove : undefined}
                         onMouseUp={message.sender.id === user?.id ? handleLongPressEnd : undefined}
                         onMouseLeave={message.sender.id === user?.id ? handleLongPressEnd : undefined}
+                        onContextMenu={message.sender.id === user?.id ? (e) => e.preventDefault() : undefined}
                         data-testid={`message-bubble-${message.id}`}
                       >
                         {editingMessageId === message.id ? (
