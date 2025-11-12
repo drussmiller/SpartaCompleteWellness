@@ -54,26 +54,21 @@ class NotificationService {
         }
       }
 
-      // SMS notifications disabled - waiting for Twilio integration
-      // TODO: Re-enable when Twilio is set up
-      // if (
-      //   user.smsEnabled &&
-      //   user.phoneNumber &&
-      //   user.smsCarrierGateway
-      // ) {
-      //   try {
-      //     await smsService.sendSMSToUser(
-      //       user.phoneNumber,
-      //       user.smsCarrierGateway,
-      //       options.message
-      //     );
-      //     smsSent = true;
-      //     console.log(`✅ SMS notification sent to user ${options.userId}`);
-      //   } catch (error) {
-      //     console.error(`Failed to send SMS to user ${options.userId}:`, error);
-      //     errors.push(`SMS failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      //   }
-      // }
+      // Send SMS notification via Twilio
+      if (user.smsEnabled && user.phoneNumber) {
+        try {
+          await smsService.sendSMSToUser(
+            user.phoneNumber,
+            options.message
+          );
+          smsSent = true;
+          console.log(`✅ SMS notification sent to user ${options.userId}`);
+        } catch (error) {
+          console.error(`Failed to send SMS to user ${options.userId}:`, error);
+          errors.push(`SMS failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          smsSent = false;
+        }
+      }
 
       return { emailSent, smsSent, errors };
     } catch (error) {

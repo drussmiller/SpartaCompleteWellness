@@ -4525,7 +4525,6 @@ export const registerRoutes = async (
         message: "SMS settings updated successfully",
         phoneNumber: updatedUser.phoneNumber,
         smsEnabled: updatedUser.smsEnabled,
-        smsCarrierGateway: updatedUser.smsCarrierGateway,
       });
     } catch (error) {
       logger.error("Error updating SMS settings:", error);
@@ -4536,7 +4535,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Test SMS and detect carrier
+  // Test SMS via Twilio
   router.post("/api/user/sms/test", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -4549,33 +4548,29 @@ export const registerRoutes = async (
 
       logger.info(`Testing SMS for user ${req.user.id} with phone ${phoneNumber}`);
 
-      // Test SMS delivery and detect carrier
-      const result = await smsService.testAndDetectCarrier(phoneNumber);
+      // Test SMS delivery via Twilio
+      const result = await smsService.testSMS(phoneNumber);
 
-      if (result.success && result.gateway) {
-        // Update user's carrier gateway
+      if (result.success) {
+        // Update user's phone number and enable SMS
         await db
           .update(users)
           .set({
             phoneNumber,
-            smsCarrierGateway: result.gateway,
             smsEnabled: true,
           })
           .where(eq(users.id, req.user.id));
 
-        logger.info(`SMS carrier detected for user ${req.user.id}: ${result.gateway}`);
+        logger.info(`SMS test successful for user ${req.user.id}`);
 
         res.json({
           success: true,
-          message: "SMS test sent successfully! Carrier detected.",
-          gateway: result.gateway,
-          attemptedGateways: result.attemptedGateways,
+          message: "SMS test sent successfully via Twilio!",
         });
       } else {
         res.status(500).json({
           success: false,
           message: result.error || "Failed to send SMS",
-          attemptedGateways: result.attemptedGateways,
         });
       }
     } catch (error) {
@@ -4605,9 +4600,9 @@ export const registerRoutes = async (
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!user.phoneNumber || !user.smsCarrierGateway) {
+      if (!user.phoneNumber) {
         return res.status(400).json({
-          message: "SMS not configured. Please test SMS first to detect carrier.",
+          message: "SMS not configured. Please test SMS first.",
         });
       }
 
@@ -4618,24 +4613,16 @@ export const registerRoutes = async (
       }
 
       // Send SMS
-      const success = await smsService.sendSMSToUser(
+      await smsService.sendSMSToUser(
         user.phoneNumber,
-        user.smsCarrierGateway,
         message
       );
 
-      if (success) {
-        logger.info(`SMS sent to user ${req.user.id}`);
-        res.json({
-          success: true,
-          message: "SMS sent successfully",
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: "Failed to send SMS",
-        });
-      }
+      logger.info(`SMS sent to user ${req.user.id}`);
+      res.json({
+        success: true,
+        message: "SMS sent successfully",
+      });
     } catch (error) {
       logger.error("Error sending SMS:", error);
       res.status(500).json({

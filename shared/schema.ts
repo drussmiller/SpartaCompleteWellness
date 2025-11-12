@@ -29,7 +29,6 @@ export const users = pgTable("users", {
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
   confirmationMessagesEnabled: boolean("confirmation_messages_enabled").default(true), // Whether to show confirmation/success messages (toasts)
   phoneNumber: text("phone_number"), // Phone number for SMS notifications
-  smsCarrierGateway: text("sms_carrier_gateway"), // Detected carrier gateway (e.g., "vtext.com", "txt.att.net")
   smsEnabled: boolean("sms_enabled").default(false), // Whether SMS notifications are enabled
   lastPrayerRequestView: timestamp("last_prayer_request_view"), // Track when user last viewed prayer requests
   waiverSigned: boolean("waiver_signed").default(false),
