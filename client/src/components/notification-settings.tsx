@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   ChevronLeft,
+  MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,6 +33,8 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
   const [dailyNotificationsEnabled, setDailyNotificationsEnabled] = useState(true);
   const [confirmationMessagesEnabled, setConfirmationMessagesEnabled] = useState(true);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [smsEnabled, setSmsEnabled] = useState(false);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
@@ -85,7 +89,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       // Also set in localStorage so toast system can access it
       localStorage.setItem('confirmationMessagesEnabled', user.confirmationMessagesEnabled.toString());
     }
-  }, [user?.notificationTime, user?.dailyNotificationsEnabled, user?.confirmationMessagesEnabled]);
+    
+    // Load phone number and SMS settings
+    if (user?.phoneNumber) {
+      setPhoneNumber(user.phoneNumber);
+    }
+    if (user?.smsEnabled !== undefined && user?.smsEnabled !== null) {
+      setSmsEnabled(user.smsEnabled);
+    }
+  }, [user?.notificationTime, user?.dailyNotificationsEnabled, user?.confirmationMessagesEnabled, user?.phoneNumber, user?.smsEnabled]);
 
   // Convert hour + period to 24-hour format (always at :00 minutes)
   const convertTo24Hour = (hour: string, period: "AM" | "PM"): string => {
@@ -103,6 +115,8 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       notificationTime?: string;
       dailyNotificationsEnabled?: boolean;
       confirmationMessagesEnabled?: boolean;
+      phoneNumber?: string;
+      smsEnabled?: boolean;
     }) => {
       // Get user's timezone offset in minutes
       const timezoneOffset = new Date().getTimezoneOffset();
@@ -120,10 +134,13 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           confirmationMessagesEnabled: updates.confirmationMessagesEnabled !== undefined
             ? updates.confirmationMessagesEnabled
             : confirmationMessagesEnabled,
+          phoneNumber: updates.phoneNumber !== undefined ? updates.phoneNumber : phoneNumber,
+          smsEnabled: updates.smsEnabled !== undefined ? updates.smsEnabled : smsEnabled,
         },
       );
       if (!response.ok) {
-        throw new Error("Failed to update notification schedule");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update notification schedule");
       }
       return response.json();
     },
@@ -131,7 +148,12 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       // Refresh user data to get updated settings
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      // Restore previous state if SMS toggle failed
+      if (variables.smsEnabled !== undefined && user?.smsEnabled !== undefined) {
+        setSmsEnabled(user.smsEnabled);
+      }
+      
       toast({
         title: "Error",
         description: error.message,
@@ -160,6 +182,73 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     // Store in localStorage so toast system can check it
     localStorage.setItem('confirmationMessagesEnabled', enabled.toString());
   };
+
+  // Handle phone number changes (with debounce via blur)
+  const handlePhoneNumberSave = () => {
+    // Always save, even if empty (to allow clearing)
+    const trimmedPhone = phoneNumber.trim();
+    updateScheduleMutation.mutate({ phoneNumber: trimmedPhone });
+    
+    // If clearing phone number, also disable SMS
+    if (!trimmedPhone && smsEnabled) {
+      setSmsEnabled(false);
+    }
+  };
+
+  // Auto-save when SMS toggle changes
+  const handleSmsEnabledChange = (enabled: boolean) => {
+    // Validate on client side before attempting to enable
+    if (enabled) {
+      if (!phoneNumber.trim()) {
+        toast({
+          title: "Phone Number Required",
+          description: "Please enter a phone number before enabling SMS notifications.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Basic validation: must be at least 10 digits
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Please enter a valid phone number with at least 10 digits.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Optimistically update UI
+    setSmsEnabled(enabled);
+    updateScheduleMutation.mutate({ smsEnabled: enabled });
+  };
+
+  // Test SMS mutation
+  const testSmsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/users/test-sms", {});
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to send test SMS");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Test SMS Sent",
+        description: "Check your phone for the test message.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Send Test SMS",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const testNotificationTimeMutation = useMutation({
     mutationFn: async () => {
@@ -316,6 +405,65 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             {dailyNotificationsEnabled
               ? "Daily reminder notifications are enabled. You will receive notifications if you miss posts."
               : "Daily reminder notifications are disabled. You won't receive any daily reminder notifications."}
+          </p>
+        </div>
+
+        {/* SMS Notifications section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">SMS Notifications</h3>
+          
+          <div className="space-y-2">
+            <Label htmlFor="phone-number" className="text-base text-muted-foreground">
+              Phone Number
+            </Label>
+            <Input
+              id="phone-number"
+              type="tel"
+              placeholder="(555) 123-4567"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              onBlur={handlePhoneNumberSave}
+              className="text-lg"
+              data-testid="input-phone-number"
+            />
+            <p className="text-sm text-muted-foreground">
+              Enter your phone number to receive text message notifications
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="sms-enabled"
+              className="text-lg text-muted-foreground"
+            >
+              Enable SMS notifications
+            </Label>
+            <Switch
+              id="sms-enabled"
+              checked={smsEnabled}
+              onCheckedChange={handleSmsEnabledChange}
+              disabled={!phoneNumber.trim()}
+              data-testid="toggle-sms-enabled"
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {smsEnabled
+              ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
+              : "SMS notifications are disabled. Enable to receive text messages for daily reminders and new user alerts."}
+          </p>
+
+          <Button
+            onClick={() => testSmsMutation.mutate()}
+            disabled={!phoneNumber.trim() || !smsEnabled || testSmsMutation.isPending}
+            variant="outline"
+            className="w-full"
+            data-testid="button-test-sms"
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            {testSmsMutation.isPending ? "Sending..." : "Test SMS"}
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            SMS will only be sent for important notifications like daily reminders and new user alerts (for admins/leads), not for confirmation messages.
           </p>
         </div>
 

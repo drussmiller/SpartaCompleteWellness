@@ -4639,7 +4639,7 @@ export const registerRoutes = async (
       try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-        const { notificationTime, achievementNotificationsEnabled, dailyNotificationsEnabled, confirmationMessagesEnabled, timezoneOffset } = req.body;
+        const { notificationTime, achievementNotificationsEnabled, dailyNotificationsEnabled, confirmationMessagesEnabled, timezoneOffset, phoneNumber, smsEnabled } = req.body;
         // Define update data with proper typing
         const updateData: {
           notificationTime?: string;
@@ -4647,6 +4647,8 @@ export const registerRoutes = async (
           dailyNotificationsEnabled?: boolean;
           confirmationMessagesEnabled?: boolean;
           timezoneOffset?: number;
+          phoneNumber?: string;
+          smsEnabled?: boolean;
         } = {};
 
         // Add notification time if provided
@@ -4684,6 +4686,50 @@ export const registerRoutes = async (
           logger.info(`Updating confirmation messages for user ${req.user.id} to ${confirmationMessagesEnabled}`);
         }
 
+        // Add phone number if provided
+        if (phoneNumber !== undefined) {
+          const trimmedPhone = phoneNumber.trim();
+          updateData.phoneNumber = trimmedPhone || null;
+          logger.info(`Updating phone number for user ${req.user.id}`);
+          
+          // If phone number is being cleared, also disable SMS
+          if (!trimmedPhone) {
+            updateData.smsEnabled = false;
+            logger.info(`Phone number cleared, disabling SMS for user ${req.user.id}`);
+          }
+        }
+
+        // Add SMS enabled setting if provided
+        if (smsEnabled !== undefined) {
+          // Validate that we have a phone number if enabling SMS
+          if (smsEnabled) {
+            const currentUser = await db
+              .select({ phoneNumber: users.phoneNumber })
+              .from(users)
+              .where(eq(users.id, req.user.id))
+              .limit(1);
+            
+            const userPhone = phoneNumber !== undefined ? phoneNumber.trim() : currentUser[0]?.phoneNumber;
+            
+            if (!userPhone) {
+              return res.status(400).json({ 
+                message: "Cannot enable SMS notifications without a valid phone number" 
+              });
+            }
+            
+            // Basic validation: must be at least 10 digits
+            const digitsOnly = userPhone.replace(/\D/g, '');
+            if (digitsOnly.length < 10) {
+              return res.status(400).json({ 
+                message: "Invalid phone number. Please enter a valid phone number with at least 10 digits" 
+              });
+            }
+          }
+          
+          updateData.smsEnabled = smsEnabled;
+          logger.info(`Updating SMS notifications for user ${req.user.id} to ${smsEnabled}`);
+        }
+
         // Update user notification preferences
         const [updatedUser] = await db
           .update(users)
@@ -4697,6 +4743,53 @@ export const registerRoutes = async (
         res.status(500).json({
           message: "Failed to update notification schedule",
           error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+  );
+
+  // Test SMS endpoint
+  router.post(
+    "/api/users/test-sms",
+    authenticate,
+    async (req, res) => {
+      try {
+        if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+        // Get user's current settings
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (!user.phoneNumber) {
+          return res.status(400).json({ message: "Phone number not set. Please enter your phone number first." });
+        }
+
+        if (!user.smsEnabled) {
+          return res.status(400).json({ message: "SMS notifications are disabled. Please enable SMS notifications first." });
+        }
+
+        // Send test SMS
+        await smsService.sendSMSToUser(
+          user.phoneNumber,
+          "This is a test message from your fitness tracker app. SMS notifications are working!"
+        );
+
+        logger.info(`Test SMS sent to user ${req.user.id}`);
+        res.json({
+          success: true,
+          message: "Test SMS sent successfully",
+        });
+      } catch (error) {
+        logger.error("Error sending test SMS:", error);
+        res.status(500).json({
+          message: error instanceof Error ? error.message : "Failed to send test SMS",
         });
       }
     },
