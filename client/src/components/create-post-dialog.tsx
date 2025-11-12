@@ -579,7 +579,7 @@ export function CreatePostDialog({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+                    <PopoverContent className="w-auto p-0 z-[999999999]" align="start">
                       <Calendar
                         mode="single"
                         selected={selectedDate}
@@ -692,7 +692,7 @@ export function CreatePostDialog({
                             <SelectValue placeholder="Select audience" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="z-[99999]">
+                        <SelectContent>
                           {user?.isAdmin && <SelectItem value="everyone">Everyone</SelectItem>}
                           {user?.isAdmin && <SelectItem value="organization">Organization</SelectItem>}
                           <SelectItem value="group">Group</SelectItem>
@@ -722,7 +722,7 @@ export function CreatePostDialog({
                               <SelectValue placeholder="Choose organization" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="z-[99999]">
+                          <SelectContent>
                             {organizations.map((org: any) => (
                               <SelectItem key={org.id} value={org.id.toString()}>
                                 {org.name}
@@ -753,7 +753,7 @@ export function CreatePostDialog({
                               <SelectValue placeholder="Choose group" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="z-[99999]">
+                          <SelectContent>
                             {groups
                               .filter((group: any) => user?.isAdmin || group.id === user?.adminGroupId)
                               .map((group: any) => (
@@ -790,7 +790,7 @@ export function CreatePostDialog({
                               <SelectValue placeholder="Choose team" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="z-[99999]">
+                          <SelectContent>
                             {teams
                               .filter((team: any) => {
                                 if (user?.isAdmin) return true;
