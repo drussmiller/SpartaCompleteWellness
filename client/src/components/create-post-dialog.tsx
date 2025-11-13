@@ -333,7 +333,7 @@ export function CreatePostDialog({
         const postData = {
           type: data.type,
           content: content,
-          points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
+          points: data.type === "introductory_video" ? 0 : data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : data.type === "prayer" ? 0 : 3,
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString(),
           postScope: data.postScope || postScope || "my_team",
           targetOrganizationId: data.targetOrganizationId || null,
