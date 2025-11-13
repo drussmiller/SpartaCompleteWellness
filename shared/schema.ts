@@ -343,7 +343,7 @@ export const insertPostSchema = createInsertSchema(posts)
   .extend({
     content: z.string().nullable(),
     mediaUrl: z.string().nullable(), // Updated from imageUrl to mediaUrl
-    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video"]),
+    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),
