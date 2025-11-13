@@ -181,7 +181,12 @@ export default function WaiverPage() {
                 I grant permission for my likeness to be captured in photographs, videos, or other media during Activities and for such media to be used for promotional purposes by Sparta Complete Wellness.
               </p>
               
-              <h4 className="font-semibold">6. SEVERABILITY</h4>
+              <h4 className="font-semibold">6. SMS TEXT MESSAGE NOTIFICATIONS</h4>
+              <p>
+                I understand that Sparta Complete Wellness may send SMS text message notifications for important program updates, daily reminders, and alerts. I may opt in or opt out of receiving these text messages at any time through my notification settings in the app. Standard message and data rates may apply. Message frequency may vary.
+              </p>
+              
+              <h4 className="font-semibold">7. SEVERABILITY</h4>
               <p>
                 If any portion of this agreement is held invalid, the remainder shall continue in full force and effect.
               </p>
