@@ -111,26 +111,10 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
-  // Check if user is team-less (no team assigned)
-  const isTeamless = user && !user.teamId;
-
-  // Point mapping for different post types
-  const getPointsForType = (type: string) => {
-    switch (type) {
-      case 'introductory_video':
-        return 0; // Mandatory onboarding step, not an achievement
-      case 'prayer':
-        return 0;
-      case 'memory_verse':
-        return 10;
-      default:
-        return 3;
-    }
-  };
-
-  // Determine the actual post type
-  // Team-less users can only post introductory videos
-  const actualType = isTeamless ? "introductory_video" : (defaultType || "food");
+  // For users who haven't posted anything, default to introductory_video (0 points)
+  // For users who have posted, default to food
+  const shouldDefaultToIntroVideo = !hasAnyPosts;
+  const actualType = shouldDefaultToIntroVideo ? "introductory_video" : (defaultType || "food");
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -138,7 +122,7 @@ export function CreatePostDialog({
       type: actualType,
       content: "",
       mediaUrl: null,
-      points: getPointsForType(actualType),
+      points: actualType === "introductory_video" ? 0 : actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
       postDate: selectedDate,
       postScope: "my_team",
       targetOrganizationId: null,
@@ -147,19 +131,15 @@ export function CreatePostDialog({
     }
   });
 
-  // Update form type when dialog opens or user's team status changes
+  // Update form type when hasAnyPosts changes or dialog opens
   useEffect(() => {
-    if (open) {
-      const newType = isTeamless ? "introductory_video" : (defaultType || "food");
+    if (open && !defaultType) {
+      const newType = hasAnyPosts ? "food" : "introductory_video";
       form.setValue("type", newType);
-      form.setValue("points", getPointsForType(newType));
-      
-      // For team-less users posting intro videos, force video media type
-      if (isTeamless) {
-        setSelectedMediaType("video");
-      }
+      const newPoints = newType === "introductory_video" ? 0 : newType === "prayer" ? 0 : newType === "memory_verse" ? 10 : 3;
+      form.setValue("points", newPoints);
     }
-  }, [open, isTeamless, defaultType, form]);
+  }, [open, hasAnyPosts, defaultType, form]);
 
   // Fetch existing memory verse videos for reuse
   const { data: existingMemoryVerseVideos, isLoading: loadingVideos } = useQuery<MemoryVerseVideo[]>({
@@ -547,6 +527,10 @@ export function CreatePostDialog({
     createPostMutation.mutate(data);
   };
 
+  // Check if user has posted intro video but doesn't have a team
+  // In this case, disable posting until they join a team (unless they delete their intro video)
+  const isPostingDisabled = hasAnyPosts && !user?.teamId;
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
@@ -560,7 +544,12 @@ export function CreatePostDialog({
       }
     }}>
       <DialogTrigger asChild>
-        <Button size="icon" className="h-10 w-10 bg-gray-200 hover:bg-gray-300">
+        <Button 
+          size="icon" 
+          className="h-10 w-10 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isPostingDisabled}
+          title={isPostingDisabled ? "Join a team to post more content" : "Create a post"}
+        >
           <Plus className="h-16 w-16 text-black font-extrabold" />
         </Button>
       </DialogTrigger>
@@ -644,18 +633,8 @@ export function CreatePostDialog({
               )}
             />
 
-            {/* Show helper text for team-less users */}
-            {isTeamless && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm">
-                <p className="font-medium text-blue-900">Introductory Video</p>
-                <p className="text-blue-700 mt-1">
-                  Post a video to introduce yourself to the team! Once you join a team, this video will appear on your team's home page.
-                </p>
-              </div>
-            )}
-
-            {/* Only show Type field if hideTypeField is false AND user has a team */}
-            {!hideTypeField && !isTeamless && (
+            {/* Only show Type field if hideTypeField is false */}
+            {!hideTypeField && (
               <FormField
                 control={form.control}
                 name="type"
@@ -940,8 +919,8 @@ export function CreatePostDialog({
                       <FormControl>
                         {form.watch("type") !== "memory_verse" && (
                           <>
-                            {/* Hide image button for intro video (first post) and team-less users */}
-                            {hasAnyPosts && !isTeamless && (
+                            {/* Hide image button for intro video (first post) */}
+                            {hasAnyPosts && (
                               <>
                                 <Button
                                   type="button"
@@ -1002,13 +981,13 @@ export function CreatePostDialog({
                             )}
 
                             {/* Add Select Video button for Introductory Video, Miscellaneous and Prayer Request post types */}
-                            {(isTeamless || form.watch("type") === "miscellaneous" || form.watch("type") === "prayer" || form.watch("type") === "introductory_video") && (
-                              <div className={hasAnyPosts && !isTeamless ? "mt-3" : ""}>
+                            {(form.watch("type") === "introductory_video" || form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
+                              <div className={hasAnyPosts ? "mt-3" : ""}>
                                 <Button
                                   type="button"
                                   onClick={() => {
                                     // If Miscellaneous post and image already selected, show warning
-                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image" && hasAnyPosts && !isTeamless) {
+                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image" && hasAnyPosts) {
                                       toast({
                                         title: "Cannot select both image and video",
                                         description: "Please remove the image first before selecting a video.",
@@ -1021,7 +1000,7 @@ export function CreatePostDialog({
                                   variant="outline"
                                   className="w-full"
                                 >
-                                  {isTeamless ? "Select Intro Video" : (!hasAnyPosts ? "Select Intro Video" : "Select Video")}
+                                  {!hasAnyPosts ? "Select Intro Video" : "Select Video"}
                                 </Button>
 
                                 {/* Hidden video input field for miscellaneous posts */}
