@@ -124,7 +124,7 @@ export function CreatePostDialog({
       mediaUrl: null,
       points: actualType === "introductory_video" ? 0 : actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
       postDate: selectedDate,
-      postScope: "my_team",
+      postScope: user?.teamId ? "my_team" : "everyone",
       targetOrganizationId: null,
       targetGroupId: null,
       targetTeamId: null,
@@ -669,9 +669,15 @@ export function CreatePostDialog({
                         <SelectItem value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || !hasAnyPosts}>
                           Memory Verse {getRemainingMessage('memory_verse')}
                         </SelectItem>
-                        <SelectItem value="miscellaneous">
-                          {!hasAnyPosts ? "Intro Video" : "Miscellaneous"} {getRemainingMessage('miscellaneous')}
-                        </SelectItem>
+                        {!hasAnyPosts ? (
+                          <SelectItem value="introductory_video">
+                            Intro Video {getRemainingMessage('introductory_video')}
+                          </SelectItem>
+                        ) : (
+                          <SelectItem value="miscellaneous">
+                            Miscellaneous {getRemainingMessage('miscellaneous')}
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
