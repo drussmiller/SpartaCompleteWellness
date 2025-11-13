@@ -1147,7 +1147,7 @@ export function CreatePostDialog({
                 form="create-post-form"
                 variant="default"
                 className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
-                disabled={createPostMutation.isPending || (form.watch("type") !== "prayer" && !canPost[form.watch("type") as keyof typeof canPost])}
+                disabled={createPostMutation.isPending || (form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
               >
                 {createPostMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
