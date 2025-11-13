@@ -379,10 +379,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           <p className="text-base text-muted-foreground mt-1">
             {smsEnabled
               ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
-              : "SMS notifications are disabled. Enable to receive text messages for daily reminders and new user alerts."}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            SMS will only be sent for important notifications like daily reminders and new user alerts (for admins/leads), not for confirmation messages. {!user?.phoneNumber && "Add a phone number in your profile to enable SMS notifications."}
+              : "SMS notifications are disabled. Enable to receive text messages for daily reminders."}
           </p>
         </div>
 
