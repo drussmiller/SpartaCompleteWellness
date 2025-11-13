@@ -1421,6 +1421,22 @@ export const registerRoutes = async (
         logger.info(`[SCOPE FILTER] User ${req.user.id} has no team - showing 'everyone' posts and own posts`);
       }
 
+      // Filter introductory videos for non-admin users
+      // Non-admins can only see:
+      // - Their own introductory videos (any scope)
+      // - Introductory videos with scope='my_team' (handled by existing scope logic)
+      // They CANNOT see other users' introductory videos with scope='everyone' (team-less users)
+      if (!req.user.isAdmin) {
+        conditions.push(
+          or(
+            ne(posts.type, 'introductory_video'),
+            eq(posts.userId, req.user.id),
+            ne(posts.postScope, 'everyone')
+          )
+        );
+        logger.info(`[INTRODUCTORY VIDEO FILTER] Non-admin user ${req.user.id} - filtering out other users' team-less introductory videos`);
+      }
+
       // Join with users table to get author info
       const query = db
         .select({
@@ -1858,6 +1874,15 @@ export const registerRoutes = async (
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
+      // Enforce scope for introductory videos
+      let postScope = postData.postScope || 'my_team';
+      if (postData.type === 'introductory_video') {
+        // Team-less users: scope is 'everyone' (visible only to admins + self due to GET filter)
+        // Users with team: scope is 'my_team' (visible to team)
+        postScope = req.user.teamId ? 'my_team' : 'everyone';
+        logger.info(`[INTRODUCTORY VIDEO SCOPE] Setting scope to '${postScope}' for user ${req.user.id} (teamId: ${req.user.teamId})`);
+      }
+
       const post = await db
         .insert(posts)
         .values({
@@ -1867,7 +1892,7 @@ export const registerRoutes = async (
           mediaUrl: mediaUrl,
           is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
-          postScope: postData.postScope || 'my_team',
+          postScope: postScope,
           targetOrganizationId: postData.targetOrganizationId || null,
           targetGroupId: postData.targetGroupId || null,
           targetTeamId: postData.targetTeamId || null,
@@ -7085,6 +7110,30 @@ export const registerRoutes = async (
 
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      // If user was assigned to a team, update their introductory_video posts to 'my_team' scope
+      if (req.body.teamId && updatedUser.teamId) {
+        try {
+          const updatedPosts = await db
+            .update(posts)
+            .set({ postScope: 'my_team' })
+            .where(
+              and(
+                eq(posts.userId, userId),
+                eq(posts.type, 'introductory_video'),
+                eq(posts.postScope, 'everyone')
+              )
+            )
+            .returning();
+
+          if (updatedPosts.length > 0) {
+            logger.info(`[TEAM JOIN HOOK] Updated ${updatedPosts.length} introductory_video post(s) from user ${userId} to 'my_team' scope`);
+          }
+        } catch (scopeUpdateError) {
+          // Non-fatal error - log it but don't block the user update
+          logger.error(`[TEAM JOIN HOOK] Error updating introductory video scope for user ${userId}:`, scopeUpdateError);
+        }
       }
 
       logger.info(`User ${userId} updated successfully by admin ${req.user.id}`);

@@ -255,8 +255,8 @@ export function CreatePostDialog({
           });
 
           try {
-            // Handle memory verse, miscellaneous, and prayer post video uploads
-            if ((data.type === 'memory_verse' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || (data.type === 'prayer' && selectedMediaType === 'video')) &&
+            // Handle memory verse, introductory video, miscellaneous, and prayer post video uploads
+            if ((data.type === 'memory_verse' || data.type === 'introductory_video' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || (data.type === 'prayer' && selectedMediaType === 'video')) &&
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
 
@@ -310,7 +310,8 @@ export function CreatePostDialog({
             }
             // Handle regular image uploads (including miscellaneous posts with images)
             else if (data.mediaUrl && data.mediaUrl.length > 0 &&
-                    !(data.type === 'miscellaneous' && selectedMediaType === 'video')) {
+                    !(data.type === 'miscellaneous' && selectedMediaType === 'video') &&
+                    data.type !== 'introductory_video') {
               // For images, fetch the blob from the data URL
               console.log("Processing image URL to blob");
               const blob = await fetch(data.mediaUrl).then(r => r.blob());
