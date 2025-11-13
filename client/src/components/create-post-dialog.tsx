@@ -1088,7 +1088,7 @@ export function CreatePostDialog({
                             </div>
                           )}
                           {/* Display regular images for other post types or miscellaneous image posts */}
-                          {((form.watch("type") !== "memory_verse" && form.watch("type") !== "miscellaneous" && !(form.watch("type") === "prayer" && selectedMediaType === "video")) ||
+                          {((form.watch("type") !== "memory_verse" && form.watch("type") !== "introductory_video" && form.watch("type") !== "miscellaneous" && !(form.watch("type") === "prayer" && selectedMediaType === "video")) ||
                             (form.watch("type") === "miscellaneous" && selectedMediaType === "image")) && imagePreview && (
                             <img
                               src={imagePreview}
