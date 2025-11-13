@@ -329,12 +329,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         >
           <ChevronLeft className="h-8 w-8 scale-125" />
         </Button>
-        <div className="flex flex-col space-y-2 text-center sm:text-left">
-          <h2 className="text-lg font-semibold text-foreground">Notification Settings</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure when you want to receive daily reminder notifications
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold text-foreground">Notification Settings</h2>
       </div>
 
       <div
