@@ -103,6 +103,25 @@ export function CreatePostDialog({
     staleTime: 300000, // 5 minutes
   });
 
+  // Check if user has posted an introductory video
+  const { data: introVideoPosts = [] } = useQuery({
+    queryKey: ["/api/posts", "introductory_video", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const response = await fetch(`/api/posts?type=introductory_video&userId=${user.id}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      // API returns { posts: [...] } not a bare array
+      return Array.isArray(data) ? data : (data.posts ?? []);
+    },
+    enabled: !!user,
+    staleTime: 30000, // 30 seconds - refetch more often to catch deletions
+  });
+
+  const hasPostedIntroVideo = introVideoPosts.length > 0;
+
   // Define the type for memory verse video objects
   type MemoryVerseVideo = {
     id: number;
@@ -530,7 +549,7 @@ export function CreatePostDialog({
 
   // Check if user has posted intro video but doesn't have a team
   // In this case, disable posting until they join a team (unless they delete their intro video)
-  const isPostingDisabled = hasAnyPosts && !user?.teamId;
+  const isPostingDisabled = hasPostedIntroVideo && !user?.teamId;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
