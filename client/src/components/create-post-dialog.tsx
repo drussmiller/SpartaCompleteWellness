@@ -633,8 +633,8 @@ export function CreatePostDialog({
               )}
             />
 
-            {/* Only show Type field if hideTypeField is false */}
-            {!hideTypeField && (
+            {/* Only show Type field if hideTypeField is false AND user has posted before */}
+            {!hideTypeField && hasAnyPosts && (
               <FormField
                 control={form.control}
                 name="type"
