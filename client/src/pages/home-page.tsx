@@ -67,10 +67,19 @@ export default function HomePage() {
   } = useQuery({
     queryKey: ["/api/posts", "team-posts", user?.teamId, user?.id],
     queryFn: async () => {
-      // If user is not in a team, return empty array
+      // If user is not in a team, fetch only their own introductory video posts
       if (!user?.teamId) {
-        console.log("User not in team, returning empty posts array");
-        return [];
+        console.log("User not in team, fetching only their introductory video");
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?type=introductory_video&userId=${user?.id}`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Introductory video posts for team-less user:", data.length);
+        return data;
       }
 
       // Make sure to exclude prayer posts from Team page
@@ -245,7 +254,7 @@ export default function HomePage() {
               </div>
               <div className="flex items-center">
                 <CreatePostDialog remaining={remaining} initialType="food" />
-                <MessageSlideCard />
+                {user?.teamId && <MessageSlideCard />}
               </div>
             </div>
 
@@ -303,8 +312,9 @@ export default function HomePage() {
                   <div className="text-center text-muted-foreground py-8">
                     {!user?.teamId ? (
                       <div>
-                        <p className="text-lg font-medium mb-2">When you're in a team you'll see posts!</p>
-                        <p className="text-sm">You need to be part of a team to view and interact with team posts.</p>
+                        <p className="text-lg font-medium mb-2">Welcome to Sparta Complete Wellness!</p>
+                        <p className="text-sm">Post your introductory video to let others get to know you.</p>
+                        <p className="text-sm mt-2">Once you join a team, your video will appear on the team page!</p>
                       </div>
                     ) : (
                       "No posts yet. Be the first to share!"

@@ -111,10 +111,26 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
-  // For users who haven't posted anything, default to miscellaneous (intro video)
-  // For users who have posted, default to food
-  const shouldDefaultToMiscellaneous = !hasAnyPosts;
-  const actualType = shouldDefaultToMiscellaneous ? "miscellaneous" : (defaultType || "food");
+  // Check if user is team-less (no team assigned)
+  const isTeamless = user && !user.teamId;
+
+  // Point mapping for different post types
+  const getPointsForType = (type: string) => {
+    switch (type) {
+      case 'introductory_video':
+        return 0; // Mandatory onboarding step, not an achievement
+      case 'prayer':
+        return 0;
+      case 'memory_verse':
+        return 10;
+      default:
+        return 3;
+    }
+  };
+
+  // Determine the actual post type
+  // Team-less users can only post introductory videos
+  const actualType = isTeamless ? "introductory_video" : (defaultType || "food");
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -122,7 +138,7 @@ export function CreatePostDialog({
       type: actualType,
       content: "",
       mediaUrl: null,
-      points: actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
+      points: getPointsForType(actualType),
       postDate: selectedDate,
       postScope: "my_team",
       targetOrganizationId: null,
@@ -131,15 +147,19 @@ export function CreatePostDialog({
     }
   });
 
-  // Update form type when hasAnyPosts changes or dialog opens
+  // Update form type when dialog opens or user's team status changes
   useEffect(() => {
-    if (open && !defaultType) {
-      const newType = hasAnyPosts ? "food" : "miscellaneous";
+    if (open) {
+      const newType = isTeamless ? "introductory_video" : (defaultType || "food");
       form.setValue("type", newType);
-      const newPoints = newType === "prayer" ? 0 : newType === "memory_verse" ? 10 : 3;
-      form.setValue("points", newPoints);
+      form.setValue("points", getPointsForType(newType));
+      
+      // For team-less users posting intro videos, force video media type
+      if (isTeamless) {
+        setSelectedMediaType("video");
+      }
     }
-  }, [open, hasAnyPosts, defaultType, form]);
+  }, [open, isTeamless, defaultType, form]);
 
   // Fetch existing memory verse videos for reuse
   const { data: existingMemoryVerseVideos, isLoading: loadingVideos } = useQuery<MemoryVerseVideo[]>({
@@ -624,8 +644,18 @@ export function CreatePostDialog({
               )}
             />
 
-            {/* Only show Type field if hideTypeField is false */}
-            {!hideTypeField && (
+            {/* Show helper text for team-less users */}
+            {isTeamless && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm">
+                <p className="font-medium text-blue-900">Introductory Video</p>
+                <p className="text-blue-700 mt-1">
+                  Post a video to introduce yourself to the team! Once you join a team, this video will appear on your team's home page.
+                </p>
+              </div>
+            )}
+
+            {/* Only show Type field if hideTypeField is false AND user has a team */}
+            {!hideTypeField && !isTeamless && (
               <FormField
                 control={form.control}
                 name="type"
@@ -910,8 +940,8 @@ export function CreatePostDialog({
                       <FormControl>
                         {form.watch("type") !== "memory_verse" && (
                           <>
-                            {/* Hide image button for intro video (first post) */}
-                            {hasAnyPosts && (
+                            {/* Hide image button for intro video (first post) and team-less users */}
+                            {hasAnyPosts && !isTeamless && (
                               <>
                                 <Button
                                   type="button"
@@ -971,14 +1001,14 @@ export function CreatePostDialog({
                               </>
                             )}
 
-                            {/* Add Select Video button for Miscellaneous and Prayer Request post types */}
-                            {(form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
-                              <div className={hasAnyPosts ? "mt-3" : ""}>
+                            {/* Add Select Video button for Introductory Video, Miscellaneous and Prayer Request post types */}
+                            {(isTeamless || form.watch("type") === "miscellaneous" || form.watch("type") === "prayer" || form.watch("type") === "introductory_video") && (
+                              <div className={hasAnyPosts && !isTeamless ? "mt-3" : ""}>
                                 <Button
                                   type="button"
                                   onClick={() => {
                                     // If Miscellaneous post and image already selected, show warning
-                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image" && hasAnyPosts) {
+                                    if (form.watch("type") === "miscellaneous" && selectedMediaType === "image" && hasAnyPosts && !isTeamless) {
                                       toast({
                                         title: "Cannot select both image and video",
                                         description: "Please remove the image first before selecting a video.",
@@ -991,7 +1021,7 @@ export function CreatePostDialog({
                                   variant="outline"
                                   className="w-full"
                                 >
-                                  {!hasAnyPosts ? "Select Intro Video" : "Select Video"}
+                                  {isTeamless ? "Select Intro Video" : (!hasAnyPosts ? "Select Intro Video" : "Select Video")}
                                 </Button>
 
                                 {/* Hidden video input field for miscellaneous posts */}
