@@ -1213,37 +1213,42 @@ export const registerRoutes = async (
       // This includes posts from team members AND posts targeted to this team via scope
       if (teamOnly) {
         if (!req.user.teamId) {
-          // If user has no team, return empty array
-          logger.info(`User ${req.user.id} has no team, returning empty posts array for team-only query`);
-          return res.json([]);
-        }
-
-        // Get all users in the same team
-        const teamMemberIds = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.teamId, req.user.teamId));
-
-        const memberIds = teamMemberIds.map(member => member.id);
-
-        if (memberIds.length === 0) {
-          logger.info(`No team members found for team ${req.user.teamId}, returning empty posts array`);
-          return res.json([]);
-        }
-
-        // Filter posts to show:
-        // 1. Posts from team members (my_team scope), OR
-        // 2. Posts targeted to this team (team scope with target_team_id matching)
-        conditions.push(
-          or(
-            inArray(posts.userId, memberIds),
+          // If user has no team, show only their own introductory_video posts
+          logger.info(`User ${req.user.id} has no team, showing only their introductory_video posts`);
+          conditions.push(
             and(
-              eq(posts.postScope, 'team'),
-              eq(posts.targetTeamId, req.user.teamId)
+              eq(posts.userId, req.user.id),
+              eq(posts.type, 'introductory_video')
             )
-          )
-        );
-        logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members PLUS team-targeted posts`);
+          );
+        } else {
+          // Get all users in the same team
+          const teamMemberIds = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.teamId, req.user.teamId));
+
+          const memberIds = teamMemberIds.map(member => member.id);
+
+          if (memberIds.length === 0) {
+            logger.info(`No team members found for team ${req.user.teamId}, returning empty posts array`);
+            return res.json([]);
+          }
+
+          // Filter posts to show:
+          // 1. Posts from team members (my_team scope), OR
+          // 2. Posts targeted to this team (team scope with target_team_id matching)
+          conditions.push(
+            or(
+              inArray(posts.userId, memberIds),
+              and(
+                eq(posts.postScope, 'team'),
+                eq(posts.targetTeamId, req.user.teamId)
+              )
+            )
+          );
+          logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members PLUS team-targeted posts`);
+        }
       }
 
       // Special handling for prayer posts - filter by group instead of team
@@ -1406,8 +1411,14 @@ export const registerRoutes = async (
         
         logger.info(`[SCOPE FILTER] User ${req.user.id} (team ${req.user.teamId}) - Scope conditions count: ${scopeConditions.length}`);
       } else {
-        // User has no team - only show 'everyone' posts
-        conditions.push(eq(posts.postScope, 'everyone'));
+        // User has no team - show 'everyone' posts OR their own posts (e.g., introductory videos)
+        conditions.push(
+          or(
+            eq(posts.postScope, 'everyone'),
+            eq(posts.userId, req.user.id)
+          )
+        );
+        logger.info(`[SCOPE FILTER] User ${req.user.id} has no team - showing 'everyone' posts and own posts`);
       }
 
       // Join with users table to get author info
