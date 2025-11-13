@@ -831,7 +831,7 @@ export function CreatePostDialog({
               </>
             )}
 
-            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer") && (
+            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer" || form.watch("type") === "introductory_video") && (
               <FormField
                 control={form.control}
                 name="mediaUrl"
@@ -839,6 +839,7 @@ export function CreatePostDialog({
                   <FormItem>
                     <FormLabel>
                       {(form.watch("type") === "memory_verse") ? "Video" :
+                       (form.watch("type") === "introductory_video") ? "Intro Video" :
                        (form.watch("type") === "miscellaneous" && !hasAnyPosts) ? "Intro Video" :
                        (form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") ? "Media" : "Image"}
                     </FormLabel>
