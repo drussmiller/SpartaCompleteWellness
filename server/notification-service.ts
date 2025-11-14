@@ -37,6 +37,12 @@ class NotificationService {
         return { emailSent: false, smsSent: false, errors };
       }
 
+      // Do not send notifications to users who are not in a team
+      if (!user.teamId) {
+        console.log(`⏭️  Skipping notification for user ${options.userId} - not in a team`);
+        return { emailSent: false, smsSent: false, errors: ['User is not in a team'] };
+      }
+
       // Send email notification
       if (user.email) {
         try {
