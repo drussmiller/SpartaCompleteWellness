@@ -3398,7 +3398,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </p>
                                     {/* Blocked checkbox - only for admins */}
                                     {currentUser?.isAdmin && (
-                                      <div className="flex items-center space-x-2 mt-2">
+                                      <div className="flex items-center justify-between mt-2">
+                                        <label
+                                          htmlFor={`blocked-${user.id}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                        >
+                                          Blocked
+                                        </label>
                                         <Checkbox
                                           id={`blocked-${user.id}`}
                                           checked={user.isBlocked || false}
@@ -3420,12 +3426,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           disabled={toggleUserBlockedMutation.isPending}
                                           data-testid={`checkbox-blocked-${user.id}`}
                                         />
-                                        <label
-                                          htmlFor={`blocked-${user.id}`}
-                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                        >
-                                          Blocked
-                                        </label>
                                       </div>
                                     )}
                                   </>
