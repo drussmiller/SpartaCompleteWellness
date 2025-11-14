@@ -1337,8 +1337,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         onTouchEnd={handleTouchEnd}
       >
         {/* Fixed title bar */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="px-4 pt-0 pb-2 flex items-center">
+        <div className="sticky top-0 z-50 bg-background border-b border-border pt-14">
+          <div className="px-4 pb-4 flex items-center">
             {onClose && (
               <Button
                 variant="ghost"
