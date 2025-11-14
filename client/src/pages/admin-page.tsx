@@ -1338,7 +1338,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       >
         {/* Fixed title bar */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="px-4 pt-2 pb-3 flex items-center">
+          <div className="px-4 py-2 flex items-center">
             {onClose && (
               <Button
                 variant="ghost"
