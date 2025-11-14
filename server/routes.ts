@@ -3742,7 +3742,6 @@ export const registerRoutes = async (
       }
 
       const type = req.query.type as string || "group_admin";
-      console.log(`[DEBUG INVITE CODE] GET group/${groupId} with type="${type}" (raw query: ${JSON.stringify(req.query)})`);
       
       if (!["group_admin", "group_member"].includes(type)) {
         return res.status(400).json({ message: "Invalid type parameter. Must be 'group_admin' or 'group_member'" });
@@ -3756,7 +3755,11 @@ export const registerRoutes = async (
       }
 
       const [group] = await db
-        .select()
+        .select({
+          id: groups.id,
+          groupAdminInviteCode: groups.groupAdminInviteCode,
+          groupMemberInviteCode: groups.groupMemberInviteCode
+        })
         .from(groups)
         .where(eq(groups.id, groupId))
         .limit(1);
@@ -3765,13 +3768,9 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Group not found" });
       }
 
-      console.log(`[DEBUG INVITE CODE] group.groupAdminInviteCode="${group.groupAdminInviteCode}", group.groupMemberInviteCode="${group.groupMemberInviteCode}"`);
-
       const inviteCode = type === "group_admin" 
         ? group.groupAdminInviteCode 
         : group.groupMemberInviteCode;
-
-      console.log(`[DEBUG INVITE CODE] Returning inviteCode="${inviteCode}" for type="${type}"`);
 
       // Prevent browser caching to ensure different types return different codes
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
