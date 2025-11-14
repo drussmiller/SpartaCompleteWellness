@@ -383,6 +383,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     },
   });
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<number | null>(null);
+
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
       const res = await apiRequest("DELETE", `/api/users/${userId}`);
@@ -398,6 +401,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: "User deleted successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     },
     onError: (error: Error) => {
       toast({
@@ -405,6 +410,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         description: error.message,
         variant: "destructive",
       });
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     },
   });
 
@@ -3221,11 +3228,22 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
-                                        <AlertDialog>
+                                        <AlertDialog 
+                                          open={deleteDialogOpen && userToDelete === user.id}
+                                          onOpenChange={(open) => {
+                                            setDeleteDialogOpen(open);
+                                            if (!open) setUserToDelete(null);
+                                          }}
+                                        >
                                           <AlertDialogTrigger asChild>
                                             <Button
                                               variant="destructive"
                                               size="sm"
+                                              onClick={() => {
+                                                setUserToDelete(user.id);
+                                                setDeleteDialogOpen(true);
+                                              }}
+                                              data-testid={`button-delete-user-${user.id}`}
                                             >
                                               <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -3240,19 +3258,29 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               account and all associated data.
                                             </AlertDialogDescription>
                                             <div className="flex items-center justify-end gap-2 mt-4">
-                                              <AlertDialogCancel>
+                                              <AlertDialogCancel data-testid="button-cancel-delete">
                                                 Cancel
                                               </AlertDialogCancel>
-                                              <AlertDialogAction
-                                                className="bg-red-600 hover:bg-red-700 text-white"
-                                                onClick={() =>
-                                                  deleteUserMutation.mutate(
-                                                    user.id,
-                                                  )
-                                                }
+                                              <Button
+                                                variant="destructive"
+                                                className="bg-red-600 hover:bg-red-700"
+                                                onClick={() => {
+                                                  if (userToDelete) {
+                                                    deleteUserMutation.mutate(userToDelete);
+                                                  }
+                                                }}
+                                                disabled={deleteUserMutation.isPending}
+                                                data-testid="button-confirm-delete"
                                               >
-                                                Delete User
-                                              </AlertDialogAction>
+                                                {deleteUserMutation.isPending ? (
+                                                  <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Deleting...
+                                                  </>
+                                                ) : (
+                                                  "Delete User"
+                                                )}
+                                              </Button>
                                             </div>
                                           </AlertDialogContent>
                                         </AlertDialog>
