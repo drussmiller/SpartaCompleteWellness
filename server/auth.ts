@@ -114,6 +114,12 @@ export function setupAuth(app: Express) {
           user = await storage.getUserByEmail(username);
         }
 
+        // If not found by email, try preferred name (case insensitive)
+        if (!user) {
+          console.log('[AUTH] Not found by email, trying preferred name lookup');
+          user = await storage.getUserByPreferredName(username);
+        }
+
         if (!user) {
           console.log('[AUTH] User not found:', username);
           return done(null, false);
@@ -285,7 +291,7 @@ export function setupAuth(app: Express) {
       }
       if (!user) {
         console.log('Login failed for:', req.body.username);
-        return res.status(401).json({ message: "Invalid username/email or password" });
+        return res.status(401).json({ message: "Invalid username/email/preferred name or password" });
       }
       
       // Fetch the user again from database to ensure we have the most current status
@@ -293,7 +299,7 @@ export function setupAuth(app: Express) {
       storage.getUser(user.id).then((freshUser) => {
         if (!freshUser) {
           console.log('User no longer exists:', user.username);
-          return res.status(401).json({ message: "Invalid username/email or password" });
+          return res.status(401).json({ message: "Invalid username/email/preferred name or password" });
         }
         
         if (freshUser.isBlocked) {
