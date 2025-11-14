@@ -8,7 +8,7 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { db } from "./db";
 import { users } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { emailService } from "./email-service";
 
 declare global {
@@ -171,6 +171,8 @@ export function setupAuth(app: Express) {
     try {
       console.log('Registration attempt:', req.body.username);
 
+      const { verificationCode } = req.body;
+
       // Check for existing username (case insensitive)
       const existingUsername = await storage.getUserByUsername(req.body.username);
       if (existingUsername) {
@@ -183,6 +185,30 @@ export function setupAuth(app: Express) {
       if (existingEmail) {
         console.log('Email already exists:', req.body.email);
         return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // Verify email with code before creating account
+      if (!verificationCode) {
+        return res.status(400).json({ 
+          message: "Email verification code is required",
+          requiresVerification: true 
+        });
+      }
+
+      // Check if email has been verified
+      const { verificationCodes } = await import("@shared/schema");
+      const [verification] = await db
+        .select()
+        .from(verificationCodes)
+        .where(eq(verificationCodes.email, req.body.email))
+        .orderBy(desc(verificationCodes.createdAt))
+        .limit(1);
+
+      if (!verification || !verification.verified) {
+        return res.status(400).json({ 
+          message: "Please verify your email before registering",
+          requiresVerification: true 
+        });
       }
 
       const hashedPassword = await hashPassword(req.body.password);

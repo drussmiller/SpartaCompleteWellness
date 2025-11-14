@@ -31,6 +31,7 @@ emailVerificationRouter.post("/api/auth/send-verification-code", async (req: Req
           gt(verificationCodes.createdAt, new Date(Date.now() - 60000)) // Within last 60 seconds
         )
       )
+      .orderBy(desc(verificationCodes.createdAt))
       .limit(1);
 
     if (recentCode.length > 0) {
@@ -38,6 +39,16 @@ emailVerificationRouter.post("/api/auth/send-verification-code", async (req: Req
         message: "Please wait 60 seconds before requesting another code" 
       });
     }
+
+    // Invalidate all previous unverified codes for this email
+    await db
+      .delete(verificationCodes)
+      .where(
+        and(
+          eq(verificationCodes.email, email),
+          eq(verificationCodes.verified, false)
+        )
+      );
 
     // Generate new verification code
     const code = generateVerificationCode();
@@ -80,17 +91,12 @@ emailVerificationRouter.post("/api/auth/verify-email-code", async (req: Request,
     const [verification] = await db
       .select()
       .from(verificationCodes)
-      .where(
-        and(
-          eq(verificationCodes.email, email),
-          eq(verificationCodes.code, code)
-        )
-      )
-      .orderBy(verificationCodes.createdAt)
+      .where(eq(verificationCodes.email, email))
+      .orderBy(desc(verificationCodes.createdAt))
       .limit(1);
 
     if (!verification) {
-      return res.status(400).json({ message: "Invalid verification code" });
+      return res.status(400).json({ message: "No verification code found for this email" });
     }
 
     // Check if already verified
@@ -100,23 +106,33 @@ emailVerificationRouter.post("/api/auth/verify-email-code", async (req: Request,
 
     // Check if expired
     if (new Date() > verification.expiresAt) {
-      return res.status(400).json({ message: "Verification code has expired" });
+      return res.status(400).json({ message: "Verification code has expired. Please request a new code" });
     }
 
-    // Check attempts (max 3)
+    // Check attempts (max 3 failed attempts)
     if (verification.attempts >= 3) {
       return res.status(400).json({ 
         message: "Too many failed attempts. Please request a new code" 
       });
     }
 
-    // Increment attempts
+    // Verify the code
+    if (verification.code !== code) {
+      // Increment attempts on failure
+      await db
+        .update(verificationCodes)
+        .set({ attempts: verification.attempts + 1 })
+        .where(eq(verificationCodes.id, verification.id));
+      
+      return res.status(400).json({ 
+        message: "Invalid verification code. Please try again" 
+      });
+    }
+
+    // Mark as verified on success (don't increment attempts)
     await db
       .update(verificationCodes)
-      .set({ 
-        attempts: verification.attempts + 1,
-        verified: true 
-      })
+      .set({ verified: true })
       .where(eq(verificationCodes.id, verification.id));
 
     res.json({ 
