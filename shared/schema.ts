@@ -57,6 +57,7 @@ export const groups = pgTable("groups", {
   status: integer("status").default(1), // 1 = active, 0 = inactive
   competitive: boolean("competitive").default(false), // Whether this group is competitive
   groupAdminInviteCode: text("group_admin_invite_code").unique(),
+  groupMemberInviteCode: text("group_member_invite_code").unique(),
   programStartDate: timestamp("program_start_date"), // Program start date for the group
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -132,15 +133,41 @@ export const insertInviteCodeSchema = createInsertSchema(inviteCodes)
     isActive: z.boolean().default(true),
   });
 
+// Email Verification Codes table for OTP verification
+export const verificationCodes = pgTable("verification_codes", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0),
+  verified: boolean("verified").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVerificationCodeSchema = createInsertSchema(verificationCodes)
+  .omit({
+    id: true,
+    createdAt: true,
+    attempts: true,
+    verified: true,
+  })
+  .extend({
+    email: z.string().email("Invalid email address"),
+    code: z.string().length(6, "Verification code must be 6 characters"),
+    expiresAt: z.date(),
+  });
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type InviteCode = typeof inviteCodes.$inferSelect;
+export type VerificationCode = typeof verificationCodes.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertInviteCode = z.infer<typeof insertInviteCodeSchema>;
+export type InsertVerificationCode = z.infer<typeof insertVerificationCodeSchema>;
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
