@@ -27,13 +27,21 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const qrRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const endpoint =
+  const baseEndpoint =
     type === "group_admin" || type === "group_member"
-      ? `/api/invite-codes/group/${id}?type=${type}`
-      : `/api/invite-codes/team/${id}?type=${type}`;
+      ? `/api/invite-codes/group/${id}`
+      : `/api/invite-codes/team/${id}`;
 
   const { data: inviteCodes, isLoading } = useQuery<{ inviteCode: string }>({
-    queryKey: [endpoint],
+    queryKey: [baseEndpoint, type],
+    queryFn: async () => {
+      const endpoint = `${baseEndpoint}?type=${type}&_t=${Date.now()}`;
+      const res = await fetch(endpoint, { credentials: 'include' });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      return res.json();
+    },
     enabled: isOpen,
   });
 
@@ -59,7 +67,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
         title: "Success",
         description: "Invite code created successfully",
       });
-      queryClient.invalidateQueries({ queryKey: [endpoint] });
+      queryClient.invalidateQueries({ queryKey: [baseEndpoint, type] });
     },
     onError: (error: Error) => {
       toast({
