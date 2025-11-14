@@ -341,6 +341,16 @@ function RegistrationForm() {
               "Create Account"
             )}
           </Button>
+          
+          <Button 
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => navigate("/auth")}
+            data-testid="button-cancel"
+          >
+            Cancel
+          </Button>
         </form>
       </Form>
     </div>
