@@ -309,7 +309,7 @@ export default function WaiverPage() {
           </div>
           
           {/* Submit Button */}
-          <div className="flex justify-center">
+          <div className="flex flex-col gap-3 items-center">
             <Button 
               onClick={handleSubmit}
               disabled={!hasReadWaiver || !hasAgreed || !(signatureType === 'draw' ? signature : typedSignature.trim()) || isSubmitting}
@@ -317,6 +317,26 @@ export default function WaiverPage() {
               size="lg"
             >
               {isSubmitting ? 'Submitting...' : 'Sign Waiver & Continue'}
+            </Button>
+            
+            <Button 
+              onClick={async () => {
+                try {
+                  await fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                  });
+                  window.location.href = '/auth';
+                } catch (error) {
+                  console.error('Error signing out:', error);
+                  window.location.href = '/auth';
+                }
+              }}
+              variant="outline"
+              className="w-full max-w-md"
+              size="lg"
+            >
+              I Don't Agree - Sign Out
             </Button>
           </div>
           
