@@ -1728,13 +1728,17 @@ export const registerRoutes = async (
 
             // Simplified detection for memory verse posts - rely only on the post type
             const isMemoryVersePost = postData.type === 'memory_verse';
+            const isIntroductoryVideoPost = postData.type === 'introductory_video';
 
             // Handle specialized types
             const isMiscellaneousPost = postData.type === 'miscellaneous';
+            const isPrayerPost = postData.type === 'prayer';
 
             console.log("Post type detection:", {
               isMemoryVersePost,
+              isIntroductoryVideoPost,
               isMiscellaneousPost,
+              isPrayerPost,
               originalName: uploadedFile.originalname
             });
 
@@ -1747,15 +1751,19 @@ export const registerRoutes = async (
                                    originalFilename.endsWith('.mkv');
             const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
 
-            // For miscellaneous posts, check if explicitly marked as video from client
-            const isMiscellaneousVideo = isMiscellaneousPost && 
+            // For miscellaneous and prayer posts, check if explicitly marked as video from client
+            const isMiscellaneousVideo = (isMiscellaneousPost || isPrayerPost) && 
                                        (req.body.is_video === "true" || 
                                         req.body.selected_media_type === "video" ||
                                         (uploadedFile && (isVideoMimetype || isVideoExtension)));
 
-            // Combined video detection - for miscellaneous posts, only trust the explicit markers
+            // Combined video detection
+            // - memory_verse and introductory_video are always videos
+            // - miscellaneous/prayer posts only if explicitly marked
+            // - other posts based on mimetype/extension
             const isVideo = isMemoryVersePost || 
-                          (isMiscellaneousPost ? isMiscellaneousVideo : 
+                          isIntroductoryVideoPost ||
+                          ((isMiscellaneousPost || isPrayerPost) ? isMiscellaneousVideo : 
                            (isVideoMimetype || hasVideoContentType || isVideoExtension));
 
             console.log("Video detection:", {
