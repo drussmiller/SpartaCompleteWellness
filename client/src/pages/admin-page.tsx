@@ -10,6 +10,8 @@ import {
   Loader2,
   Edit,
   ChevronDown,
+  Ban,
+  CheckCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -481,6 +483,52 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       toast({
         title: "Success",
         description: "User's team updated successfully",
+      });
+      // Update the users cache with the updated user data
+      queryClient.setQueryData(["/api/users"], (oldUsers: any) => {
+        if (!oldUsers) return oldUsers;
+        return oldUsers.map((user: any) =>
+          user.id === updatedUser.id ? updatedUser : user
+        );
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleUserBlockedMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      isBlocked,
+    }: {
+      userId: number;
+      isBlocked: boolean;
+    }) => {
+      const res = await apiRequest("PATCH", `/api/users/${userId}`, { isBlocked });
+      if (!res.ok) {
+        let errorMessage = "Failed to update user's blocked status";
+        try {
+          const error = await res.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          const text = await res.text();
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: (updatedUser) => {
+      toast({
+        title: "Success",
+        description: updatedUser.isBlocked 
+          ? "User has been blocked from logging in" 
+          : "User has been unblocked",
       });
       // Update the users cache with the updated user data
       queryClient.setQueryData(["/api/users"], (oldUsers: any) => {
@@ -3350,6 +3398,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           : "Inactive"}
                                       </span>
                                     </p>
+                                    {user.isBlocked && (
+                                      <p className="text-sm mt-1">
+                                        <span className="font-medium text-red-600">
+                                          ⚠️ BLOCKED
+                                        </span>
+                                        <span className="text-muted-foreground text-xs ml-2">
+                                          (Cannot log in)
+                                        </span>
+                                      </p>
+                                    )}
                                   </>
                                 )}
                               </div>
@@ -3478,7 +3536,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </div>
                             </div>
 
-                            <div className="pt-2">
+                            <div className="pt-2 space-y-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -3491,6 +3549,45 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 <Lock className="h-4 w-4 mr-1" />
                                 Reset Password
                               </Button>
+                              
+                              {/* Block/Unblock button - only show for admin users */}
+                              {currentUser?.isAdmin && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`w-full ${user.isBlocked ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white hover:text-white`}
+                                  onClick={() => {
+                                    // Prevent blocking the admin user
+                                    if (user.username === "admin") {
+                                      toast({
+                                        title: "Cannot Block Admin",
+                                        description:
+                                          "The main administrator account cannot be blocked.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    toggleUserBlockedMutation.mutate({
+                                      userId: user.id,
+                                      isBlocked: !user.isBlocked,
+                                    });
+                                  }}
+                                  disabled={toggleUserBlockedMutation.isPending}
+                                  data-testid={`button-toggle-block-${user.id}`}
+                                >
+                                  {user.isBlocked ? (
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-1" />
+                                      Unblock User
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban className="h-4 w-4 mr-1" />
+                                      Block User
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
