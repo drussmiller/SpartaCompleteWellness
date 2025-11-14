@@ -1615,7 +1615,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           </SelectContent>
                                         </Select>
                                       </div>
-                                      <div className="flex gap-2">
+                                      <div className="flex gap-2 mt-4">
                                         <Button
                                           type="submit"
                                           size="sm"
@@ -2152,7 +2152,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           Competitive
                                         </label>
                                       </div>
-                                      <div className="flex gap-2">
+                                      <div className="flex gap-2 mt-4">
                                         <Button
                                           type="submit"
                                           size="sm"
@@ -2733,7 +2733,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 mt-4">
                                       <Button type="submit" size="sm">
                                         Save
                                       </Button>
@@ -3271,7 +3271,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </div>
                                       )}
 
-                                      <div className="flex gap-2">
+                                      <div className="flex gap-2 mt-4">
                                         <Button type="submit" size="sm">
                                           Save
                                         </Button>
