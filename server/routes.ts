@@ -4137,13 +4137,9 @@ export const registerRoutes = async (
         // Program has started if today is Monday or later (nextMonday <= today)
         const programHasStarted = nextMonday.getTime() <= userStartOfDay.getTime();
 
-        // Calculate current day of week (1 = Monday, 7 = Sunday)
-        const rawDay = userLocalNow.getDay();
-        const currentDay = rawDay === 0 ? 7 : rawDay;
-
         return res.json({
-          currentWeek: 1,
-          currentDay: currentDay,
+          currentWeek: programHasStarted ? 1 : null,
+          currentDay: programHasStarted ? (userLocalNow.getDay() === 0 ? 7 : userLocalNow.getDay()) : null,
           programHasStarted: programHasStarted,
           daysSinceStart: programHasStarted ? 0 : -daysUntilMonday
         });
