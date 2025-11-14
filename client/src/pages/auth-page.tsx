@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InsertUser, insertUserSchema } from "@shared/schema";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -19,24 +18,12 @@ type LoginForm = {
   password: string;
 };
 
-// Define the register schema with password confirmation
-const registerSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-
 const forgotPasswordSchema = z.object({
   userIdentifier: z.string().min(1, "User ID or Preferred Name is required"),
 });
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation } = useAuth();
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -52,16 +39,6 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
-    },
-  });
-
-  const registerForm = useForm<z.infer<typeof registerSchema>>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
     },
   });
 
@@ -110,12 +87,6 @@ export default function AuthPage() {
             <CardTitle className="text-2xl font-bold">Sparta Complete Wellness</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-              <TabsContent value="login">
                 {!showForgotPassword ? (
                   <Form {...loginForm}>
                     <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
@@ -224,72 +195,14 @@ export default function AuthPage() {
                     </form>
                   </Form>
                 )}
-              </TabsContent>
-              <TabsContent value="register">
-                <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
-                    <FormField
-                      control={registerForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                      {registerMutation.isPending ? "Creating account..." : "Create Account"}
-                    </Button>
-                    {registerMutation.error && (
-                      <p className="text-red-500 text-sm mt-2">
-                        {registerMutation.error instanceof Error
-                          ? registerMutation.error.message
-                          : "Failed to create account"}
-                      </p>
-                    )}
-                  </form>
-                </Form>
-              </TabsContent>
-            </Tabs>
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Don't have an account?{" "}
+                    <Link href="/register" className="font-semibold text-primary hover:underline" data-testid="link-create-account">
+                      Create account
+                    </Link>
+                  </p>
+                </div>
           </CardContent>
         </Card>
       </div>

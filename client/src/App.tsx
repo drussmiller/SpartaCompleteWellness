@@ -10,6 +10,7 @@ import { Route, Switch } from "wouter";
 import { useEffect } from "react";
 import { ProtectedRoute } from "./lib/protected-route";
 import AuthPage from "@/pages/auth-page";
+import RegisterPage from "@/pages/register-page";
 import HomePage from "@/pages/home-page";
 import ActivityPage from "@/pages/activity-page";
 import ActivityManagementPage from "@/pages/activity-management";
@@ -21,12 +22,12 @@ import GroupAdminPage from "@/pages/group-admin-page";
 import MenuPage from "@/pages/menu-page";
 import { BottomNav } from "@/components/bottom-nav";
 import { VerticalNav } from "@/components/vertical-nav";
-import NotificationSettingsPage from "@/pages/notification-settings-page"; // Import the notification settings page
-import NotificationSchedulePage from "@/pages/notification-schedule-page"; // Keep for backward compatibility
-import { LeaderboardPage } from "@/pages/leaderboard-page"; // Import the leaderboard page
-import { DebugApi } from "./debug-api"; // Import our debug component
+import NotificationSettingsPage from "@/pages/notification-settings-page";
+import NotificationSchedulePage from "@/pages/notification-schedule-page";
+import { LeaderboardPage } from "@/pages/leaderboard-page";
+import { DebugApi } from "./debug-api";
 import { AchievementsContainer } from "@/components/achievements/achievements-container";
-import PrayerRequestsPage from "@/pages/prayer-requests-page"; // Import the prayer requests page
+import PrayerRequestsPage from "@/pages/prayer-requests-page";
 
 import { VideoPlayerPage } from "./pages/video-player-page";
 import CommentsPage from "@/pages/comments-page";
@@ -87,9 +88,14 @@ function MainContent() {
     );
   }
 
-  // If not authenticated, show auth page
+  // If not authenticated, show auth or register page based on route
   if (!user) {
-    return <AuthPage />;
+    return (
+      <Switch>
+        <Route path="/register" component={RegisterPage} />
+        <Route path="*" component={AuthPage} />
+      </Switch>
+    );
   }
 
   // Check if user needs to sign waiver first
