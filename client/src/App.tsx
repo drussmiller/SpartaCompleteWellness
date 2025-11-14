@@ -118,6 +118,7 @@ function MainContent() {
       <div className="md:pl-20" style={{overflowX: 'hidden', touchAction: 'pan-y pinch-zoom', overscrollBehaviorX: 'contain'}}> {/* Prevent horizontal overscroll */}
         <Switch>
           <Route path="/" component={HomePage} />
+          <Route path="/auth" component={AuthPage} />
           <Route path="/waiver" component={WaiverPage} />
           <Route path="/activity" component={ActivityPage} />
           <Route path="/activity-management" component={ActivityManagementPage} />
