@@ -87,6 +87,11 @@ export function setupAuth(app: Express) {
           console.log('[AUTH] Admin login path');
           const adminUser = await storage.getUserByUsername('admin');
           if (adminUser && await comparePasswords(password, adminUser.password)) {
+            // Check if admin is blocked
+            if (adminUser.isBlocked) {
+              console.log('[AUTH] BLOCKED: Admin user is blocked:', username);
+              return done(null, false);
+            }
             // Check if admin is inactive
             if (adminUser.status === 0) {
               console.log('[AUTH] BLOCKED: Admin user is inactive:', username);
@@ -115,6 +120,12 @@ export function setupAuth(app: Express) {
         }
 
         console.log('[AUTH] User found:', user.username, 'ID:', user.id);
+        
+        // CRITICAL: Check if user is blocked - must happen before password check
+        if (user.isBlocked) {
+          console.log('[AUTH] BLOCKED: User is blocked:', username);
+          return done(null, false);
+        }
         
         // CRITICAL: Check if user is inactive - must happen before password check
         console.log('[AUTH] Status check - value:', user.status, 'type:', typeof user.status, 'is zero?:', user.status === 0);
@@ -150,6 +161,12 @@ export function setupAuth(app: Express) {
       
       if (!user) {
         console.log('User not found during deserialization:', id);
+        return done(null, false);
+      }
+      
+      // CRITICAL: Check if user is blocked - if so, invalidate the session immediately
+      if (user.isBlocked) {
+        console.log('BLOCKED: User is blocked and attempted to use session:', id, user.username);
         return done(null, false);
       }
       
@@ -277,6 +294,11 @@ export function setupAuth(app: Express) {
         if (!freshUser) {
           console.log('User no longer exists:', user.username);
           return res.status(401).json({ message: "Invalid username/email or password" });
+        }
+        
+        if (freshUser.isBlocked) {
+          console.log('Login blocked for blocked user:', freshUser.username);
+          return res.status(403).json({ message: "Account has been blocked. Please contact an administrator." });
         }
         
         if (freshUser.status === 0) {
