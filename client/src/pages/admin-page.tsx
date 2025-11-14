@@ -10,8 +10,6 @@ import {
   Loader2,
   Edit,
   ChevronDown,
-  Ban,
-  CheckCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -3398,15 +3396,37 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           : "Inactive"}
                                       </span>
                                     </p>
-                                    {user.isBlocked && (
-                                      <p className="text-sm mt-1">
-                                        <span className="font-medium text-red-600">
-                                          ⚠️ BLOCKED
-                                        </span>
-                                        <span className="text-muted-foreground text-xs ml-2">
-                                          (Cannot log in)
-                                        </span>
-                                      </p>
+                                    {/* Blocked checkbox - only for admins */}
+                                    {currentUser?.isAdmin && (
+                                      <div className="flex items-center space-x-2 mt-2">
+                                        <Checkbox
+                                          id={`blocked-${user.id}`}
+                                          checked={user.isBlocked || false}
+                                          onCheckedChange={(checked) => {
+                                            // Prevent blocking the admin user
+                                            if (user.username === "admin") {
+                                              toast({
+                                                title: "Cannot Block Admin",
+                                                description: "The main administrator account cannot be blocked.",
+                                                variant: "destructive",
+                                              });
+                                              return;
+                                            }
+                                            toggleUserBlockedMutation.mutate({
+                                              userId: user.id,
+                                              isBlocked: checked === true,
+                                            });
+                                          }}
+                                          disabled={toggleUserBlockedMutation.isPending}
+                                          data-testid={`checkbox-blocked-${user.id}`}
+                                        />
+                                        <label
+                                          htmlFor={`blocked-${user.id}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                        >
+                                          Blocked
+                                        </label>
+                                      </div>
                                     )}
                                   </>
                                 )}
@@ -3536,7 +3556,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </div>
                             </div>
 
-                            <div className="pt-2 space-y-2">
+                            <div className="pt-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -3549,45 +3569,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 <Lock className="h-4 w-4 mr-1" />
                                 Reset Password
                               </Button>
-                              
-                              {/* Block/Unblock button - only show for admin users */}
-                              {currentUser?.isAdmin && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className={`w-full ${user.isBlocked ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white hover:text-white`}
-                                  onClick={() => {
-                                    // Prevent blocking the admin user
-                                    if (user.username === "admin") {
-                                      toast({
-                                        title: "Cannot Block Admin",
-                                        description:
-                                          "The main administrator account cannot be blocked.",
-                                        variant: "destructive",
-                                      });
-                                      return;
-                                    }
-                                    toggleUserBlockedMutation.mutate({
-                                      userId: user.id,
-                                      isBlocked: !user.isBlocked,
-                                    });
-                                  }}
-                                  disabled={toggleUserBlockedMutation.isPending}
-                                  data-testid={`button-toggle-block-${user.id}`}
-                                >
-                                  {user.isBlocked ? (
-                                    <>
-                                      <CheckCircle className="h-4 w-4 mr-1" />
-                                      Unblock User
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Ban className="h-4 w-4 mr-1" />
-                                      Block User
-                                    </>
-                                  )}
-                                </Button>
-                              )}
                             </div>
                           </CardContent>
                         </Card>
