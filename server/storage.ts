@@ -12,6 +12,7 @@ import {
   measurements,
   workoutVideos,
   workoutTypes,
+  messages,
   type Post,
   type Team,
   type Group,
@@ -535,6 +536,16 @@ export const storage = {
         await tx
           .delete(notifications)
           .where(eq(notifications.userId, userId));
+
+        // Delete all messages sent by this user
+        await tx
+          .delete(messages)
+          .where(eq(messages.senderId, userId));
+
+        // Delete all messages received by this user
+        await tx
+          .delete(messages)
+          .where(eq(messages.recipientId, userId));
 
         // Finally delete the user
         await tx
