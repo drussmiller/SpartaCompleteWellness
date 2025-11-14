@@ -1205,6 +1205,80 @@ export const registerRoutes = async (
       const postType = req.query.type as string;
       const excludeType = req.query.exclude as string;
       const teamOnly = req.query.teamOnly === "true";
+      const teamlessIntroOnly = req.query.teamlessIntroOnly === "true";
+
+      // Admin/Group Admin filter: show only introductory videos from team-less users
+      if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin)) {
+        logger.info(`[TEAMLESS INTRO FILTER] Admin/Group Admin ${req.user.id} fetching intro videos from team-less users`);
+        
+        // Get all users without teams, filtered by organization/group access
+        let teamlessConditions = [isNull(users.teamId)];
+        
+        // For Group Admins, restrict to their admin group's organization
+        if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
+          const [adminGroup] = await db
+            .select({ organizationId: groups.organizationId })
+            .from(groups)
+            .where(eq(groups.id, req.user.adminGroupId))
+            .limit(1);
+          
+          if (!adminGroup?.organizationId) {
+            logger.info(`[TEAMLESS INTRO FILTER] Group Admin ${req.user.id} has no organization, returning empty`);
+            return res.json([]);
+          }
+          
+          // Combine team-less filter with organization filter
+          teamlessConditions.push(eq(users.organizationId, adminGroup.organizationId));
+          logger.info(`[TEAMLESS INTRO FILTER] Group Admin restricted to organization ${adminGroup.organizationId}`);
+        } else if (req.user.isAdmin && req.user.adminOrganizationId) {
+          // For Organization Admins, restrict to their organization
+          teamlessConditions.push(eq(users.organizationId, req.user.adminOrganizationId));
+          logger.info(`[TEAMLESS INTRO FILTER] Admin restricted to organization ${req.user.adminOrganizationId}`);
+        }
+        // Note: Super admins (isAdmin without adminOrganizationId) can see all
+        
+        const teamlessUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(...teamlessConditions));
+        const teamlessUserIds = teamlessUsers.map(u => u.id);
+        
+        if (teamlessUserIds.length === 0) {
+          logger.info(`[TEAMLESS INTRO FILTER] No team-less users found in scope`);
+          return res.json([]);
+        }
+        
+        // Build query for introductory videos from team-less users
+        const introVideos = await db
+          .select({
+            post: posts,
+            author: {
+              id: users.id,
+              username: users.username,
+              teamId: users.teamId,
+            },
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              isNull(posts.parentId),
+              eq(posts.type, 'introductory_video'),
+              inArray(posts.userId, teamlessUserIds)
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset(offset);
+        
+        const formattedPosts = introVideos.map(({ post, author }) => ({
+          ...post,
+          author,
+        }));
+        
+        logger.info(`[TEAMLESS INTRO FILTER] Returning ${formattedPosts.length} introductory videos from ${teamlessUserIds.length} team-less users`);
+        return res.json(formattedPosts);
+      }
 
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts

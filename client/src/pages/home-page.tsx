@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, Filter } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
@@ -44,6 +44,7 @@ export default function HomePage() {
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const [scrollOffset, setScrollOffset] = useState(0);
   const lastScrollY = useRef(0);
+  const [showIntroVideosOnly, setShowIntroVideosOnly] = useState(false);
   
   // Restore scroll position when returning from video player
   useRestoreScroll();
@@ -65,8 +66,23 @@ export default function HomePage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["/api/posts", "team-posts", user?.teamId, user?.id],
+    queryKey: ["/api/posts", "team-posts", user?.teamId, user?.id, showIntroVideosOnly],
     queryFn: async () => {
+      // Admin/Group Admin filter for introductory videos from team-less users
+      if (showIntroVideosOnly && (user?.isAdmin || user?.isGroupAdmin)) {
+        console.log("Fetching introductory videos from team-less users");
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?teamlessIntroOnly=true`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Introductory videos from team-less users:", data.length);
+        return data;
+      }
+
       // If user is not in a team, fetch only their own introductory video posts
       if (!user?.teamId) {
         console.log("User not in team, fetching only their introductory video");
@@ -252,9 +268,24 @@ export default function HomePage() {
                   }}
                 />
               </div>
-              <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} initialType="food" />
-                {user?.teamId && <MessageSlideCard />}
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  <CreatePostDialog remaining={remaining} initialType="food" />
+                  {user?.teamId && <MessageSlideCard />}
+                </div>
+                {/* Admin/Group Admin filter for introductory videos */}
+                {(user?.isAdmin || user?.isGroupAdmin) && (
+                  <Button
+                    variant={showIntroVideosOnly ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowIntroVideosOnly(!showIntroVideosOnly)}
+                    className="text-xs h-7"
+                    data-testid="button-filter-intro-videos"
+                  >
+                    <Filter className="h-3 w-3 mr-1" />
+                    {showIntroVideosOnly ? "Show All Posts" : "New Users"}
+                  </Button>
+                )}
               </div>
             </div>
 
