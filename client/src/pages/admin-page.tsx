@@ -3238,6 +3238,38 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           </SelectContent>
                                         </Select>
                                       </div>
+                                      {/* Blocked checkbox - only for admins */}
+                                      {currentUser?.isAdmin && (
+                                        <div className="flex items-center justify-between">
+                                          <label
+                                            htmlFor={`edit-blocked-${user.id}`}
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                          >
+                                            Blocked
+                                          </label>
+                                          <Checkbox
+                                            id={`edit-blocked-${user.id}`}
+                                            checked={user.isBlocked || false}
+                                            onCheckedChange={(checked) => {
+                                              // Prevent blocking the admin user
+                                              if (user.username === "admin") {
+                                                toast({
+                                                  title: "Cannot Block Admin",
+                                                  description: "The main administrator account cannot be blocked.",
+                                                  variant: "destructive",
+                                                });
+                                                return;
+                                              }
+                                              toggleUserBlockedMutation.mutate({
+                                                userId: user.id,
+                                                isBlocked: checked === true,
+                                              });
+                                            }}
+                                            disabled={toggleUserBlockedMutation.isPending}
+                                            data-testid={`checkbox-blocked-${user.id}`}
+                                          />
+                                        </div>
+                                      )}
                                       <div className="flex gap-2">
                                         <Button type="submit" size="sm">
                                           Save
@@ -3396,38 +3428,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           : "Inactive"}
                                       </span>
                                     </p>
-                                    {/* Blocked checkbox - only for admins */}
-                                    {currentUser?.isAdmin && (
-                                      <div className="flex items-center justify-between mt-2">
-                                        <label
-                                          htmlFor={`blocked-${user.id}`}
-                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                        >
-                                          Blocked
-                                        </label>
-                                        <Checkbox
-                                          id={`blocked-${user.id}`}
-                                          checked={user.isBlocked || false}
-                                          onCheckedChange={(checked) => {
-                                            // Prevent blocking the admin user
-                                            if (user.username === "admin") {
-                                              toast({
-                                                title: "Cannot Block Admin",
-                                                description: "The main administrator account cannot be blocked.",
-                                                variant: "destructive",
-                                              });
-                                              return;
-                                            }
-                                            toggleUserBlockedMutation.mutate({
-                                              userId: user.id,
-                                              isBlocked: checked === true,
-                                            });
-                                          }}
-                                          disabled={toggleUserBlockedMutation.isPending}
-                                          data-testid={`checkbox-blocked-${user.id}`}
-                                        />
-                                      </div>
-                                    )}
                                   </>
                                 )}
                               </div>
