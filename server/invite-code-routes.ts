@@ -40,8 +40,14 @@ export const inviteCodeRouter = Router();
 inviteCodeRouter.get("/api/invite-codes/group/:groupId", authenticate, async (req: Request, res: Response) => {
   try {
     const groupId = parseInt(req.params.groupId);
+    const { type } = req.query;
+    
     if (isNaN(groupId)) {
       return res.status(400).json({ message: "Invalid group ID" });
+    }
+
+    if (!type || (type !== "group_admin" && type !== "group_member")) {
+      return res.status(400).json({ message: "Invalid invite type" });
     }
 
     const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
@@ -49,22 +55,40 @@ inviteCodeRouter.get("/api/invite-codes/group/:groupId", authenticate, async (re
       return res.status(404).json({ message: "Group not found" });
     }
 
-    if (!group.groupAdminInviteCode) {
+    const needsGeneration = 
+      (type === "group_admin" && !group.groupAdminInviteCode) ||
+      (type === "group_member" && !group.groupMemberInviteCode);
+
+    if (needsGeneration) {
       if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === groupId)) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      
-      const inviteCode = generateInviteCode();
+
+      const updateData: any = {};
+      if (type === "group_admin") {
+        updateData.groupAdminInviteCode = generateInviteCode();
+      } else {
+        updateData.groupMemberInviteCode = generateInviteCode();
+      }
+
       const [updatedGroup] = await db
         .update(groups)
-        .set({ groupAdminInviteCode: inviteCode })
+        .set(updateData)
         .where(eq(groups.id, groupId))
         .returning();
+
+      const inviteCode = type === "group_admin" 
+        ? updatedGroup.groupAdminInviteCode 
+        : updatedGroup.groupMemberInviteCode;
       
-      return res.json({ inviteCode: updatedGroup.groupAdminInviteCode });
+      return res.json({ inviteCode });
     }
 
-    res.json({ inviteCode: group.groupAdminInviteCode });
+    const inviteCode = type === "group_admin" 
+      ? group.groupAdminInviteCode 
+      : group.groupMemberInviteCode;
+    
+    res.json({ inviteCode });
   } catch (error) {
     logger.error("Error fetching group invite code:", error);
     res.status(500).json({ message: "Failed to fetch invite code" });
