@@ -3240,7 +3240,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       </div>
                                       {/* Blocked checkbox - only for admins */}
                                       {currentUser?.isAdmin && (
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
                                           <label
                                             htmlFor={`edit-blocked-${user.id}`}
                                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
