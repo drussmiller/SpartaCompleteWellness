@@ -31,7 +31,9 @@ The application uses a monorepo structure, separating client, server, and shared
 - **Schema**: `shared/schema.ts`.
 
 ### Key Features
-- **Authentication**: Session-based using Passport.js, scrypt for password hashing, protected routes.
+- **Authentication**: Session-based using Passport.js, scrypt for password hashing, protected routes, email verification with OTP codes (6-digit, 10-minute expiration).
+- **Email Service**: Gmail integration for transactional emails (verification codes, password resets), automatic fallback to console logging for development.
+- **Invite Codes**: Group-level invite codes (admin and member), team-level invite codes (admin and member), QR code support for easy onboarding.
 - **File Storage**: Replit Object Storage for media (images, videos), automatic thumbnail generation, `shared/uploads/` path strategy.
 - **Media Processing**: Sharp for images, custom MOV extractor for video thumbnails, MIME type validation.
 - **Real-time**: WebSocket for notifications, presence tracking, automatic reconnection.

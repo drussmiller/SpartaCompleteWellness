@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db";
 import { verificationCodes } from "@shared/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, desc } from "drizzle-orm";
 import { sendVerificationEmail } from "./email-service";
 import { logger } from "./logger";
 
