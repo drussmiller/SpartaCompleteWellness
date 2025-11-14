@@ -20,13 +20,24 @@ type LoginForm = {
 
 const forgotPasswordSchema = z.object({
   userIdentifier: z.string().min(1, "User ID or Preferred Name is required"),
-});
+  verificationCode: z.string().optional(),
+  newPassword: z.string().optional(),
+  confirmPassword: z.string().optional(),
+}).refine(
+  (data) => !data.newPassword || data.newPassword === data.confirmPassword,
+  {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  }
+);
 
 export default function AuthPage() {
   const { user, loginMutation } = useAuth();
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [maskedEmail, setMaskedEmail] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -47,33 +58,67 @@ export default function AuthPage() {
     mode: "onChange",
     defaultValues: {
       userIdentifier: "",
+      verificationCode: "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
-  const forgotPasswordMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof forgotPasswordSchema>) => {
-      const response = await fetch('/api/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to send reset email');
+  const sendResetCodeMutation = useMutation({
+    mutationFn: async (userIdentifier: string) => {
+      const res = await apiRequest("POST", "/api/auth/send-reset-code", { userIdentifier });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to send reset code");
       }
-      return response.json();
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCodeSent(true);
+      if (data.email) {
+        setMaskedEmail(data.email);
+      }
+      toast({
+        title: "Code Sent",
+        description: "A password reset code has been sent to your email. Please check your inbox.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset code. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: { userIdentifier: string; code: string; newPassword: string }) => {
+      const res = await apiRequest("POST", "/api/auth/verify-reset-code", {
+        userIdentifier: data.userIdentifier,
+        code: data.code,
+        newPassword: data.newPassword,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to reset password");
+      }
+      return res.json();
     },
     onSuccess: () => {
       toast({
-        title: "Email Sent",
-        description: "If that user exists, a password reset email has been sent to the registered email address. Please check your inbox.",
+        title: "Success",
+        description: "Your password has been reset. You can now log in with your new password.",
       });
       setShowForgotPassword(false);
+      setCodeSent(false);
+      setMaskedEmail("");
       forgotPasswordForm.reset();
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to process password reset request. Please try again.",
+        description: error.message || "Failed to reset password. Please try again.",
         variant: "destructive",
       });
     },
@@ -136,8 +181,15 @@ export default function AuthPage() {
                         variant="link" 
                         className="w-full" 
                         onClick={() => {
-                          forgotPasswordForm.reset({ userIdentifier: "" });
                           setShowForgotPassword(true);
+                          setCodeSent(false);
+                          setMaskedEmail("");
+                          forgotPasswordForm.reset({
+                            userIdentifier: "",
+                            verificationCode: "",
+                            newPassword: "",
+                            confirmPassword: "",
+                          });
                         }}
                         data-testid="button-forgot-password"
                       >
@@ -147,11 +199,24 @@ export default function AuthPage() {
                   </Form>
                 ) : (
                   <Form {...forgotPasswordForm} key="forgot-password-form">
-                    <form onSubmit={forgotPasswordForm.handleSubmit((data) => forgotPasswordMutation.mutate(data))} className="space-y-4">
+                    <form onSubmit={forgotPasswordForm.handleSubmit((data) => {
+                      if (!codeSent) {
+                        sendResetCodeMutation.mutate(data.userIdentifier);
+                      } else {
+                        resetPasswordMutation.mutate({
+                          userIdentifier: data.userIdentifier,
+                          code: data.verificationCode || "",
+                          newPassword: data.newPassword || "",
+                        });
+                      }
+                    })} className="space-y-4">
                       <div className="mb-4">
                         <h3 className="font-semibold text-lg mb-2">Reset Password</h3>
                         <p className="text-sm text-muted-foreground">
-                          Enter your User ID or Preferred Name and we'll send a temporary password to your registered email address.
+                          {!codeSent 
+                            ? "Enter your User ID or Preferred Name and we'll send a verification code to your registered email address."
+                            : `A verification code has been sent to ${maskedEmail || "your email"}. Enter the code and your new password below.`
+                          }
                         </p>
                       </div>
                       <FormField
@@ -165,33 +230,127 @@ export default function AuthPage() {
                                 {...field}
                                 placeholder="Enter your User ID or Preferred Name"
                                 data-testid="input-reset-identifier"
+                                disabled={codeSent}
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <div className="flex gap-2">
-                        <Button 
-                          type="submit" 
-                          className="flex-1" 
-                          disabled={forgotPasswordMutation.isPending}
-                          data-testid="button-send-reset"
-                        >
-                          {forgotPasswordMutation.isPending ? "Sending..." : "Send Reset Email"}
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={() => {
-                            setShowForgotPassword(false);
-                            forgotPasswordForm.reset();
-                          }}
-                          data-testid="button-cancel-reset"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+                      {!codeSent ? (
+                        <div className="flex gap-2">
+                          <Button 
+                            type="submit" 
+                            className="flex-1" 
+                            disabled={sendResetCodeMutation.isPending}
+                            data-testid="button-send-code"
+                          >
+                            {sendResetCodeMutation.isPending ? "Sending..." : "Send Code"}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => {
+                              setShowForgotPassword(false);
+                              setCodeSent(false);
+                              setMaskedEmail("");
+                              forgotPasswordForm.reset();
+                            }}
+                            data-testid="button-cancel-reset"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <FormField
+                            control={forgotPasswordForm.control}
+                            name="verificationCode"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Verification Code</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field}
+                                    placeholder="Enter 6-digit code"
+                                    maxLength={6}
+                                    data-testid="input-verification-code"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={forgotPasswordForm.control}
+                            name="newPassword"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>New Password</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="password"
+                                    {...field}
+                                    placeholder="Enter new password (min 8 characters)"
+                                    data-testid="input-new-password"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={forgotPasswordForm.control}
+                            name="confirmPassword"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Confirm Password</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="password"
+                                    {...field}
+                                    placeholder="Confirm new password"
+                                    data-testid="input-confirm-password"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="flex gap-2">
+                            <Button 
+                              type="submit" 
+                              className="flex-1" 
+                              disabled={resetPasswordMutation.isPending}
+                              data-testid="button-reset-password"
+                            >
+                              {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+                            </Button>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => {
+                                setCodeSent(false);
+                                setMaskedEmail("");
+                                forgotPasswordForm.reset();
+                              }}
+                              data-testid="button-back"
+                            >
+                              Back
+                            </Button>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="w-full text-sm"
+                            onClick={() => sendResetCodeMutation.mutate(forgotPasswordForm.getValues("userIdentifier"))}
+                            disabled={sendResetCodeMutation.isPending}
+                            data-testid="button-resend-code"
+                          >
+                            Resend Code
+                          </Button>
+                        </>
+                      )}
                     </form>
                   </Form>
                 )}

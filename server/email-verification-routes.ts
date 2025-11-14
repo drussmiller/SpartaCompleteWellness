@@ -1,9 +1,10 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db";
-import { verificationCodes } from "@shared/schema";
-import { eq, and, gt, desc } from "drizzle-orm";
-import { sendVerificationEmail } from "./email-service";
+import { verificationCodes, users } from "@shared/schema";
+import { eq, and, gt, desc, sql } from "drizzle-orm";
+import { sendVerificationEmail, sendPasswordResetCode } from "./email-service";
 import { logger } from "./logger";
+import { hashPassword } from "./auth";
 
 export const emailVerificationRouter = Router();
 
@@ -142,5 +143,181 @@ emailVerificationRouter.post("/api/auth/verify-email-code", async (req: Request,
   } catch (error) {
     logger.error("Error verifying email code:", error);
     res.status(500).json({ message: "Failed to verify email" });
+  }
+});
+
+// Send password reset code
+emailVerificationRouter.post("/api/auth/send-reset-code", async (req: Request, res: Response) => {
+  try {
+    const { userIdentifier } = req.body;
+
+    if (!userIdentifier) {
+      return res.status(400).json({ message: "User ID or Preferred Name is required" });
+    }
+
+    let user = null;
+    const userId = parseInt(userIdentifier);
+    
+    if (!isNaN(userId)) {
+      const [foundUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      user = foundUser;
+    }
+    
+    if (!user) {
+      const [foundUser] = await db
+        .select()
+        .from(users)
+        .where(sql`LOWER(${users.preferredName}) = LOWER(${userIdentifier})`)
+        .limit(1);
+      user = foundUser;
+    }
+    
+    if (!user || !user.email) {
+      return res.json({ 
+        success: true, 
+        message: "If an account with that identifier exists, a password reset code has been sent." 
+      });
+    }
+
+    const recentCode = await db
+      .select()
+      .from(verificationCodes)
+      .where(
+        and(
+          eq(verificationCodes.email, user.email),
+          gt(verificationCodes.createdAt, new Date(Date.now() - 60000))
+        )
+      )
+      .orderBy(desc(verificationCodes.createdAt))
+      .limit(1);
+
+    if (recentCode.length > 0) {
+      return res.status(429).json({ 
+        message: "Please wait 60 seconds before requesting another code" 
+      });
+    }
+
+    await db
+      .delete(verificationCodes)
+      .where(
+        and(
+          eq(verificationCodes.email, user.email),
+          eq(verificationCodes.verified, false)
+        )
+      );
+
+    const code = generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await db.insert(verificationCodes).values({
+      email: user.email,
+      code,
+      expiresAt,
+    });
+
+    const sent = await sendPasswordResetCode(user.email, code);
+
+    if (!sent) {
+      return res.status(500).json({ message: "Failed to send password reset code" });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Password reset code sent to your email",
+      email: user.email.replace(/(.{2})(.*)(@.*)/, "$1***$3")
+    });
+  } catch (error) {
+    logger.error("Error sending password reset code:", error);
+    res.status(500).json({ message: "Failed to send password reset code" });
+  }
+});
+
+// Verify reset code and update password
+emailVerificationRouter.post("/api/auth/verify-reset-code", async (req: Request, res: Response) => {
+  try {
+    const { userIdentifier, code, newPassword } = req.body;
+
+    if (!userIdentifier || !code || !newPassword) {
+      return res.status(400).json({ message: "User identifier, code, and new password are required" });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long" });
+    }
+
+    let user = null;
+    const userId = parseInt(userIdentifier);
+    
+    if (!isNaN(userId)) {
+      const [foundUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      user = foundUser;
+    }
+    
+    if (!user) {
+      const [foundUser] = await db
+        .select()
+        .from(users)
+        .where(sql`LOWER(${users.preferredName}) = LOWER(${userIdentifier})`)
+        .limit(1);
+      user = foundUser;
+    }
+
+    if (!user || !user.email) {
+      return res.status(400).json({ message: "Invalid user identifier" });
+    }
+
+    const [verification] = await db
+      .select()
+      .from(verificationCodes)
+      .where(
+        and(
+          eq(verificationCodes.email, user.email),
+          eq(verificationCodes.code, code),
+          eq(verificationCodes.verified, false)
+        )
+      )
+      .orderBy(desc(verificationCodes.createdAt))
+      .limit(1);
+
+    if (!verification) {
+      return res.status(400).json({ message: "Invalid or expired verification code. Please request a new code" });
+    }
+
+    if (new Date() > verification.expiresAt) {
+      return res.status(400).json({ message: "Verification code has expired. Please request a new code" });
+    }
+
+    if (verification.attempts >= 3) {
+      return res.status(400).json({ 
+        message: "Too many failed attempts. Please request a new code" 
+      });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, user.id));
+
+    await db
+      .delete(verificationCodes)
+      .where(eq(verificationCodes.id, verification.id));
+
+    logger.info(`Password reset successfully for user ${user.id}`);
+    res.json({ 
+      success: true, 
+      message: "Password reset successfully. You can now log in with your new password" 
+    });
+  } catch (error) {
+    logger.error("Error verifying reset code:", error);
+    res.status(500).json({ message: "Failed to reset password" });
   }
 });
