@@ -3768,9 +3768,13 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Group not found" });
       }
 
+      console.log(`[INVITE DEBUG] type="${type}", groupAdminInviteCode="${group.groupAdminInviteCode}", groupMemberInviteCode="${group.groupMemberInviteCode}"`);
+
       const inviteCode = type === "group_admin" 
         ? group.groupAdminInviteCode 
         : group.groupMemberInviteCode;
+      
+      console.log(`[INVITE DEBUG] Returning inviteCode="${inviteCode}" for type="${type}"`);
 
       // Prevent browser caching to ensure different types return different codes
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
