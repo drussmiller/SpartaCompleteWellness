@@ -3767,6 +3767,11 @@ export const registerRoutes = async (
         ? group.groupAdminInviteCode 
         : group.groupMemberInviteCode;
 
+      // Prevent browser caching to ensure different types return different codes
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+
       if (inviteCode) {
         res.json({ inviteCode });
       } else {
@@ -3786,6 +3791,11 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid team ID" });
       }
 
+      const type = req.query.type as string;
+      if (type && !["team_admin", "team_member"].includes(type)) {
+        return res.status(400).json({ message: "Invalid type parameter. Must be 'team_admin' or 'team_member'" });
+      }
+
       const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
       if (!team) {
         return res.status(404).json({ message: "Team not found" });
@@ -3798,15 +3808,29 @@ export const registerRoutes = async (
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      const codes = [];
-      if (team.teamAdminInviteCode) {
-        codes.push({ code: team.teamAdminInviteCode, type: "team_admin" });
-      }
-      if (team.teamMemberInviteCode) {
-        codes.push({ code: team.teamMemberInviteCode, type: "team_member" });
-      }
+      // Prevent browser caching to ensure different types return different codes
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
 
-      res.json(codes);
+      // If type is specified, return single code in same format as groups
+      if (type) {
+        const inviteCode = type === "team_admin" 
+          ? team.teamAdminInviteCode 
+          : team.teamMemberInviteCode;
+        
+        res.json({ inviteCode: inviteCode || null });
+      } else {
+        // Legacy format: return array of codes (for backward compatibility)
+        const codes = [];
+        if (team.teamAdminInviteCode) {
+          codes.push({ code: team.teamAdminInviteCode, type: "team_admin" });
+        }
+        if (team.teamMemberInviteCode) {
+          codes.push({ code: team.teamMemberInviteCode, type: "team_member" });
+        }
+        res.json(codes);
+      }
     } catch (error) {
       logger.error("Error fetching team invite codes:", error);
       res.status(500).json({ message: "Failed to fetch invite codes" });

@@ -32,14 +32,10 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
       ? `/api/invite-codes/group/${id}?type=${type}`
       : `/api/invite-codes/team/${id}?type=${type}`;
 
-  console.log(`[InviteQRCode] type=${type}, id=${id}, endpoint=${endpoint}`);
-
   const { data: inviteCodes, isLoading } = useQuery<{ inviteCode: string }>({
     queryKey: [endpoint],
     enabled: isOpen,
   });
-
-  console.log(`[InviteQRCode] type=${type}, inviteCodes=`, inviteCodes, `isLoading=${isLoading}`);
 
   const createCodeMutation = useMutation({
     mutationFn: async () => {
