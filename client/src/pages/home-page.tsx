@@ -305,7 +305,6 @@ export default function HomePage() {
               >
                 <div className="relative">
                   Prayer Requests
-                  {!user?.teamId && <span className="ml-1 text-xs text-muted-foreground">(Team Required)</span>}
                   {user?.teamId && prayerRequestCount > 0 && (
                     <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {prayerRequestCount > 99 ? "99+" : prayerRequestCount}
