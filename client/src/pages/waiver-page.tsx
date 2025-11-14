@@ -336,7 +336,7 @@ export default function WaiverPage() {
               className="w-full max-w-md"
               size="lg"
             >
-              I Don't Agree - Sign Out
+              Cancel
             </Button>
           </div>
           
