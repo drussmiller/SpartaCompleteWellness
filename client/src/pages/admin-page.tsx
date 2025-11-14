@@ -3271,7 +3271,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </div>
                                       )}
 
-                                      <div className="flex gap-2 mt-6">
+                                      <div className="flex gap-2 mt-10">
                                         <Button type="submit" size="sm">
                                           Save
                                         </Button>
