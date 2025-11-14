@@ -3399,6 +3399,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     )}
                                     <div className="mt-1 text-sm text-muted-foreground">
                                       {(() => {
+                                        if (!user.teamId) {
+                                          return "Progress: Not in a Team";
+                                        }
+                                        
                                         if (user.programStartDate) {
                                           const startDate = new Date(user.programStartDate);
                                           const today = new Date();
