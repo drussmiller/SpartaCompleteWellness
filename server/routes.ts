@@ -1240,7 +1240,7 @@ export const registerRoutes = async (
         const teamlessUsers = await db
           .select({ id: users.id })
           .from(users)
-          .where(and(...teamlessConditions));
+          .where(teamlessConditions.length === 1 ? teamlessConditions[0] : and(...teamlessConditions));
         const teamlessUserIds = teamlessUsers.map(u => u.id);
         
         if (teamlessUserIds.length === 0) {
