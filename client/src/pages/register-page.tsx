@@ -7,15 +7,15 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import {
-  FormControl,
-  FormLabel,
-  Input,
-  Button,
   Form,
-  FormItem,
+  FormControl,
   FormField,
+  FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Loader2, Mail, Check } from "lucide-react";
 
 // Registration schema
