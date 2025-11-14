@@ -36,11 +36,14 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
     queryKey: [baseEndpoint, type],
     queryFn: async () => {
       const endpoint = `${baseEndpoint}?type=${type}&_t=${Date.now()}`;
+      console.log(`[InviteQRCode] Fetching ${type} code from:`, endpoint);
       const res = await fetch(endpoint, { credentials: 'include' });
       if (!res.ok) {
         throw new Error(await res.text());
       }
-      return res.json();
+      const data = await res.json();
+      console.log(`[InviteQRCode] Received ${type} code:`, data);
+      return data;
     },
     enabled: isOpen,
   });
