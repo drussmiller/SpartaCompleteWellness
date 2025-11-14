@@ -1211,36 +1211,14 @@ export const registerRoutes = async (
       if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin)) {
         logger.info(`[TEAMLESS INTRO FILTER] Admin/Group Admin ${req.user.id} fetching intro videos from team-less users`);
         
-        // Get all users without teams, filtered by organization/group access
-        let teamlessConditions = [isNull(users.teamId)];
-        
-        // For Group Admins, restrict to their admin group's organization
-        if (req.user.isGroupAdmin && !req.user.isAdmin && req.user.adminGroupId) {
-          const [adminGroup] = await db
-            .select({ organizationId: groups.organizationId })
-            .from(groups)
-            .where(eq(groups.id, req.user.adminGroupId))
-            .limit(1);
-          
-          if (!adminGroup?.organizationId) {
-            logger.info(`[TEAMLESS INTRO FILTER] Group Admin ${req.user.id} has no organization, returning empty`);
-            return res.json([]);
-          }
-          
-          // Combine team-less filter with organization filter
-          teamlessConditions.push(eq(users.organizationId, adminGroup.organizationId));
-          logger.info(`[TEAMLESS INTRO FILTER] Group Admin restricted to organization ${adminGroup.organizationId}`);
-        } else if (req.user.isAdmin && req.user.adminOrganizationId) {
-          // For Organization Admins, restrict to their organization
-          teamlessConditions.push(eq(users.organizationId, req.user.adminOrganizationId));
-          logger.info(`[TEAMLESS INTRO FILTER] Admin restricted to organization ${req.user.adminOrganizationId}`);
-        }
-        // Note: Super admins (isAdmin without adminOrganizationId) can see all
-        
+        // Get all users without teams
+        // Note: Since team-less users don't have teams, they can't be scoped to an organization
+        // All admins/group admins can see all team-less users' introductory videos
         const teamlessUsers = await db
           .select({ id: users.id })
           .from(users)
-          .where(teamlessConditions.length === 1 ? teamlessConditions[0] : and(...teamlessConditions));
+          .where(isNull(users.teamId));
+        
         const teamlessUserIds = teamlessUsers.map(u => u.id);
         
         if (teamlessUserIds.length === 0) {
