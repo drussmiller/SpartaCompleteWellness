@@ -7209,5 +7209,51 @@ export const registerRoutes = async (
     }
   });
 
+  // Delete user endpoint
+  router.delete("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      // Authorization: Admin only
+      if (!req.user?.isAdmin) {
+        logger.warn(`[USER DELETE] Unauthorized attempt by user ${req.user?.id} to delete user ${req.params.userId}`);
+        return res.status(403).json({ message: "Not authorized. Admin privileges required." });
+      }
+
+      // Validation: Parse and validate userId
+      const userId = Number.parseInt(req.params.userId, 10);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        logger.warn(`[USER DELETE] Invalid user ID format: ${req.params.userId}`);
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Check if user exists before attempting deletion
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!targetUser) {
+        logger.warn(`[USER DELETE] User ${userId} not found`);
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Delete the user and all associated data
+      logger.info(`[USER DELETE] Admin ${req.user.id} deleting user ${userId} (${targetUser.username})`);
+      await storage.deleteUser(userId);
+
+      logger.info(`[USER DELETE] Successfully deleted user ${userId} by admin ${req.user.id}`);
+      res.status(200).json({ 
+        message: "User deleted successfully",
+        userId: userId
+      });
+    } catch (error) {
+      logger.error(`[USER DELETE] Error deleting user ${req.params.userId}:`, error);
+      res.status(500).json({
+        message: "Failed to delete user",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   return httpServer;
 };
