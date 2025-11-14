@@ -3271,6 +3271,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </div>
                                       )}
 
+                                      {/* Spacer div to push buttons down */}
+                                      <div className="h-6"></div>
+
                                       <div className="flex gap-2">
                                         <Button type="submit" size="sm">
                                           Save
