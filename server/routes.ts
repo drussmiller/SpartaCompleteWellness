@@ -3610,6 +3610,43 @@ export const registerRoutes = async (
     }
   });
 
+  // Generate invite code for Group Member
+  router.post("/api/invite-codes/group-member/:groupId", authenticate, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      // Check if user is admin or group admin for this group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+
+      if (!isAdmin && !isGroupAdminForThisGroup) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `GM-${groupId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      // Update the group with the new invite code
+      const [updatedGroup] = await db
+        .update(groups)
+        .set({ groupMemberInviteCode: code })
+        .where(eq(groups.id, groupId))
+        .returning();
+
+      if (!updatedGroup) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      res.status(201).json({ code, type: "group_member" });
+    } catch (error) {
+      logger.error("Error creating group member invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
   // Generate invite code for Team Lead
   router.post("/api/invite-codes/team-admin/:teamId", authenticate, async (req, res) => {
     try {
@@ -3704,6 +3741,11 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
+      const type = req.query.type as string || "group_admin";
+      if (!["group_admin", "group_member"].includes(type)) {
+        return res.status(400).json({ message: "Invalid type parameter. Must be 'group_admin' or 'group_member'" });
+      }
+
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
 
@@ -3721,12 +3763,15 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Group not found" });
       }
 
-      const codes = [];
-      if (group.groupAdminInviteCode) {
-        codes.push({ code: group.groupAdminInviteCode, type: "group_admin" });
-      }
+      const inviteCode = type === "group_admin" 
+        ? group.groupAdminInviteCode 
+        : group.groupMemberInviteCode;
 
-      res.json(codes);
+      if (inviteCode) {
+        res.json({ inviteCode });
+      } else {
+        res.json({ inviteCode: null });
+      }
     } catch (error) {
       logger.error("Error fetching group invite codes:", error);
       res.status(500).json({ message: "Failed to fetch invite codes" });

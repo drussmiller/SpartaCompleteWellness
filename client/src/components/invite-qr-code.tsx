@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 interface InviteQRCodeProps {
-  type: "group_admin" | "team_admin" | "team_member";
+  type: "group_admin" | "group_member" | "team_admin" | "team_member";
   id: number;
   name: string;
 }
@@ -28,8 +28,8 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const { toast } = useToast();
 
   const endpoint =
-    type === "group_admin"
-      ? `/api/invite-codes/group/${id}`
+    type === "group_admin" || type === "group_member"
+      ? `/api/invite-codes/group/${id}?type=${type}`
       : `/api/invite-codes/team/${id}?type=${type}`;
 
   const { data: inviteCodes, isLoading } = useQuery<{ inviteCode: string }>({
@@ -42,9 +42,11 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
       const createEndpoint =
         type === "group_admin"
           ? `/api/invite-codes/group-admin/${id}`
-          : type === "team_admin"
-            ? `/api/invite-codes/team-admin/${id}`
-            : `/api/invite-codes/team-member/${id}`;
+          : type === "group_member"
+            ? `/api/invite-codes/group-member/${id}`
+            : type === "team_admin"
+              ? `/api/invite-codes/team-admin/${id}`
+              : `/api/invite-codes/team-member/${id}`;
 
       const res = await apiRequest("POST", createEndpoint, {});
       if (!res.ok) {
@@ -145,9 +147,11 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const roleLabel =
     type === "group_admin"
       ? "Group Admin"
-      : type === "team_admin"
-        ? "Team Lead"
-        : "Team Member";
+      : type === "group_member"
+        ? "Group Member"
+        : type === "team_admin"
+          ? "Team Lead"
+          : "Team Member";
 
   const currentCode = inviteCodes?.inviteCode;
 

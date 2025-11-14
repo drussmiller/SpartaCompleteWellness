@@ -33,7 +33,8 @@ The application uses a monorepo structure, separating client, server, and shared
 ### Key Features
 - **Authentication**: Session-based using Passport.js, scrypt for password hashing, protected routes, email verification with OTP codes (6-digit, 10-minute expiration).
 - **Email Service**: Gmail integration for transactional emails (verification codes, password resets), automatic fallback to console logging for development.
-- **Invite Codes**: Group-level invite codes (admin and member), team-level invite codes (admin and member), QR code support for easy onboarding.
+- **Invite Codes**: Group-level invite codes (admin and member), team-level invite codes (admin and member), QR code support for easy onboarding. Both admin and member codes displayed in Admin Dashboard.
+- **User Blocking**: Admin-only feature to block users from logging in via `isBlocked` field. Blocked users cannot authenticate even if their status is active. Checkbox UI in Admin Dashboard under each user's Status section.
 - **File Storage**: Replit Object Storage for media (images, videos), automatic thumbnail generation, `shared/uploads/` path strategy.
 - **Media Processing**: Sharp for images, custom MOV extractor for video thumbnails, MIME type validation.
 - **Real-time**: WebSocket for notifications, presence tracking, automatic reconnection.
