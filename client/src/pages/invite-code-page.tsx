@@ -151,7 +151,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
             )}
             <CardTitle>Join with Invite Code</CardTitle>
             <CardDescription className="mb-0">
-              Enter the invite code you received or scan a QR code to join a team or become an admin
+              Enter the invite code you received or scan a QR code to join the program.
             </CardDescription>
           </CardHeader>
           <CardContent>
