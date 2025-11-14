@@ -146,6 +146,9 @@ function RegistrationForm() {
       });
       return;
     }
+    // Reset verification state when sending new code
+    setIsVerified(false);
+    setEmailSent(false);
     sendCodeMutation.mutate(email);
   };
 
@@ -178,8 +181,8 @@ function RegistrationForm() {
   return (
     <div className="w-full max-w-md mx-auto p-6">
       <h2 className="text-2xl font-bold mb-6">Create Account</h2>
-      <Form {...form} onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="space-y-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
             name="username"
@@ -202,7 +205,20 @@ function RegistrationForm() {
                 <FormLabel>Email</FormLabel>
                 <div className="flex gap-2">
                   <FormControl>
-                    <Input type="email" placeholder="email@example.com" {...field} data-testid="input-email" />
+                    <Input 
+                      type="email" 
+                      placeholder="email@example.com" 
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        // Reset verification when email changes
+                        if (isVerified) {
+                          setIsVerified(false);
+                          setEmailSent(false);
+                        }
+                      }}
+                      data-testid="input-email" 
+                    />
                   </FormControl>
                   <Button
                     type="button"
@@ -322,7 +338,7 @@ function RegistrationForm() {
               "Create Account"
             )}
           </Button>
-        </div>
+        </form>
       </Form>
     </div>
   );
