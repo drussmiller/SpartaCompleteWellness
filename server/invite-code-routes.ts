@@ -137,8 +137,14 @@ inviteCodeRouter.get("/api/invite-codes/team/:teamId", authenticate, async (req:
 inviteCodeRouter.post("/api/groups/:groupId/generate-invite-code", authenticate, async (req: Request, res: Response) => {
   try {
     const groupId = parseInt(req.params.groupId);
+    const { type } = req.body;
+    
     if (isNaN(groupId)) {
       return res.status(400).json({ message: "Invalid group ID" });
+    }
+
+    if (!type || (type !== "group_admin" && type !== "group_member")) {
+      return res.status(400).json({ message: "Invalid invite type. Must be 'group_admin' or 'group_member'" });
     }
 
     const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
@@ -152,13 +158,24 @@ inviteCodeRouter.post("/api/groups/:groupId/generate-invite-code", authenticate,
 
     const inviteCode = generateInviteCode();
     
+    const updateData: any = {};
+    if (type === "group_admin") {
+      updateData.groupAdminInviteCode = inviteCode;
+    } else {
+      updateData.groupMemberInviteCode = inviteCode;
+    }
+
     const [updatedGroup] = await db
       .update(groups)
-      .set({ groupAdminInviteCode: inviteCode })
+      .set(updateData)
       .where(eq(groups.id, groupId))
       .returning();
 
-    res.json({ inviteCode: updatedGroup.groupAdminInviteCode });
+    const responseCode = type === "group_admin" 
+      ? updatedGroup.groupAdminInviteCode 
+      : updatedGroup.groupMemberInviteCode;
+
+    res.json({ inviteCode: responseCode });
   } catch (error) {
     logger.error("Error generating group invite code:", error);
     res.status(500).json({ message: "Failed to generate invite code" });
@@ -400,6 +417,52 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         teamName: teamMember.name,
         groupName: group?.name,
         displayName: teamMember.name // Use team name for display
+      });
+    }
+
+    // Check for group member invite code
+    const [groupMember] = await db
+      .select()
+      .from(groups)
+      .where(eq(groups.groupMemberInviteCode, inviteCode))
+      .limit(1);
+
+    if (groupMember) {
+      if (req.user!.teamId) {
+        return res.status(400).json({ message: "You must leave your current team before joining a new group" });
+      }
+
+      const now = new Date();
+      
+      // Determine program start date based on group's program start date or next Monday
+      let userProgramStartDate: Date;
+      
+      if (groupMember.programStartDate) {
+        const groupStartDate = new Date(groupMember.programStartDate);
+        if (groupStartDate > now) {
+          userProgramStartDate = groupStartDate;
+        } else {
+          userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+        }
+      } else {
+        userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+      }
+
+      await db
+        .update(users)
+        .set({ 
+          isGroupAdmin: false,
+          adminGroupId: groupMember.id,
+          teamId: null,
+          programStartDate: userProgramStartDate
+        })
+        .where(eq(users.id, userId));
+
+      return res.json({ 
+        success: true, 
+        role: "Group Member",
+        groupId: groupMember.id,
+        groupName: groupMember.name 
       });
     }
 
