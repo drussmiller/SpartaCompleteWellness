@@ -159,6 +159,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         exact: false 
       });
 
+      // Invalidate has-any-posts check to update dialog state
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/has-any-posts"],
+        exact: false 
+      });
+
       // If this was a prayer post, also invalidate the prayer requests cache
       if (post.type === "prayer") {
         queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
