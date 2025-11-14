@@ -182,7 +182,7 @@ function RegistrationForm() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6">
+    <div className="w-full max-w-md mx-auto p-6 pt-14">
       <h2 className="text-2xl font-bold mb-6">Create Account</h2>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
