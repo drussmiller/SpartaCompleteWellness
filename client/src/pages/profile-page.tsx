@@ -759,28 +759,39 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                               "Loading..."}
                           </span>
                         </div>
-                        {activityProgress &&
-                          activityProgress.currentWeek &&
-                          activityProgress.currentDay && (
-                            <>
+                        {activityProgress && (
+                          <>
+                            {activityProgress.programHasStarted ? (
+                              <>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-muted-foreground">
+                                    Current Week
+                                  </span>
+                                  <span className="font-medium">
+                                    Week {activityProgress.currentWeek}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-muted-foreground">
+                                    Current Day
+                                  </span>
+                                  <span className="font-medium">
+                                    Day {activityProgress.currentDay}
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
                               <div className="flex justify-between items-center">
                                 <span className="text-muted-foreground">
-                                  Current Week
+                                  Program Status
                                 </span>
                                 <span className="font-medium">
-                                  Week {activityProgress.currentWeek}
+                                  Program starts in {Math.abs(activityProgress.daysSinceStart)} day{Math.abs(activityProgress.daysSinceStart) !== 1 ? 's' : ''}
                                 </span>
                               </div>
-                              <div className="flex justify-between items-center">
-                                <span className="text-muted-foreground">
-                                  Current Day
-                                </span>
-                                <span className="font-medium">
-                                  Day {activityProgress.currentDay}
-                                </span>
-                              </div>
-                            </>
-                          )}
+                            )}
+                          </>
+                        )}
 
                         <div>
                           {isEditingActivityType ? (

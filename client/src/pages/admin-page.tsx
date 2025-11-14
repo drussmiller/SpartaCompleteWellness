@@ -3413,6 +3413,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             const daysUntilStart = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                             return `Progress: Starts in ${daysUntilStart} day${daysUntilStart !== 1 ? 's' : ''}`;
                                           }
+                                        } else {
+                                          const today = new Date();
+                                          const currentDayOfWeek = today.getDay();
+                                          const daysUntilMonday = currentDayOfWeek === 0 ? 1 : currentDayOfWeek === 1 ? 0 : 8 - currentDayOfWeek;
+                                          
+                                          if (daysUntilMonday > 0) {
+                                            return `Progress: Starts in ${daysUntilMonday} day${daysUntilMonday !== 1 ? 's' : ''}`;
+                                          }
                                         }
                                         
                                         return (

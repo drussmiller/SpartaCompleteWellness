@@ -128,12 +128,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             )}
           >
             <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
-            <span className="text-xs">
-              {label}
-              {isActivityLink && user?.teamId && activityStatus && !activityStatus.programHasStarted && (
-                <span className="block text-[10px] text-muted-foreground">(Starts Next Monday)</span>
-              )}
-            </span>
+            <span className="text-xs">{label}</span>
             {count > 0 && (
               <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                 {count}
