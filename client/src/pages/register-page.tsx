@@ -54,11 +54,12 @@ function RegistrationForm() {
   // Send verification code
   const sendCodeMutation = useMutation({
     mutationFn: async (email: string) => {
-      const res = await apiRequest("/api/auth/send-verification-code", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      });
-      return res;
+      const res = await apiRequest("POST", "/api/auth/send-verification-code", { email });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to send verification code");
+      }
+      return res.json();
     },
     onSuccess: () => {
       setEmailSent(true);
@@ -89,11 +90,12 @@ function RegistrationForm() {
   // Verify code
   const verifyCodeMutation = useMutation({
     mutationFn: async ({ email, code }: { email: string; code: string }) => {
-      const res = await apiRequest("/api/auth/verify-email-code", {
-        method: "POST",
-        body: JSON.stringify({ email, code }),
-      });
-      return res;
+      const res = await apiRequest("POST", "/api/auth/verify-email-code", { email, code });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Invalid verification code");
+      }
+      return res.json();
     },
     onSuccess: () => {
       setIsVerified(true);
@@ -114,11 +116,12 @@ function RegistrationForm() {
   // Register user
   const registerMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertUserSchema>) => {
-      const res = await apiRequest("/api/register", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
-      return res;
+      const res = await apiRequest("POST", "/api/register", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create account");
+      }
+      return res.json();
     },
     onSuccess: () => {
       toast({
