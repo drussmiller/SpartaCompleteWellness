@@ -67,6 +67,7 @@ import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
 import { inviteCodeRouter } from "./invite-code-routes";
+import { emailVerificationRouter } from "./email-verification-routes";
 import { spartaStorage } from "./sparta-object-storage";
 import { smsService } from "./sms-service";
 
@@ -5140,6 +5141,7 @@ export const registerRoutes = async (
   app.use(userRoleRouter);
   app.use(groupAdminRouter);
   app.use(inviteCodeRouter);
+  app.use(emailVerificationRouter);
 
   app.use(router);
 
