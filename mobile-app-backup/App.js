@@ -231,19 +231,20 @@ export default function App() {
         {renderConnectionStatus()}
       </View>
       
-      {isLoading ? (
-        <View style={styles.centerContent}>
-          <Text>Loading posts...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.centerContent}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.button} onPress={fetchPosts}>
-            <Text style={styles.buttonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView style={styles.scrollView}>
+      <View style={styles.contentWrapper}>
+        {isLoading ? (
+          <View style={styles.centerContent}>
+            <Text>Loading posts...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerContent}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.button} onPress={fetchPosts}>
+              <Text style={styles.buttonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView style={styles.scrollView}>
           {posts.length === 0 ? (
             <View style={styles.centerContent}>
               <Text>No posts available</Text>
@@ -288,7 +289,8 @@ export default function App() {
             ))
           )}
         </ScrollView>
-      )}
+        )}
+      </View>
       
       <StatusBar style="auto" />
       
@@ -306,6 +308,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  contentWrapper: {
+    flex: 1,
     paddingBottom: Platform.OS === 'android' ? 60 : 0,
   },
   header: {
