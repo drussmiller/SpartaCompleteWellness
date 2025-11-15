@@ -13,6 +13,9 @@ import { NotificationSettings } from "@/components/notification-settings";
 import { WelcomePage } from "./welcome-page";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
+
 
 export default function MenuPage() {
   const { user } = useAuth();
