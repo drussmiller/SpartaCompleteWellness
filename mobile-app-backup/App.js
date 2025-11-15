@@ -306,7 +306,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingBottom: Platform.OS === 'android' ? 60 : 0, // Add padding for Android to account for moved nav
   },
   header: {
     backgroundColor: '#e63946',
@@ -327,6 +326,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     padding: 15,
+    paddingBottom: Platform.OS === 'android' ? 75 : 15, // Extra bottom padding on Android
   },
   centerContent: {
     flex: 1,
