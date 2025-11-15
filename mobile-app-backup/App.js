@@ -291,6 +291,13 @@ export default function App() {
       )}
       
       <StatusBar style="auto" />
+      
+      {/* Bottom Navigation - Android only */}
+      {Platform.OS === 'android' && (
+        <View style={styles.bottomNav}>
+          <Text style={styles.bottomNavText}>Android Navigation</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -299,6 +306,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: Platform.OS === 'android' ? 60 : 0, // Add padding for Android to account for moved nav
   },
   header: {
     backgroundColor: '#e63946',
@@ -440,5 +448,23 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: '#e63946',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#d63946',
+  },
+  bottomNavText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
