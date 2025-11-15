@@ -42,7 +42,7 @@ export default function MenuPage() {
         </div>
 
         {/* Navigation Section */}
-        <div className="max-w-2xl mx-auto w-full pl-6 pr-4 py-6 space-y-2 mt-[40px]">
+        <div className="max-w-2xl mx-auto w-full pl-6 pr-4 py-6 space-y-2 mt-[96px]">
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
