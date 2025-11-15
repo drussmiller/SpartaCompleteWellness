@@ -309,9 +309,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  androidContainer: {
-    paddingBottom: 0,
-  },
   contentWrapper: {
     flex: 1,
     marginBottom: Platform.OS === 'android' ? 0 : 0,
