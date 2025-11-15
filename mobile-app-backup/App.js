@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
-    marginBottom: Platform.OS === 'android' ? 45 : 0,
+    marginBottom: Platform.OS === 'android' ? 0 : 0,
   },
   header: {
     backgroundColor: '#e63946',
