@@ -89,12 +89,17 @@ function MainContent() {
     );
   }
 
-  // If not authenticated, allow public routes (register and SMS policy)
+  // Public routes that should work without authentication
+  const currentPath = window.location.pathname;
+  if (currentPath === '/sms-policy') {
+    return <SMSOptInPage />;
+  }
+
+  // If not authenticated, allow register page or show login
   if (!user) {
     return (
       <Switch>
         <Route path="/register" component={RegisterPage} />
-        <Route path="/sms-policy" component={SMSOptInPage} />
         <Route path="*" component={AuthPage} />
       </Switch>
     );
