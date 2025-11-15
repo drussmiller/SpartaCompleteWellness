@@ -15,7 +15,7 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
-  const [bottomPadding, setBottomPadding] = useState('16px');
+  const [bottomPadding, setBottomPadding] = useState('24px');
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible);
@@ -29,7 +29,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       
       // Parse the value and add base padding
       const safeAreaValue = parseInt(safeAreaBottom) || 0;
-      const basePadding = 16; // pb-4 in pixels
+      const basePadding = 24; // Increased for Android
       const totalPadding = safeAreaValue + basePadding;
       
       setBottomPadding(`${totalPadding}px`);
