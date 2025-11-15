@@ -157,7 +157,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px]">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px] md:mt-[100px]">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -187,10 +187,10 @@ export default function NotificationsPage() {
                         {notification.message}
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
-                        {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number' 
-  ? new Date(notification.createdAt).toLocaleString('en-US', { 
+                        {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number'
+  ? new Date(notification.createdAt).toLocaleString('en-US', {
       month: 'numeric',
-      day: 'numeric', 
+      day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
