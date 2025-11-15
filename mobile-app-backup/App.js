@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
 import { useEffect, useState, useRef } from 'react';
 
 // Define API URL for the backend - replace with your server URL when deployed
@@ -227,6 +227,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Fitness Community</Text>
+        <Text style={styles.platformText}>{Platform.OS === 'ios' ? 'iOS' : 'Android'}</Text>
         {renderConnectionStatus()}
       </View>
       
@@ -310,6 +311,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  platformText: {
+    color: 'white',
+    fontSize: 12,
+    opacity: 0.8,
   },
   scrollView: {
     padding: 15,
