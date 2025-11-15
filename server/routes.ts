@@ -100,12 +100,6 @@ export const registerRoutes = async (
   // Add request logging middleware
   router.use(requestLogger);
 
-  // Serve SMS Opt In/Opt Out PDF - PUBLIC (no authentication required)
-  router.get("/sms-opt-in-out", (req, res) => {
-    const pdfPath = path.join(process.cwd(), "attached_assets", "SMS Opt In Opt Out_1763176012692.pdf");
-    res.sendFile(pdfPath);
-  });
-
   // Add CORS headers for all requests
   router.use((req, res, next) => {
     const origin = req.headers.origin;

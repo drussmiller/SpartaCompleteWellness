@@ -13,9 +13,6 @@ import { NotificationSettings } from "@/components/notification-settings";
 import { WelcomePage } from "./welcome-page";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent } from "@/components/ui/card";
-
 
 export default function MenuPage() {
   const { user } = useAuth();
@@ -42,7 +39,7 @@ export default function MenuPage() {
         </div>
 
         {/* Navigation Section */}
-        <div className="max-w-2xl mx-auto w-full pl-6 pr-4 py-6 space-y-2 mt-[100px]">
+        <div className="max-w-2xl mx-auto w-full pl-6 pr-4 py-6 space-y-2 mt-[40px]">
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
