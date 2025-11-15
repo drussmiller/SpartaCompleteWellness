@@ -89,7 +89,19 @@ function MainContent() {
     );
   }
 
-  // If not authenticated, show auth, register, or SMS policy page based on route
+  // Public routes that don't require authentication
+  const currentPath = window.location.pathname;
+  if (!user && (currentPath === '/sms-policy' || currentPath === '/register')) {
+    return (
+      <Switch>
+        <Route path="/register" component={RegisterPage} />
+        <Route path="/sms-policy" component={SMSOptInPage} />
+        <Route path="*" component={AuthPage} />
+      </Switch>
+    );
+  }
+
+  // If not authenticated, show auth page
   if (!user) {
     return (
       <Switch>
@@ -138,7 +150,9 @@ function MainContent() {
           <Route path="/comments/:postId">
             <CommentsPage />
           </Route>
-          <Route path="/sms-policy" component={SMSOptInPage} />
+          <Route path="/sms-policy">
+            <SMSOptInPage />
+          </Route>
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           {user.isGroupAdmin && <Route path="/group-admin" component={() => <GroupAdminPage />} />}
           <Route path="*">Not found</Route>
