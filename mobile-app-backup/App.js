@@ -314,6 +314,7 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
+    marginBottom: Platform.OS === 'android' ? 60 : 0,
   },
   header: {
     backgroundColor: '#e63946',
@@ -334,6 +335,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     padding: 15,
+    marginBottom: Platform.OS === 'android' ? 60 : 0,
   },
   centerContent: {
     flex: 1,
@@ -468,6 +470,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#d63946',
+    zIndex: 1000,
   },
   bottomNavText: {
     color: 'white',
