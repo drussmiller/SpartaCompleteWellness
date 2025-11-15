@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   androidContainer: {
-    paddingBottom: 60,
+    paddingBottom: 0,
   },
   contentWrapper: {
     flex: 1,
