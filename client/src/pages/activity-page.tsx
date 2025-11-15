@@ -254,7 +254,7 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-8 pr-4 py-6 text-lg mt-[40px]">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-8 pr-4 py-6 text-lg mt-[84px]">
         {/* Week Content Dropdown - Defaults to Closed */}
         <Collapsible open={weekContentOpen} onOpenChange={setWeekContentOpen}>
           <Card className="mb-6">
