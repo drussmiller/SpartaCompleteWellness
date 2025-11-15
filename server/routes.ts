@@ -301,6 +301,12 @@ export const registerRoutes = async (
     }
   });
 
+  // Serve SMS Opt In/Opt Out PDF
+  router.get("/sms-opt-in-out", (req, res) => {
+    const pdfPath = path.join(process.cwd(), "attached_assets", "SMS Opt In Opt Out_1763176012692.pdf");
+    res.sendFile(pdfPath);
+  });
+
   // Add JSON content type header for all API routes
   router.use("/api", (req, res, next) => {
     res.setHeader("Content-Type", "application/json");
