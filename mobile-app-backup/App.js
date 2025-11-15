@@ -306,6 +306,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: Platform.OS === 'android' ? 60 : 0,
   },
   header: {
     backgroundColor: '#e63946',
@@ -326,7 +327,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     padding: 15,
-    paddingBottom: Platform.OS === 'android' ? 100 : 15, // Extra bottom padding on Android
   },
   centerContent: {
     flex: 1,
