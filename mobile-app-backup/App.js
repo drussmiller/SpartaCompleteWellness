@@ -309,10 +309,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  contentWrapper: {
-    flex: 1,
-    marginBottom: Platform.OS === 'android' ? 0 : 0,
-  },
   header: {
     backgroundColor: '#e63946',
     padding: 15,
