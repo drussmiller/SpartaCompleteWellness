@@ -224,7 +224,7 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, Platform.OS === 'android' && styles.androidContainer]}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Fitness Community</Text>
         <Text style={styles.platformText}>{Platform.OS === 'ios' ? 'iOS' : 'Android'}</Text>
@@ -309,9 +309,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  androidContainer: {
+    paddingBottom: 60,
+  },
   contentWrapper: {
     flex: 1,
-    paddingBottom: Platform.OS === 'android' ? 60 : 0,
   },
   header: {
     backgroundColor: '#e63946',
