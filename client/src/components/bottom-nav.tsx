@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -15,9 +15,48 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const [bottomPadding, setBottomPadding] = useState('16px');
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible);
+
+  // Handle viewport changes for Android safe area
+  useEffect(() => {
+    const updatePadding = () => {
+      // Get safe area inset bottom value or use default
+      const safeAreaBottom = getComputedStyle(document.documentElement)
+        .getPropertyValue('--safe-area-inset-bottom') || '0px';
+      
+      // Parse the value and add base padding
+      const safeAreaValue = parseInt(safeAreaBottom) || 0;
+      const basePadding = 16; // pb-4 in pixels
+      const totalPadding = safeAreaValue + basePadding;
+      
+      setBottomPadding(`${totalPadding}px`);
+    };
+
+    // Update on mount
+    updatePadding();
+
+    // Update on viewport resize (Android viewport changes)
+    window.addEventListener('resize', updatePadding);
+    window.addEventListener('orientationchange', updatePadding);
+    
+    // Update when app regains visibility
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setTimeout(updatePadding, 100); // Small delay for viewport to settle
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('resize', updatePadding);
+      window.removeEventListener('orientationchange', updatePadding);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -95,7 +134,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       style={{
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none'
+        pointerEvents: isVisible ? 'auto' : 'none',
+        paddingBottom: orientation === "horizontal" ? bottomPadding : undefined
       }}>
       <div className={cn(
         // Container styles
@@ -116,7 +156,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             className={cn(
               "flex flex-col items-center justify-center gap-1 relative",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Disabled or enabled cursor
               isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               // Text styles
@@ -142,7 +182,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
             // Size styles
-            orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
             // Text styles
             location === "/menu"
               ? "text-primary"
