@@ -89,19 +89,7 @@ function MainContent() {
     );
   }
 
-  // Public routes that don't require authentication
-  const currentPath = window.location.pathname;
-  if (!user && (currentPath === '/sms-policy' || currentPath === '/register')) {
-    return (
-      <Switch>
-        <Route path="/register" component={RegisterPage} />
-        <Route path="/sms-policy" component={SMSOptInPage} />
-        <Route path="*" component={AuthPage} />
-      </Switch>
-    );
-  }
-
-  // If not authenticated, show auth page
+  // If not authenticated, allow public routes (register and SMS policy)
   if (!user) {
     return (
       <Switch>
