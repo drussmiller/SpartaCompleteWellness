@@ -89,11 +89,12 @@ function MainContent() {
     );
   }
 
-  // If not authenticated, show auth or register page based on route
+  // If not authenticated, show auth, register, or SMS policy page based on route
   if (!user) {
     return (
       <Switch>
         <Route path="/register" component={RegisterPage} />
+        <Route path="/sms-policy" component={SMSOptInPage} />
         <Route path="*" component={AuthPage} />
       </Switch>
     );
