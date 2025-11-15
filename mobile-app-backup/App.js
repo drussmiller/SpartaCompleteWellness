@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
-    marginBottom: Platform.OS === 'android' ? 60 : 0,
+    marginBottom: Platform.OS === 'android' ? 45 : 0,
   },
   header: {
     backgroundColor: '#e63946',
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     padding: 15,
-    marginBottom: Platform.OS === 'android' ? 60 : 0,
+    marginBottom: Platform.OS === 'android' ? 45 : 0,
   },
   centerContent: {
     flex: 1,
