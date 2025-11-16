@@ -15,7 +15,7 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
-  const [bottomPadding, setBottomPadding] = useState('24px');
+  const [bottomPadding, setBottomPadding] = useState('32px');
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible);
