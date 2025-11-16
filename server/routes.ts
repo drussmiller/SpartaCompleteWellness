@@ -2567,6 +2567,8 @@ export const registerRoutes = async (
           notificationTime: users.notificationTime,
           timezoneOffset: users.timezoneOffset,
           dailyNotificationsEnabled: users.dailyNotificationsEnabled,
+          smsEnabled: users.smsEnabled,
+          phoneNumber: users.phoneNumber,
         })
         .from(users);
 
@@ -2784,6 +2786,18 @@ export const registerRoutes = async (
                     };
 
                     broadcastNotification(user.id, notificationData);
+                  }
+
+                  // Send SMS notification if user has SMS enabled
+                  if (user.smsEnabled && user.phoneNumber) {
+                    try {
+                      await smsService.sendSMSToUser(user.phoneNumber, message);
+                      logger.info(`SMS notification sent to user ${user.id} at ${user.phoneNumber}`);
+                    } catch (smsError) {
+                      logger.error(`Failed to send SMS to user ${user.id}:`, smsError);
+                    }
+                  } else {
+                    logger.debug(`SMS not sent to user ${user.id} - smsEnabled: ${user.smsEnabled}, phoneNumber: ${!!user.phoneNumber}`);
                   }
                 } catch (insertError: any) {
                   logger.error(`Failed to insert notification for user ${user.id}:`, insertError);
