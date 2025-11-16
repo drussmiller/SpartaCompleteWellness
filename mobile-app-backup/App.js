@@ -19,7 +19,7 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState(ConnectionStatus.DISCONNECTED);
   const [user, setUser] = useState(null);
-  
+
   // WebSocket reference to keep connection alive between renders
   const socketRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
@@ -31,11 +31,11 @@ export default function App() {
     const fetchUser = async () => {
       try {
         const response = await fetch(`${API_URL}/api/auth/me`);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        
+
         const userData = await response.json();
         setUser(userData);
       } catch (err) {
@@ -54,25 +54,25 @@ export default function App() {
     const connectWebSocket = () => {
       try {
         setConnectionStatus(ConnectionStatus.CONNECTING);
-        
+
         // Close existing connection if any
         if (socketRef.current) {
           socketRef.current.close();
         }
-        
+
         // Create new WebSocket connection
         const wsProtocol = API_URL.startsWith('https') ? 'wss' : 'ws';
         const wsUrl = `${wsProtocol}://${API_URL.replace(/^https?:\/\//, '')}/ws`;
-        
+
         console.log(`Connecting to WebSocket at ${wsUrl}`);
         const socket = new WebSocket(wsUrl);
         socketRef.current = socket;
-        
+
         socket.onopen = () => {
           console.log('WebSocket connection established');
           setConnectionStatus(ConnectionStatus.CONNECTED);
           reconnectAttemptsRef.current = 0;
-          
+
           // Authenticate with the WebSocket server
           if (user) {
             socket.send(JSON.stringify({
@@ -81,37 +81,37 @@ export default function App() {
             }));
           }
         };
-        
+
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            
+
             switch (data.type) {
               case 'notification':
                 if (data.data) {
                   // Add notification to state
                   setNotifications(prev => [...prev, data.data]);
-                  
+
                   // Show an alert with the notification
                   Alert.alert(
                     data.data.title,
                     data.data.message,
                     [{ text: 'OK' }]
                   );
-                  
+
                   // Refresh posts to see any updates
                   fetchPosts();
                 }
                 break;
-                
+
               case 'auth_success':
                 console.log('WebSocket authentication successful');
                 break;
-                
+
               case 'error':
                 console.error('WebSocket error:', data.message);
                 break;
-                
+
               default:
                 console.log('Received WebSocket message:', data);
             }
@@ -119,20 +119,20 @@ export default function App() {
             console.error('Error parsing WebSocket message:', error);
           }
         };
-        
+
         socket.onclose = () => {
           console.log('WebSocket connection closed');
           setConnectionStatus(ConnectionStatus.DISCONNECTED);
-          
+
           // Attempt to reconnect with exponential backoff
           if (reconnectAttemptsRef.current < maxReconnectAttempts) {
             const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
             console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
-            
+
             if (reconnectTimeoutRef.current) {
               clearTimeout(reconnectTimeoutRef.current);
             }
-            
+
             reconnectTimeoutRef.current = setTimeout(() => {
               reconnectAttemptsRef.current++;
               connectWebSocket();
@@ -141,7 +141,7 @@ export default function App() {
             console.error('Max reconnect attempts reached');
           }
         };
-        
+
         socket.onerror = (error) => {
           console.error('WebSocket error:', error);
           setConnectionStatus(ConnectionStatus.DISCONNECTED);
@@ -151,16 +151,16 @@ export default function App() {
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
       }
     };
-    
+
     // Connect to WebSocket
     connectWebSocket();
-    
+
     // Cleanup on unmount
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      
+
       if (socketRef.current) {
         socketRef.current.close();
       }
@@ -172,11 +172,11 @@ export default function App() {
     try {
       setIsLoading(true);
       const response = await fetch(`${API_URL}/api/posts`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setPosts(data);
     } catch (err) {
@@ -196,7 +196,7 @@ export default function App() {
   const renderConnectionStatus = () => {
     let color;
     let text;
-    
+
     switch (connectionStatus) {
       case ConnectionStatus.CONNECTED:
         color = '#4CAF50'; // Green
@@ -214,7 +214,7 @@ export default function App() {
         color = '#9E9E9E'; // Gray
         text = 'Unknown';
     }
-    
+
     return (
       <View style={styles.connectionIndicator}>
         <View style={[styles.statusDot, { backgroundColor: color }]} />
@@ -230,7 +230,7 @@ export default function App() {
         <Text style={styles.platformText}>{Platform.OS === 'ios' ? 'iOS' : 'Android'}</Text>
         {renderConnectionStatus()}
       </View>
-      
+
       <View style={styles.contentWrapper}>
         {isLoading ? (
           <View style={styles.centerContent}>
@@ -291,9 +291,9 @@ export default function App() {
         </ScrollView>
         )}
       </View>
-      
+
       <StatusBar style="auto" />
-      
+
       {/* Bottom Navigation - Android only */}
       {Platform.OS === 'android' && (
         <View style={styles.bottomNav}>
@@ -308,6 +308,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  androidContainer: {
+    paddingBottom: 60,
+  },
+  contentWrapper: {
+    flex: 1,
+    marginBottom: Platform.OS === 'android' ? 45 : 0,
   },
   header: {
     backgroundColor: '#e63946',
