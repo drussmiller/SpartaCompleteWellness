@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -15,48 +15,9 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
-  const [bottomPadding, setBottomPadding] = useState('32px');
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible);
-
-  // Handle viewport changes for Android safe area
-  useEffect(() => {
-    const updatePadding = () => {
-      // Get safe area inset bottom value or use default
-      const safeAreaBottom = getComputedStyle(document.documentElement)
-        .getPropertyValue('--safe-area-inset-bottom') || '0px';
-      
-      // Parse the value and add base padding
-      const safeAreaValue = parseInt(safeAreaBottom) || 0;
-      const basePadding = 24; // Increased for Android
-      const totalPadding = safeAreaValue + basePadding;
-      
-      setBottomPadding(`${totalPadding}px`);
-    };
-
-    // Update on mount
-    updatePadding();
-
-    // Update on viewport resize (Android viewport changes)
-    window.addEventListener('resize', updatePadding);
-    window.addEventListener('orientationchange', updatePadding);
-    
-    // Update when app regains visibility
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        setTimeout(updatePadding, 100); // Small delay for viewport to settle
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('resize', updatePadding);
-      window.removeEventListener('orientationchange', updatePadding);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -125,7 +86,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     <nav
       className={cn(
         // Base styles
-        "bg-background shadow-lg",
+        "bg-background shadow-lg pb-6",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden z-[100]",
         // Desktop styles (side nav) - now we use VerticalNav component instead
@@ -134,8 +95,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       style={{
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none',
-        paddingBottom: orientation === "horizontal" ? bottomPadding : undefined
+        pointerEvents: isVisible ? 'auto' : 'none'
       }}>
       <div className={cn(
         // Container styles
