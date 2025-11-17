@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -15,12 +15,11 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
-  const [isAndroid, setIsAndroid] = useState(false);
 
-  // Detect Android device
-  useEffect(() => {
+  // Detect Android device - useMemo ensures this persists across re-renders
+  const isAndroid = useMemo(() => {
     const userAgent = navigator.userAgent.toLowerCase();
-    setIsAndroid(userAgent.includes('android'));
+    return userAgent.includes('android');
   }, []);
 
   // Add debug logging to verify props
@@ -94,8 +93,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       className={cn(
         // Base styles
         "bg-background shadow-lg",
-        // Android-specific padding (8px) or default (24px)
-        isAndroid ? "pb-2" : "pb-6",
+        // Android-specific padding (32px) or default (24px)
+        isAndroid ? "pb-8" : "pb-6",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden z-[100]",
         // Desktop styles (side nav) - now we use VerticalNav component instead
