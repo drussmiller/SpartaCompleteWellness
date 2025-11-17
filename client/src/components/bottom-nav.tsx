@@ -86,7 +86,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     <nav
       className={cn(
         // Base styles
-        "bg-background shadow-lg pb-6",
+        "bg-background shadow-lg",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden z-[100]",
         // Desktop styles (side nav) - now we use VerticalNav component instead
@@ -95,7 +95,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       style={{
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none'
+        pointerEvents: isVisible ? 'auto' : 'none',
+        paddingBottom: orientation === "horizontal" ? 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' : undefined
       }}>
       <div className={cn(
         // Container styles
