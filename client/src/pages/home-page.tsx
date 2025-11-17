@@ -25,7 +25,7 @@ const mobileScrollStyles = {
   overscrollBehavior: "auto",
   touchAction: "pan-y pinch-zoom",
   WebkitTapHighlightColor: "transparent",
-  paddingBottom: "60px",
+  paddingBottom: "0",
   position: "relative",
   overflowX: "hidden",
   WebkitTransform: "translate3d(0,0,0)",
