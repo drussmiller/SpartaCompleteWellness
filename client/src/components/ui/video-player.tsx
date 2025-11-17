@@ -96,6 +96,9 @@ export function VideoPlayer({
     // If we have a poster, thumbnailLoaded will be set by onLoad event
   }, [simplifiedPoster]);
 
+  // Detect if device is Android
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
   // Handle thumbnail click - open video dialog overlay
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, opening video player dialog");
@@ -105,6 +108,14 @@ export function VideoPlayer({
     setTimeout(() => {
       if (videoRef.current) {
         console.log("Attempting to play video after dialog open");
+        
+        // On Android, request fullscreen on the video element itself
+        if (isAndroid && videoRef.current.requestFullscreen) {
+          videoRef.current.requestFullscreen().catch(error => {
+            console.log('Fullscreen request failed:', error);
+          });
+        }
+        
         videoRef.current.play().catch(error => {
           console.log('Initial play attempt failed:', error);
         });
@@ -306,7 +317,7 @@ export function VideoPlayer({
               playsInline
               preload="auto"
               controlsList="nodownload noremoteplayback"
-              disablePictureInPicture
+              disablePictureInPicture={false}
               disableRemotePlayback
               className="max-w-full max-h-full object-contain"
               style={{
@@ -329,6 +340,14 @@ export function VideoPlayer({
                 // Ensure autoplay starts when video is ready
                 if (videoRef.current) {
                   console.log('Attempting to play video via onCanPlay');
+                  
+                  // On Android, request fullscreen on the video element
+                  if (isAndroid && videoRef.current.requestFullscreen) {
+                    videoRef.current.requestFullscreen().catch(error => {
+                      console.log('Fullscreen request on canPlay failed:', error);
+                    });
+                  }
+                  
                   videoRef.current.play().catch(error => {
                     console.log('Autoplay was prevented:', error);
                     // On mobile, autoplay might be blocked - user can still use controls
