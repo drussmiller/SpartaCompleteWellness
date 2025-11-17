@@ -119,15 +119,14 @@ export default function NotificationsPage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="fixed inset-0 flex flex-col">
-          <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14 flex-shrink-0">
-            <div className="max-w-2xl mx-auto p-4">
-              <h1 className="text-xl font-bold">Notifications</h1>
-            </div>
+        {/* Header */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
+          <div className="max-w-2xl mx-auto p-4">
+            <h1 className="text-xl font-bold">Notifications</h1>
           </div>
-          <div className="flex justify-center items-center h-full mt-[84px]">
-            <div className="animate-spin">Loading...</div>
-          </div>
+        </div>
+        <div className="flex justify-center items-center h-full mt-[84px]">
+          <div className="animate-spin">Loading...</div>
         </div>
       </AppLayout>
     );
@@ -136,15 +135,14 @@ export default function NotificationsPage() {
   if (error) {
     return (
       <AppLayout>
-        <div className="fixed inset-0 flex flex-col">
-          <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14 flex-shrink-0">
-            <div className="max-w-2xl mx-auto p-4">
-              <h1 className="text-xl font-bold">Notifications</h1>
-            </div>
+        {/* Header */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
+          <div className="max-w-2xl mx-auto p-4">
+            <h1 className="text-xl font-bold">Notifications</h1>
           </div>
-          <div className="text-center py-8 text-destructive mt-[84px]">
-            <p>Error loading notifications: {error instanceof Error ? error.message : 'Unknown error'}</p>
-          </div>
+        </div>
+        <div className="text-center py-8 text-destructive mt-[84px]">
+          <p>Error loading notifications: {error instanceof Error ? error.message : 'Unknown error'}</p>
         </div>
       </AppLayout>
     );
@@ -152,24 +150,14 @@ export default function NotificationsPage() {
 
   return (
     <AppLayout>
-      <div className="fixed inset-0 flex flex-col">
-        {/* Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14 flex-shrink-0">
-          <div className="max-w-2xl mx-auto p-4">
-            <h1 className="text-xl font-bold">Notifications</h1>
-          </div>
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
+        <div className="max-w-2xl mx-auto p-4">
+          <h1 className="text-xl font-bold">Notifications</h1>
         </div>
+      </div>
 
-        {/* Scrollable content */}
-        <div 
-          className="flex-1 overflow-y-auto"
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            paddingTop: '100px',
-            paddingBottom: '60px'
-          }}
-        >
-          <main className="space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px]">
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -199,10 +187,10 @@ export default function NotificationsPage() {
                         {notification.message}
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
-                        {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number'
-  ? new Date(notification.createdAt).toLocaleString('en-US', {
+                        {typeof notification.createdAt === 'string' || typeof notification.createdAt === 'number' 
+  ? new Date(notification.createdAt).toLocaleString('en-US', { 
       month: 'numeric',
-      day: 'numeric',
+      day: 'numeric', 
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
@@ -238,9 +226,7 @@ export default function NotificationsPage() {
             ))}
           </div>
         )}
-          </main>
-        </div>
-      </div>
+      </main>
     </AppLayout>
   );
 }

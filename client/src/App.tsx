@@ -33,6 +33,7 @@ import { VideoPlayerPage } from "./pages/video-player-page";
 import CommentsPage from "@/pages/comments-page";
 import { lazy } from "react";
 import WaiverPage from "@/pages/waiver-page";
+import SMSOptInPage from "@/pages/sms-opt-in-page";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -88,11 +89,24 @@ function MainContent() {
     );
   }
 
-  // If not authenticated, show auth or register page based on route
+  // Public routes that don't require authentication
+  const currentPath = window.location.pathname;
+  if (!user && (currentPath === '/sms-policy' || currentPath === '/register')) {
+    return (
+      <Switch>
+        <Route path="/register" component={RegisterPage} />
+        <Route path="/sms-policy" component={SMSOptInPage} />
+        <Route path="*" component={AuthPage} />
+      </Switch>
+    );
+  }
+
+  // If not authenticated, show auth page
   if (!user) {
     return (
       <Switch>
         <Route path="/register" component={RegisterPage} />
+        <Route path="/sms-policy" component={SMSOptInPage} />
         <Route path="*" component={AuthPage} />
       </Switch>
     );
@@ -135,6 +149,9 @@ function MainContent() {
           <Route path="/video-player" component={() => <VideoPlayerPage />} />
           <Route path="/comments/:postId">
             <CommentsPage />
+          </Route>
+          <Route path="/sms-policy">
+            <SMSOptInPage />
           </Route>
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           {user.isGroupAdmin && <Route path="/group-admin" component={() => <GroupAdminPage />} />}

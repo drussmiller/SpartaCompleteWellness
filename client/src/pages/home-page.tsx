@@ -244,10 +244,10 @@ export default function HomePage() {
 
   return (
     <AppLayout isBottomNavVisible={isBottomNavVisible}>
-      <div className="fixed inset-0 flex flex-col bg-background">
+      <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div
-          className="fixed top-0 left-0 right-0 z-[50] bg-background border-b border-border flex-shrink-0"
+          className="fixed top-0 left-0 right-0 z-[50] bg-background border-b border-border"
           style={{
             transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
             transition: "transform 0.3s ease-out",
@@ -263,6 +263,7 @@ export default function HomePage() {
                   className="w-36 h-auto mx-auto"
                   onError={(e) => {
                     console.error("Error loading logo:", e);
+                    // Fallback to a different logo if the main one fails
                     e.currentTarget.src = "/Spartans_LOGO.png";
                   }}
                 />
@@ -272,6 +273,7 @@ export default function HomePage() {
                   <CreatePostDialog remaining={remaining} initialType="food" />
                   {user?.teamId && <MessageSlideCard />}
                 </div>
+                {/* Admin/Group Admin filter for introductory videos */}
                 {(user?.isAdmin || user?.isGroupAdmin) && (
                   <Button
                     variant={showIntroVideosOnly ? "default" : "outline"}
@@ -287,6 +289,7 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Navigation Buttons */}
             <div className="flex justify-between mt-1 mb-2 px-6">
               <Button
                 variant="default"
@@ -313,18 +316,16 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Scrollable content container */}
-        <div 
-          className="flex-1 overflow-y-auto"
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            overscrollBehavior: 'contain',
-            paddingTop: '220px',
-            paddingBottom: '60px'
-          }}
+        {/* Main content layout */}
+        <div
+          className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
         >
-          <div className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56" : "w-full"}`}>
-            <main className="p-4">
+          <main className="p-4" style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
+            {/* Header */}
+            <div className="mb-6">
+              <div style={{ height: "75px" }}></div>
+            </div>
+
               <div className="space-y-2">
                 {posts?.length > 0 ? (
                   posts.map((post: Post, index: number) => (
@@ -351,12 +352,12 @@ export default function HomePage() {
                   </div>
                 ) : null}
 
+                {/* Loading indicator */}
                 <div ref={loadingRef} className="flex justify-center py-4">
                   {isLoading && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
               </div>
             </main>
-          </div>
         </div>
       </div>
     </AppLayout>

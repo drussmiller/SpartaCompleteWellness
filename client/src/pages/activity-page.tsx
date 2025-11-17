@@ -247,24 +247,14 @@ export default function ActivityPage() {
 
   return (
     <AppLayout>
-      <div className="fixed inset-0 flex flex-col">
-        {/* Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14 flex-shrink-0">
-          <div className="max-w-2xl mx-auto p-4">
-            <h1 className="text-xl font-bold">Activity</h1>
-          </div>
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
+        <div className="max-w-2xl mx-auto p-4">
+          <h1 className="text-xl font-bold">Daily Activity</h1>
         </div>
+      </div>
 
-        {/* Scrollable content */}
-        <div 
-          className="flex-1 overflow-y-auto"
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            paddingTop: '100px',
-            paddingBottom: '60px'
-          }}
-        >
-          <main className="space-y-4 max-w-2xl mx-auto w-full pl-8 pr-4 py-6 text-lg">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-8 pr-4 py-6 text-lg mt-[40px]">
         {/* Week Content Dropdown - Defaults to Closed */}
         <Collapsible open={weekContentOpen} onOpenChange={setWeekContentOpen}>
           <Card className="mb-6">
@@ -590,9 +580,7 @@ export default function ActivityPage() {
             </Card>
           </Collapsible>
         )}
-          </main>
-        </div>
-      </div>
+      </main>
     </AppLayout>
   );
 }
