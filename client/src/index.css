@@ -212,7 +212,7 @@ div[data-post-id] .video-container {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: auto;
     scroll-behavior: auto;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
@@ -235,13 +235,8 @@ div[data-post-id] .video-container {
   .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: auto;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: auto;
     -webkit-momentum-scrolling: touch;
-  }
-  .overflow-y-auto {
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: auto;
-    overscroll-behavior-y: contain;
   }
   html {
     height: 100%;
