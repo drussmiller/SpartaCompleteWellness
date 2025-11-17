@@ -23,38 +23,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Get padding from sessionStorage or default to 0
-  const getAndroidPadding = () => {
-    if (!isAndroid || typeof window === 'undefined') return '0';
-    return sessionStorage.getItem('android-nav-padding') || '0';
-  };
-
-  const [androidPadding, setAndroidPadding] = useState(getAndroidPadding);
-
-  // Android-specific: Update padding when it changes
-  const updateAndroidPadding = (newPadding: string) => {
-    if (!isAndroid) return;
-    sessionStorage.setItem('android-nav-padding', newPadding);
-    setAndroidPadding(newPadding);
-  };
-
-  // Android-specific: Apply padding when viewport changes (app switch/wake)
-  useEffect(() => {
-    if (!isAndroid) return;
-
-    const handleFocusOrVisibility = () => {
-      console.log('Android: Viewport changed, applying padding');
-      updateAndroidPadding('32px');
-    };
-
-    window.addEventListener('focus', handleFocusOrVisibility);
-    document.addEventListener('visibilitychange', handleFocusOrVisibility);
-
-    return () => {
-      window.removeEventListener('focus', handleFocusOrVisibility);
-      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
-    };
-  }, [isAndroid]);
+  // Android-specific: Always use 0 padding (no extra bottom spacing needed)
+  const androidPadding = '0';
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
