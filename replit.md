@@ -42,6 +42,7 @@ The application uses a monorepo structure, separating client, server, and shared
 - **Messaging**: Private messaging, file attachments, image pasting, message history.
 - **Onboarding**: Introductory video onboarding for team-less users, restricting posts to video only until team assignment.
 - **Notifications**: Daily reminders for missed posts, SMS notifications via Twilio (opt-in only), user-configurable daily and confirmation message toggles.
+- **Mobile UI**: Dedicated scroll container architecture for iOS momentum scrolling, header/nav auto-hide on scroll, pull-to-refresh on Home page (80px threshold), scroll position restoration when returning from video player.
 
 ### Data Flow
 - **File Upload**: Client uploads, server validates, stores in Object Storage, generates thumbnail, records in DB, responds to client.
