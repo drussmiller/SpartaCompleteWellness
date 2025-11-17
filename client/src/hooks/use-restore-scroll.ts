@@ -4,8 +4,9 @@ import { useLocation } from 'wouter';
 /**
  * Hook to restore scroll position when returning from video player
  * This should be used on pages that have videos
+ * @param scrollContainerRef - Optional ref to the scroll container element
  */
-export function useRestoreScroll() {
+export function useRestoreScroll(scrollContainerRef?: React.RefObject<HTMLElement>) {
   const [location] = useLocation();
 
   useEffect(() => {
@@ -22,8 +23,15 @@ export function useRestoreScroll() {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setTimeout(() => {
-            window.scrollTo({ top: scrollY, behavior: 'instant' });
-            console.log('Scroll restored to:', scrollY, 'actual position:', window.scrollY);
+            const container = scrollContainerRef?.current;
+            if (container) {
+              container.scrollTop = scrollY;
+              console.log('Scroll restored to container:', scrollY, 'actual position:', container.scrollTop);
+            } else {
+              // Fallback to window scroll for pages not using scroll containers
+              window.scrollTo({ top: scrollY, behavior: 'instant' });
+              console.log('Scroll restored to window:', scrollY);
+            }
           }, 50);
         });
       });
@@ -32,5 +40,5 @@ export function useRestoreScroll() {
       sessionStorage.removeItem('videoPlayerReturnScroll');
       sessionStorage.removeItem('videoPlayerReturnPath');
     }
-  }, [location]);
+  }, [location, scrollContainerRef]);
 }

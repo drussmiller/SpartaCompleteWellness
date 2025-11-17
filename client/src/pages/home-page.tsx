@@ -45,7 +45,7 @@ export default function HomePage() {
   const pullThreshold = 80; // Pull distance needed to trigger refresh
   
   // Restore scroll position when returning from video player
-  useRestoreScroll();
+  useRestoreScroll(scrollContainerRef);
 
   // Only refetch post limits when needed
   useEffect(() => {

@@ -209,16 +209,12 @@ div[data-post-id] .video-container {
     min-height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: contain;
-    scroll-behavior: auto;
+    overflow: hidden !important;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
-    scrollbar-width: none;
+    overscroll-behavior-y: contain;
   }
 
   body::-webkit-scrollbar {
@@ -232,16 +228,16 @@ div[data-post-id] .video-container {
     touch-action: pan-y pinch-zoom;
   }
 
-  .overflow-y-auto {
-    -webkit-overflow-scrolling: touch;
+  /* Dedicated scroll container for iOS momentum scrolling */
+  .scroll-container {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: auto !important;
     scroll-behavior: auto;
-    overscroll-behavior-y: contain;
-    -webkit-momentum-scrolling: touch;
   }
+  
   html {
     height: 100%;
-    scroll-behavior: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     overscroll-behavior-y: contain;
   }
 
