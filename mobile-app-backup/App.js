@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import { useEffect, useState, useRef } from 'react';
 
 // Define API URL for the backend - replace with your server URL when deployed
@@ -224,27 +224,25 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, Platform.OS === 'android' && styles.androidContainer]}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Fitness Community</Text>
-        <Text style={styles.platformText}>{Platform.OS === 'ios' ? 'iOS' : 'Android'}</Text>
         {renderConnectionStatus()}
       </View>
       
-      <View style={styles.contentWrapper}>
-        {isLoading ? (
-          <View style={styles.centerContent}>
-            <Text>Loading posts...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.centerContent}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.button} onPress={fetchPosts}>
-              <Text style={styles.buttonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <ScrollView style={styles.scrollView}>
+      {isLoading ? (
+        <View style={styles.centerContent}>
+          <Text>Loading posts...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.button} onPress={fetchPosts}>
+            <Text style={styles.buttonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView style={styles.scrollView}>
           {posts.length === 0 ? (
             <View style={styles.centerContent}>
               <Text>No posts available</Text>
@@ -289,17 +287,9 @@ export default function App() {
             ))
           )}
         </ScrollView>
-        )}
-      </View>
+      )}
       
       <StatusBar style="auto" />
-      
-      {/* Bottom Navigation - Android only */}
-      {Platform.OS === 'android' && (
-        <View style={styles.bottomNav}>
-          <Text style={styles.bottomNavText}>Android Navigation</Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -308,13 +298,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-  },
-  androidContainer: {
-    paddingBottom: 60,
-  },
-  contentWrapper: {
-    flex: 1,
-    marginBottom: Platform.OS === 'android' ? 45 : 0,
   },
   header: {
     backgroundColor: '#e63946',
@@ -328,14 +311,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
-  platformText: {
-    color: 'white',
-    fontSize: 12,
-    opacity: 0.8,
-  },
   scrollView: {
     padding: 15,
-    marginBottom: Platform.OS === 'android' ? 45 : 0,
   },
   centerContent: {
     flex: 1,
@@ -457,24 +434,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: '#e63946',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#d63946',
-    zIndex: 1000,
-  },
-  bottomNavText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
 });
