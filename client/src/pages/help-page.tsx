@@ -12,15 +12,7 @@ export default function HelpPage() {
         </div>
       </div>
 
-      <main 
-        className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px] fixed inset-0 overflow-y-auto" 
-        style={{ 
-          WebkitOverflowScrolling: 'touch',
-          overflowY: 'auto',
-          height: '100vh',
-          paddingTop: '100px'
-        }}
-      >
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px]">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

@@ -182,22 +182,18 @@ export default function HomePage() {
     let scrollVelocity = 0;
     let lastScrollTime = Date.now();
 
-    const handleScroll = (event: Event) => {
-      // Get scroll position from the main element
-      const mainElement = event.target as HTMLElement;
-      const currentScrollY = mainElement.scrollTop;
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
       const currentTime = Date.now();
       const timeDelta = currentTime - lastScrollTime;
 
       // Calculate scroll velocity (pixels per millisecond)
       if (timeDelta > 0) {
-        scrollVelocity =
-          Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
+        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
       }
 
       // Hide panels when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        // Scrolling down - hide both panels
         setIsHeaderVisible(false);
         setIsBottomNavVisible(false);
       }
@@ -206,7 +202,6 @@ export default function HomePage() {
         currentScrollY <= 50 ||
         (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)
       ) {
-        // Near top OR scrolling up fast from anywhere - show both panels
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
@@ -215,20 +210,10 @@ export default function HomePage() {
       lastScrollTime = currentTime;
     };
 
-    // Wait for main element to be rendered, then attach scroll listener
-    const timer = setTimeout(() => {
-      const mainElement = document.querySelector("main");
-      if (mainElement) {
-        mainElement.addEventListener("scroll", handleScroll, { passive: true });
-      }
-    }, 100);
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
-      clearTimeout(timer);
-      const mainElement = document.querySelector("main");
-      if (mainElement) {
-        mainElement.removeEventListener("scroll", handleScroll);
-      }
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
@@ -343,15 +328,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          <main 
-            className="p-4 fixed inset-0 overflow-y-auto"
-            style={{ 
-              WebkitOverflowScrolling: 'touch',
-              overflowY: 'auto',
-              height: '100vh',
-              paddingTop: '160px'
-            }}
-          >
+          <main className="p-4">
+            {/* Header */}
+            <div className="mb-6">
+              <div style={{ height: "75px" }}></div>
+            </div>
+
               <div className="space-y-2">
                 {posts?.length > 0 ? (
                   posts.map((post: Post, index: number) => (
