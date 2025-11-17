@@ -23,26 +23,28 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Track padding to fix viewport issue when app regains focus
-  const [androidPadding, setAndroidPadding] = useState('0');
+  // Android-specific: Track padding to fix viewport issue
+  // Use ref to track if viewport has settled to prevent reset on remount
+  const [androidPadding, setAndroidPadding] = useState(() => {
+    if (typeof window === 'undefined') return '0';
+    // Check sessionStorage to see if viewport has already settled
+    return sessionStorage.getItem('android-viewport-settled') === 'true' ? '32px' : '0';
+  });
 
   // Android-specific: Fix bottom nav position when viewport changes
   useEffect(() => {
     if (!isAndroid) return;
 
     const handleAndroidFocus = () => {
-      console.log('Android: Window gained focus, recalculating bottom nav position');
-      // Force recalculation by briefly setting padding then resetting
+      console.log('Android: Window gained focus, applying padding');
+      sessionStorage.setItem('android-viewport-settled', 'true');
       setAndroidPadding('32px');
-      // Reset after a brief moment to let the viewport settle
-      setTimeout(() => {
-        setAndroidPadding('32px');
-      }, 100);
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Android: Page became visible, recalculating bottom nav position');
+        console.log('Android: Page became visible, applying padding');
+        sessionStorage.setItem('android-viewport-settled', 'true');
         setAndroidPadding('32px');
       }
     };
