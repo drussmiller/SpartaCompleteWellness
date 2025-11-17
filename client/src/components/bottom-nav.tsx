@@ -100,19 +100,22 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: bottomPadding,
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
       }}>
-      <div className={cn(
-        // Container styles
-        "flex items-center",
-        // Mobile layout
-        orientation === "horizontal" && "h-20 justify-around",
-        // Desktop layout
-        orientation === "vertical" && "flex-col py-4 space-y-4"
-      )}>
+      <div 
+        className={cn(
+          // Container styles
+          "flex items-center",
+          // Mobile layout
+          orientation === "horizontal" && "h-20 justify-around",
+          // Desktop layout
+          orientation === "vertical" && "flex-col py-4 space-y-4"
+        )}
+        style={{
+          paddingBottom: orientation === "horizontal" ? bottomPadding : undefined
+        }}>
         {items.map(({ icon: Icon, label, href, count, noTeamRequired }) => {
           const isActivityLink = href === "/activity";
           const isDisabled = !noTeamRequired && (!user?.teamId || (isActivityLink && activityStatus && !activityStatus.programHasStarted));
