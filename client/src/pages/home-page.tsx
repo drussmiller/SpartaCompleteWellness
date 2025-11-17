@@ -386,12 +386,15 @@ export default function HomePage() {
             </div>
           </div>
 
-          <main className="p-4" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {/* Header */}
-            <div className="mb-6">
-              <div style={{ height: "75px" }}></div>
-            </div>
-
+          <main 
+            className="p-4 fixed inset-0 overflow-y-auto"
+            style={{ 
+              WebkitOverflowScrolling: 'touch',
+              overflowY: 'auto',
+              height: '100vh',
+              paddingTop: '160px'
+            }}
+          >
               <div className="space-y-2">
                 {posts?.length > 0 ? (
                   posts.map((post: Post, index: number) => (

@@ -157,7 +157,15 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px]" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <main 
+        className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px] fixed inset-0 overflow-y-auto" 
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          overflowY: 'auto',
+          height: '100vh',
+          paddingTop: '100px'
+        }}
+      >
         {!notifications?.length ? (
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
