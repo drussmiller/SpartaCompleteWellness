@@ -182,12 +182,10 @@ export default function HomePage() {
     let scrollVelocity = 0;
     let lastScrollTime = Date.now();
 
-    const handleScroll = (event) => {
-      const currentScrollY =
-        window.scrollY ||
-        document.documentElement.scrollTop ||
-        document.body.scrollTop ||
-        0;
+    const handleScroll = (event: Event) => {
+      // Get scroll position from the main element
+      const mainElement = event.target as HTMLElement;
+      const currentScrollY = mainElement.scrollTop;
       const currentTime = Date.now();
       const timeDelta = currentTime - lastScrollTime;
 
@@ -197,19 +195,9 @@ export default function HomePage() {
           Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
       }
 
-      console.log(
-        "🟢 Home - Scroll detected - scrollY:",
-        currentScrollY,
-        "last:",
-        lastScrollY.current,
-        "velocity:",
-        scrollVelocity.toFixed(3),
-      );
-
       // Hide panels when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         // Scrolling down - hide both panels
-        console.log("🔽 Home - Hiding panels - scrollY:", currentScrollY);
         setIsHeaderVisible(false);
         setIsBottomNavVisible(false);
       }
@@ -219,16 +207,6 @@ export default function HomePage() {
         (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)
       ) {
         // Near top OR scrolling up fast from anywhere - show both panels
-        const reason =
-          currentScrollY <= 50
-            ? "near top"
-            : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
-        console.log(
-          "🔼 Home - Showing panels -",
-          reason,
-          "- scrollY:",
-          currentScrollY,
-        );
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
@@ -237,40 +215,19 @@ export default function HomePage() {
       lastScrollTime = currentTime;
     };
 
-    // Add scroll listeners to multiple potential scroll containers
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    document.addEventListener("scroll", handleScroll, { passive: true });
-    document.body.addEventListener("scroll", handleScroll, { passive: true });
-
-    // Also try listening on the main content area
-    const mainElement = document.querySelector("main");
-    if (mainElement) {
-      mainElement.addEventListener("scroll", handleScroll, { passive: true });
-    }
-
-    // Also try the root div
-    const rootElement = document.getElementById("root");
-    if (rootElement) {
-      rootElement.addEventListener("scroll", handleScroll, { passive: true });
-    }
-
-    // Initial check
-    console.log("📝 Initial scroll setup - scrollY:", window.scrollY);
-    console.log("📝 Document height:", document.documentElement.scrollHeight);
-    console.log("📝 Window height:", window.innerHeight);
-    console.log("📝 Body scroll height:", document.body.scrollHeight);
-    console.log("📝 Main element found:", !!mainElement);
-    console.log("📝 Root element found:", !!rootElement);
+    // Wait for main element to be rendered, then attach scroll listener
+    const timer = setTimeout(() => {
+      const mainElement = document.querySelector("main");
+      if (mainElement) {
+        mainElement.addEventListener("scroll", handleScroll, { passive: true });
+      }
+    }, 100);
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      document.removeEventListener("scroll", handleScroll);
-      document.body.removeEventListener("scroll", handleScroll);
+      clearTimeout(timer);
+      const mainElement = document.querySelector("main");
       if (mainElement) {
         mainElement.removeEventListener("scroll", handleScroll);
-      }
-      if (rootElement) {
-        rootElement.removeEventListener("scroll", handleScroll);
       }
     };
   }, []);
