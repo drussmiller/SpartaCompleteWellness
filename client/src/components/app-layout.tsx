@@ -10,20 +10,23 @@ interface AppLayoutProps {
   sidebarWidth?: string;
   isBottomNavVisible?: boolean;
   scrollOffset?: number;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
-export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVisible = true, scrollOffset = 0 }: AppLayoutProps) {
+export function AppLayout({ 
+  children, 
+  title, 
+  sidebarWidth = "320", 
+  isBottomNavVisible = true, 
+  scrollOffset = 0,
+  scrollContainerRef 
+}: AppLayoutProps) {
   const isMobile = useIsMobile();
   const sidebarWidthPx = `${sidebarWidth}px`;
 
-  // Debug logging
-  console.log('AppLayout render - isBottomNavVisible:', isBottomNavVisible, 'isMobile:', isMobile);
-
   return (
     <div className="flex h-full" style={{ touchAction: 'pan-y pinch-zoom' }}>
-      <div className={cn(
-        "flex flex-col flex-1 min-h-screen"
-      )}>
+      <div className={cn("flex flex-col flex-1 h-screen overflow-hidden")}>
         {title && (
           <header className="sticky top-0 z-50 border-b border-border bg-background">
             <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6' : 'container'} py-3`}>
@@ -31,9 +34,19 @@ export function AppLayout({ children, title, sidebarWidth = "320", isBottomNavVi
             </div>
           </header>
         )}
-        <main className={`flex-1 ${isMobile ? 'pt-20' : ''} min-h-0`} style={{ touchAction: 'pan-y pinch-zoom' }}>
-          {children}
-        </main>
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto scroll-container"
+          style={{ 
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'auto',
+            touchAction: 'pan-y pinch-zoom'
+          }}
+        >
+          <main className={`${isMobile ? 'pt-20' : ''}`} style={{ touchAction: 'pan-y pinch-zoom' }}>
+            {children}
+          </main>
+        </div>
         {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} scrollOffset={scrollOffset} />}
       </div>
     </div>
