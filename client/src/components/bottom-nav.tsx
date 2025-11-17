@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -23,8 +23,41 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     return userAgent.includes('android');
   }, []);
 
+  // Android-specific: Track padding to fix viewport issue when app regains focus
+  const [androidPadding, setAndroidPadding] = useState('32px');
+
+  // Android-specific: Fix bottom nav position when viewport changes
+  useEffect(() => {
+    if (!isAndroid) return;
+
+    const handleAndroidFocus = () => {
+      console.log('Android: Window gained focus, recalculating bottom nav position');
+      // Force recalculation by briefly setting padding then resetting
+      setAndroidPadding('32px');
+      // Reset after a brief moment to let the viewport settle
+      setTimeout(() => {
+        setAndroidPadding('32px');
+      }, 100);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Android: Page became visible, recalculating bottom nav position');
+        setAndroidPadding('32px');
+      }
+    };
+
+    window.addEventListener('focus', handleAndroidFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleAndroidFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAndroid]);
+
   // Add debug logging to verify props
-  console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid);
+  console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -100,7 +133,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: !isAndroid ? 'calc(env(safe-area-inset-bottom, 8px) + 12px)' : '0',
+        paddingBottom: isAndroid ? androidPadding : 'calc(env(safe-area-inset-bottom, 16px) + 12px)',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
