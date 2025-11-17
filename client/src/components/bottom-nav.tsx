@@ -24,7 +24,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   }, []);
 
   // Android-specific: Track padding to fix viewport issue when app regains focus
-  const [androidPadding, setAndroidPadding] = useState('32px');
+  const [androidPadding, setAndroidPadding] = useState('0');
 
   // Android-specific: Fix bottom nav position when viewport changes
   useEffect(() => {
