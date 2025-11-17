@@ -94,8 +94,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       className={cn(
         // Base styles
         "bg-background shadow-lg",
-        // Android-specific padding (32px) or default (24px)
-        isAndroid ? "pb-8" : "pb-6",
+        // Android-specific padding (8px) or default (24px)
+        isAndroid ? "pb-2" : "pb-6",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden z-[100]",
         // Desktop styles (side nav) - now we use VerticalNav component instead
