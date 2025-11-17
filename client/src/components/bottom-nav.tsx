@@ -24,12 +24,18 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   }, []);
 
   // Android-specific: Track padding to fix viewport issue
-  // Use ref to track if viewport has settled to prevent reset on remount
-  const [androidPadding, setAndroidPadding] = useState(() => {
-    if (typeof window === 'undefined') return '0';
-    // Check sessionStorage to see if viewport has already settled
-    return sessionStorage.getItem('android-viewport-settled') === 'true' ? '32px' : '0';
-  });
+  const [androidPadding, setAndroidPadding] = useState('0');
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Android-specific: Apply padding when nav becomes visible after being hidden
+  useEffect(() => {
+    if (!isAndroid) return;
+    
+    // If we've interacted before and nav is now visible, apply padding
+    if (hasInteracted && isVisible) {
+      setAndroidPadding('32px');
+    }
+  }, [isAndroid, isVisible, hasInteracted]);
 
   // Android-specific: Fix bottom nav position when viewport changes
   useEffect(() => {
@@ -37,14 +43,14 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
 
     const handleAndroidFocus = () => {
       console.log('Android: Window gained focus, applying padding');
-      sessionStorage.setItem('android-viewport-settled', 'true');
+      setHasInteracted(true);
       setAndroidPadding('32px');
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('Android: Page became visible, applying padding');
-        sessionStorage.setItem('android-viewport-settled', 'true');
+        setHasInteracted(true);
         setAndroidPadding('32px');
       }
     };
