@@ -16,19 +16,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Detect iOS device - calculate once and use in inline styles
-  const isIOS = useMemo(() => {
+  // Detect Android device - apply padding to everything that's NOT Android
+  const isAndroid = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const userAgent = navigator.userAgent.toLowerCase();
-    // Check for iPhone, iPad, or iPod
-    const isAppleDevice = /iphone|ipad|ipod/.test(userAgent);
-    // Fallback for iPadOS 13+ which identifies as Mac with touch
-    const isMacWithTouch = /mac/.test(userAgent) && navigator.maxTouchPoints > 1;
-    return isAppleDevice || isMacWithTouch;
+    return userAgent.includes('android');
   }, []);
 
   // Add debug logging to verify props
-  console.log('BottomNav render - isVisible:', isVisible, 'isIOS:', isIOS);
+  console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -104,7 +100,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: isIOS ? 'calc(env(safe-area-inset-bottom, 16px) + 12px)' : '0',
+        paddingBottom: !isAndroid ? 'calc(env(safe-area-inset-bottom, 16px) + 12px)' : '0',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
