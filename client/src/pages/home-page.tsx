@@ -18,20 +18,6 @@ import { useRestoreScroll } from "@/hooks/use-restore-scroll";
 
 const MOBILE_BREAKPOINT = 768;
 
-const mobileScrollStyles = {
-  minHeight: "100vh",
-  WebkitOverflowScrolling: "touch",
-  scrollBehavior: "auto",
-  overscrollBehavior: "auto",
-  touchAction: "pan-y pinch-zoom",
-  WebkitTapHighlightColor: "transparent",
-  paddingBottom: "0",
-  position: "relative",
-  overflowX: "hidden",
-  WebkitTransform: "translate3d(0,0,0)",
-  WebkitBackfaceVisibility: "hidden",
-  WebkitPerspective: "1000",
-} as const;
 
 export default function HomePage() {
   const isMobile = useIsMobile();
@@ -400,7 +386,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <main className="p-4" style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
+          <main className="p-4" style={{ WebkitOverflowScrolling: 'touch' }}>
             {/* Header */}
             <div className="mb-6">
               <div style={{ height: "75px" }}></div>
