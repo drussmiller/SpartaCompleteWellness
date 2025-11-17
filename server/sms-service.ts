@@ -23,10 +23,7 @@ class SMSService {
   private normalizePhoneNumber(phoneNumber: string): string {
     const cleaned = phoneNumber.replace(/\D/g, '');
     
-    if (cleaned.length === 7) {
-      // Assume US number with 7 digits, add +1 prefix
-      return `+1${cleaned}`;
-    } else if (cleaned.length === 10) {
+    if (cleaned.length === 10) {
       return `+1${cleaned}`;
     } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
       return `+${cleaned}`;
@@ -34,7 +31,7 @@ class SMSService {
       return phoneNumber;
     }
     
-    throw new Error(`Invalid phone number format. Expected 7, 10, or 11 digits, got ${cleaned.length} digits.`);
+    throw new Error(`Invalid phone number format. Expected 10 or 11 digits, got ${cleaned.length} digits.`);
   }
 
   async sendSMS(options: SendSMSOptions): Promise<void> {
