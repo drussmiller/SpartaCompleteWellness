@@ -16,14 +16,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Detect Android device - useMemo ensures this persists across re-renders
-  const isAndroid = useMemo(() => {
+  // Detect Android device - calculate once and use in inline styles
+  const bottomPadding = useMemo(() => {
     const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.includes('android');
+    const isAndroid = userAgent.includes('android');
+    return isAndroid ? '32px' : '24px';
   }, []);
 
   // Add debug logging to verify props
-  console.log('BottomNav render - isVisible:', isVisible);
+  console.log('BottomNav render - isVisible:', isVisible, 'bottomPadding:', bottomPadding);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -93,14 +94,13 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       className={cn(
         // Base styles
         "bg-background shadow-lg",
-        // Android-specific padding (32px) or default (24px)
-        isAndroid ? "pb-8" : "pb-6",
         // Mobile styles (bottom nav) - always hidden on desktop
         orientation === "horizontal" && "fixed bottom-0 left-0 right-0 border-t border-border md:hidden z-[100]",
         // Desktop styles (side nav) - now we use VerticalNav component instead
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
+        paddingBottom: bottomPadding,
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
