@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
 import { useRestoreScroll } from "@/hooks/use-restore-scroll";
+import { useScrollDirection } from "@/hooks/use-scroll-direction";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -26,11 +27,15 @@ export default function HomePage() {
   const loadingRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
-  const [scrollOffset, setScrollOffset] = useState(0);
-  const lastScrollY = useRef(0);
   const [showIntroVideosOnly, setShowIntroVideosOnly] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Use scroll direction hook for header/nav animations
+  const { isHeaderVisible, isBottomNavVisible, scrollY } = useScrollDirection({
+    scrollContainerRef,
+    threshold: 50,
+    velocityThreshold: 1.5
+  });
   
   // Pull-to-refresh state
   const [pullStartY, setPullStartY] = useState(0);
@@ -125,11 +130,14 @@ export default function HomePage() {
     navigate("/prayer-requests");
   };
 
-  // Pull-to-refresh handlers
+  // Pull-to-refresh handlers - use container scrollTop instead of window.scrollY
   const handleTouchStart = (e: React.TouchEvent) => {
-    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    // Only start pull if at the top of the page
-    if (scrollY === 0) {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const scrollTop = container.scrollTop;
+    // Only start pull if at the top of the container
+    if (scrollTop === 0) {
       setPullStartY(e.touches[0].clientY);
       setIsPulling(true);
     }
@@ -138,8 +146,11 @@ export default function HomePage() {
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isPulling) return;
     
-    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    if (scrollY > 0) {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const scrollTop = container.scrollTop;
+    if (scrollTop > 0) {
       setIsPulling(false);
       setPullDistance(0);
       return;
@@ -177,46 +188,6 @@ export default function HomePage() {
     }
   };
 
-  // Handle scroll for moving navigation panels
-  useEffect(() => {
-    let scrollVelocity = 0;
-    let lastScrollTime = Date.now();
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      const currentTime = Date.now();
-      const timeDelta = currentTime - lastScrollTime;
-
-      // Calculate scroll velocity (pixels per millisecond)
-      if (timeDelta > 0) {
-        scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
-      }
-
-      // Hide panels when scrolling down past 50px
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
-        setIsHeaderVisible(false);
-        setIsBottomNavVisible(false);
-      }
-      // Show panels when at top OR when scrolling up fast (velocity > 1.5 pixels/ms) from anywhere
-      else if (
-        currentScrollY <= 50 ||
-        (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)
-      ) {
-        setIsHeaderVisible(true);
-        setIsBottomNavVisible(true);
-      }
-
-      lastScrollY.current = currentScrollY;
-      lastScrollTime = currentTime;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
   if (error) {
     return (
       <AppLayout>
@@ -231,7 +202,10 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout isBottomNavVisible={isBottomNavVisible}>
+    <AppLayout 
+      isBottomNavVisible={isBottomNavVisible}
+      scrollContainerRef={scrollContainerRef}
+    >
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div
