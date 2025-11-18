@@ -1320,7 +1320,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const matchesUsername = user.username?.toLowerCase().includes(searchLower);
       const matchesEmail = user.email?.toLowerCase().includes(searchLower);
       const matchesId = user.id.toString().includes(searchLower);
-      
+
       if (!matchesPreferredName && !matchesUsername && !matchesEmail && !matchesId) {
         return false;
       }
@@ -1975,13 +1975,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         // Calculate current week and day based on program start date
                                         let currentWeek = 1;
                                         let currentDay = 1;
-                                        
+
                                         if (programStartDateValue) {
                                           const startDate = new Date(programStartDateValue);
                                           const today = new Date();
                                           today.setHours(0, 0, 0, 0);
                                           startDate.setHours(0, 0, 0, 0);
-                                          
+
                                           if (startDate > today) {
                                             // Future date: set to week 1, day 1
                                             currentWeek = 1;
@@ -2547,13 +2547,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     // Calculate current week and day based on program start date
                                     let currentWeek = 1;
                                     let currentDay = 1;
-                                    
+
                                     if (programStartDateValue) {
                                       const startDate = new Date(programStartDateValue);
                                       const today = new Date();
                                       today.setHours(0, 0, 0, 0);
                                       startDate.setHours(0, 0, 0, 0);
-                                      
+
                                       if (startDate > today) {
                                         // Future date: set to week 1, day 1
                                         currentWeek = 1;
@@ -3071,13 +3071,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         // Calculate current week and day based on program start date
                                         let currentWeek = 1;
                                         let currentDay = 1;
-                                        
+
                                         if (programStartDateValue) {
                                           const startDate = new Date(programStartDateValue);
                                           const today = new Date();
                                           today.setHours(0, 0, 0, 0);
                                           startDate.setHours(0, 0, 0, 0);
-                                          
+
                                           if (startDate > today) {
                                             // Future date: set to week 1, day 1
                                             currentWeek = 1;
@@ -3307,71 +3307,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <CardTitle>
                                         {user.preferredName || user.username}
                                       </CardTitle>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => setEditingUser(user)}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <AlertDialog 
-                                          open={deleteDialogOpen && userToDelete === user.id}
-                                          onOpenChange={(open) => {
-                                            setDeleteDialogOpen(open);
-                                            if (!open) setUserToDelete(null);
-                                          }}
-                                        >
-                                          <AlertDialogTrigger asChild>
-                                            <Button
-                                              variant="destructive"
-                                              size="sm"
-                                              onClick={() => {
-                                                setUserToDelete(user.id);
-                                                setDeleteDialogOpen(true);
-                                              }}
-                                              data-testid={`button-delete-user-${user.id}`}
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          </AlertDialogTrigger>
-                                          <AlertDialogContent>
-                                            <AlertDialogTitle>
-                                              Are you sure?
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              This action cannot be undone. This
-                                              will permanently delete the user
-                                              account and all associated data.
-                                            </AlertDialogDescription>
-                                            <div className="flex items-center justify-end gap-2 mt-4">
-                                              <AlertDialogCancel data-testid="button-cancel-delete">
-                                                Cancel
-                                              </AlertDialogCancel>
-                                              <Button
-                                                variant="destructive"
-                                                className="bg-red-600 hover:bg-red-700"
-                                                onClick={() => {
-                                                  if (userToDelete) {
-                                                    deleteUserMutation.mutate(userToDelete);
-                                                  }
-                                                }}
-                                                disabled={deleteUserMutation.isPending}
-                                                data-testid="button-confirm-delete"
-                                              >
-                                                {deleteUserMutation.isPending ? (
-                                                  <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Deleting...
-                                                  </>
-                                                ) : (
-                                                  "Delete User"
-                                                )}
-                                              </Button>
-                                            </div>
-                                          </AlertDialogContent>
-                                        </AlertDialog>
-                                      </div>
                                     </div>
                                     <div className="text-sm text-muted-foreground">
                                       <span className="font-medium">
@@ -3402,7 +3337,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         if (!user.teamId) {
                                           return "Progress: Not in a Team";
                                         }
-                                        
+
                                         if (user.programStartDate) {
                                           // Extract date portion only to avoid timezone conversion
                                           const dateStr = String(user.programStartDate).split('T')[0];
@@ -3410,7 +3345,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           const startDate = new Date(year, month - 1, day);
                                           const today = new Date();
                                           today.setHours(0, 0, 0, 0);
-                                          
+
                                           if (startDate > today) {
                                             const daysUntilStart = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                             return `Progress: Starts in ${daysUntilStart} day${daysUntilStart !== 1 ? 's' : ''}`;
@@ -3419,12 +3354,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           const today = new Date();
                                           const currentDayOfWeek = today.getDay();
                                           const daysUntilMonday = currentDayOfWeek === 0 ? 1 : currentDayOfWeek === 1 ? 0 : 8 - currentDayOfWeek;
-                                          
+
                                           if (daysUntilMonday > 0) {
                                             return `Progress: Starts in ${daysUntilMonday} day${daysUntilMonday !== 1 ? 's' : ''}`;
                                           }
                                         }
-                                        
+
                                         return (
                                           <>
                                             Progress: Week{" "}
@@ -3455,150 +3390,216 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 )}
                               </div>
                             </div>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium">
-                                Team Assignment
-                              </p>
-                              <Select
-                                key={`team-select-${user.id}-${sortedTeams?.length || 0}`}
-                                defaultValue={user.teamId?.toString() || "none"}
-                                onValueChange={(value) => {
-                                  const teamId =
-                                    value === "none" ? null : parseInt(value);
-                                  updateUserTeamMutation.mutate({
-                                    userId: user.id,
-                                    teamId,
-                                  });
-                                }}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select a team" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">No Team</SelectItem>
-                                  {sortedTeams?.map((team) => (
-                                    <SelectItem
-                                      key={team.id}
-                                      value={team.id.toString()}
-                                    >
-                                      {team.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium">Roles</p>
-                              <div className="flex gap-2 mr-24">
-                                {/* Admin button - only show if current logged-in user is Admin */}
-                                {currentUser?.isAdmin && (
-                                  <Button
-                                    variant={
-                                      user.isAdmin ? "default" : "outline"
-                                    }
-                                    size="sm"
-                                    className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                                    onClick={() => {
-                                      // Prevent removing admin from the admin user with username "admin"
-                                      if (
-                                        user.username === "admin" &&
-                                        user.isAdmin
-                                      ) {
-                                        toast({
-                                          title: "Cannot Remove Admin",
-                                          description:
-                                            "This is the main administrator account and cannot have admin rights removed.",
-                                          variant: "destructive",
-                                        });
-                                        return;
-                                      }
-                                      updateUserRoleMutation.mutate({
-                                        userId: user.id,
-                                        role: "isAdmin",
-                                        value: !user.isAdmin,
-                                      });
-                                    }}
-                                  >
-                                    Admin
-                                  </Button>
-                                )}
-                                {/* Group Admin button - show if current logged-in user is Admin or Group Admin */}
-                                {(currentUser?.isAdmin ||
-                                  currentUser?.isGroupAdmin) && (
-                                  <Button
-                                    variant={
-                                      user.isGroupAdmin ? "default" : "outline"
-                                    }
-                                    size="sm"
-                                    className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                                    onClick={() => {
-                                      updateUserRoleMutation.mutate({
-                                        userId: user.id,
-                                        role: "isGroupAdmin",
-                                        value: !user.isGroupAdmin,
-                                      });
-                                    }}
-                                  >
-                                    Group Admin
-                                  </Button>
-                                )}
-                                {/* Team Lead button - show for Admin, Group Admin, or Team Lead */}
-                                {(currentUser?.isAdmin ||
-                                  currentUser?.isGroupAdmin ||
-                                  currentUser?.isTeamLead) && (
-                                  <Button
-                                    variant={
-                                      user.isTeamLead ? "default" : "outline"
-                                    }
-                                    size="sm"
-                                    className={`text-xs ${user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                                    disabled={!user.teamId}
-                                    onClick={() => {
-                                      if (!user.teamId) {
-                                        toast({
-                                          title: "Team Required",
-                                          description:
-                                            "User must be assigned to a team before becoming a Team Lead.",
-                                          variant: "destructive",
-                                        });
-                                        return;
-                                      }
-                                      updateUserRoleMutation.mutate({
-                                        userId: user.id,
-                                        role: "isTeamLead",
-                                        value: !user.isTeamLead,
-                                      });
-                                    }}
-                                  >
-                                    Team Lead
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="pt-2">
+                            <div className="flex gap-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="w-full bg-violet-700 text-white hover:bg-violet-800 hover:text-white"
-                                onClick={() => {
-                                  setSelectedUserId(user.id);
-                                  setResetPasswordOpen(true);
+                                onClick={() => setEditingUser(user)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog 
+                                open={deleteDialogOpen && userToDelete === user.id}
+                                onOpenChange={(open) => {
+                                  setDeleteDialogOpen(open);
+                                  if (!open) setUserToDelete(null);
                                 }}
                               >
-                                <Lock className="h-4 w-4 mr-1" />
-                                Reset Password
-                              </Button>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                      setUserToDelete(user.id);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                    data-testid={`button-delete-user-${user.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogTitle>
+                                    Are you sure?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This
+                                    will permanently delete the user
+                                    account and all associated data.
+                                  </AlertDialogDescription>
+                                  <div className="flex items-center justify-end gap-2 mt-4">
+                                    <AlertDialogCancel data-testid="button-cancel-delete">
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <Button
+                                      variant="destructive"
+                                      className="bg-red-600 hover:bg-red-700"
+                                      onClick={() => {
+                                        if (userToDelete) {
+                                          deleteUserMutation.mutate(userToDelete);
+                                        }
+                                      }}
+                                      disabled={deleteUserMutation.isPending}
+                                      data-testid="button-confirm-delete"
+                                    >
+                                      {deleteUserMutation.isPending ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          Deleting...
+                                        </>
+                                      ) : (
+                                        "Delete User"
+                                      )}
+                                    </Button>
+                                  </div>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                </CollapsibleContent>
-              </Collapsible>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">
+                              Team Assignment
+                            </p>
+                            <Select
+                              key={`team-select-${user.id}-${sortedTeams?.length || 0}`}
+                              defaultValue={user.teamId?.toString() || "none"}
+                              onValueChange={(value) => {
+                                const teamId =
+                                  value === "none" ? null : parseInt(value);
+                                updateUserTeamMutation.mutate({
+                                  userId: user.id,
+                                  teamId,
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select a team" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">No Team</SelectItem>
+                                {sortedTeams?.map((team) => (
+                                  <SelectItem
+                                    key={team.id}
+                                    value={team.id.toString()}
+                                  >
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Roles</p>
+                            <div className="flex gap-2 mr-24">
+                              {/* Admin button - only show if current logged-in user is Admin */}
+                              {currentUser?.isAdmin && (
+                                <Button
+                                  variant={
+                                    user.isAdmin ? "default" : "outline"
+                                  }
+                                  size="sm"
+                                  className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                  onClick={() => {
+                                    // Prevent removing admin from the admin user with username "admin"
+                                    if (
+                                      user.username === "admin" &&
+                                      user.isAdmin
+                                    ) {
+                                      toast({
+                                        title: "Cannot Remove Admin",
+                                        description:
+                                          "This is the main administrator account and cannot have admin rights removed.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    updateUserRoleMutation.mutate({
+                                      userId: user.id,
+                                      role: "isAdmin",
+                                      value: !user.isAdmin,
+                                    });
+                                  }}
+                                >
+                                  Admin
+                                </Button>
+                              )}
+                              {/* Group Admin button - show if current logged-in user is Admin or Group Admin */}
+                              {(currentUser?.isAdmin ||
+                                currentUser?.isGroupAdmin) && (
+                                <Button
+                                  variant={
+                                    user.isGroupAdmin ? "default" : "outline"
+                                  }
+                                  size="sm"
+                                  className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                  onClick={() => {
+                                    updateUserRoleMutation.mutate({
+                                      userId: user.id,
+                                      role: "isGroupAdmin",
+                                      value: !user.isGroupAdmin,
+                                    });
+                                  }}
+                                >
+                                  Group Admin
+                                </Button>
+                              )}
+                              {/* Team Lead button - show for Admin, Group Admin, or Team Lead */}
+                              {(currentUser?.isAdmin ||
+                                currentUser?.isGroupAdmin ||
+                                currentUser?.isTeamLead) && (
+                                <Button
+                                  variant={
+                                    user.isTeamLead ? "default" : "outline"
+                                  }
+                                  size="sm"
+                                  className={`text-xs ${user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                  disabled={!user.teamId}
+                                  onClick={() => {
+                                    if (!user.teamId) {
+                                      toast({
+                                        title: "Team Required",
+                                        description:
+                                          "User must be assigned to a team before becoming a Team Lead.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    updateUserRoleMutation.mutate({
+                                      userId: user.id,
+                                      role: "isTeamLead",
+                                      value: !user.isTeamLead,
+                                    });
+                                  }}
+                                >
+                                  Team Lead
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="pt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full bg-violet-700 text-white hover:bg-violet-800 hover:text-white"
+                              onClick={() => {
+                                setSelectedUserId(user.id);
+                                setResetPasswordOpen(true);
+                              }}
+                            >
+                              <Lock className="h-4 w-4 mr-1" />
+                              Reset Password
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+              </CollapsibleContent>
+            </Collapsible>
             </div>
           </div>
         </div>
