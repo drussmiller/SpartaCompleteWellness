@@ -2086,7 +2086,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                     ? editingGroup.programStartDate 
                                                     : (editingGroup.programStartDate as any)?.toISOString?.() || '';
                                                   const dateStr = isoStr.split('T')[0];
-                                                  const [year, month, day] = dateStr.split('-').map(Number);
+                                                  const [year, month, day] = dateStr.map(Number);
                                                   return new Date(year, month - 1, day);
                                                 })() : undefined}
                                                 onSelect={(date) => {
@@ -3328,7 +3328,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           // Extract date portion only to avoid timezone conversion
                                           const dateStr = String(user.programStartDate).split('T')[0];
                                           const [year, month, day] = dateStr.split('-').map(Number);
-                                          return format(new Date(year, month - 1, day), "PPP");
+                                          const localDate = new Date(year, month - 1, day);
+                                          return format(localDate, "PPP");
                                         })()}
                                       </div>
                                     )}
@@ -3455,6 +3456,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
+                          </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="space-y-2">
