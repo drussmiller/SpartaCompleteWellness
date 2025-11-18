@@ -3456,7 +3456,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
-                          </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="space-y-2">
