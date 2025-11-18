@@ -21,15 +21,13 @@ export default function CommentsPage() {
   const { toast } = useToast();
   const keyboardHeight = useKeyboardAdjustmentMessages();
   const scrollableRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Add swipe-to-close functionality - detect swipe on title and scrollable area, but not form
+  // Add swipe-to-close functionality - detect swipe on scrollable area only, exclude form
   useEffect(() => {
     const scrollableElement = scrollableRef.current;
-    const titleElement = titleRef.current;
     const formElement = formRef.current;
-    if (!scrollableElement || !titleElement) return;
+    if (!scrollableElement) return;
 
     let startX = 0;
     let startY = 0;
@@ -43,7 +41,7 @@ export default function CommentsPage() {
 
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      console.log('📱 Comments page - Touch start:', { startX, startY });
+      console.log('📱 Comments page - Touch start on scrollable area:', { startX, startY });
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -59,7 +57,7 @@ export default function CommentsPage() {
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
       
-      console.log('📱 Comments page - Touch end:', { deltaX, deltaY, startX, endX });
+      console.log('📱 Comments page - Touch end on scrollable area:', { deltaX, deltaY, startX, endX });
       
       // Right swipe detection: swipe right > 80px, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
@@ -70,18 +68,14 @@ export default function CommentsPage() {
       }
     };
 
-    // Attach to both title and scrollable areas
-    titleElement.addEventListener('touchstart', handleTouchStart, { passive: true });
-    titleElement.addEventListener('touchend', handleTouchEnd, { passive: false });
+    // Attach to scrollable area only
     scrollableElement.addEventListener('touchstart', handleTouchStart, { passive: true });
     scrollableElement.addEventListener('touchend', handleTouchEnd, { passive: false });
     
-    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to title and scrollable areas');
+    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to scrollable area');
 
     return () => {
       console.log('🔥 COMMENTS PAGE - Cleaning up touch event listeners');
-      titleElement.removeEventListener('touchstart', handleTouchStart);
-      titleElement.removeEventListener('touchend', handleTouchEnd);
       scrollableElement.removeEventListener('touchstart', handleTouchStart);
       scrollableElement.removeEventListener('touchend', handleTouchEnd);
     };
@@ -261,6 +255,7 @@ export default function CommentsPage() {
         
         {/* Fixed Comment Form at Bottom */}
         <div 
+          ref={formRef}
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
             position: 'fixed',
