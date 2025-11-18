@@ -3299,8 +3299,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           Cancel
                                         </Button>
                                       </div>
-                                    </div>
-                                  </form>
+                                    </form>
                                 ) : (
                                   <>
                                     <div className="flex items-center gap-2">
