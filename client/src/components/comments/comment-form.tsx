@@ -42,10 +42,12 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   const ensureTextareaFocus = () => {
-    const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-    if (textarea) {
-      textarea.focus({ preventScroll: true });
-      console.log("Refocusing textarea");
+    if (!disableAutoScroll) {
+      const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus({ preventScroll: true });
+        console.log("Refocusing textarea");
+      }
     }
   };
 
