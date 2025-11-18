@@ -13,6 +13,7 @@ interface CommentFormProps {
   defaultValue?: string;
   onCancel?: () => void;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
+  disableAutoScroll?: boolean;
 }
 
 export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
@@ -21,7 +22,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   placeholder = "Enter a comment",
   defaultValue = "",
   onCancel,
-  inputRef
+  inputRef,
+  disableAutoScroll = false
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -48,14 +50,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    setTimeout(() => {
-      const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus({ preventScroll: true });
-        console.log("Focus in CommentForm component mount");
-      }
-    }, 200);
-  }, []);
+    if (!disableAutoScroll) {
+      setTimeout(() => {
+        const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
+        if (textarea) {
+          textarea.focus({ preventScroll: true });
+          console.log("Focus in CommentForm component mount");
+        }
+      }, 200);
+    }
+  }, [disableAutoScroll]);
 
   useEffect(() => {
     if (content === '') {
@@ -262,9 +266,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               }
             }}
             onFocus={() => {
-              window.scrollTo(0, 0);
-              document.body.scrollTop = 0;
-              document.documentElement.scrollTop = 0;
+              if (!disableAutoScroll) {
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+              }
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}

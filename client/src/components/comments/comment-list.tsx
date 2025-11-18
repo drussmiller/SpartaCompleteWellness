@@ -451,7 +451,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         ))}
 
         {editingComment === comment.id && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[9999999]" style={{ zIndex: 2147483647, transform: 'translateZ(0)' }}>
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-[9999999]" style={{ zIndex: 2147483647, transform: 'translateZ(0)', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
             <div className="flex items-center mb-2">
               <p className="text-sm text-muted-foreground">
                 Edit comment
@@ -481,6 +481,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 onVisibilityChange?.(false, replyingTo !== null);
               }}
               inputRef={editInputRef}
+              disableAutoScroll={true}
             />
           </div>
         )}
@@ -520,7 +521,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       </div>
 
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ position: 'fixed', bottom: '0', zIndex: 2147483647, transform: 'translateZ(0)', height: 'auto', minHeight: '120px' }}>
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t" style={{ position: 'fixed', bottom: '0', zIndex: 2147483647, transform: 'translateZ(0)', height: 'auto', minHeight: '120px', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
@@ -552,6 +553,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               onVisibilityChange?.(editingComment !== null, false);
             }}
             key={`reply-form-${replyingTo}`}
+            disableAutoScroll={true}
           />
         </div>
       )}
