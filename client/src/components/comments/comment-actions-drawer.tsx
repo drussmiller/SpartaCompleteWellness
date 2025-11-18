@@ -24,7 +24,13 @@ export function CommentActionsDrawer({
 }: CommentActionsDrawerProps) {
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="bottom" className="h-fit max-h-[40vh] p-0 z-[9999]">
+      <SheetContent 
+        side="bottom" 
+        className="h-fit max-h-[40vh] p-0 z-[9999]"
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom), 24px)'
+        }}
+      >
         <div className="flex flex-col w-full">
           <Button
             variant="ghost"
