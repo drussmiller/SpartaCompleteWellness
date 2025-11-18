@@ -29,14 +29,25 @@ export default function CommentsPage() {
 
     let startX = 0;
     let startY = 0;
+    let touchStartTarget: EventTarget | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
+      touchStartTarget = e.target;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
       console.log('📱 Comments page - Touch start on scrollable area:', { startX, startY });
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
+      // Don't trigger swipe if touch started on form elements
+      if (touchStartTarget instanceof HTMLElement) {
+        const tagName = touchStartTarget.tagName.toLowerCase();
+        if (tagName === 'input' || tagName === 'textarea' || tagName === 'button') {
+          console.log('📱 Ignoring swipe - started on form element:', tagName);
+          return;
+        }
+      }
+
       const endX = e.changedTouches[0].clientX;
       const endY = e.changedTouches[0].clientY;
       
