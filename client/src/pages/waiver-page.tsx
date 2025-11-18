@@ -125,19 +125,20 @@ export default function WaiverPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-primary">
-            Liability Waiver & Release
-          </CardTitle>
-          <p className="text-muted-foreground">
-            Please read and sign this waiver to continue using Sparta Complete Wellness
-          </p>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          {/* Waiver Content */}
-          <ScrollArea className="h-64 w-full border rounded-md p-4">
+      <div className="w-full max-w-4xl max-h-screen overflow-y-auto py-4">
+        <Card className="w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-primary">
+              Liability Waiver & Release
+            </CardTitle>
+            <p className="text-muted-foreground">
+              Please read and sign this waiver to continue using Sparta Complete Wellness
+            </p>
+          </CardHeader>
+          
+          <CardContent className="space-y-6 pb-8">
+            {/* Waiver Content */}
+            <ScrollArea className="h-64 w-full border rounded-md p-4">
             <div className="space-y-4 text-sm">
               <h3 className="font-semibold text-lg">ASSUMPTION OF RISK AND RELEASE OF LIABILITY</h3>
               
@@ -344,7 +345,8 @@ export default function WaiverPage() {
             By clicking "Sign Waiver & Continue", you acknowledge that you have read, understood, and agree to be bound by this waiver.
           </p>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
