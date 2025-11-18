@@ -3404,10 +3404,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         }
                                         
                                         if (user.programStartDate) {
-                                          const startDate = new Date(user.programStartDate);
+                                          // Extract date portion only to avoid timezone conversion
+                                          const dateStr = String(user.programStartDate).split('T')[0];
+                                          const [year, month, day] = dateStr.split('-').map(Number);
+                                          const startDate = new Date(year, month - 1, day);
                                           const today = new Date();
                                           today.setHours(0, 0, 0, 0);
-                                          startDate.setHours(0, 0, 0, 0);
                                           
                                           if (startDate > today) {
                                             const daysUntilStart = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
