@@ -20,16 +20,20 @@ export default function CommentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const keyboardHeight = useKeyboardAdjustmentMessages();
+  const scrollableRef = useRef<HTMLDivElement>(null);
 
-  // Add swipe-to-close functionality - detect swipe right anywhere on the page
+  // Add swipe-to-close functionality - detect swipe right only on scrollable area
   useEffect(() => {
+    const scrollableElement = scrollableRef.current;
+    if (!scrollableElement) return;
+
     let startX = 0;
     let startY = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      console.log('📱 Comments page - Touch start anywhere:', { startX, startY });
+      console.log('📱 Comments page - Touch start on scrollable area:', { startX, startY });
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -39,27 +43,27 @@ export default function CommentsPage() {
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
       
-      console.log('📱 Comments page - Touch end anywhere:', { deltaX, deltaY, startX, endX });
+      console.log('📱 Comments page - Touch end on scrollable area:', { deltaX, deltaY, startX, endX });
       
-      // Right swipe detection: swipe right > 80px anywhere on screen, limited vertical movement
+      // Right swipe detection: swipe right > 80px on scrollable area, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
-        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED ANYWHERE! Going back to home');
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED ON SCROLLABLE AREA! Going back to home');
         e.preventDefault();
         e.stopPropagation();
         navigate("/");
       }
     };
 
-    // Attach to document for full-page swipe detection
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    // Attach to scrollable area only, not the entire document
+    scrollableElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+    scrollableElement.addEventListener('touchend', handleTouchEnd, { passive: false });
     
-    console.log('🔥 COMMENTS PAGE - Full-page touch event listeners attached');
+    console.log('🔥 COMMENTS PAGE - Scrollable area touch event listeners attached');
 
     return () => {
-      console.log('🔥 COMMENTS PAGE - Cleaning up full-page touch event listeners');
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchend', handleTouchEnd);
+      console.log('🔥 COMMENTS PAGE - Cleaning up scrollable area touch event listeners');
+      scrollableElement.removeEventListener('touchstart', handleTouchStart);
+      scrollableElement.removeEventListener('touchend', handleTouchEnd);
     };
   }, [navigate]);
 
@@ -207,7 +211,7 @@ export default function CommentsPage() {
           zIndex: 100
         }}
       >
-        {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
+        {/* Swipe detection is handled on scrollable area only via useEffect */}
         
         {/* Fixed Title Box at Top */}
         <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
@@ -221,7 +225,7 @@ export default function CommentsPage() {
             height: `calc(100vh - 4rem - 260px)`
           }}
         >
-          <div className="px-4 py-6 space-y-6 bg-white">
+          <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
               <PostView post={originalPost} />
             </div>
