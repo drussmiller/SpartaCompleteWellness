@@ -52,7 +52,6 @@ import {
 import { setupAuth, authenticate } from "./auth";
 import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
-import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
 import sharp from "sharp";
 import { z } from "zod";
@@ -6903,65 +6902,6 @@ export const registerRoutes = async (
       });
     }
   });
-
-  // Add document upload endpoint for activities
-  router.post(
-    "/api/activities/upload-doc",
-    authenticate,
-    multer({ storage: multer.memoryStorage() }).single("document"),
-    async (req, res) => {
-      try {
-        // Set content type early to ensure JSON response
-        res.setHeader("Content-Type", "application/json");
-
-        logger.info('Document upload endpoint called', {
-          hasUser: !!req.user,
-          isAdmin: req.user?.isAdmin,
-          hasFile: !!req.file,
-          filename: req.file?.originalname
-        });
-
-        if (!req.user?.isAdmin) {
-          logger.warn('Upload denied - not admin');
-          return res.status(403).json({ message: "Not authorized" });
-        }
-
-        if (!req.file) {
-          logger.error('No file in upload request');
-          return res.status(400).json({ message: "No file uploaded" });
-        }
-
-        // Validate file type
-        if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
-          logger.warn('Upload denied - invalid file type', { filename: req.file.originalname });
-          return res.status(400).json({ message: "Only .docx files are supported" });
-        }
-
-        // Use mammoth to convert Word document to HTML to preserve formatting
-        logger.info(`Processing document: ${req.file.originalname}, size: ${req.file.buffer.length} bytes`);
-
-        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
-
-        logger.info(`Document converted successfully, content length: ${result.value.length}`);
-
-        // Return content without converting Bible verses to links
-        res.json({ content: result.value });
-      } catch (error) {
-        logger.error("Error processing document:", {
-          error,
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          filename: req.file?.originalname
-        });
-
-        res.status(500).json({
-          message: "Failed to process document",
-          error: error instanceof Error ? error.message : "Unknown error",
-          details: error instanceof Error ? error.stack : undefined
-        });
-      }
-    }
-  );
 
   // Update user role endpoint
   logger.info("[SERVER INIT] Registering PATCH /api/users/:userId/role endpoint");
