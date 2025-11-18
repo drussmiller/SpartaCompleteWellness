@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,10 +18,39 @@ export default function ActivityPage() {
   const { toast } = useToast();
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [selectedDay, setSelectedDay] = useState<number>(1);
-  const [weekContentOpen, setWeekContentOpen] = useState(true); // Week content defaults to open
-  const [weekDayContentOpen, setWeekDayContentOpen] = useState(true); // Week and Day content defaults to open
-  const [reengageOpen, setReengageOpen] = useState(false);
+  
+  // Load collapsed panel states from localStorage with defaults
+  const [weekContentOpen, setWeekContentOpen] = useState(() => {
+    const saved = localStorage.getItem('activityPage_weekContentOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
+  const [weekDayContentOpen, setWeekDayContentOpen] = useState(() => {
+    const saved = localStorage.getItem('activityPage_weekDayContentOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
+  const [reengageOpen, setReengageOpen] = useState(() => {
+    const saved = localStorage.getItem('activityPage_reengageOpen');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
+  
   const [reengageWeek, setReengageWeek] = useState<string>("");
+
+  // Persist weekContentOpen state to localStorage
+  useEffect(() => {
+    localStorage.setItem('activityPage_weekContentOpen', JSON.stringify(weekContentOpen));
+  }, [weekContentOpen]);
+
+  // Persist weekDayContentOpen state to localStorage
+  useEffect(() => {
+    localStorage.setItem('activityPage_weekDayContentOpen', JSON.stringify(weekDayContentOpen));
+  }, [weekDayContentOpen]);
+
+  // Persist reengageOpen state to localStorage
+  useEffect(() => {
+    localStorage.setItem('activityPage_reengageOpen', JSON.stringify(reengageOpen));
+  }, [reengageOpen]);
 
   const { data: activityStatus } = useQuery({
     queryKey: ["/api/activities/current"],
