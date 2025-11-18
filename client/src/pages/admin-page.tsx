@@ -3212,7 +3212,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           defaultValue={
                                             user.programStartDate
                                               ? (() => {
-                                                  // Extract just the date part YYYY-MM-DD
+                                                  // Extract date portion only to avoid timezone conversion
                                                   const isoStr = typeof user.programStartDate === 'string' 
                                                     ? user.programStartDate 
                                                     : (user.programStartDate as any)?.toISOString?.() || '';
@@ -3257,7 +3257,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             checked={user.isBlocked || false}
                                             onCheckedChange={(checked) => {
                                               // Prevent blocking the admin user
-                                              if (user.username === "admin") {
+                                              if (user.username === "admin" && user.isAdmin) {
                                                 toast({
                                                   title: "Cannot Block Admin",
                                                   description: "The main administrator account cannot be blocked.",
@@ -3299,7 +3299,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           Cancel
                                         </Button>
                                       </div>
-                                    </form>
+                                    </div>
+                                  </form>
                                 ) : (
                                   <>
                                     <div className="flex items-center gap-2">
