@@ -261,8 +261,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 target.style.overflowY = 'hidden';
               }
             }}
-            onFocus={(e) => {
-              e.preventDefault();
+            onFocus={() => {
               window.scrollTo(0, 0);
               document.body.scrollTop = 0;
               document.documentElement.scrollTop = 0;
