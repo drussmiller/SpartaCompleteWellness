@@ -47,12 +47,12 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
   }
 
   return (
-    <div className={`video-wrapper ${className}`}>
+    <div className={`video-wrapper ${className}`} style={{ overflow: 'visible' }}>
       <iframe
-        src={`https://www.youtube.com/embed/${cleanVideoId}`}
+        src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=0&modestbranding=1`}
         title="YouTube video player"
         frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
       ></iframe>
     </div>

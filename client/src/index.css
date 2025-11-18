@@ -113,7 +113,7 @@ div[data-post-id] .video-container {
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   height: 0;
   margin: 1rem 0 !important;
-  overflow: hidden;
+  overflow: visible;
   clear: both;
 }
 
