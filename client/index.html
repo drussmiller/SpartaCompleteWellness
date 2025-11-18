@@ -4,6 +4,56 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Team Fitness Tracker</title>
+    
+    <!-- Mobile Status Bar Theming -->
+    <!-- Light mode: white background, status bar text will be black -->
+    <meta name="theme-color" content="#f3f4f6" media="(prefers-color-scheme: light)">
+    <!-- Dark mode: dark background, status bar text will be white -->
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
+    
+    <!-- iOS Safari Status Bar (for PWA mode) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- Script to dynamically update theme-color when dark mode is toggled -->
+    <script>
+      function updateThemeColor() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]:not([media])');
+        
+        if (!themeColorMeta) {
+          const meta = document.createElement('meta');
+          meta.name = 'theme-color';
+          meta.content = isDark ? '#0a0a0a' : '#f3f4f6';
+          document.head.appendChild(meta);
+        } else {
+          themeColorMeta.content = isDark ? '#0a0a0a' : '#f3f4f6';
+        }
+        
+        // Update iOS status bar style
+        const appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+        if (appleStatusBar) {
+          appleStatusBar.content = isDark ? 'black' : 'default';
+        }
+      }
+      
+      // Update on initial load
+      updateThemeColor();
+      
+      // Watch for theme changes
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'class') {
+            updateThemeColor();
+          }
+        });
+      });
+      
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
