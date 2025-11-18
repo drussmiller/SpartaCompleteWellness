@@ -21,31 +21,36 @@ export default function CommentsPage() {
   const { toast } = useToast();
   const keyboardHeight = useKeyboardAdjustmentMessages();
   const scrollableRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
-  // Add swipe-to-close functionality - detect swipe right only on scrollable area
+  // Add swipe-to-close functionality - detect swipe on title and scrollable area, but not form
   useEffect(() => {
     const scrollableElement = scrollableRef.current;
-    if (!scrollableElement) return;
+    const titleElement = titleRef.current;
+    const formElement = formRef.current;
+    if (!scrollableElement || !titleElement) return;
 
     let startX = 0;
     let startY = 0;
-    let touchStartTarget: EventTarget | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
-      touchStartTarget = e.target;
+      // Don't start swipe detection if touching the form area
+      if (formElement && e.target instanceof Node && formElement.contains(e.target)) {
+        console.log('📱 Ignoring touch - inside form area');
+        return;
+      }
+
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      console.log('📱 Comments page - Touch start on scrollable area:', { startX, startY });
+      console.log('📱 Comments page - Touch start:', { startX, startY });
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      // Don't trigger swipe if touch started on form elements
-      if (touchStartTarget instanceof HTMLElement) {
-        const tagName = touchStartTarget.tagName.toLowerCase();
-        if (tagName === 'input' || tagName === 'textarea' || tagName === 'button') {
-          console.log('📱 Ignoring swipe - started on form element:', tagName);
-          return;
-        }
+      // Don't trigger swipe if touching the form area
+      if (formElement && e.target instanceof Node && formElement.contains(e.target)) {
+        console.log('📱 Ignoring swipe - inside form area');
+        return;
       }
 
       const endX = e.changedTouches[0].clientX;
@@ -54,25 +59,29 @@ export default function CommentsPage() {
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
       
-      console.log('📱 Comments page - Touch end on scrollable area:', { deltaX, deltaY, startX, endX });
+      console.log('📱 Comments page - Touch end:', { deltaX, deltaY, startX, endX });
       
-      // Right swipe detection: swipe right > 80px on scrollable area, limited vertical movement
+      // Right swipe detection: swipe right > 80px, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
-        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED ON SCROLLABLE AREA! Going back to home');
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to home');
         e.preventDefault();
         e.stopPropagation();
         navigate("/");
       }
     };
 
-    // Attach to scrollable area only, not the entire document
+    // Attach to both title and scrollable areas
+    titleElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+    titleElement.addEventListener('touchend', handleTouchEnd, { passive: false });
     scrollableElement.addEventListener('touchstart', handleTouchStart, { passive: true });
     scrollableElement.addEventListener('touchend', handleTouchEnd, { passive: false });
     
-    console.log('🔥 COMMENTS PAGE - Scrollable area touch event listeners attached');
+    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to title and scrollable areas');
 
     return () => {
-      console.log('🔥 COMMENTS PAGE - Cleaning up scrollable area touch event listeners');
+      console.log('🔥 COMMENTS PAGE - Cleaning up touch event listeners');
+      titleElement.removeEventListener('touchstart', handleTouchStart);
+      titleElement.removeEventListener('touchend', handleTouchEnd);
       scrollableElement.removeEventListener('touchstart', handleTouchStart);
       scrollableElement.removeEventListener('touchend', handleTouchEnd);
     };
