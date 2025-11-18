@@ -2086,7 +2086,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                     ? editingGroup.programStartDate 
                                                     : (editingGroup.programStartDate as any)?.toISOString?.() || '';
                                                   const dateStr = isoStr.split('T')[0];
-                                                  const [year, month, day] = dateStr.map(Number);
+                                                  const [year, month, day] = dateStr.split('-').map(Number);
                                                   return new Date(year, month - 1, day);
                                                 })() : undefined}
                                                 onSelect={(date) => {
