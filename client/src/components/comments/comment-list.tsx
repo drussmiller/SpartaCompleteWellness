@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -450,47 +451,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}
 
-        {editingComment === comment.id && (
-          <div 
-            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
-            style={{
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              zIndex: 50
-            }}
-          >
-            <div className="flex items-center mb-2">
-              <p className="text-sm text-muted-foreground">
-                Edit comment
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-2"
-                onClick={() => {
-                  setEditingComment(null);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-            <CommentForm
-              onSubmit={async (content, file) => {
-                await editCommentMutation.mutateAsync({ id: comment.id, content });
-                setEditingComment(null);
-              }}
-              isSubmitting={editCommentMutation.isPending}
-              defaultValue={comment.content || ""}
-              onCancel={() => {
-                setEditingComment(null);
-              }}
-              inputRef={editInputRef}
-              disableAutoScroll={true}
-            />
-          </div>
-        )}
       </div>
     );
   };
@@ -513,6 +473,20 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     // Removed onVisibilityChange to prevent re-renders during keyboard appearance
   }, []);
 
+  // Find the currently editing comment
+  const findEditingComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
+    for (const comment of comments) {
+      if (comment.id === editingComment) return comment;
+      if (comment.replies) {
+        const found = findEditingComment(comment.replies);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  const editingCommentData = findEditingComment(threadedComments);
+
   return (
     <>
       <div className="space-y-4 w-full">
@@ -521,7 +495,52 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         ))}
       </div>
 
-      {replyingToComment && (
+      {/* Portal edit form outside ScrollArea */}
+      {editingCommentData && createPortal(
+        <div 
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50
+          }}
+        >
+          <div className="flex items-center mb-2">
+            <p className="text-sm text-muted-foreground">
+              Edit comment
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-2"
+              onClick={() => {
+                setEditingComment(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+          <CommentForm
+            onSubmit={async (content, file) => {
+              await editCommentMutation.mutateAsync({ id: editingCommentData.id, content });
+              setEditingComment(null);
+            }}
+            isSubmitting={editCommentMutation.isPending}
+            defaultValue={editingCommentData.content || ""}
+            onCancel={() => {
+              setEditingComment(null);
+            }}
+            inputRef={editInputRef}
+            disableAutoScroll={true}
+          />
+        </div>,
+        document.body
+      )}
+
+      {/* Portal reply form outside ScrollArea */}
+      {replyingToComment && createPortal(
         <div 
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
@@ -563,7 +582,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             key={`reply-form-${replyingTo}`}
             disableAutoScroll={true}
           />
-        </div>
+        </div>,
+        document.body
       )}
 
       {selectedCommentData && (
