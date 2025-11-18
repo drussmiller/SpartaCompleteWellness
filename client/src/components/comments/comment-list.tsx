@@ -451,7 +451,16 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         ))}
 
         {editingComment === comment.id && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-[9999999]" style={{ zIndex: 2147483647, transform: 'translateZ(0)', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
+          <div 
+            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50
+            }}
+          >
             <div className="flex items-center mb-2">
               <p className="text-sm text-muted-foreground">
                 Edit comment
@@ -462,7 +471,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 className="ml-2"
                 onClick={() => {
                   setEditingComment(null);
-                  onVisibilityChange?.(false, replyingTo !== null);
                 }}
               >
                 Cancel
@@ -472,13 +480,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               onSubmit={async (content, file) => {
                 await editCommentMutation.mutateAsync({ id: comment.id, content });
                 setEditingComment(null);
-                onVisibilityChange?.(false, replyingTo !== null);
               }}
               isSubmitting={editCommentMutation.isPending}
               defaultValue={comment.content || ""}
               onCancel={() => {
                 setEditingComment(null);
-                onVisibilityChange?.(false, replyingTo !== null);
               }}
               inputRef={editInputRef}
               disableAutoScroll={true}
@@ -503,14 +509,9 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const selectedCommentData = findSelectedComment(threadedComments);
 
   useEffect(() => {
-    if (replyingTo && replyInputRef.current) {
-      replyInputRef.current.focus();
-    }
-    if (editingComment && editInputRef.current) {
-      editInputRef.current.focus();
-    }
-    onVisibilityChange?.(editingComment !== null, replyingTo !== null);
-  }, [replyingTo, editingComment, onVisibilityChange]);
+    // Removed auto-focus to prevent viewport issues
+    // Removed onVisibilityChange to prevent re-renders during keyboard appearance
+  }, []);
 
   return (
     <>
@@ -521,7 +522,16 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       </div>
 
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t" style={{ position: 'fixed', bottom: '0', zIndex: 2147483647, transform: 'translateZ(0)', height: 'auto', minHeight: '120px', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
+        <div 
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50
+          }}
+        >
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
@@ -532,7 +542,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               className="ml-2"
               onClick={() => {
                 setReplyingTo(null);
-                onVisibilityChange?.(editingComment !== null, false);
               }}
             >
               Cancel
@@ -550,7 +559,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             inputRef={replyInputRef}
             onCancel={() => {
               setReplyingTo(null);
-              onVisibilityChange?.(editingComment !== null, false);
             }}
             key={`reply-form-${replyingTo}`}
             disableAutoScroll={true}
