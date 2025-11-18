@@ -533,6 +533,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               setEditingComment(null);
             }}
             inputRef={editInputRef}
+            skipScrollReset={true}
           />
         </div>,
         document.body
@@ -579,6 +580,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               setReplyingTo(null);
             }}
             key={`reply-form-${replyingTo}`}
+            skipScrollReset={true}
           />
         </div>,
         document.body

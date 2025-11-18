@@ -14,6 +14,7 @@ interface CommentFormProps {
   onCancel?: () => void;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
   disableAutoScroll?: boolean;
+  skipScrollReset?: boolean;
 }
 
 export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
@@ -23,7 +24,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   defaultValue = "",
   onCancel,
   inputRef,
-  disableAutoScroll = false
+  disableAutoScroll = false,
+  skipScrollReset = false
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -268,7 +270,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               }
             }}
             onFocus={() => {
-              if (!disableAutoScroll) {
+              if (!skipScrollReset) {
                 window.scrollTo(0, 0);
                 document.body.scrollTop = 0;
                 document.documentElement.scrollTop = 0;
