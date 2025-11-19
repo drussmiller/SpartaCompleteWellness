@@ -75,7 +75,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       textareaRef.current.focus({ preventScroll: true });
       console.log("Focus in CommentForm component mount");
     }
-  }, [disableAutoScroll]);
+  }, []);
 
   useEffect(() => {
     if (content === '') {
