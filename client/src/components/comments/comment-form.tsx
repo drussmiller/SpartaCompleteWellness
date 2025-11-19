@@ -57,40 +57,25 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    // Focus FIRST, then set content to avoid keyboard dismissal on mobile
+    // Set content FIRST (synchronously), then focus
+    if (defaultValue) {
+      setContent(defaultValue);
+    }
+    
+    // Focus after content is set
     if (!disableAutoScroll && textareaRef.current) {
       const textarea = textareaRef.current;
       
-      // Focus immediately to bring up keyboard
-      textarea.focus({ preventScroll: true });
-      
-      // Then set content and adjust height in next frame while maintaining focus
-      if (defaultValue) {
-        requestAnimationFrame(() => {
-          setContent(defaultValue);
-          
-          // Adjust height after content is set
-          requestAnimationFrame(() => {
-            if (textarea) {
-              textarea.style.height = '38px';
-              const newHeight = Math.min(200, textarea.scrollHeight);
-              textarea.style.height = `${newHeight}px`;
-              if (textarea.scrollHeight > 200) {
-                textarea.style.overflowY = 'auto';
-              } else {
-                textarea.style.overflowY = 'hidden';
-              }
-              
-              // Place caret at end
-              const length = defaultValue.length;
-              textarea.setSelectionRange(length, length);
-            }
-          });
-        });
-      }
-    } else if (defaultValue && !content) {
-      // If autoScroll disabled but has defaultValue, still set content
-      setContent(defaultValue);
+      // Use RAF to focus after React has painted the content
+      requestAnimationFrame(() => {
+        textarea.focus({ preventScroll: true });
+        
+        // Place caret at end if there's content
+        if (defaultValue) {
+          const length = defaultValue.length;
+          textarea.setSelectionRange(length, length);
+        }
+      });
     }
   }, []);
 
