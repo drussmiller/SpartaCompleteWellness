@@ -57,6 +57,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
+    // First, adjust height if there's default content
     if (textareaRef.current && defaultValue) {
       const textarea = textareaRef.current;
       textarea.style.height = '38px';
@@ -68,9 +69,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         textarea.style.overflowY = 'hidden';
       }
     }
-  }, []);
 
-  useEffect(() => {
+    // Then focus the textarea after height adjustments are complete
     if (!disableAutoScroll) {
       requestAnimationFrame(() => {
         if (textareaRef.current) {
