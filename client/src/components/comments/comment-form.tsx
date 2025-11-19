@@ -57,20 +57,15 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    // Focus after React has painted
+    // Focus immediately without any delays to keep keyboard visible
     if (!disableAutoScroll && textareaRef.current) {
-      const textarea = textareaRef.current;
+      textareaRef.current.focus({ preventScroll: true });
       
-      // Use RAF to focus after React has painted the defaultValue content
-      requestAnimationFrame(() => {
-        textarea.focus({ preventScroll: true });
-        
-        // Place caret at end if there's content
-        if (defaultValue) {
-          const length = defaultValue.length;
-          textarea.setSelectionRange(length, length);
-        }
-      });
+      // Place caret at end if there's content
+      if (defaultValue && textareaRef.current) {
+        const length = defaultValue.length;
+        textareaRef.current.setSelectionRange(length, length);
+      }
     }
   }, []);
 
