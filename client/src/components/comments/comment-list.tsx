@@ -538,13 +538,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       {activeCommentData && createPortal(
         <div 
           data-testid="comment-form-panel"
-          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          className="border-t-2 border-primary p-4 bg-white shadow-2xl"
           style={{
             position: 'fixed',
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: 110
+            zIndex: 120,
+            maxWidth: '100vw'
           }}
         >
           <div className="flex items-center mb-2">
