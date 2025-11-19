@@ -63,17 +63,21 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       console.log("Focus in CommentForm component mount");
     }
 
-    // Then adjust height if there's default content
+    // Delay height adjustment until after focus settles to prevent keyboard dismissal
     if (textareaRef.current && defaultValue) {
-      const textarea = textareaRef.current;
-      textarea.style.height = '38px';
-      const newHeight = Math.min(200, textarea.scrollHeight);
-      textarea.style.height = `${newHeight}px`;
-      if (textarea.scrollHeight > 200) {
-        textarea.style.overflowY = 'auto';
-      } else {
-        textarea.style.overflowY = 'hidden';
-      }
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          const textarea = textareaRef.current;
+          textarea.style.height = '38px';
+          const newHeight = Math.min(200, textarea.scrollHeight);
+          textarea.style.height = `${newHeight}px`;
+          if (textarea.scrollHeight > 200) {
+            textarea.style.overflowY = 'auto';
+          } else {
+            textarea.style.overflowY = 'hidden';
+          }
+        }
+      });
     }
   }, []);
 
