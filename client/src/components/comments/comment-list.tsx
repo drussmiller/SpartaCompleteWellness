@@ -511,8 +511,20 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const replyingToComment = findReplyingToComment(threadedComments);
   const editingCommentData = findEditingComment(threadedComments);
   
+  // DEBUG: Log state
+  console.log('CommentList state:', {
+    editingComment,
+    replyingTo,
+    editingCommentData,
+    replyingToComment,
+    threadedCommentsLength: threadedComments.length,
+    firstComment: threadedComments[0]?.id
+  });
+  
   // Find the active comment data
   const activeCommentData = editingCommentData || replyingToComment;
+  
+  console.log('activeCommentData:', activeCommentData);
 
   return (
     <>
