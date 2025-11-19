@@ -57,10 +57,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    // Focus FIRST to bring up keyboard
+    // Delay focus to ensure form is fully rendered and visible
     if (!disableAutoScroll && textareaRef.current) {
-      textareaRef.current.focus({ preventScroll: true });
-      console.log("Focus in CommentForm component mount");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus({ preventScroll: true });
+            console.log("Focus in CommentForm component mount");
+          }
+        });
+      });
     }
 
     // Then adjust height if there's default content
