@@ -507,14 +507,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             zIndex: 9999
           }}
         >
-          <div className="flex items-center mb-2">
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Edit comment
             </p>
             <Button
               variant="ghost"
               size="sm"
-              className="ml-2"
               onClick={() => {
                 setEditingComment(null);
               }}
@@ -552,14 +551,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             zIndex: 9999
           }}
         >
-          <div className="flex items-center mb-2">
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
             </p>
             <Button
               variant="ghost"
               size="sm"
-              className="ml-2"
               onClick={() => {
                 setReplyingTo(null);
               }}
