@@ -27,7 +27,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   disableAutoScroll = false,
   skipScrollReset = false
 }: CommentFormProps, ref) => {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(defaultValue);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null); // Added state for video thumbnail
   const internalRef = useRef<HTMLTextAreaElement>(null);
@@ -57,16 +57,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    // Set content FIRST (synchronously), then focus
-    if (defaultValue) {
-      setContent(defaultValue);
-    }
-    
-    // Focus after content is set
+    // Focus after React has painted
     if (!disableAutoScroll && textareaRef.current) {
       const textarea = textareaRef.current;
       
-      // Use RAF to focus after React has painted the content
+      // Use RAF to focus after React has painted the defaultValue content
       requestAnimationFrame(() => {
         textarea.focus({ preventScroll: true });
         
