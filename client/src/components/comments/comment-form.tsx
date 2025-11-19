@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
@@ -56,28 +56,26 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
   };
 
+  useLayoutEffect(() => {
+    // Adjust height for prefilled content before paint
+    if (textareaRef.current && defaultValue) {
+      const textarea = textareaRef.current;
+      textarea.style.height = '38px';
+      const newHeight = Math.min(200, textarea.scrollHeight);
+      textarea.style.height = `${newHeight}px`;
+      if (textarea.scrollHeight > 200) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
+      }
+    }
+  }, []);
+
   useEffect(() => {
-    // Focus FIRST to bring up keyboard
+    // Focus to bring up keyboard AFTER layout is complete
     if (!disableAutoScroll && textareaRef.current) {
       textareaRef.current.focus({ preventScroll: true });
       console.log("Focus in CommentForm component mount");
-    }
-
-    // Delay height adjustment until after focus settles to prevent keyboard dismissal
-    if (textareaRef.current && defaultValue) {
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          const textarea = textareaRef.current;
-          textarea.style.height = '38px';
-          const newHeight = Math.min(200, textarea.scrollHeight);
-          textarea.style.height = `${newHeight}px`;
-          if (textarea.scrollHeight > 200) {
-            textarea.style.overflowY = 'auto';
-          } else {
-            textarea.style.overflowY = 'hidden';
-          }
-        }
-      });
     }
   }, []);
 
