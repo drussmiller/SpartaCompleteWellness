@@ -56,13 +56,18 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const { toast } = useToast();
   const formInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Find the comment we're replying to or editing
-  const replyingToComment = comments.find(c => c.id === replyingTo);
-  
   // Determine what action we're doing (prefer edit over reply)
   const activeComment = editingComment || replyingTo;
   const isEditing = !!editingComment;
   const isReplying = !!replyingTo && !editingComment;
+
+  // Helper function to find a comment by ID in nested structure
+  const findCommentById = (commentsList: (Post & { author: User })[], id: number | null): (Post & { author: User }) | undefined => {
+    if (!id) return undefined;
+    return commentsList.find(c => c.id === id);
+  };
+
+  const replyingToComment = findCommentById(comments, replyingTo);
 
   const createReplyMutation = useMutation({
     mutationFn: async (data: { content: string; file?: File }) => {
