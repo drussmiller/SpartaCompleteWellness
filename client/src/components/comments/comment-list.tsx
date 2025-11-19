@@ -56,18 +56,23 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const { toast } = useToast();
   const formInputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Sync local comments state when props change
+  useEffect(() => {
+    const sortedComments = [...initialComments].sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateA.getTime() - dateB.getTime();
+    });
+    setComments(sortedComments);
+  }, [initialComments]);
+
+  // Find the comment we're replying to (search all comments)
+  const replyingToComment = comments.find(c => c.id === replyingTo);
+  
   // Determine what action we're doing (prefer edit over reply)
   const activeComment = editingComment || replyingTo;
   const isEditing = !!editingComment;
   const isReplying = !!replyingTo && !editingComment;
-
-  // Helper function to find a comment by ID in nested structure
-  const findCommentById = (commentsList: (Post & { author: User })[], id: number | null): (Post & { author: User }) | undefined => {
-    if (!id) return undefined;
-    return commentsList.find(c => c.id === id);
-  };
-
-  const replyingToComment = findCommentById(comments, replyingTo);
 
   const createReplyMutation = useMutation({
     mutationFn: async (data: { content: string; file?: File }) => {
@@ -510,13 +515,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       {/* Single unified form for both edit and reply */}
       {activeCommentData && createPortal(
         <div 
+          data-testid="comment-form-panel"
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
             position: 'fixed',
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: 50
+            zIndex: 80
           }}
         >
           <div className="flex items-center mb-2">
