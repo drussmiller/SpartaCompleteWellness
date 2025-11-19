@@ -511,15 +511,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             <p className="text-sm text-muted-foreground">
               Edit comment
             </p>
-            <button
-              type="button"
-              className="text-sm font-medium text-primary hover:underline cursor-pointer"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setEditingComment(null);
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
           <CommentForm
             onSubmit={async (content, file) => {
@@ -555,15 +555,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
             </p>
-            <button
-              type="button"
-              className="text-sm font-medium text-primary hover:underline cursor-pointer"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setReplyingTo(null);
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
           <CommentForm
               onSubmit={async (content, file) => {
