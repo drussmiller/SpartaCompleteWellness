@@ -57,7 +57,13 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    // First, adjust height if there's default content
+    // Focus FIRST to bring up keyboard
+    if (!disableAutoScroll && textareaRef.current) {
+      textareaRef.current.focus({ preventScroll: true });
+      console.log("Focus in CommentForm component mount");
+    }
+
+    // Then adjust height if there's default content
     if (textareaRef.current && defaultValue) {
       const textarea = textareaRef.current;
       textarea.style.height = '38px';
@@ -68,16 +74,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       } else {
         textarea.style.overflowY = 'hidden';
       }
-    }
-
-    // Then focus the textarea after layout has settled
-    if (!disableAutoScroll) {
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus({ preventScroll: true });
-          console.log("Focus in CommentForm component mount");
-        }
-      }, 100);
     }
   }, []);
 
