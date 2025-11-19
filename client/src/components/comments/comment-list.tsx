@@ -565,12 +565,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           onReply={() => {
             setReplyingTo(selectedComment);
             setIsActionsOpen(false);
-            setSelectedComment(null);
           }}
           onEdit={() => {
             setEditingComment(selectedComment);
             setIsActionsOpen(false);
-            setSelectedComment(null);
           }}
           onDelete={() => {
             setCommentToDelete(selectedComment);
