@@ -66,9 +66,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     setComments(sortedComments);
   }, [initialComments]);
 
-  // Find the comment we're replying to (search all comments with normalized ID comparison)
-  const replyingToComment = comments.find(c => Number(c.id) === Number(replyingTo));
-  
   // Determine what action we're doing (prefer edit over reply)
   const activeComment = editingComment || replyingTo;
   const isEditing = !!editingComment;
@@ -487,6 +484,18 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     // Removed onVisibilityChange to prevent re-renders during keyboard appearance
   }, []);
 
+  // Find the comment we're replying to (recursive search through threaded structure)
+  const findReplyingToComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
+    for (const comment of comments) {
+      if (Number(comment.id) === Number(replyingTo)) return comment;
+      if (comment.replies) {
+        const found = findReplyingToComment(comment.replies);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
   // Find the currently editing comment
   const findEditingComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
     for (const comment of comments) {
@@ -499,6 +508,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     return undefined;
   };
 
+  const replyingToComment = findReplyingToComment(threadedComments);
   const editingCommentData = findEditingComment(threadedComments);
   
   // Find the active comment data
