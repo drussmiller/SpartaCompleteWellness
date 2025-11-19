@@ -573,12 +573,16 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             setIsActionsOpen(false);
             setSelectedComment(null);
           }}
-          onReply={() => {
-            setReplyingTo(selectedComment);
+          onReply={(commentId) => {
+            console.log('onReply called with commentId:', commentId);
+            setReplyingTo(commentId);
+            setEditingComment(null);
             setIsActionsOpen(false);
           }}
-          onEdit={() => {
-            setEditingComment(selectedComment);
+          onEdit={(commentId) => {
+            console.log('onEdit called with commentId:', commentId);
+            setEditingComment(commentId);
+            setReplyingTo(null);
             setIsActionsOpen(false);
           }}
           onDelete={() => {
@@ -589,6 +593,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           onCopy={() => handleCopyComment(selectedCommentData.content || "")}
           canEdit={user?.id === selectedCommentData.author?.id}
           canDelete={user?.id === selectedCommentData.author?.id}
+          commentId={selectedComment}
         />
       )}
 
