@@ -70,14 +70,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       }
     }
 
-    // Then focus the textarea after height adjustments are complete
+    // Then focus the textarea after layout has settled
     if (!disableAutoScroll) {
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus({ preventScroll: true });
           console.log("Focus in CommentForm component mount");
         }
-      });
+      }, 100);
     }
   }, []);
 
