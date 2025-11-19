@@ -507,7 +507,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             zIndex: 9999
           }}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2" style={{ position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
             <p className="text-sm text-muted-foreground">
               Edit comment
             </p>
@@ -553,7 +553,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             zIndex: 9999
           }}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2" style={{ position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
             </p>
