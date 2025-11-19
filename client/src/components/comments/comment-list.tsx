@@ -534,6 +534,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             }}
             inputRef={editInputRef}
             skipScrollReset={true}
+            key={`edit-form-${editingComment}`}
           />
         </div>,
         document.body
