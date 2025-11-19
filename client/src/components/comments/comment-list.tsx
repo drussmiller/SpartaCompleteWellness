@@ -54,15 +54,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const formInputRef = useRef<HTMLTextAreaElement>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null); // Added ref for edit form
 
-  // Find the comment we're replying to or editing
+  // Find the comment we're replying to
   const replyingToComment = comments.find(c => c.id === replyingTo);
-  
-  // Determine what action we're doing (prefer edit over reply)
-  const activeComment = editingComment || replyingTo;
-  const isEditing = !!editingComment;
-  const isReplying = !!replyingTo && !editingComment;
 
   const createReplyMutation = useMutation({
     mutationFn: async (data: { content: string; file?: File }) => {
@@ -490,9 +486,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   };
 
   const editingCommentData = findEditingComment(threadedComments);
-  
-  // Find the active comment data
-  const activeCommentData = editingCommentData || replyingToComment;
 
   return (
     <>
@@ -502,8 +495,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         ))}
       </div>
 
-      {/* Single unified form for both edit and reply */}
-      {activeCommentData && createPortal(
+      {/* Portal edit form outside ScrollArea */}
+      {editingCommentData && createPortal(
         <div 
           className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
@@ -516,7 +509,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         >
           <div className="flex items-center mb-2">
             <p className="text-sm text-muted-foreground">
-              {isEditing ? "Edit comment" : `Replying to ${activeCommentData.author?.username}`}
+              Edit comment
             </p>
             <Button
               variant="ghost"
@@ -524,7 +517,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               className="ml-2"
               onClick={() => {
                 setEditingComment(null);
-                setReplyingTo(null);
               }}
             >
               Cancel
@@ -532,23 +524,63 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
           <CommentForm
             onSubmit={async (content, file) => {
-              if (isEditing) {
-                await editCommentMutation.mutateAsync({ id: activeCommentData.id, content });
-                setEditingComment(null);
-              } else {
-                await createReplyMutation.mutateAsync({ content, file });
-                setReplyingTo(null);
-              }
+              await editCommentMutation.mutateAsync({ id: editingCommentData.id, content });
+              setEditingComment(null);
             }}
-            isSubmitting={isEditing ? editCommentMutation.isPending : createReplyMutation.isPending}
-            defaultValue={isEditing ? (activeCommentData.content || "") : ""}
-            placeholder={isEditing ? undefined : `Reply to ${activeCommentData.author?.username}...`}
-            inputRef={formInputRef}
+            isSubmitting={editCommentMutation.isPending}
+            defaultValue={editingCommentData.content || ""}
             onCancel={() => {
               setEditingComment(null);
+            }}
+            inputRef={editInputRef}
+            skipScrollReset={true}
+            key={`edit-form-${editingComment}`}
+          />
+        </div>,
+        document.body
+      )}
+
+      {/* Portal reply form outside ScrollArea */}
+      {replyingToComment && createPortal(
+        <div 
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50
+          }}
+        >
+          <div className="flex items-center mb-2">
+            <p className="text-sm text-muted-foreground">
+              Replying to {replyingToComment.author?.username}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-2"
+              onClick={() => {
+                setReplyingTo(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+          <CommentForm
+              onSubmit={async (content, file) => {
+                await createReplyMutation.mutateAsync({ content, file });
+                if (replyInputRef.current) {
+                  replyInputRef.current.value = '';
+                }
+              }}
+            isSubmitting={createReplyMutation.isPending}
+            placeholder={`Reply to ${replyingToComment.author?.username}...`}
+            inputRef={replyInputRef}
+            onCancel={() => {
               setReplyingTo(null);
             }}
-            key={`form-${isEditing ? 'edit' : 'reply'}-${activeComment}`}
+            key={`reply-form-${replyingTo}`}
             skipScrollReset={true}
           />
         </div>,
