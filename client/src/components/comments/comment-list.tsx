@@ -504,7 +504,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: 50
+            zIndex: 9999
           }}
         >
           <div className="flex items-center mb-2">
@@ -549,7 +549,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: 50
+            zIndex: 9999
           }}
         >
           <div className="flex items-center mb-2">
