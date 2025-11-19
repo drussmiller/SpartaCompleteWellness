@@ -37,28 +37,30 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const textareaRef = inputRef || internalRef;
+
   const setRefs = (element: HTMLTextAreaElement | null) => {
+    (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element;
+    if (inputRef) {
+      (inputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element;
+    }
     if (typeof ref === 'function') {
       ref(element);
     }
   };
 
   const ensureTextareaFocus = () => {
-    if (!disableAutoScroll) {
-      const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus({ preventScroll: true });
-        console.log("Refocusing textarea");
-      }
+    if (!disableAutoScroll && textareaRef.current) {
+      textareaRef.current.focus({ preventScroll: true });
+      console.log("Refocusing textarea");
     }
   };
 
   useEffect(() => {
-    if (!disableAutoScroll) {
+    if (!disableAutoScroll && textareaRef.current) {
       setTimeout(() => {
-        const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-        if (textarea) {
-          textarea.focus({ preventScroll: true });
+        if (textareaRef.current) {
+          textareaRef.current.focus({ preventScroll: true });
           console.log("Focus in CommentForm component mount");
         }
       }, 200);
@@ -72,10 +74,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   }, [content]);
 
   const resetTextarea = () => {
-    const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-    if (textarea) {
-      textarea.style.height = '38px';
-      const container = textarea.parentElement;
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '38px';
+      const container = textareaRef.current.parentElement;
       if (container) {
         container.style.marginTop = '0';
       }
@@ -97,10 +98,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       }
 
       requestAnimationFrame(() => {
-        const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-        if (textarea) {
-          textarea.style.height = '38px';
-          const containerElement = textarea.closest('.flex-1');
+        if (textareaRef.current) {
+          textareaRef.current.style.height = '38px';
+          const containerElement = textareaRef.current.closest('.flex-1');
           if (containerElement instanceof HTMLElement) {
             containerElement.style.height = '50px';
           }
@@ -281,7 +281,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
             style={{ height: '38px', minHeight: '38px', maxHeight: '200px', overflowY: 'auto' }}
-            id="comment-textarea"
+            data-testid="comment-textarea"
           />
         </div>
         <Button
