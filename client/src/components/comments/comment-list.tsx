@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, X } from "lucide-react";
 import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -507,19 +507,20 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             zIndex: 9999
           }}
         >
-          <div className="flex items-center mb-2">
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Edit comment
             </p>
             <Button
               variant="ghost"
-              size="sm"
-              className="ml-2"
+              size="icon"
               onClick={() => {
                 setEditingComment(null);
               }}
+              type="button"
+              data-testid="button-cancel-edit"
             >
-              Cancel
+              <X className="h-5 w-5" />
             </Button>
           </div>
           <CommentForm
@@ -552,19 +553,20 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             zIndex: 9999
           }}
         >
-          <div className="flex items-center mb-2">
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
             </p>
             <Button
               variant="ghost"
-              size="sm"
-              className="ml-2"
+              size="icon"
               onClick={() => {
                 setReplyingTo(null);
               }}
+              type="button"
+              data-testid="button-cancel-reply"
             >
-              Cancel
+              <X className="h-5 w-5" />
             </Button>
           </div>
           <CommentForm
