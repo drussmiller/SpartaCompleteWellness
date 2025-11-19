@@ -57,9 +57,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useLayoutEffect(() => {
+    console.log("CommentForm mount - defaultValue:", defaultValue ? "HAS_CONTENT" : "EMPTY");
     // Adjust height for prefilled content before paint
     if (textareaRef.current && defaultValue) {
       const textarea = textareaRef.current;
+      console.log("Adjusting height in useLayoutEffect");
       textarea.style.height = '38px';
       const newHeight = Math.min(200, textarea.scrollHeight);
       textarea.style.height = `${newHeight}px`;
@@ -74,6 +76,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   useEffect(() => {
     // Focus to bring up keyboard AFTER layout is complete
     if (!disableAutoScroll && textareaRef.current) {
+      console.log("Calling focus() - defaultValue:", defaultValue ? "HAS_CONTENT" : "EMPTY");
       textareaRef.current.focus({ preventScroll: true });
       console.log("Focus in CommentForm component mount");
     }
