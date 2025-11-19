@@ -513,14 +513,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             </p>
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={() => {
                 setEditingComment(null);
               }}
               type="button"
               data-testid="button-cancel-edit"
             >
-              <X className="h-5 w-5" />
+              Cancel
             </Button>
           </div>
           <CommentForm
@@ -559,14 +559,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             </p>
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={() => {
                 setReplyingTo(null);
               }}
               type="button"
               data-testid="button-cancel-reply"
             >
-              <X className="h-5 w-5" />
+              Cancel
             </Button>
           </div>
           <CommentForm
