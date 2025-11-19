@@ -4,13 +4,12 @@ import { Button } from "@/components/ui/button";
 interface CommentActionsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onReply: (commentId: number) => void;
-  onEdit: (commentId: number) => void;
+  onReply: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   onCopy: () => void;
   canEdit: boolean;
   canDelete: boolean;
-  commentId: number | null;
 }
 
 export function CommentActionsDrawer({
@@ -21,8 +20,7 @@ export function CommentActionsDrawer({
   onDelete,
   onCopy,
   canEdit,
-  canDelete,
-  commentId
+  canDelete
 }: CommentActionsDrawerProps) {
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -38,7 +36,7 @@ export function CommentActionsDrawer({
             variant="ghost"
             className="w-full h-14 text-blue-500 hover:text-blue-600 hover:bg-gray-100 rounded-none border-b text-xl"
             onClick={() => {
-              if (commentId) onReply(commentId);
+              onReply();
               onClose();
             }}
           >
@@ -50,7 +48,7 @@ export function CommentActionsDrawer({
               variant="ghost"
               className="w-full h-14 text-blue-500 hover:text-blue-600 hover:bg-gray-100 rounded-none border-b text-xl"
               onClick={() => {
-                if (commentId) onEdit(commentId);
+                onEdit();
                 onClose();
               }}
             >

@@ -56,16 +56,9 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const { toast } = useToast();
   const formInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync local comments state when props change
-  useEffect(() => {
-    const sortedComments = [...initialComments].sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      return dateA.getTime() - dateB.getTime();
-    });
-    setComments(sortedComments);
-  }, [initialComments]);
-
+  // Find the comment we're replying to or editing
+  const replyingToComment = comments.find(c => c.id === replyingTo);
+  
   // Determine what action we're doing (prefer edit over reply)
   const activeComment = editingComment || replyingTo;
   const isEditing = !!editingComment;
@@ -468,7 +461,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
   const findSelectedComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
     for (const comment of comments) {
-      if (Number(comment.id) === Number(selectedComment)) return comment;
+      if (comment.id === selectedComment) return comment;
       if (comment.replies) {
         const found = findSelectedComment(comment.replies);
         if (found) return found;
@@ -484,22 +477,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     // Removed onVisibilityChange to prevent re-renders during keyboard appearance
   }, []);
 
-  // Find the comment we're replying to (recursive search through threaded structure)
-  const findReplyingToComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
-    for (const comment of comments) {
-      if (Number(comment.id) === Number(replyingTo)) return comment;
-      if (comment.replies) {
-        const found = findReplyingToComment(comment.replies);
-        if (found) return found;
-      }
-    }
-    return undefined;
-  };
-
   // Find the currently editing comment
   const findEditingComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
     for (const comment of comments) {
-      if (Number(comment.id) === Number(editingComment)) return comment;
+      if (comment.id === editingComment) return comment;
       if (comment.replies) {
         const found = findEditingComment(comment.replies);
         if (found) return found;
@@ -508,23 +489,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     return undefined;
   };
 
-  const replyingToComment = findReplyingToComment(threadedComments);
   const editingCommentData = findEditingComment(threadedComments);
-  
-  // DEBUG: Log state
-  console.log('CommentList state:', {
-    editingComment,
-    replyingTo,
-    editingCommentData,
-    replyingToComment,
-    threadedCommentsLength: threadedComments.length,
-    firstComment: threadedComments[0]?.id
-  });
   
   // Find the active comment data
   const activeCommentData = editingCommentData || replyingToComment;
-  
-  console.log('activeCommentData:', activeCommentData);
 
   return (
     <>
@@ -537,15 +505,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       {/* Single unified form for both edit and reply */}
       {activeCommentData && createPortal(
         <div 
-          data-testid="comment-form-panel"
-          className="border-t-2 border-primary p-4 bg-white shadow-2xl"
+          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
           style={{
             position: 'fixed',
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: 120,
-            maxWidth: '100vw'
+            zIndex: 50
           }}
         >
           <div className="flex items-center mb-2">
@@ -596,16 +562,12 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             setIsActionsOpen(false);
             setSelectedComment(null);
           }}
-          onReply={(commentId) => {
-            console.log('onReply called with commentId:', commentId);
-            setReplyingTo(commentId);
-            setEditingComment(null);
+          onReply={() => {
+            setReplyingTo(selectedComment);
             setIsActionsOpen(false);
           }}
-          onEdit={(commentId) => {
-            console.log('onEdit called with commentId:', commentId);
-            setEditingComment(commentId);
-            setReplyingTo(null);
+          onEdit={() => {
+            setEditingComment(selectedComment);
             setIsActionsOpen(false);
           }}
           onDelete={() => {
@@ -616,7 +578,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           onCopy={() => handleCopyComment(selectedCommentData.content || "")}
           canEdit={user?.id === selectedCommentData.author?.id}
           canDelete={user?.id === selectedCommentData.author?.id}
-          commentId={selectedComment}
         />
       )}
 

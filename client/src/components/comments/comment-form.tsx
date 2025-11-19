@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, forwardRef, KeyboardEvent } from "react";
+import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
@@ -27,7 +27,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   disableAutoScroll = false,
   skipScrollReset = false
 }: CommentFormProps, ref) => {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(defaultValue);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null); // Added state for video thumbnail
   const internalRef = useRef<HTMLTextAreaElement>(null);
@@ -57,40 +57,23 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   };
 
   useEffect(() => {
-    // Focus FIRST, then set content to avoid keyboard dismissal on mobile
+    // Focus FIRST to bring up keyboard
     if (!disableAutoScroll && textareaRef.current) {
+      textareaRef.current.focus({ preventScroll: true });
+      console.log("Focus in CommentForm component mount");
+    }
+
+    // Then adjust height if there's default content
+    if (textareaRef.current && defaultValue) {
       const textarea = textareaRef.current;
-      
-      // Focus immediately to bring up keyboard
-      textarea.focus({ preventScroll: true });
-      
-      // Then set content and adjust height in next frame while maintaining focus
-      if (defaultValue) {
-        requestAnimationFrame(() => {
-          setContent(defaultValue);
-          
-          // Adjust height after content is set
-          requestAnimationFrame(() => {
-            if (textarea) {
-              textarea.style.height = '38px';
-              const newHeight = Math.min(200, textarea.scrollHeight);
-              textarea.style.height = `${newHeight}px`;
-              if (textarea.scrollHeight > 200) {
-                textarea.style.overflowY = 'auto';
-              } else {
-                textarea.style.overflowY = 'hidden';
-              }
-              
-              // Place caret at end
-              const length = defaultValue.length;
-              textarea.setSelectionRange(length, length);
-            }
-          });
-        });
+      textarea.style.height = '38px';
+      const newHeight = Math.min(200, textarea.scrollHeight);
+      textarea.style.height = `${newHeight}px`;
+      if (textarea.scrollHeight > 200) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
       }
-    } else if (defaultValue && !content) {
-      // If autoScroll disabled but has defaultValue, still set content
-      setContent(defaultValue);
     }
   }, []);
 
