@@ -475,6 +475,32 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     }
   }, [editingComment, replyingTo, onVisibilityChange]);
 
+  // Auto-focus edit textbox when editing starts
+  useEffect(() => {
+    if (editingComment && editInputRef.current) {
+      // Use setTimeout to ensure the portal is rendered
+      setTimeout(() => {
+        if (editInputRef.current) {
+          editInputRef.current.focus();
+          console.log("Auto-focused edit textbox");
+        }
+      }, 100);
+    }
+  }, [editingComment]);
+
+  // Auto-focus reply textbox when replying starts
+  useEffect(() => {
+    if (replyingTo && replyInputRef.current) {
+      // Use setTimeout to ensure the portal is rendered
+      setTimeout(() => {
+        if (replyInputRef.current) {
+          replyInputRef.current.focus();
+          console.log("Auto-focused reply textbox");
+        }
+      }, 100);
+    }
+  }, [replyingTo]);
+
   // Find the currently editing comment
   const findEditingComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
     for (const comment of comments) {
