@@ -213,20 +213,35 @@ export default function CommentsPage() {
     );
   }
 
+  const getDesktopPosition = () => {
+    if (isMobile) return { left: 0, right: 0 };
+    
+    // Calculate the offset to center a 1000px container
+    const containerWidth = 1000;
+    const offset = `max(0px, calc((100vw - ${containerWidth}px) / 2))`;
+    
+    return {
+      left: offset,
+      right: offset
+    };
+  };
+
+  const position = getDesktopPosition();
+
   return (
     <AppLayout title="Comments">
       <div 
-        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+        className="flex flex-col bg-white overflow-hidden"
         style={{
           position: 'fixed',
           top: '4rem',
-          left: 0,
-          right: 0,
+          left: position.left,
+          right: position.right,
           bottom: 0,
           zIndex: 100
         }}
       >
-        <div className={`flex flex-col h-full ${!isMobile ? 'border-x border-gray-200' : ''}`}>
+        <div className={`flex flex-col h-full ${!isMobile ? 'border-x border-gray-200 px-6 md:px-44 md:pl-56' : ''}`}>
           {/* Swipe detection is handled on scrollable area only via useEffect */}
           
           {/* Fixed Title Box at Top */}
@@ -259,12 +274,12 @@ export default function CommentsPage() {
         {/* Fixed Comment Form at Bottom */}
         <div 
           ref={formRef}
-          className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+          className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'px-6 md:px-44 md:pl-56' : ''}`}
           style={{
             position: 'fixed',
             bottom: 0,
-            left: 0,
-            right: 0,
+            left: position.left,
+            right: position.right,
             zIndex: 50
           }}
         >
