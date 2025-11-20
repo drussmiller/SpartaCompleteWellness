@@ -52,8 +52,6 @@ export function CreatePostDialog({
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [postScope, setPostScope] = useState<"everyone" | "organization" | "group" | "team" | "my_team">("my_team");
-  const [showMediaPickerDialog, setShowMediaPickerDialog] = useState(false);
-  const [pendingMediaType, setPendingMediaType] = useState<"image" | "video" | null>(null);
 
   // Fetch organizations for admin users
   const { data: organizations = [] } = useQuery({
@@ -530,26 +528,6 @@ export function CreatePostDialog({
     }
   });
 
-  const handleMediaPickerRequest = (mediaType: "image" | "video") => {
-    setPendingMediaType(mediaType);
-    setShowMediaPickerDialog(true);
-  };
-
-  const handleMediaPickerConfirm = () => {
-    setShowMediaPickerDialog(false);
-    if (pendingMediaType === "image") {
-      fileInputRef.current?.click();
-    } else if (pendingMediaType === "video") {
-      videoInputRef.current?.click();
-    }
-    setPendingMediaType(null);
-  };
-
-  const handleMediaPickerCancel = () => {
-    setShowMediaPickerDialog(false);
-    setPendingMediaType(null);
-  };
-
   const onSubmit = (data: CreatePostForm) => {
     console.log("============ FORM SUBMIT DEBUG START ============");
     console.log("🔥 onSubmit called with data:", { type: data.type, hasMediaUrl: !!data.mediaUrl, content: data.content?.substring(0, 50) });
@@ -574,8 +552,7 @@ export function CreatePostDialog({
   const isPostingDisabled = hasPostedIntroVideo && !user?.teamId;
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={(isOpen) => {
+    <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
       if (!isOpen) {
         form.reset();
@@ -584,8 +561,6 @@ export function CreatePostDialog({
         setSelectedMediaType(null);
         setSelectedExistingVideo(null);
         setPostScope("my_team");
-        setShowMediaPickerDialog(false);
-        setPendingMediaType(null);
       }
     }}>
       <DialogTrigger asChild>
@@ -896,7 +871,7 @@ export function CreatePostDialog({
                             type="button"
                             variant="outline"
                             className="w-full py-8"
-                            onClick={() => handleMediaPickerRequest("video")}
+                            onClick={() => videoInputRef.current?.click()}
                             data-testid="button-select-memory-verse-video"
                           >
                             <div className="flex flex-col items-center justify-center text-center">
@@ -984,7 +959,7 @@ export function CreatePostDialog({
                                       });
                                       return;
                                     }
-                                    handleMediaPickerRequest("image");
+                                    fileInputRef.current?.click();
                                   }}
                                   variant="outline"
                                   className="w-full"
@@ -1046,7 +1021,7 @@ export function CreatePostDialog({
                                       });
                                       return;
                                     }
-                                    handleMediaPickerRequest("video");
+                                    videoInputRef.current?.click();
                                   }}
                                   variant="outline"
                                   className="w-full"
@@ -1204,45 +1179,7 @@ export function CreatePostDialog({
           </form>
         </Form>
       </DialogContent>
-      </Dialog>
-
-      {/* Media Picker Confirmation - Simple overlay with buttons */}
-      {showMediaPickerDialog && (
-        <div 
-          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
-          onClick={handleMediaPickerCancel}
-        >
-          <div 
-            className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold mb-2">
-              Select {pendingMediaType === "image" ? "Photo" : "Video"}
-            </h2>
-            <p className="text-gray-600 mb-6">
-              {pendingMediaType === "image" 
-                ? "You'll be able to choose a photo from your library or take a new one."
-                : "You'll be able to choose a video from your library or record a new one."}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={handleMediaPickerCancel}
-                data-testid="button-cancel-media-picker"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleMediaPickerConfirm}
-                data-testid="button-confirm-media-picker"
-              >
-                Continue
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </Dialog>
   );
 }
 
