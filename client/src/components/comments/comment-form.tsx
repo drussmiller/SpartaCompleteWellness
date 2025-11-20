@@ -244,7 +244,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             <path d="M15 9h.01" />
           </svg>
         </Button>
-        <div className="flex-1" style={{ touchAction: 'manipulation' }}>
+        <div className="flex-1">
           <Textarea
             ref={setRefs} 
             value={content}
@@ -267,6 +267,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
+            readOnly={false}
+            disabled={false}
             className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
             style={{ 
@@ -274,7 +276,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               minHeight: '38px', 
               maxHeight: '200px', 
               overflowY: 'auto',
-              touchAction: 'manipulation',
+              pointerEvents: 'auto',
               WebkitUserSelect: 'text',
               userSelect: 'text'
             }}

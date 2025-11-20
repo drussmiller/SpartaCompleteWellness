@@ -559,7 +559,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               left: 0,
               right: 0,
               zIndex: 9999,
-              touchAction: 'manipulation',
               pointerEvents: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -628,7 +627,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               left: 0,
               right: 0,
               zIndex: 9999,
-              touchAction: 'manipulation',
               pointerEvents: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
