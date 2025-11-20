@@ -263,8 +263,10 @@ export default function CommentsPage() {
           style={{
             position: 'fixed',
             bottom: 0,
-            left: 0,
-            right: 0,
+            left: isMobile ? 0 : '50%',
+            right: isMobile ? 0 : 'auto',
+            width: isMobile ? '100%' : '1000px',
+            transform: isMobile ? 'none' : 'translateX(-50%)',
             zIndex: 50
           }}
         >
