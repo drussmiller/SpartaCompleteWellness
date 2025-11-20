@@ -223,8 +223,9 @@ export default function CommentsPage() {
           left: '50%',
           bottom: 0,
           zIndex: 100,
-          width: isMobile ? '100%' : 'min(100%, 1000px)',
-          transform: isMobile ? 'translateX(-50%)' : 'translateX(-50%)'
+          width: '1000px',
+          maxWidth: '100%',
+          transform: 'translateX(-50%)'
         }}
       >
           {/* Swipe detection is handled on scrollable area only via useEffect */}
@@ -264,7 +265,8 @@ export default function CommentsPage() {
             bottom: 0,
             left: '50%',
             zIndex: 50,
-            width: isMobile ? '100%' : 'min(100%, 1000px)',
+            width: '1000px',
+            maxWidth: '100%',
             transform: 'translateX(-50%)'
           }}
         >

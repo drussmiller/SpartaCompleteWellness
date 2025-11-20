@@ -725,7 +725,8 @@ export function MessageSlideCard() {
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
           left: '50%',
-          width: 'min(100%, 1000px)',
+          width: '1000px',
+          maxWidth: '100%',
           transform: 'translateX(-50%)',
           touchAction: 'none'
         }}
