@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,8 @@ export function CreatePostDialog({
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [postScope, setPostScope] = useState<"everyone" | "organization" | "group" | "team" | "my_team">("my_team");
+  const [showMediaPickerDialog, setShowMediaPickerDialog] = useState(false);
+  const [pendingMediaType, setPendingMediaType] = useState<"image" | "video" | null>(null);
 
   // Fetch organizations for admin users
   const { data: organizations = [] } = useQuery({
@@ -528,6 +531,26 @@ export function CreatePostDialog({
     }
   });
 
+  const handleMediaPickerRequest = (mediaType: "image" | "video") => {
+    setPendingMediaType(mediaType);
+    setShowMediaPickerDialog(true);
+  };
+
+  const handleMediaPickerConfirm = () => {
+    setShowMediaPickerDialog(false);
+    if (pendingMediaType === "image") {
+      fileInputRef.current?.click();
+    } else if (pendingMediaType === "video") {
+      videoInputRef.current?.click();
+    }
+    setPendingMediaType(null);
+  };
+
+  const handleMediaPickerCancel = () => {
+    setShowMediaPickerDialog(false);
+    setPendingMediaType(null);
+  };
+
   const onSubmit = (data: CreatePostForm) => {
     console.log("============ FORM SUBMIT DEBUG START ============");
     console.log("🔥 onSubmit called with data:", { type: data.type, hasMediaUrl: !!data.mediaUrl, content: data.content?.substring(0, 50) });
@@ -561,6 +584,8 @@ export function CreatePostDialog({
         setSelectedMediaType(null);
         setSelectedExistingVideo(null);
         setPostScope("my_team");
+        setShowMediaPickerDialog(false);
+        setPendingMediaType(null);
       }
     }}>
       <DialogTrigger asChild>
@@ -871,11 +896,8 @@ export function CreatePostDialog({
                             type="button"
                             variant="outline"
                             className="w-full py-8"
-                            onClick={() => {
-                              if (videoInputRef.current) {
-                                videoInputRef.current.click();
-                              }
-                            }}
+                            onClick={() => handleMediaPickerRequest("video")}
+                            data-testid="button-select-memory-verse-video"
                           >
                             <div className="flex flex-col items-center justify-center text-center">
                               <span>Select video</span>
@@ -962,10 +984,11 @@ export function CreatePostDialog({
                                       });
                                       return;
                                     }
-                                    fileInputRef.current?.click();
+                                    handleMediaPickerRequest("image");
                                   }}
                                   variant="outline"
                                   className="w-full"
+                                  data-testid="button-select-image"
                                 >
                                   Select Image
                                 </Button>
@@ -1023,10 +1046,11 @@ export function CreatePostDialog({
                                       });
                                       return;
                                     }
-                                    videoInputRef.current?.click();
+                                    handleMediaPickerRequest("video");
                                   }}
                                   variant="outline"
                                   className="w-full"
+                                  data-testid="button-select-video"
                                 >
                                   {!hasAnyPosts ? "Select Intro Video" : "Select Video"}
                                 </Button>
@@ -1180,6 +1204,30 @@ export function CreatePostDialog({
           </form>
         </Form>
       </DialogContent>
+
+      {/* Media Picker Confirmation Dialog */}
+      <AlertDialog open={showMediaPickerDialog} onOpenChange={setShowMediaPickerDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Select {pendingMediaType === "image" ? "Photo" : "Video"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingMediaType === "image" 
+                ? "You'll be able to choose a photo from your library or take a new one."
+                : "You'll be able to choose a video from your library or record a new one."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleMediaPickerCancel} data-testid="button-cancel-media-picker">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleMediaPickerConfirm} data-testid="button-confirm-media-picker">
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
