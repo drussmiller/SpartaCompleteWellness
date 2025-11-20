@@ -575,7 +575,8 @@ export function CreatePostDialog({
   const isPostingDisabled = hasPostedIntroVideo && !user?.teamId;
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
+    <>
+      <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
       if (!isOpen) {
         form.reset();
@@ -1204,10 +1205,11 @@ export function CreatePostDialog({
           </form>
         </Form>
       </DialogContent>
+      </Dialog>
 
-      {/* Media Picker Confirmation Dialog */}
+      {/* Media Picker Confirmation Dialog - Outside main dialog for proper z-index */}
       <AlertDialog open={showMediaPickerDialog} onOpenChange={setShowMediaPickerDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[100]">
           <AlertDialogHeader>
             <AlertDialogTitle>
               Select {pendingMediaType === "image" ? "Photo" : "Video"}
@@ -1228,7 +1230,7 @@ export function CreatePostDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Dialog>
+    </>
   );
 }
 
