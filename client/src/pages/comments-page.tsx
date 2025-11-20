@@ -216,7 +216,7 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className={`flex flex-col bg-white overflow-hidden ${isMobile ? '' : 'max-w-[1000px] mx-auto'}`}
+        className="flex justify-center"
         style={{
           position: 'fixed',
           top: '4rem',
@@ -226,12 +226,13 @@ export default function CommentsPage() {
           zIndex: 100
         }}
       >
-        {/* Swipe detection is handled on scrollable area only via useEffect */}
-        
-        {/* Fixed Title Box at Top */}
-        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
-          <h3 className="text-lg font-semibold">Original Post</h3>
-        </div>
+        <div className="w-full max-w-[1000px] flex flex-col bg-white overflow-hidden">
+          {/* Swipe detection is handled on scrollable area only via useEffect */}
+          
+          {/* Fixed Title Box at Top */}
+          <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+            <h3 className="text-lg font-semibold">Original Post</h3>
+          </div>
         
         {/* Scrollable Content */}
         <ScrollArea 
@@ -254,28 +255,31 @@ export default function CommentsPage() {
           </div>
         </ScrollArea>
         
-        {/* Fixed Comment Form at Bottom */}
-        <div 
-          ref={formRef}
-          className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${isMobile ? '' : 'max-w-[1000px] mx-auto'}`}
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 50
-          }}
-        >
-          <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
-          <CommentForm
-            onSubmit={async (content) => {
-              await createCommentMutation.mutateAsync({
-                content: content,
-                postId: parseInt(postId)
-              });
+          {/* Fixed Comment Form at Bottom */}
+          <div 
+            ref={formRef}
+            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50
             }}
-            isSubmitting={createCommentMutation.isPending}
-          />
+          >
+            <div className="w-full max-w-[1000px] mx-auto">
+              <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
+              <CommentForm
+                onSubmit={async (content) => {
+                  await createCommentMutation.mutateAsync({
+                    content: content,
+                    postId: parseInt(postId)
+                  });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>
