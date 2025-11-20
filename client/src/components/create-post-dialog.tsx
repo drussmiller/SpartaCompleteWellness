@@ -1063,10 +1063,8 @@ export function CreatePostDialog({
                                         }
                                       });
 
-                                      // Set the field value to indicate a video file is ready
-                                      // Use a data URL format to pass schema validation
-                                      const marker = `data:${file.type};name=${file.name}`;
-                                      field.onChange(marker);
+                                      // Set the field value to the blob URL to pass URL validation
+                                      field.onChange(videoUrl);
 
                                       // Log detailed information about the selected file
                                       console.log("Miscellaneous video file selected:", {
@@ -1075,7 +1073,7 @@ export function CreatePostDialog({
                                         size: file.size,
                                         sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + "MB",
                                         selectedMediaType: "video",
-                                        fieldValue: marker
+                                        fieldValue: videoUrl
                                       });
 
                                       // Log video selection without showing toast
