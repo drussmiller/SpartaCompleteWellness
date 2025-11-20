@@ -17,6 +17,7 @@ import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Badge } from "@/components/ui/badge";
 import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -69,6 +70,7 @@ export function MessageSlideCard() {
   const keyboardHeight = useKeyboardAdjustment();
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
+  const isMobile = useIsMobile();
 
   // Track viewport height and position changes for keyboard
   useEffect(() => {
@@ -724,8 +726,8 @@ export function MessageSlideCard() {
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
-          left: 'calc(max(0px, (100vw - 1000px) / 2))',
-          right: 'calc(max(0px, (100vw - 1000px) / 2))',
+          left: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
+          right: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
