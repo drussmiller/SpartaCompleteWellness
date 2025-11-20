@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -1207,29 +1206,42 @@ export function CreatePostDialog({
       </DialogContent>
       </Dialog>
 
-      {/* Media Picker Confirmation Dialog - Outside main dialog for proper z-index */}
-      <AlertDialog open={showMediaPickerDialog} onOpenChange={setShowMediaPickerDialog}>
-        <AlertDialogContent className="z-[100]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+      {/* Media Picker Confirmation - Simple overlay with buttons */}
+      {showMediaPickerDialog && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
+          onClick={handleMediaPickerCancel}
+        >
+          <div 
+            className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold mb-2">
               Select {pendingMediaType === "image" ? "Photo" : "Video"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </h2>
+            <p className="text-gray-600 mb-6">
               {pendingMediaType === "image" 
                 ? "You'll be able to choose a photo from your library or take a new one."
                 : "You'll be able to choose a video from your library or record a new one."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleMediaPickerCancel} data-testid="button-cancel-media-picker">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleMediaPickerConfirm} data-testid="button-confirm-media-picker">
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={handleMediaPickerCancel}
+                data-testid="button-cancel-media-picker"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleMediaPickerConfirm}
+                data-testid="button-confirm-media-picker"
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
