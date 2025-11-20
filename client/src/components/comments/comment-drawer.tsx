@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect, useState } from "react";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CommentDrawerProps {
   postId: number;
@@ -25,6 +26,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // Manual fetch states
   const [originalPost, setOriginalPost] = useState<Post & { author: User } | null>(null);
@@ -431,10 +433,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
+        className={`!w-full !p-0 comment-drawer pt-safe !z-[9999] ${!isMobile ? '!max-w-[1000px] !mx-auto !px-6 md:!px-44 md:!pl-56' : '!max-w-full'}`}
         style={{ 
           width: '100%', 
-          maxWidth: '100%', 
+          maxWidth: isMobile ? '100%' : undefined,
           overflow: 'hidden', 
           paddingTop: 'env(safe-area-inset-top, 30px)',
           position: 'fixed',
@@ -446,7 +448,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="w-full flex flex-col" style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
+        <div className={`w-full flex flex-col ${!isMobile ? 'border-x border-gray-200' : ''}`} style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
           {/* Fixed header bar */}
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
@@ -514,7 +516,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
           {/* Fixed comment form at the bottom */}
           {isCommentBoxVisible && (
-            <div className={`fixed bottom-0 left-0 right-0 px-4 pt-4 border-t bg-background z-[99999] ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className={`fixed bottom-0 px-4 pt-4 border-t bg-background z-[99999] ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'} ${!isMobile ? 'max-w-[1000px] mx-auto left-0 right-0 px-6 md:px-44 md:pl-56' : 'left-0 right-0'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
                 onSubmit={async (content, file) => {
                   await createCommentMutation.mutateAsync({ content, file });
