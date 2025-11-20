@@ -722,12 +722,12 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
+        className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
-          left: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
-          right: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
+          left: 0,
+          right: 0,
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}

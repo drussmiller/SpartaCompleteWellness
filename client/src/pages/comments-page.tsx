@@ -216,12 +216,12 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white overflow-hidden"
+        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
         style={{
           position: 'fixed',
           top: '4rem',
-          left: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
-          right: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
+          left: 0,
+          right: 0,
           bottom: 0,
           zIndex: 100
         }}
@@ -257,12 +257,12 @@ export default function CommentsPage() {
         {/* Fixed Comment Form at Bottom */}
         <div 
           ref={formRef}
-          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
           style={{
             position: 'fixed',
             bottom: 0,
-            left: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
-            right: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
+            left: 0,
+            right: 0,
             zIndex: 50
           }}
         >
