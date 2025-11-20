@@ -726,8 +726,8 @@ export function MessageSlideCard() {
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
-          left: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
-          right: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
+          left: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
+          right: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}

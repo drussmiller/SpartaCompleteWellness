@@ -220,11 +220,10 @@ export default function CommentsPage() {
         style={{
           position: 'fixed',
           top: '4rem',
-          left: isMobile ? 0 : '200px',
-          right: isMobile ? 0 : '200px',
+          left: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
+          right: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
           bottom: 0,
-          zIndex: 100,
-          border: '2px solid blue'
+          zIndex: 100
         }}
       >
           {/* Swipe detection is handled on scrollable area only via useEffect */}
@@ -262,8 +261,8 @@ export default function CommentsPage() {
           style={{
             position: 'fixed',
             bottom: 0,
-            left: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
-            right: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
+            left: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
+            right: isMobile ? 0 : 'clamp(0px, calc((100vw - 1000px) / 2), 50vw)',
             zIndex: 50
           }}
         >
