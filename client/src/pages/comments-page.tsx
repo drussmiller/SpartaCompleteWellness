@@ -220,10 +220,11 @@ export default function CommentsPage() {
         style={{
           position: 'fixed',
           top: '4rem',
-          left: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
-          right: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
+          left: isMobile ? 0 : '200px',
+          right: isMobile ? 0 : '200px',
           bottom: 0,
-          zIndex: 100
+          zIndex: 100,
+          border: '2px solid blue'
         }}
       >
           {/* Swipe detection is handled on scrollable area only via useEffect */}
