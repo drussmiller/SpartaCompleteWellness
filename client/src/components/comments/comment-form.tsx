@@ -249,7 +249,18 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             ref={setRefs} 
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            onClick={() => console.log("Textarea clicked")}
+            onClick={(e) => {
+              console.log("Textarea clicked");
+              e.stopPropagation();
+            }}
+            onTouchStart={(e) => {
+              console.log("Textarea touchstart");
+              e.stopPropagation();
+            }}
+            onTouchEnd={(e) => {
+              console.log("Textarea touchend");
+              e.stopPropagation();
+            }}
             onFocus={() => console.log("Textarea focused")}
             onBlur={() => console.log("Textarea blurred")}
             onInput={(e) => {
@@ -269,6 +280,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             placeholder={placeholder}
             readOnly={false}
             disabled={false}
+            tabIndex={0}
             className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
             style={{ 
@@ -278,7 +290,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               overflowY: 'auto',
               pointerEvents: 'auto',
               WebkitUserSelect: 'text',
-              userSelect: 'text'
+              userSelect: 'text',
+              WebkitTapHighlightColor: 'transparent'
             }}
             data-testid="comment-textarea"
             autoComplete="off"

@@ -561,7 +561,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               zIndex: 9999,
               pointerEvents: 'auto'
             }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
@@ -629,7 +633,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               zIndex: 9999,
               pointerEvents: 'auto'
             }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
