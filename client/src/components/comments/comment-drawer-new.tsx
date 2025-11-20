@@ -32,6 +32,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const [comments, setComments] = useState<Array<Post & { author: User }>>([]);
   const [areCommentsLoading, setAreCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<Error | null>(null);
+  
+  const [isCommentBoxVisible, setIsCommentBoxVisible] = useState(true);
+
+  // Callback to handle visibility
+  const handleCommentVisibility = (isEditing: boolean, isReplying: boolean) => {
+    setIsCommentBoxVisible(!isEditing && !isReplying);
+  };
 
   // Focus on the comment input when the drawer opens
   useEffect(() => {
@@ -338,20 +345,22 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <>
                 <div className="flex-1 overflow-y-auto h-[calc(100vh-12rem)] p-4 space-y-6 w-full max-w-none">
                   {originalPost && <PostView post={originalPost} />}
-                  <CommentList comments={comments} postId={postId} />
+                  <CommentList comments={comments} postId={postId} onVisibilityChange={handleCommentVisibility} />
                 </div>
 
                 {/* Fixed comment form at the bottom */}
-                <div className="p-4 pb-28 border-t bg-background fixed bottom-0 left-0 right-0">
-                  <CommentForm
-                    onSubmit={async (content) => {
-                      await createCommentMutation.mutateAsync(content);
-                    }}
-                    isSubmitting={createCommentMutation.isPending}
-                    ref={commentInputRef}
-                    inputRef={commentInputRef}
-                  />
-                </div>
+                {isCommentBoxVisible && (
+                  <div className="p-4 pb-28 border-t bg-background fixed bottom-0 left-0 right-0">
+                    <CommentForm
+                      onSubmit={async (content) => {
+                        await createCommentMutation.mutateAsync(content);
+                      }}
+                      isSubmitting={createCommentMutation.isPending}
+                      ref={commentInputRef}
+                      inputRef={commentInputRef}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>

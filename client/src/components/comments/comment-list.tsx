@@ -469,9 +469,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const selectedCommentData = findSelectedComment(threadedComments);
 
   useEffect(() => {
-    // Removed auto-focus to prevent viewport issues
-    // Removed onVisibilityChange to prevent re-renders during keyboard appearance
-  }, []);
+    // Notify parent component about visibility changes
+    if (onVisibilityChange) {
+      onVisibilityChange(!!editingComment, !!replyingTo);
+    }
+  }, [editingComment, replyingTo, onVisibilityChange]);
 
   // Find the currently editing comment
   const findEditingComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
@@ -534,6 +536,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               setEditingComment(null);
             }}
             inputRef={editInputRef}
+            disableAutoScroll={false}
             skipScrollReset={true}
             key={`edit-form-${editingComment}`}
           />
@@ -579,6 +582,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}
+            disableAutoScroll={false}
             onCancel={() => {
               setReplyingTo(null);
             }}
