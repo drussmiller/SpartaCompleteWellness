@@ -77,9 +77,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     };
   }, []);
 
-  // Focus on the comment input when the drawer opens
+  // Focus on the comment input when the drawer opens (disabled on mobile to prevent keyboard from blocking view)
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isMobile) {
       // Try multiple approaches to ensure focus
       const focusTextarea = () => {
         // Method 1: Direct focus using our ref
@@ -103,7 +103,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         setTimeout(focusTextarea, delay);
       });
     }
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // Fetch original post manually
   useEffect(() => {
@@ -523,6 +523,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                 }}
                 isSubmitting={createCommentMutation.isPending}
                 inputRef={commentInputRef}
+                disableAutoScroll={isMobile}
               />
             </div>
           )}
