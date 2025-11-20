@@ -263,7 +263,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             <path d="M15 9h.01" />
           </svg>
         </Button>
-        <div className="flex-1">
+        <div className="flex-1" style={{ pointerEvents: 'auto' }}>
           <Textarea
             ref={setRefs} 
             value={content}
@@ -292,8 +292,10 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             placeholder={placeholder}
             className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
-            style={{ height: '38px', minHeight: '38px', maxHeight: '200px', overflowY: 'auto' }}
+            style={{ height: '38px', minHeight: '38px', maxHeight: '200px', overflowY: 'auto', pointerEvents: 'auto' }}
             data-testid="comment-textarea"
+            disabled={false}
+            readOnly={false}
           />
         </div>
         <Button
