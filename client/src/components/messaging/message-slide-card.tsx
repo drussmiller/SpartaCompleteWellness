@@ -722,7 +722,7 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 border-x border-gray-200' : ''}`}
+        className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
@@ -735,7 +735,7 @@ export function MessageSlideCard() {
         onTouchEnd={handleTouchEnd}
       >
         <Card
-          className="w-full h-full rounded-none bg-white border-none shadow-none flex flex-col"
+          className={`w-full h-full rounded-none bg-white shadow-none flex flex-col ${!isMobile ? 'border-x border-gray-200' : 'border-none'}`}
           style={{ overflow: 'hidden' }}
         >
           {/* Header - Fixed at top */}
