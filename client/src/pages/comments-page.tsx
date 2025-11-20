@@ -216,7 +216,7 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 border-x border-gray-200' : ''}`}
         style={{
           position: 'fixed',
           top: '4rem',
