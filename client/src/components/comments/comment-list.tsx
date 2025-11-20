@@ -533,8 +533,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         ))}
       </div>
 
-      {/* Portal edit form outside ScrollArea */}
-      {editingCommentData && createPortal(
+      {/* Inline edit form - NO PORTAL */}
+      {editingCommentData && (
         <>
           {/* Backdrop to block clicks */}
           <div 
@@ -601,12 +601,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             key={`edit-form-${editingComment}`}
           />
           </div>
-        </>,
-        document.body
+        </>
       )}
 
-      {/* Portal reply form outside ScrollArea */}
-      {replyingToComment && createPortal(
+      {/* Inline reply form - NO PORTAL */}
+      {replyingToComment && (
         <>
           {/* Backdrop to block clicks */}
           <div 
@@ -675,8 +674,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             skipScrollReset={true}
           />
           </div>
-        </>,
-        document.body
+        </>
       )}
 
       {selectedCommentData && (
