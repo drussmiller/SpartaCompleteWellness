@@ -213,21 +213,6 @@ export default function CommentsPage() {
     );
   }
 
-  const getDesktopPosition = () => {
-    if (isMobile) return { left: 0, right: 0 };
-    
-    // Calculate the offset to center a 1000px container
-    const containerWidth = 1000;
-    const offset = `max(0px, calc((100vw - ${containerWidth}px) / 2))`;
-    
-    return {
-      left: offset,
-      right: offset
-    };
-  };
-
-  const position = getDesktopPosition();
-
   return (
     <AppLayout title="Comments">
       <div 
@@ -235,8 +220,8 @@ export default function CommentsPage() {
         style={{
           position: 'fixed',
           top: '4rem',
-          left: position.left,
-          right: position.right,
+          left: isMobile ? 0 : 'max(0px, calc((100vw - 1000px) / 2))',
+          right: isMobile ? 0 : 'max(0px, calc((100vw - 1000px) / 2))',
           bottom: 0,
           zIndex: 100
         }}
@@ -278,8 +263,8 @@ export default function CommentsPage() {
           style={{
             position: 'fixed',
             bottom: 0,
-            left: position.left,
-            right: position.right,
+            left: isMobile ? 0 : 'max(0px, calc((100vw - 1000px) / 2))',
+            right: isMobile ? 0 : 'max(0px, calc((100vw - 1000px) / 2))',
             zIndex: 50
           }}
         >
