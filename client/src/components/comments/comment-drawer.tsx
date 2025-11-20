@@ -1,4 +1,4 @@
-import { createPortal } from "react-dom";
+import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
@@ -6,7 +6,7 @@ import { Post, User } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronLeft, X } from "lucide-react";
+import { Loader2, ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,8 +14,6 @@ import { useRef, useEffect, useState } from "react";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 interface CommentDrawerProps {
   postId: number;
@@ -430,108 +428,106 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     },
   });
 
-  if (!isOpen) return null;
-
-  return createPortal(
-    <div
-      ref={drawerRef}
-      className={`fixed bg-white z-[2147483647] flex flex-col ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
-      style={{
-        top: `${viewportTop}px`,
-        height: `${viewportHeight}px`,
-        left: 0,
-        right: 0,
-        touchAction: 'none'
-      }}
-    >
-      <Card
-        className={`w-full h-full rounded-none bg-white shadow-none flex flex-col ${!isMobile ? 'border-x border-gray-200' : 'border-none'}`}
-        style={{ overflow: 'hidden' }}
+  return (
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent 
+        side="right" 
+        ref={drawerRef}
+        className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
+        style={{ 
+          width: '100%', 
+          maxWidth: '100%', 
+          overflow: 'hidden', 
+          paddingTop: 'env(safe-area-inset-top, 30px)',
+          position: 'fixed',
+          top: `${viewportTop}px`,
+          left: '0',
+          right: '0',
+          height: `${viewportHeight}px`,
+          maxHeight: `${viewportHeight}px`
+        }}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        {/* Fixed header bar */}
-        <div className="h-32 border-b bg-background flex-shrink-0 pt-6" style={{ paddingTop: '4rem' }}>
-          {/* Back button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="absolute top-16 left-4 bg-transparent hover:bg-gray-100"
-          >
-            <ChevronLeft className="text-2xl" />
-            <span className="sr-only">Close</span>
-          </Button>
+        <div className="w-full flex flex-col" style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
+          {/* Fixed header bar */}
+          <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
+            {/* Back button */}
+            <SheetClose className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+              <ChevronLeft className="text-2xl" />
+              <span className="sr-only">Close</span>
+            </SheetClose>
 
-          {/* Post author info */}
-          {originalPost?.author && (
-            <div className="flex flex-col items-start justify-center h-full ml-14 pt-2">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-10 w-10">
-                  {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
-                  <AvatarFallback
-                    style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
-                    className="text-white"
-                  >
-                    {originalPost.author.username?.[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xl font-semibold">{originalPost.author.username}</span>
-                {originalPost?.createdAt && (
-                  <>
-                    <span className="text-muted-foreground">-</span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
-                    </span>
-                  </>
-                )}
+            {/* Post author info */}
+            {originalPost?.author && (
+              <div className="flex flex-col items-start justify-center h-full ml-14 pt-2">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-10 w-10">
+                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                    <AvatarFallback
+                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                      className="text-white"
+                    >
+                      {originalPost.author.username?.[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xl font-semibold">{originalPost.author.username}</span>
+                  {originalPost?.createdAt && (
+                    <>
+                      <span className="text-muted-foreground">-</span>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Content area */}
-        <div className="flex-1 overflow-y-auto pt-2">
-          {/* Show loading state */}
-          {(isPostLoading || areCommentsLoading) && (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          )}
+          {/* Content area */}
+          <div className="flex-1 overflow-y-auto pt-2">
+            {/* Show loading state */}
+            {(isPostLoading || areCommentsLoading) && (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            )}
 
-          {/* Show errors if any */}
-          {(postError || commentsError) && (
-            <div className="flex items-center justify-center p-8 text-destructive">
-              <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
-            </div>
-          )}
+            {/* Show errors if any */}
+            {(postError || commentsError) && (
+              <div className="flex items-center justify-center p-8 text-destructive">
+                <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
+              </div>
+            )}
 
-          {/* Post and comments section */}
-          {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
-            <div className="px-4 pb-40" >
-              <PostView post={originalPost} />
-              <div className="border-t border-gray-200 my-4"></div>
-              <CommentList 
-                comments={comments} 
-                postId={postId} 
-                onVisibilityChange={handleCommentVisibility}
+            {/* Post and comments section */}
+            {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
+              <div className="px-4 pb-40" >
+                <PostView post={originalPost} />
+                <div className="border-t border-gray-200 my-4"></div>
+                <CommentList 
+                  comments={comments} 
+                  postId={postId} 
+                  onVisibilityChange={handleCommentVisibility}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Fixed comment form at the bottom */}
+          {isCommentBoxVisible && (
+            <div className={`fixed bottom-0 left-0 right-0 px-4 pt-4 border-t bg-background z-[99999] ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+              <CommentForm
+                onSubmit={async (content, file) => {
+                  await createCommentMutation.mutateAsync({ content, file });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+                inputRef={commentInputRef}
               />
             </div>
           )}
         </div>
-
-        {/* Fixed comment form at the bottom */}
-        {isCommentBoxVisible && (
-          <div className={`px-4 pt-4 bg-white flex-shrink-0 border-t ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-            <CommentForm
-              onSubmit={async (content, file) => {
-                await createCommentMutation.mutateAsync({ content, file });
-              }}
-              isSubmitting={createCommentMutation.isPending}
-              inputRef={commentInputRef}
-            />
-          </div>
-        )}
-      </Card>
-    </div>,
-    document.body
+      </SheetContent>
+    </Sheet>
   );
 }
