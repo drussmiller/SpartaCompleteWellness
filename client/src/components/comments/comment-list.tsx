@@ -506,8 +506,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: 9999
+            zIndex: 9999,
+            pointerEvents: 'auto'
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-2" style={{ position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
             <p className="text-sm text-muted-foreground">
@@ -553,8 +555,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: 9999
+            zIndex: 9999,
+            pointerEvents: 'auto'
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-2" style={{ position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
             <p className="text-sm text-muted-foreground">
