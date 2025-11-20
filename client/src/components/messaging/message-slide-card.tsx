@@ -720,11 +720,15 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className="fixed left-0 right-0 bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
+        className="fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
-          touchAction: 'none'
+          touchAction: 'none',
+          left: '50%',
+          width: '1000px',
+          transform: 'translateX(-50%)',
+          maxWidth: '100%'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

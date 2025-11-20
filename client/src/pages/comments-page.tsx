@@ -216,14 +216,16 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? "max-w-[1000px] mx-auto" : "w-full"}`}
+        className="flex flex-col bg-white overflow-hidden"
         style={{
           position: 'fixed',
           top: '4rem',
-          left: isMobile ? 0 : 'auto',
+          left: isMobile ? 0 : '50%',
           right: isMobile ? 0 : 'auto',
           bottom: 0,
-          zIndex: 100
+          zIndex: 100,
+          width: isMobile ? '100%' : '1000px',
+          transform: isMobile ? 'none' : 'translateX(-50%)'
         }}
       >
         {/* Swipe detection is handled on scrollable area only via useEffect */}
