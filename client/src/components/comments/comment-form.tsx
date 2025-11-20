@@ -141,8 +141,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         // This allows native textarea click behavior to work
         if (e.target !== textareaRef.current) {
           ensureTextareaFocus();
+          e.stopPropagation();
         }
-        e.stopPropagation();
       }}
     >
       {selectedFile && (
