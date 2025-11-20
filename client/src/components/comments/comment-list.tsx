@@ -525,17 +525,34 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
       {/* Portal edit form outside ScrollArea */}
       {editingCommentData && createPortal(
-        <div 
-          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            touchAction: 'manipulation'
-          }}
-        >
+        <>
+          {/* Backdrop to block clicks */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              zIndex: 9998,
+              pointerEvents: 'auto'
+            }}
+            onClick={() => setEditingComment(null)}
+          />
+          {/* Edit form */}
+          <div 
+            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              touchAction: 'manipulation',
+              pointerEvents: 'auto'
+            }}
+          >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Edit comment
@@ -569,23 +586,41 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             skipScrollReset={true}
             key={`edit-form-${editingComment}`}
           />
-        </div>,
+          </div>
+        </>,
         document.body
       )}
 
       {/* Portal reply form outside ScrollArea */}
       {replyingToComment && createPortal(
-        <div 
-          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            touchAction: 'manipulation'
-          }}
-        >
+        <>
+          {/* Backdrop to block clicks */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              zIndex: 9998,
+              pointerEvents: 'auto'
+            }}
+            onClick={() => setReplyingTo(null)}
+          />
+          {/* Reply form */}
+          <div 
+            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              touchAction: 'manipulation',
+              pointerEvents: 'auto'
+            }}
+          >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
@@ -621,7 +656,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             key={`reply-form-${replyingTo}`}
             skipScrollReset={true}
           />
-        </div>,
+          </div>
+        </>,
         document.body
       )}
 
