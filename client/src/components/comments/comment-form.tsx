@@ -244,7 +244,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             <path d="M15 9h.01" />
           </svg>
         </Button>
-        <div className="flex-1" style={{ pointerEvents: 'auto' }}>
+        <div className="flex-1" style={{ pointerEvents: 'auto', touchAction: 'manipulation' }}>
           <Textarea
             ref={setRefs} 
             value={content}
@@ -266,10 +266,21 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             placeholder={placeholder}
             className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
-            style={{ height: '38px', minHeight: '38px', maxHeight: '200px', overflowY: 'auto', pointerEvents: 'auto' }}
+            style={{ 
+              height: '38px', 
+              minHeight: '38px', 
+              maxHeight: '200px', 
+              overflowY: 'auto', 
+              pointerEvents: 'auto',
+              touchAction: 'manipulation',
+              WebkitUserSelect: 'text',
+              userSelect: 'text'
+            }}
             data-testid="comment-textarea"
-            disabled={false}
-            readOnly={false}
+            autoComplete="off"
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            spellCheck={true}
           />
         </div>
         <Button
