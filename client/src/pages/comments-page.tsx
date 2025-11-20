@@ -225,7 +225,8 @@ export default function CommentsPage() {
           zIndex: 100,
           width: '1000px',
           maxWidth: '100%',
-          transform: 'translateX(-50%)'
+          transform: 'translateX(-50%)',
+          border: '2px solid red' // DEBUG: To visualize the boundary
         }}
       >
           {/* Swipe detection is handled on scrollable area only via useEffect */}
