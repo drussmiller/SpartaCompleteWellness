@@ -871,8 +871,11 @@ export function CreatePostDialog({
                             type="button"
                             variant="outline"
                             className="w-full py-8"
-                            onClick={() => videoInputRef.current?.click()}
-                            data-testid="button-select-memory-verse-video"
+                            onClick={() => {
+                              if (videoInputRef.current) {
+                                videoInputRef.current.click();
+                              }
+                            }}
                           >
                             <div className="flex flex-col items-center justify-center text-center">
                               <span>Select video</span>
@@ -963,7 +966,6 @@ export function CreatePostDialog({
                                   }}
                                   variant="outline"
                                   className="w-full"
-                                  data-testid="button-select-image"
                                 >
                                   Select Image
                                 </Button>
@@ -1025,7 +1027,6 @@ export function CreatePostDialog({
                                   }}
                                   variant="outline"
                                   className="w-full"
-                                  data-testid="button-select-video"
                                 >
                                   {!hasAnyPosts ? "Select Intro Video" : "Select Video"}
                                 </Button>
