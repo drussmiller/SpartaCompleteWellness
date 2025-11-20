@@ -49,27 +49,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
   };
 
-  const ensureTextareaFocus = () => {
-    if (!disableAutoScroll && textareaRef.current) {
-      textareaRef.current.focus({ preventScroll: true });
-      console.log("Refocusing textarea");
-    }
-  };
-
   useEffect(() => {
-    // Delay focus to ensure form is fully rendered and visible
-    if (!disableAutoScroll && textareaRef.current) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (textareaRef.current) {
-            textareaRef.current.focus({ preventScroll: true });
-            console.log("Focus in CommentForm component mount");
-          }
-        });
-      });
-    }
-
-    // Then adjust height if there's default content
+    // Adjust height if there's default content
     if (textareaRef.current && defaultValue) {
       const textarea = textareaRef.current;
       textarea.style.height = '38px';
@@ -81,7 +62,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
         textarea.style.overflowY = 'hidden';
       }
     }
-  }, []);
+  }, [defaultValue]);
 
   useEffect(() => {
     if (content === '') {
@@ -279,13 +260,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 target.style.overflowY = 'auto';
               } else {
                 target.style.overflowY = 'hidden';
-              }
-            }}
-            onFocus={() => {
-              if (!skipScrollReset) {
-                window.scrollTo(0, 0);
-                document.body.scrollTop = 0;
-                document.documentElement.scrollTop = 0;
               }
             }}
             onKeyDown={handleKeyDown}
