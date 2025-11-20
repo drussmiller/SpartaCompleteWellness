@@ -220,13 +220,10 @@ export default function CommentsPage() {
         style={{
           position: 'fixed',
           top: '4rem',
-          left: '50%',
+          left: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
+          right: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
           bottom: 0,
-          zIndex: 100,
-          width: '1000px',
-          maxWidth: '100%',
-          transform: 'translateX(-50%)',
-          border: '2px solid red' // DEBUG: To visualize the boundary
+          zIndex: 100
         }}
       >
           {/* Swipe detection is handled on scrollable area only via useEffect */}
@@ -264,11 +261,9 @@ export default function CommentsPage() {
           style={{
             position: 'fixed',
             bottom: 0,
-            left: '50%',
-            zIndex: 50,
-            width: '1000px',
-            maxWidth: '100%',
-            transform: 'translateX(-50%)'
+            left: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
+            right: isMobile ? 0 : 'calc(max(0px, (100vw - 1000px) / 2))',
+            zIndex: 50
           }}
         >
           <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
