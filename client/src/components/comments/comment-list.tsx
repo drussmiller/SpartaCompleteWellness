@@ -507,13 +507,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             left: 0,
             right: 0,
             zIndex: 9999,
-            pointerEvents: 'auto',
             touchAction: 'manipulation'
           }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-2" style={{ position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Edit comment
             </p>
@@ -521,6 +518,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               variant="ghost"
               size="sm"
               onClick={() => {
+                console.log("Cancel edit clicked");
                 setEditingComment(null);
               }}
               type="button"
@@ -531,6 +529,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
           <CommentForm
             onSubmit={async (content, file) => {
+              console.log("Edit form submitted");
               await editCommentMutation.mutateAsync({ id: editingCommentData.id, content });
               setEditingComment(null);
             }}
@@ -558,13 +557,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             left: 0,
             right: 0,
             zIndex: 9999,
-            pointerEvents: 'auto',
             touchAction: 'manipulation'
           }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-2" style={{ position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
             </p>
@@ -572,6 +568,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               variant="ghost"
               size="sm"
               onClick={() => {
+                console.log("Cancel reply clicked");
                 setReplyingTo(null);
               }}
               type="button"
@@ -582,6 +579,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
           <CommentForm
               onSubmit={async (content, file) => {
+                console.log("Reply form submitted");
                 await createReplyMutation.mutateAsync({ content, file });
                 if (replyInputRef.current) {
                   replyInputRef.current.value = '';

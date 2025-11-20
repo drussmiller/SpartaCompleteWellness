@@ -244,11 +244,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             <path d="M15 9h.01" />
           </svg>
         </Button>
-        <div className="flex-1" style={{ pointerEvents: 'auto', touchAction: 'manipulation' }}>
+        <div className="flex-1" style={{ touchAction: 'manipulation' }}>
           <Textarea
             ref={setRefs} 
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onClick={() => console.log("Textarea clicked")}
+            onFocus={() => console.log("Textarea focused")}
+            onBlur={() => console.log("Textarea blurred")}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = '38px';
@@ -270,8 +273,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               height: '38px', 
               minHeight: '38px', 
               maxHeight: '200px', 
-              overflowY: 'auto', 
-              pointerEvents: 'auto',
+              overflowY: 'auto',
               touchAction: 'manipulation',
               WebkitUserSelect: 'text',
               userSelect: 'text'
