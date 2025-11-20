@@ -710,8 +710,10 @@ export const registerRoutes = async (
               originalFilename.endsWith(".webm") ||
               originalFilename.endsWith(".avi") ||
               originalFilename.endsWith(".mkv");
+            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
 
-            const isVideo = isVideoMimetype || isVideoExtension;
+            // Combined video detection
+            const isVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
 
             console.log(`Processing comment media file:`, {
               originalFilename: req.file.originalname,
@@ -1162,7 +1164,7 @@ export const registerRoutes = async (
   router.get("/api/prayer-requests/unread", authenticate, async (req, res) => {
     try {
       res.setHeader("Content-Type", "application/json");
-      
+
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -1211,7 +1213,7 @@ export const registerRoutes = async (
       // Admin/Group Admin filter: show only introductory videos from team-less users
       if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin)) {
         logger.info(`[TEAMLESS INTRO FILTER] Admin/Group Admin ${req.user.id} fetching intro videos from team-less users`);
-        
+
         // Get all users without teams
         // Note: Since team-less users don't have teams, they can't be scoped to an organization
         // All admins/group admins can see all team-less users' introductory videos
@@ -1219,14 +1221,14 @@ export const registerRoutes = async (
           .select({ id: users.id })
           .from(users)
           .where(isNull(users.teamId));
-        
+
         const teamlessUserIds = teamlessUsers.map(u => u.id);
-        
+
         if (teamlessUserIds.length === 0) {
           logger.info(`[TEAMLESS INTRO FILTER] No team-less users found in scope`);
           return res.json([]);
         }
-        
+
         // Build query for introductory videos from team-less users
         const introVideos = await db
           .select({
@@ -1249,12 +1251,12 @@ export const registerRoutes = async (
           .orderBy(desc(posts.createdAt))
           .limit(limit)
           .offset(offset);
-        
+
         const formattedPosts = introVideos.map(({ post, author }) => ({
           ...post,
           author,
         }));
-        
+
         logger.info(`[TEAMLESS INTRO FILTER] Returning ${formattedPosts.length} introductory videos from ${teamlessUserIds.length} team-less users`);
         return res.json(formattedPosts);
       }
@@ -1282,11 +1284,6 @@ export const registerRoutes = async (
             .where(eq(users.teamId, req.user.teamId));
 
           const memberIds = teamMemberIds.map(member => member.id);
-
-          if (memberIds.length === 0) {
-            logger.info(`No team members found for team ${req.user.teamId}, returning empty posts array`);
-            return res.json([]);
-          }
 
           // Filter posts to show:
           // 1. Posts from team members (my_team scope), OR
@@ -1389,7 +1386,7 @@ export const registerRoutes = async (
       // 3. post_scope is 'team' and they're in the target team, OR
       // 4. post_scope is 'group' and they're in a team within the target group, OR
       // 5. post_scope is 'organization' and they're in a group within the target organization
-      
+
       if (req.user.teamId) {
         // Get user's team info to check group and organization
         const [userTeam] = await db
@@ -1398,9 +1395,9 @@ export const registerRoutes = async (
           })
           .from(teams)
           .where(eq(teams.id, req.user.teamId));
-        
+
         const userGroupId = userTeam?.groupId;
-        
+
         let userOrganizationId = null;
         if (userGroupId) {
           const [userGroup] = await db
@@ -1409,7 +1406,7 @@ export const registerRoutes = async (
             })
             .from(groups)
             .where(eq(groups.id, userGroupId));
-          
+
           userOrganizationId = userGroup?.organizationId;
         }
 
@@ -1418,7 +1415,7 @@ export const registerRoutes = async (
           .select({ id: users.id })
           .from(users)
           .where(eq(users.teamId, req.user.teamId));
-        
+
         const memberIds = teamMemberIds.map(member => member.id);
 
         // Build scope filter conditions
@@ -1461,7 +1458,7 @@ export const registerRoutes = async (
         if (scopeConditions.length > 0) {
           conditions.push(or(...scopeConditions));
         }
-        
+
         logger.info(`[SCOPE FILTER] User ${req.user.id} (team ${req.user.teamId}) - Scope conditions count: ${scopeConditions.length}`);
       } else {
         // User has no team - show 'everyone' posts OR their own posts (e.g., introductory videos)
@@ -1705,7 +1702,7 @@ export const registerRoutes = async (
               uploadedFile.buffer,
               uploadedFile.originalname,
               uploadedFile.mimetype,
-              isVideo
+              isVideo,
             );
 
             commentMediaUrl = fileInfo.url;
@@ -2457,497 +2454,6 @@ export const registerRoutes = async (
       logger.error(`Error deleting team ${req.params.id}:`, error);
       res.status(500).json({
         message: "Failed to delete team",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Daily score check endpoints for notifications
-  router.get("/api/check-daily-scores", async (req, res) => {
-    try {
-      const userId = parseInt(req.query.userId as string);
-      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "User ID is required" });
-      }
-
-      logger.info(`Manual check daily scores for user ${userId} with timezone offset ${tzOffset}`);
-
-      // Forward to the post endpoint
-      await checkDailyScores({ body: { userId, tzOffset } } as Request, res);
-    } catch (error) {
-      logger.error('Error in GET daily score check:', error);
-      res.status(500).json({
-        message: "Failed to check daily scores",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  router.post("/api/check-daily-scores", async (req, res) => {
-    try {
-      await checkDailyScores(req, res);
-    } catch (error) {
-      logger.error("Error in POST daily score check:", error);
-      res.status(500).json({
-        message: "Failed to check daily scores",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Test endpoint to force notification check (simulates user's notification time)
-  router.post("/api/test-notification/:userId", authenticate, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      
-      // Only admin can test notifications
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Only admins can test notifications" });
-      }
-
-      // Get the user's notification time
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const notificationTimeParts = user.notificationTime
-        ? user.notificationTime.split(":")
-        : ["8", "00"];
-      const preferredHour = parseInt(notificationTimeParts[0]);
-      const preferredMinute = parseInt(notificationTimeParts[1] || "0");
-
-      logger.info(`Testing notification for user ${userId} at their preferred time ${preferredHour}:${preferredMinute}`);
-
-      // Call checkDailyScores with the user's preferred time
-      await checkDailyScores({ 
-        body: { 
-          currentHour: preferredHour, 
-          currentMinute: preferredMinute 
-        } 
-      } as Request, res);
-    } catch (error) {
-      logger.error("Error in test notification:", error);
-      res.status(500).json({
-        message: "Failed to test notification",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Main function to check daily scores
-  const checkDailyScores = async (req: Request, res: Response) => {
-    try {
-      logger.info("Starting daily score check with request body:", req.body);
-
-      const currentHour = req.body?.currentHour !== undefined
-        ? parseInt(req.body.currentHour)
-        : new Date().getHours();
-
-      const currentMinute = req.body?.currentMinute !== undefined
-        ? parseInt(req.body.currentMinute)
-        : new Date().getMinutes();
-
-      logger.info(`Check daily scores at time: ${currentHour}:${currentMinute}`);
-
-      const allUsers = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          isAdmin: users.isAdmin,
-          teamId: users.teamId,
-          notificationTime: users.notificationTime,
-          timezoneOffset: users.timezoneOffset,
-          dailyNotificationsEnabled: users.dailyNotificationsEnabled,
-          phoneNumber: users.phoneNumber,
-          smsEnabled: users.smsEnabled,
-        })
-        .from(users);
-
-      logger.info(`Found ${Array.isArray(allUsers) ? allUsers.length : 0} users to check`);
-
-      const now = new Date();
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
-
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const dayOfWeek = today.getDay();
-
-      logger.info(`Checking points from ${yesterday.toISOString()} to ${today.toISOString()}`);
-
-      for (const user of allUsers) {
-        try {
-          logger.info(`Processing user ${user.id} (${user.username})`);
-
-          const userPostsResult = await db
-            .select({
-              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
-              types: sql<string[]>`array_agg(distinct ${posts.type})`,
-              count: sql<number>`count(*)::integer`,
-            })
-            .from(posts)
-            .where(
-              and(
-                eq(posts.userId, user.id),
-                gte(posts.createdAt, yesterday),
-                lt(posts.createdAt, today),
-                isNull(posts.parentId),
-              ),
-            );
-
-          const userPosts = userPostsResult[0];
-          const totalPoints = userPosts?.points || 0;
-          const postTypes = userPosts?.types || [];
-          const postCount = userPosts?.count || 0;
-
-          const expectedPoints = dayOfWeek === 6 ? 22 : dayOfWeek === 0 ? 3 : 15;
-
-          logger.info(`User ${user.id} (${user.username}) activity:`, {
-            totalPoints,
-            expectedPoints,
-            postTypes,
-            postCount,
-            dayOfWeek,
-            date: yesterday.toISOString(),
-          });
-
-          if (totalPoints < expectedPoints) {
-            const postsByType = await db
-              .select({
-                type: posts.type,
-                count: sql<number>`count(*)::integer`,
-              })
-              .from(posts)
-              .where(
-                and(
-                  eq(posts.userId, user.id),
-                  gte(posts.createdAt, yesterday),
-                  lt(posts.createdAt, today),
-                  isNull(posts.parentId),
-                ),
-              )
-              .groupBy(posts.type);
-
-            const counts: Record<string, number> = {
-              food: 0,
-              workout: 0,
-              scripture: 0,
-              memory_verse: 0,
-            };
-
-            postsByType.forEach((post) => {
-              if (post.type in counts) {
-                counts[post.type] = post.count;
-              }
-            });
-
-            const missedItems = [];
-            const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-            if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
-              missedItems.push(`${3 - counts.food} meals`);
-            }
-
-            if (yesterdayDayOfWeek !== 0 && counts.workout < 1) {
-              missedItems.push("your workout");
-            }
-
-            if (counts.scripture < 1) {
-              missedItems.push("your scripture reading");
-            }
-
-            if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
-              missedItems.push("your memory verse");
-            }
-
-            let message = "";
-            if (missedItems.length > 0) {
-              message = "Yesterday you missed posting ";
-
-              if (missedItems.length === 1) {
-                message += missedItems[0] + ".";
-              } else if (missedItems.length === 2) {
-                message += missedItems[0] + " and " + missedItems[1] + ".";
-              } else {
-                const lastItem = missedItems.pop();
-                message += missedItems.join(", ") + ", and " + lastItem + ".";
-              }
-            } else {
-              message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
-            }
-
-            const notificationTimeParts = user.notificationTime
-              ? user.notificationTime.split(":")
-              : ["8", "00"];
-            const preferredLocalHour = parseInt(notificationTimeParts[0]);
-            const preferredLocalMinute = parseInt(notificationTimeParts[1] || "0");
-
-            // Convert user's local notification time to UTC
-            // timezoneOffset is in minutes (e.g., -300 for EST which is UTC-5)
-            // Negative offset means local time is BEHIND UTC
-            // To convert local to UTC: UTC = local - offset
-            // For EST: offset = -300 min = -5 hours
-            // Example: 14:00 local - (-5) = 14:00 + 5 = 19:00 UTC
-            const timezoneOffsetMinutes = user.timezoneOffset || 0;
-            const timezoneOffsetHours = timezoneOffsetMinutes / 60;
-            
-            // Convert local time to UTC
-            const preferredUTCHour = Math.floor((preferredLocalHour - timezoneOffsetHours + 24) % 24);
-            const preferredUTCMinute = preferredLocalMinute;
-
-            const isPreferredTimeWindow =
-              (currentHour === preferredUTCHour &&
-                currentMinute >= preferredUTCMinute &&
-                currentMinute < preferredUTCMinute + 10) ||
-              (currentHour === preferredUTCHour + 1 &&
-                preferredUTCMinute >= 50 &&
-                currentMinute < (preferredUTCMinute + 10) % 60);
-
-            // Check if a notification was already sent in the last 55 minutes
-            // This allows multiple notifications per day if users change their schedule
-            const fiftyFiveMinutesAgo = new Date(now.getTime() - 55 * 60 * 1000);
-            const recentNotifications = await db
-              .select()
-              .from(notifications)
-              .where(
-                and(
-                  eq(notifications.userId, user.id),
-                  eq(notifications.type, "reminder"),
-                  gte(notifications.createdAt, fiftyFiveMinutesAgo),
-                ),
-              );
-
-            logger.info(`Notification time check for user ${user.id} (${user.username}):`, {
-              userId: user.id,
-              username: user.username,
-              currentTime: `${currentHour}:${String(currentMinute).padStart(2, '0')} UTC`,
-              preferredLocalTime: `${String(preferredLocalHour).padStart(2, '0')}:${String(preferredLocalMinute).padStart(2, '0')}`,
-              preferredUTCTime: `${String(preferredUTCHour).padStart(2, '0')}:${String(preferredUTCMinute).padStart(2, '0')} UTC`,
-              timezoneOffsetMinutes: timezoneOffsetMinutes,
-              timezoneOffsetHours: timezoneOffsetHours,
-              calculation: `(${preferredLocalHour} - (${timezoneOffsetHours}) + 24) % 24 = ${preferredUTCHour}`,
-              isPreferredTimeWindow,
-              recentNotifications: recentNotifications.length,
-            });
-
-            if (isPreferredTimeWindow && recentNotifications.length === 0) {
-              // Check if user has daily notifications enabled (default to true if undefined)
-              const dailyNotificationsEnabled = user.dailyNotificationsEnabled !== false;
-              
-              if (!dailyNotificationsEnabled) {
-                logger.info(`User ${user.id} has daily notifications disabled - skipping notification`);
-              } else {
-                // Calculate the intended notification time using the user's preferred time
-                // Use the preferredUTCHour which is already correctly calculated
-                // This ensures the timestamp reflects when they WANTED the notification, not when it was actually sent
-                const intendedNotificationTime = new Date(today);
-                intendedNotificationTime.setUTCHours(preferredUTCHour, preferredUTCMinute, 0, 0);
-                
-                const notification = {
-                  userId: user.id,
-                  title: "Daily Reminder",
-                  message,
-                  read: false,
-                  createdAt: intendedNotificationTime,
-                  type: "reminder",
-                  sound: "default",
-                };
-
-                try {
-                  const [insertedNotification] = await db
-                    .insert(notifications)
-                    .values(notification)
-                    .returning();
-
-                  logger.info(`Created notification for user ${user.id}:`, {
-                    notificationId: insertedNotification.id,
-                    userId: user.id,
-                    message: notification.message,
-                  });
-
-                  const userClients = clients.get(user.id);
-                  if (userClients && userClients.size > 0) {
-                    const notificationData = {
-                      id: insertedNotification.id,
-                      title: notification.title,
-                      message: notification.message,
-                      sound: notification.sound,
-                      type: notification.type,
-                    };
-
-                    broadcastNotification(user.id, notificationData);
-                  }
-
-                  // Send SMS if enabled
-                  if (user.smsEnabled && user.phoneNumber) {
-                    try {
-                      logger.info(`Sending SMS notification to user ${user.id} at ${user.phoneNumber}`);
-                      await smsService.sendSMSToUser(
-                        user.phoneNumber,
-                        `${notification.title}: ${notification.message}`
-                      );
-                      logger.info(`SMS notification sent successfully to user ${user.id}`);
-                    } catch (smsError) {
-                      logger.error(`Failed to send SMS to user ${user.id}:`, smsError);
-                    }
-                  } else {
-                    if (!user.smsEnabled) {
-                      logger.debug(`SMS disabled for user ${user.id}`);
-                    } else if (!user.phoneNumber) {
-                      logger.debug(`No phone number for user ${user.id}`);
-                    }
-                  }
-                } catch (insertError: any) {
-                  logger.error(`Failed to insert notification for user ${user.id}:`, insertError);
-                }
-              }
-            } else {
-              if (!isPreferredTimeWindow) {
-                logger.debug(`User ${user.id} - not in preferred time window`);
-              } else if (recentNotifications.length > 0) {
-                logger.info(`User ${user.id} - skipping duplicate notification (already sent ${recentNotifications.length} in last 55 minutes)`);
-              }
-            }
-          } else {
-            logger.info(`No notification needed for user ${user.id}, met daily goal`);
-          }
-        } catch (userError) {
-          logger.error(`Error processing user ${user.id}:`, userError);
-          continue;
-        }
-      }
-
-      // Record the last notification check time
-      try {
-        const now = new Date();
-        // Use raw SQL for reliable upsert
-        await db.execute(sql`
-          INSERT INTO system_state (key, value, updated_at)
-          VALUES ('last_notification_check', ${now.toISOString()}, ${now})
-          ON CONFLICT (key)
-          DO UPDATE SET 
-            value = ${now.toISOString()},
-            updated_at = ${now}
-        `);
-        console.log(`[NOTIFICATION] Recorded last check time: ${now.toISOString()}`);
-      } catch (stateError) {
-        console.error("[NOTIFICATION] Failed to record last check time:", stateError);
-      }
-
-      res.json({ message: "Daily score check completed" });
-    } catch (error) {
-      logger.error("Error in daily score check:", error);
-      res.status(500).json({
-        message: "Failed to check daily scores",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  // Update team endpoint
-  router.patch("/api/teams/:id", authenticate, async (req, res) => {
-    try {
-      const teamId = parseInt(req.params.id);
-      if (isNaN(teamId)) {
-        return res.status(400).json({ message: "Invalid team ID" });
-      }
-
-      // Get the team first to check authorization
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, teamId))
-        .limit(1);
-
-      if (!team) {
-        return res.status(404).json({ message: "Team not found" });
-      }
-
-      // Check authorization: Admin or Group Admin for this team's group
-      const isAdmin = req.user?.isAdmin;
-      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
-
-      if (!isAdmin && !isGroupAdminForThisTeam) {
-        logger.warn(`Unauthorized team edit attempt by user ${req.user?.id} (Group Admin for group ${req.user?.adminGroupId}) on team ${teamId} (in group ${team.groupId})`);
-        return res.status(403).json({ 
-          message: `Not authorized. You can only edit teams in your group (Group ID: ${req.user?.adminGroupId})` 
-        });
-      }
-
-      logger.info(`Updating team ${teamId} with data:`, req.body);
-
-      // Extract makeUsersInactive flag
-      const { makeUsersInactive, ...updateData } = req.body;
-
-      // Handle programStartDate conversion if it exists
-      if (updateData.programStartDate !== undefined) {
-        updateData.programStartDate = updateData.programStartDate 
-          ? new Date(updateData.programStartDate) 
-          : null;
-      }
-
-      // Update the team in the database first
-      const [updatedTeam] = await db
-        .update(teams)
-        .set(updateData)
-        .where(eq(teams.id, teamId))
-        .returning();
-
-      // If team is being set to inactive and makeUsersInactive is true, update users
-      let usersUpdated = 0;
-      if (updateData.status === 0 && makeUsersInactive) {
-        logger.info(`Making users inactive for team ${teamId}, makeUsersInactive flag: ${makeUsersInactive}`);
-        
-        // First, check how many active users are in the team
-        const activeUsersCheck = await db
-          .select()
-          .from(users)
-          .where(
-            and(
-              eq(users.teamId, teamId),
-              eq(users.status, 1)
-            )
-          );
-        
-        logger.info(`Found ${activeUsersCheck.length} active user(s) in team ${teamId} before update`);
-        
-        const updatedUsers = await db
-          .update(users)
-          .set({ status: 0 })
-          .where(
-            and(
-              eq(users.teamId, teamId),
-              eq(users.status, 1)
-            )
-          )
-          .returning();
-        
-        usersUpdated = updatedUsers.length;
-        logger.info(`Set ${usersUpdated} user(s) to inactive for team ${teamId}`);
-        logger.info(`Updated user IDs: ${updatedUsers.map(u => u.id).join(', ')}`);
-      }
-
-      logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);
-      
-      // Return the team data with info about users updated
-      res.status(200).json({
-        ...updatedTeam,
-        usersUpdated: usersUpdated > 0 ? usersUpdated : undefined
-      });
-    } catch (error) {
-      logger.error(`Error updating team ${req.params.id}:`, error);
-      res.status(500).json({
-        message: "Failed to update team",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -4772,7 +4278,7 @@ export const registerRoutes = async (
           const trimmedPhone = phoneNumber.trim();
           updateData.phoneNumber = trimmedPhone || null;
           logger.info(`Updating phone number for user ${req.user.id}`);
-          
+
           // If phone number is being cleared, also disable SMS
           if (!trimmedPhone) {
             updateData.smsEnabled = false;
@@ -4789,15 +4295,15 @@ export const registerRoutes = async (
               .from(users)
               .where(eq(users.id, req.user.id))
               .limit(1);
-            
+
             const userPhone = phoneNumber !== undefined ? phoneNumber.trim() : currentUser[0]?.phoneNumber;
-            
+
             if (!userPhone) {
               return res.status(400).json({ 
                 message: "Cannot enable SMS notifications without a valid phone number" 
               });
             }
-            
+
             // Basic validation: must be at least 10 digits
             const digitsOnly = userPhone.replace(/\D/g, '');
             if (digitsOnly.length < 10) {
@@ -4806,7 +4312,7 @@ export const registerRoutes = async (
               });
             }
           }
-          
+
           updateData.smsEnabled = smsEnabled;
           logger.info(`Updating SMS notifications for user ${req.user.id} to ${smsEnabled}`);
         }
@@ -5508,7 +5014,7 @@ export const registerRoutes = async (
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       res.removeHeader('ETag');
-      
+
       // Debug logging for authorization
       console.log('GET /api/users - User authorization check:', {
         userId: req.user?.id,
@@ -5519,15 +5025,6 @@ export const registerRoutes = async (
       });
 
       let users = await storage.getAllUsers();
-      
-      // Log first user to verify avatarColor is present
-      if (users.length > 0) {
-        console.log('Sample user data:', {
-          id: users[0].id,
-          username: users[0].username,
-          avatarColor: users[0].avatarColor
-        });
-      }
 
       // Filter users based on role
       if (req.user.isAdmin) {
@@ -5550,7 +5047,7 @@ export const registerRoutes = async (
       else if (req.user.isTeamLead && req.user.teamId) {
         users = users.filter(user => user.teamId === req.user.teamId);
       }
-      // Filter users for regular users - only show users in their team (excluding themselves)
+      // Filter users forregular users - only show users in their team (excluding themselves)
       else if (req.user.teamId) {
         users = users.filter(user => user.teamId === req.user.teamId && user.id !== req.user.id);
       }

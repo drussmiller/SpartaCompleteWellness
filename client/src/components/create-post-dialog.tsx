@@ -921,8 +921,9 @@ export function CreatePostDialog({
                                   console.error("Error in thumbnail generation:", error);
                                 }
 
-                                // Important: we need to set the field value to a marker so we know to use the video file
-                                const marker = "VIDEO_FILE_UPLOAD";
+                                // Important: we need to set the field value to indicate a video file is ready
+                                // Use a data URL format to pass schema validation
+                                const marker = `data:${file.type};name=${file.name}`;
                                 field.onChange(marker);
 
                                 // Log detailed information about the selected file
@@ -1062,8 +1063,9 @@ export function CreatePostDialog({
                                         }
                                       });
 
-                                      // Set the field value to a marker so we know to use the video file
-                                      const marker = "VIDEO_FILE_UPLOAD";
+                                      // Set the field value to indicate a video file is ready
+                                      // Use a data URL format to pass schema validation
+                                      const marker = `data:${file.type};name=${file.name}`;
                                       field.onChange(marker);
 
                                       // Log detailed information about the selected file
