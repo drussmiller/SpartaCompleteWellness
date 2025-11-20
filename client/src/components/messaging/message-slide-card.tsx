@@ -719,18 +719,14 @@ export function MessageSlideCard() {
       {/* Full screen slide-out panel - rendered via Portal at document body level */}
       {isOpen && createPortal(
         <div
-        className="fixed z-[2147483647] flex justify-center animate-slide-in-from-right"
+        ref={cardRef}
+        className="fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
-          left: 0,
-          right: 0
-        }}
-      >
-        <div
-        ref={cardRef}
-        className="w-full max-w-[1000px] bg-white flex flex-col"
-        style={{
+          left: '50%',
+          width: 'min(100%, 1000px)',
+          transform: 'translateX(-50%)',
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
@@ -1056,7 +1052,6 @@ export function MessageSlideCard() {
             </div>
           )}
         </Card>
-        </div>
       </div>,
         document.body
       )}
