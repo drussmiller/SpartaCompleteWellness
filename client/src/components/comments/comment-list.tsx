@@ -477,27 +477,37 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
   // Auto-focus edit textbox when editing starts
   useEffect(() => {
-    if (editingComment && editInputRef.current) {
-      // Use setTimeout to ensure the portal is rendered
-      setTimeout(() => {
-        if (editInputRef.current) {
-          editInputRef.current.focus();
-          console.log("Auto-focused edit textbox");
-        }
-      }, 100);
+    if (editingComment) {
+      // Use multiple attempts with increasing delays to ensure the portal is rendered
+      const attempts = [100, 200, 300, 400, 500];
+      attempts.forEach(delay => {
+        setTimeout(() => {
+          if (editInputRef.current) {
+            editInputRef.current.focus();
+            console.log("✅ Auto-focused edit textbox at", delay, "ms");
+          } else {
+            console.log("❌ Edit ref not ready at", delay, "ms");
+          }
+        }, delay);
+      });
     }
   }, [editingComment]);
 
   // Auto-focus reply textbox when replying starts
   useEffect(() => {
-    if (replyingTo && replyInputRef.current) {
-      // Use setTimeout to ensure the portal is rendered
-      setTimeout(() => {
-        if (replyInputRef.current) {
-          replyInputRef.current.focus();
-          console.log("Auto-focused reply textbox");
-        }
-      }, 100);
+    if (replyingTo) {
+      // Use multiple attempts with increasing delays to ensure the portal is rendered
+      const attempts = [100, 200, 300, 400, 500];
+      attempts.forEach(delay => {
+        setTimeout(() => {
+          if (replyInputRef.current) {
+            replyInputRef.current.focus();
+            console.log("✅ Auto-focused reply textbox at", delay, "ms");
+          } else {
+            console.log("❌ Reply ref not ready at", delay, "ms");
+          }
+        }, delay);
+      });
     }
   }, [replyingTo]);
 
