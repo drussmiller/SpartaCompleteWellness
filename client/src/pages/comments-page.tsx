@@ -216,16 +216,14 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white overflow-hidden"
+        className={`flex flex-col bg-white overflow-hidden ${isMobile ? '' : 'max-w-[1000px] mx-auto'}`}
         style={{
           position: 'fixed',
           top: '4rem',
-          left: isMobile ? 0 : '50%',
-          right: isMobile ? 0 : 'auto',
+          left: 0,
+          right: 0,
           bottom: 0,
-          zIndex: 100,
-          width: isMobile ? '100%' : '1000px',
-          transform: isMobile ? 'none' : 'translateX(-50%)'
+          zIndex: 100
         }}
       >
         {/* Swipe detection is handled on scrollable area only via useEffect */}
@@ -259,14 +257,12 @@ export default function CommentsPage() {
         {/* Fixed Comment Form at Bottom */}
         <div 
           ref={formRef}
-          className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${isMobile ? '' : 'max-w-[1000px] mx-auto'}`}
           style={{
             position: 'fixed',
             bottom: 0,
-            left: isMobile ? 0 : '50%',
-            right: isMobile ? 0 : 'auto',
-            width: isMobile ? '100%' : '1000px',
-            transform: isMobile ? 'none' : 'translateX(-50%)',
+            left: 0,
+            right: 0,
             zIndex: 50
           }}
         >
