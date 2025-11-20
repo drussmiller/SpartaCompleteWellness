@@ -137,7 +137,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       className="flex flex-col gap-1 w-full"
       ref={containerRef}
       onClick={(e) => {
-        ensureTextareaFocus();
+        // Only call ensureTextareaFocus if not clicking directly on the textarea
+        // This allows native textarea click behavior to work
+        if (e.target !== textareaRef.current) {
+          ensureTextareaFocus();
+        }
         e.stopPropagation();
       }}
     >
