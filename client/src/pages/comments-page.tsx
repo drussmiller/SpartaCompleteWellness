@@ -23,6 +23,7 @@ export default function CommentsPage() {
   const keyboardHeight = useKeyboardAdjustmentMessages();
   const scrollableRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const [isEditingOrReplying, setIsEditingOrReplying] = useState(false);
 
   // Add swipe-to-close functionality - detect swipe on scrollable area only, exclude form
   useEffect(() => {
@@ -249,36 +250,45 @@ export default function CommentsPage() {
             {comments.length > 0 && (
               <div className="border-t border-gray-200 pt-6 bg-white">
                 <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
-                <CommentList comments={comments} postId={parseInt(postId)} />
+                <CommentList 
+                  comments={comments} 
+                  postId={parseInt(postId)} 
+                  onVisibilityChange={(isEditing, isReplying) => {
+                    console.log("Visibility change:", { isEditing, isReplying });
+                    setIsEditingOrReplying(isEditing || isReplying);
+                  }}
+                />
               </div>
             )}
           </div>
         </ScrollArea>
         </div>
         
-        {/* Fixed Comment Form at Bottom */}
-        <div 
-          ref={formRef}
-          className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 50
-          }}
-        >
-          <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
-          <CommentForm
-            onSubmit={async (content) => {
-              await createCommentMutation.mutateAsync({
-                content: content,
-                postId: parseInt(postId)
-              });
+        {/* Fixed Comment Form at Bottom - hidden when editing/replying */}
+        {!isEditingOrReplying && (
+          <div 
+            ref={formRef}
+            className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50
             }}
-            isSubmitting={createCommentMutation.isPending}
-          />
-        </div>
+          >
+            <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
+            <CommentForm
+              onSubmit={async (content) => {
+                await createCommentMutation.mutateAsync({
+                  content: content,
+                  postId: parseInt(postId)
+                });
+              }}
+              isSubmitting={createCommentMutation.isPending}
+            />
+          </div>
+        )}
       </div>
     </AppLayout>
   );
