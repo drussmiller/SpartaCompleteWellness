@@ -38,11 +38,9 @@ video {
   display: block;
 }
 
-/* Make sure controls remain visible  */
+/* Make sure controls are properly positioned without forcing visibility */
 video::-webkit-media-controls-panel {
   display: flex !important;
-  opacity: 1 !important;
-  visibility: visible !important;
   padding-bottom: 0 !important;
   position: relative;
   z-index: 10;
