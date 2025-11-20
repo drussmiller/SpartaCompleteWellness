@@ -535,22 +535,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
       {/* Inline edit form - NO PORTAL */}
       {editingCommentData && (
-        <>
-          {/* Backdrop to block clicks */}
-          <div 
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              zIndex: 9998,
-              pointerEvents: 'auto'
-            }}
-            onClick={() => setEditingComment(null)}
-          />
-          {/* Edit form */}
           <div 
             className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
             style={{
@@ -601,27 +585,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             key={`edit-form-${editingComment}`}
           />
           </div>
-        </>
       )}
 
       {/* Inline reply form - NO PORTAL */}
       {replyingToComment && (
-        <>
-          {/* Backdrop to block clicks */}
-          <div 
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              zIndex: 9998,
-              pointerEvents: 'auto'
-            }}
-            onClick={() => setReplyingTo(null)}
-          />
-          {/* Reply form */}
           <div 
             className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
             style={{
@@ -674,7 +641,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             skipScrollReset={true}
           />
           </div>
-        </>
       )}
 
       {selectedCommentData && (
