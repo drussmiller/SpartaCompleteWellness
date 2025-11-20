@@ -11,10 +11,10 @@ import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
-export default function CommentsPage() {
-  const { postId } = useParams<{ postId: string }>();
+const { postId } = useParams<{ postId: string }>();
   const [, navigate] = useLocation();
   const router = useRouter();
   const { user } = useAuth();
@@ -215,12 +215,12 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className="flex flex-col bg-white w-full overflow-hidden"
+        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? "max-w-[1000px] mx-auto" : "w-full"}`}
         style={{
           position: 'fixed',
           top: '4rem',
-          left: 0,
-          right: 0,
+          left: isMobile ? 0 : 'auto',
+          right: isMobile ? 0 : 'auto',
           bottom: 0,
           zIndex: 100
         }}
