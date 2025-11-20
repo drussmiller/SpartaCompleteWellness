@@ -562,6 +562,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               touchAction: 'manipulation',
               pointerEvents: 'auto'
             }}
+            onClick={(e) => e.stopPropagation()}
           >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
@@ -630,6 +631,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               touchAction: 'manipulation',
               pointerEvents: 'auto'
             }}
+            onClick={(e) => e.stopPropagation()}
           >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
