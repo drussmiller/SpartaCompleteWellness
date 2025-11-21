@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import { spartaObjectStorage } from './sparta-object-storage-final';
 
 interface CacheEntry {
@@ -104,70 +106,80 @@ export class VideoCacheManager {
   }
 
   /**
-   * Download video from Object Storage to disk using streaming (no memory buffering)
+   * Download video from Object Storage to disk using HTTP streaming (zero memory buffering)
    */
   private async downloadVideo(storageKey: string): Promise<string> {
-    console.log(`Streaming ${storageKey} to cache...`);
+    console.log(`Streaming ${storageKey} to cache via HTTP...`);
 
     // Create safe filename (replace slashes with underscores)
     const safeFilename = storageKey.replace(/\//g, '_');
-    const filePath = path.join(this.cacheDir, safeFilename);
+    const finalPath = path.join(this.cacheDir, safeFilename);
+    const tempPath = `${finalPath}.tmp`;
 
-    // Import Object Storage client directly
+    // Import Object Storage client
     const { Client } = await import('@replit/object-storage');
     const client = new Client();
 
-    // Download as stream and pipe directly to disk (no memory buffering)
-    const result: any = await client.downloadAsStream(storageKey);
-    
-    if (!result || !result.ok || !result.value) {
-      throw new Error(`Failed to download ${storageKey} as stream`);
+    try {
+      // Use raw HTTP method to get streaming response
+      const res: any = await (client as any).raw({
+        method: 'GET',
+        path: storageKey
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: Failed to download ${storageKey}`);
+      }
+
+      // Stream response body directly to disk
+      const writeStream = fs.createWriteStream(tempPath);
+      
+      // Convert web ReadableStream to Node stream if needed
+      let nodeStream: any = res.body;
+      if (res.body && typeof res.body.getReader === 'function') {
+        // Convert web stream to Node stream
+        nodeStream = Readable.from(res.body);
+      }
+
+      // Pipe to disk with zero memory buffering
+      await pipeline(nodeStream, writeStream);
+
+      // Get file size
+      const stats = fs.statSync(tempPath);
+      const fileSize = stats.size;
+
+      console.log(`Streamed ${storageKey} to temp file (${fileSize} bytes)`);
+
+      // Ensure we have enough space before finalizing
+      await this.ensureSpace(fileSize);
+
+      // Move temp file to final location
+      fs.renameSync(tempPath, finalPath);
+
+      console.log(`Cached ${storageKey} to ${finalPath}`);
+
+      // Add to cache
+      this.cache.set(storageKey, {
+        filePath: finalPath,
+        size: fileSize,
+        lastAccess: Date.now(),
+        storageKey,
+        downloading: false,
+      });
+
+      return finalPath;
+
+    } catch (error) {
+      console.error(`Failed to stream ${storageKey}:`, error);
+      // Clean up temp/partial files on error
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+      if (fs.existsSync(finalPath)) {
+        fs.unlinkSync(finalPath);
+      }
+      throw error;
     }
-
-    const stream = result.value;
-    
-    // Create write stream to disk
-    const writeStream = fs.createWriteStream(filePath);
-    
-    // Pipe stream to disk
-    await new Promise<void>((resolve, reject) => {
-      stream.pipe(writeStream);
-      
-      stream.on('error', (error: Error) => {
-        console.error(`Stream error for ${storageKey}:`, error);
-        reject(error);
-      });
-      
-      writeStream.on('error', (error: Error) => {
-        console.error(`Write error for ${storageKey}:`, error);
-        reject(error);
-      });
-      
-      writeStream.on('finish', () => {
-        console.log(`Streamed ${storageKey} to ${filePath}`);
-        resolve();
-      });
-    });
-
-    // Get file size from disk
-    const stats = fs.statSync(filePath);
-    const fileSize = stats.size;
-
-    // Ensure we have enough space (after download, for cleanup)
-    await this.ensureSpace(fileSize);
-
-    console.log(`Cached ${storageKey} to ${filePath} (${fileSize} bytes)`);
-
-    // Add to cache
-    this.cache.set(storageKey, {
-      filePath,
-      size: fileSize,
-      lastAccess: Date.now(),
-      storageKey,
-      downloading: false,
-    });
-
-    return filePath;
   }
 
   /**
