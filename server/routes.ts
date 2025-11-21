@@ -6409,7 +6409,7 @@ export const registerRoutes = async (
 
   // Object Storage routes removed - not needed
 
-  // Main file serving route that thumbnails expect
+  // Main file serving route with HTTP range request support for video streaming
   app.get("/api/serve-file", async (req: Request, res: Response) => {
     try {
       const filename = req.query.filename as string;
@@ -6475,6 +6475,7 @@ export const registerRoutes = async (
       // Set appropriate content type
       const ext = filename.toLowerCase().split(".").pop();
       let contentType = "application/octet-stream";
+      let isVideo = false;
 
       switch (ext) {
         case "jpg":
@@ -6495,15 +6496,19 @@ export const registerRoutes = async (
           break;
         case "mp4":
           contentType = "video/mp4";
+          isVideo = true;
           break;
         case "mov":
           contentType = "video/quicktime";
+          isVideo = true;
           break;
         case "webm":
           contentType = "video/webm";
+          isVideo = true;
           break;
       }
 
+      // Set common headers
       res.setHeader("Content-Type", contentType);
       res.setHeader("Cache-Control", "public, max-age=31536000");
       res.setHeader(
@@ -6516,8 +6521,31 @@ export const registerRoutes = async (
       );
       res.setHeader(
         "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept",
+        "Origin, X-Requested-With, Content-Type, Accept, Range",
       );
+
+      // Handle HTTP range requests for video streaming
+      if (isVideo && req.headers.range) {
+        const range = req.headers.range;
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileBuffer.length - 1;
+        const chunkSize = end - start + 1;
+
+        logger.info(
+          `Range request for ${storageKey}: bytes ${start}-${end}/${fileBuffer.length}`,
+        );
+
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${fileBuffer.length}`);
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader("Content-Length", chunkSize);
+        
+        return res.send(fileBuffer.slice(start, end + 1));
+      }
+
+      // Normal response (no range request)
+      res.setHeader("Accept-Ranges", "bytes");
       res.setHeader("Content-Length", fileBuffer.length);
 
       logger.info(
