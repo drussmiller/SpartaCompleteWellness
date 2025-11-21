@@ -230,6 +230,81 @@ export function CreatePostDialog({
     }
   }
 
+  // Helper function for chunked file uploads (for files larger than 30MB)
+  const uploadFileInChunks = async (file: File, onProgress?: (progress: number) => void): Promise<{
+    mediaUrl: string;
+    thumbnailUrl?: string;
+    filename: string;
+    isVideo: boolean;
+  }> => {
+    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    
+    console.log(`Starting chunked upload for ${file.name}, size: ${file.size}, chunks: ${totalChunks}`);
+    
+    // Step 1: Initialize upload session
+    const sessionResponse = await fetch('/api/uploads/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        filename: file.name,
+        mimeType: file.type,
+        totalSize: file.size,
+        chunkSize: CHUNK_SIZE,
+      }),
+    });
+    
+    if (!sessionResponse.ok) {
+      throw new Error('Failed to initialize upload session');
+    }
+    
+    const { sessionId } = await sessionResponse.json();
+    console.log(`Upload session created: ${sessionId}`);
+    
+    // Step 2: Upload chunks sequentially
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+      
+      console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}, bytes ${start}-${end}`);
+      
+      const chunkResponse = await fetch(`/api/uploads/sessions/${sessionId}/chunk?chunkIndex=${chunkIndex}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        body: chunk,
+      });
+      
+      if (!chunkResponse.ok) {
+        throw new Error(`Failed to upload chunk ${chunkIndex}`);
+      }
+      
+      const { progress } = await chunkResponse.json();
+      if (onProgress) {
+        onProgress(progress);
+      }
+      console.log(`Chunk ${chunkIndex + 1}/${totalChunks} uploaded, progress: ${progress}%`);
+    }
+    
+    // Step 3: Finalize upload
+    console.log('Finalizing upload...');
+    const finalizeResponse = await fetch(`/api/uploads/sessions/${sessionId}/finalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ postType: 'video' }),
+    });
+    
+    if (!finalizeResponse.ok) {
+      throw new Error('Failed to finalize upload');
+    }
+    
+    const result = await finalizeResponse.json();
+    console.log('Upload finalized successfully:', result);
+    return result;
+  };
+
   const createPostMutation = useMutation({
     mutationFn: async (data: CreatePostForm) => {
       try {
@@ -242,6 +317,10 @@ export function CreatePostDialog({
         });
         console.log("Starting post creation for type:", data.type);
         const formData = new FormData();
+        
+        // Track if we used chunked upload
+        let usedChunkedUpload = false;
+        let chunkedUploadResult: any = null;
 
         // Check for required images/videos based on input refs
         const hasImageFile = fileInputRef.current?.files && fileInputRef.current.files.length > 0;
@@ -282,10 +361,24 @@ export function CreatePostDialog({
             if ((data.type === 'memory_verse' || data.type === 'introductory_video' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || (data.type === 'prayer' && selectedMediaType === 'video')) &&
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
-
-              // Append the video file to the formData with the 'image' field name
-              // The server will detect the post type based on the data.type field
-              formData.append("image", videoFile);
+              
+              // Check if file is larger than 30MB - use chunked upload
+              const FILE_SIZE_THRESHOLD = 30 * 1024 * 1024; // 30MB
+              if (videoFile.size > FILE_SIZE_THRESHOLD) {
+                console.log(`Video file ${videoFile.size} bytes exceeds threshold, using chunked upload`);
+                
+                // Use chunked upload
+                chunkedUploadResult = await uploadFileInChunks(videoFile, (progress) => {
+                  console.log(`Upload progress: ${progress}%`);
+                });
+                
+                usedChunkedUpload = true;
+                console.log('Chunked upload completed:', chunkedUploadResult);
+              } else {
+                // Append the video file to the formData with the 'image' field name
+                // The server will detect the post type based on the data.type field
+                formData.append("image", videoFile);
+              }
 
               // Explicitly set is_video flag for miscellaneous posts
               formData.append("is_video", "true");
@@ -371,6 +464,14 @@ export function CreatePostDialog({
         }
         if (data.targetTeamId) {
           postData.targetTeamId = data.targetTeamId;
+        }
+        
+        // If we used chunked upload, add the media info to post data
+        if (usedChunkedUpload && chunkedUploadResult) {
+          postData.chunkedUploadMediaUrl = chunkedUploadResult.mediaUrl;
+          postData.chunkedUploadThumbnailUrl = chunkedUploadResult.thumbnailUrl;
+          postData.chunkedUploadFilename = chunkedUploadResult.filename;
+          postData.chunkedUploadIsVideo = chunkedUploadResult.isVideo;
         }
 
         console.log("📦 POST DATA OBJECT BEFORE STRINGIFY:", postData);

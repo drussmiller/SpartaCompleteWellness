@@ -700,7 +700,7 @@ export const registerRoutes = async (
         if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaObjectStorage } = await import("./sparta-object-storage");
+            const { spartaStorage: spartaObjectStorage } = await import("./sparta-object-storage");
 
             // Determine if this is a video file
             const originalFilename = req.file.originalname.toLowerCase();
@@ -1635,8 +1635,8 @@ export const registerRoutes = async (
       const isVideo = session.mimeType.startsWith('video/');
       
       // Store file using existing SpartaObjectStorage
-      const { spartaObjectStorage } = await import("./sparta-object-storage");
-      const fileInfo = await spartaObjectStorage.storeFile(
+      const { spartaStorage } = await import("./sparta-object-storage");
+      const fileInfo = await spartaStorage.storeFile(
         fileBuffer,
         session.filename,
         session.mimeType,
@@ -1851,10 +1851,19 @@ export const registerRoutes = async (
 
       // Handle regular post creation
       let mediaUrl = null;
+      let posterUrl = null;
       let mediaProcessed = false;
-
+      
+      // Check if we used chunked upload (for large files)
+      if (postData.chunkedUploadMediaUrl) {
+        console.log("Using chunked upload result for post creation");
+        mediaUrl = postData.chunkedUploadMediaUrl;
+        posterUrl = postData.chunkedUploadThumbnailUrl;
+        isVideo = postData.chunkedUploadIsVideo || false;
+        mediaProcessed = true;
+      }
       // Check if we're using an existing memory verse video
-      if (postData.type === 'memory_verse' && req.body.existing_video_id) {
+      else if (postData.type === 'memory_verse' && req.body.existing_video_id) {
         try {
           const existingVideoId = parseInt(req.body.existing_video_id);
 
