@@ -6432,6 +6432,53 @@ export const registerRoutes = async (
 
   // Object Storage routes removed - not needed
 
+  // File cache for video streaming to avoid re-downloading from Object Storage
+  const fileCache = new Map<string, { buffer: Buffer; timestamp: number; size: number }>();
+  const MAX_CACHE_SIZE = 200 * 1024 * 1024; // 200MB max cache
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  function getCachedFile(key: string): Buffer | null {
+    const cached = fileCache.get(key);
+    if (!cached) return null;
+    
+    // Check if cache entry expired
+    if (Date.now() - cached.timestamp > CACHE_TTL) {
+      fileCache.delete(key);
+      logger.info(`Cache expired for ${key}`);
+      return null;
+    }
+    
+    logger.info(`Cache hit for ${key}`);
+    return cached.buffer;
+  }
+
+  function setCachedFile(key: string, buffer: Buffer): void {
+    // Calculate current cache size
+    let currentSize = 0;
+    for (const entry of fileCache.values()) {
+      currentSize += entry.size;
+    }
+    
+    // Evict oldest entries if cache is full
+    while (currentSize + buffer.length > MAX_CACHE_SIZE && fileCache.size > 0) {
+      const oldestKey = fileCache.keys().next().value;
+      const oldestEntry = fileCache.get(oldestKey);
+      if (oldestEntry) {
+        currentSize -= oldestEntry.size;
+        fileCache.delete(oldestKey);
+        logger.info(`Evicted ${oldestKey} from cache (size: ${oldestEntry.size} bytes)`);
+      }
+    }
+    
+    // Only cache if file fits in cache
+    if (buffer.length <= MAX_CACHE_SIZE) {
+      fileCache.set(key, { buffer, timestamp: Date.now(), size: buffer.length });
+      logger.info(`Cached ${key} (size: ${buffer.length} bytes, total entries: ${fileCache.size})`);
+    } else {
+      logger.warn(`File ${key} too large to cache (${buffer.length} bytes)`);
+    }
+  }
+
   // Main file serving route with HTTP range request support for video streaming
   app.get("/api/serve-file", async (req: Request, res: Response) => {
     try {
@@ -6466,33 +6513,49 @@ export const registerRoutes = async (
           : `shared/uploads/${filename}`;
       }
 
-      // Download the file from Object Storage
-      const result = await spartaObjectStorage.downloadFile(storageKey);
+      // Check cache first to avoid re-downloading large files
+      let fileBuffer: Buffer | null = getCachedFile(storageKey);
+      
+      if (!fileBuffer) {
+        // Download the file from Object Storage
+        logger.info(`Downloading ${storageKey} from Object Storage (not in cache)`);
+        const result = await spartaObjectStorage.downloadFile(storageKey);
 
-      // Handle the Object Storage response format
-      let fileBuffer: Buffer;
-
-      if (Buffer.isBuffer(result)) {
-        fileBuffer = result;
-      } else if (result && typeof result === "object" && "value" in result) {
-        if (Buffer.isBuffer(result.value)) {
-          fileBuffer = result.value;
-        } else if (Array.isArray(result.value)) {
-          fileBuffer = Buffer.from(result.value);
+        // Handle the Object Storage response format
+        if (Buffer.isBuffer(result)) {
+          fileBuffer = result;
+        } else if (result && typeof result === "object" && "value" in result) {
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
+          } else {
+            fileBuffer = Buffer.from(result.value, "base64");
+          }
         } else {
-          fileBuffer = Buffer.from(result.value, "base64");
+          logger.error(
+            `Unexpected Object Storage response format for ${storageKey}:`,
+            typeof result,
+          );
+          return res
+            .status(404)
+            .json({
+              error: "File not found",
+              message: `Could not retrieve ${storageKey}`,
+            });
         }
-      } else {
-        logger.error(
-          `Unexpected Object Storage response format for ${storageKey}:`,
-          typeof result,
-        );
-        return res
-          .status(404)
-          .json({
-            error: "File not found",
-            message: `Could not retrieve ${storageKey}`,
-          });
+        
+        // Cache the downloaded file for future requests
+        setCachedFile(storageKey, fileBuffer);
+      }
+
+      // Ensure fileBuffer is not null before proceeding
+      if (!fileBuffer) {
+        logger.error(`File buffer is null after download attempt for ${storageKey}`);
+        return res.status(404).json({
+          error: "File not found",
+          message: `Could not load ${storageKey}`,
+        });
       }
 
       // Set appropriate content type
