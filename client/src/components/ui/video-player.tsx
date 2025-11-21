@@ -315,7 +315,7 @@ export function VideoPlayer({
               controls
               autoPlay
               playsInline
-              preload="auto"
+              preload="metadata"
               controlsList="nodownload noremoteplayback"
               disablePictureInPicture={false}
               disableRemotePlayback
@@ -327,13 +327,36 @@ export function VideoPlayer({
                 maxHeight: '100%',
                 objectFit: 'contain'
               }}
+              onLoadStart={() => {
+                console.log('Video load started:', src);
+              }}
+              onProgress={() => {
+                console.log('Video buffering progress');
+              }}
               onError={(e) => {
                 console.error('Video playback error:', e);
+                const target = e.currentTarget as HTMLVideoElement;
+                if (target.error) {
+                  console.error('Video error code:', target.error.code);
+                  console.error('Video error message:', target.error.message);
+                }
                 if (onError) onError(new Error('Video failed to play'));
               }}
               onLoadedData={() => {
                 console.log('Video loaded successfully');
                 if (onLoad) onLoad();
+              }}
+              onLoadedMetadata={() => {
+                console.log('Video metadata loaded');
+              }}
+              onStalled={() => {
+                console.warn('Video playback stalled');
+              }}
+              onSuspend={() => {
+                console.warn('Video loading suspended');
+              }}
+              onWaiting={() => {
+                console.warn('Video waiting for data');
               }}
               onCanPlay={() => {
                 console.log('Video can play');
