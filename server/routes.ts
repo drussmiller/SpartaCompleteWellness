@@ -6564,16 +6564,51 @@ export const registerRoutes = async (
       );
       res.setHeader("Accept-Ranges", "bytes");
 
-      // Download file from Object Storage
-      let fileBuffer: Buffer | null = null;
-      
-      // For small files (images, thumbnails), check cache first
-      if (!isVideo) {
-        fileBuffer = getCachedFile(storageKey);
+      // Handle videos with disk-backed streaming cache
+      if (isVideo) {
+        const { videoCacheManager } = await import("./video-cache-manager");
+        
+        // Get file path from cache (downloads if needed)
+        const filePath = await videoCacheManager.getVideoFile(storageKey);
+        const stats = await import("fs").then(fs => fs.promises.stat(filePath));
+        const fileSize = stats.size;
+
+        const range = req.headers.range;
+        if (range) {
+          // Parse range header (e.g., "bytes=0-1023")
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+          const chunkSize = end - start + 1;
+
+          logger.info(`Streaming range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
+
+          // Stream from disk (no memory overhead)
+          const fs = await import("fs");
+          const stream = fs.createReadStream(filePath, { start, end });
+
+          // Send 206 Partial Content response
+          res.status(206);
+          res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+          res.setHeader("Content-Length", chunkSize);
+          
+          return stream.pipe(res);
+        } else {
+          // Send entire file from disk
+          logger.info(`Streaming entire video from disk: ${storageKey}, size: ${fileSize}`);
+          const fs = await import("fs");
+          const stream = fs.createReadStream(filePath);
+          
+          res.setHeader("Content-Length", fileSize);
+          return stream.pipe(res);
+        }
       }
+
+      // For small files (images, thumbnails), use in-memory cache
+      let fileBuffer: Buffer | null = getCachedFile(storageKey);
       
       if (!fileBuffer) {
-        logger.info(`Downloading ${storageKey} from Object Storage (${isVideo ? 'video, no cache' : 'not in cache'})`);
+        logger.info(`Downloading ${storageKey} from Object Storage (not in cache)`);
         const result = await spartaObjectStorage.downloadFile(storageKey);
         
         // Handle the Object Storage response format
@@ -6591,38 +6626,12 @@ export const registerRoutes = async (
           throw new Error(`Unexpected Object Storage response format for ${storageKey}`);
         }
         
-        // Only cache small files (not videos)
-        if (!isVideo) {
-          setCachedFile(storageKey, fileBuffer);
-        }
+        setCachedFile(storageKey, fileBuffer);
       }
 
-      const fileSize = fileBuffer.length;
-      
-      // Handle HTTP range requests for video streaming
-      const range = req.headers.range;
-      if (range && isVideo) {
-        // Parse range header (e.g., "bytes=0-1023")
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunkSize = end - start + 1;
-        
-        logger.info(`Range request for ${storageKey}: bytes ${start}-${end}/${fileSize}`);
-        
-        // Send 206 Partial Content response
-        res.status(206);
-        res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
-        res.setHeader("Content-Length", chunkSize);
-        
-        // Send only the requested chunk
-        return res.send(fileBuffer.slice(start, end + 1));
-      } else {
-        // Send entire file
-        res.setHeader("Content-Length", fileSize);
-        logger.info(`Served file: ${storageKey}, size: ${fileSize} bytes`);
-        return res.send(fileBuffer);
-      }
+      res.setHeader("Content-Length", fileBuffer.length);
+      logger.info(`Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
     } catch (error) {
       logger.error(`Error serving file: ${error}`, {
         route: "/api/serve-file",
