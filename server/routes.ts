@@ -6492,8 +6492,8 @@ export const registerRoutes = async (
 
       logger.info(`Serving file: ${filename}`, { route: "/api/serve-file" });
 
-      // Import the Object Storage client directly for streaming
-      const objectStorage = new ObjectStorageClient();
+      // Import the Object Storage utility
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
 
       // Check if this is a thumbnail request
       const isThumbnail = req.query.thumbnail === "true";
@@ -6569,7 +6569,7 @@ export const registerRoutes = async (
         logger.info(`Streaming video from Object Storage: ${storageKey}`);
         
         // Get stream from Object Storage
-        const stream = objectStorage.downloadAsStream(storageKey);
+        const stream = spartaObjectStorage.downloadAsStream(storageKey);
         
         // Handle stream errors
         stream.on('error', (error) => {
@@ -6590,8 +6590,23 @@ export const registerRoutes = async (
         
         if (!fileBuffer) {
           logger.info(`Downloading ${storageKey} from Object Storage (small file, not in cache)`);
-          const result = await objectStorage.downloadAsBytes(storageKey);
-          fileBuffer = Buffer.isBuffer(result) ? result : Buffer.from(result as any);
+          const result = await spartaObjectStorage.downloadFile(storageKey);
+          
+          // Handle the Object Storage response format
+          if (Buffer.isBuffer(result)) {
+            fileBuffer = result;
+          } else if (result && typeof result === "object" && "value" in result) {
+            if (Buffer.isBuffer(result.value)) {
+              fileBuffer = result.value;
+            } else if (Array.isArray(result.value)) {
+              fileBuffer = Buffer.from(result.value);
+            } else {
+              fileBuffer = Buffer.from(result.value, "base64");
+            }
+          } else {
+            throw new Error(`Unexpected Object Storage response format for ${storageKey}`);
+          }
+          
           setCachedFile(storageKey, fileBuffer);
         }
 
