@@ -6597,9 +6597,32 @@ export const registerRoutes = async (
         }
       }
 
-      res.setHeader("Content-Length", fileBuffer.length);
-      logger.info(`Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
-      return res.send(fileBuffer);
+      const fileSize = fileBuffer.length;
+      
+      // Handle HTTP range requests for video streaming
+      const range = req.headers.range;
+      if (range && isVideo) {
+        // Parse range header (e.g., "bytes=0-1023")
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+        
+        logger.info(`Range request for ${storageKey}: bytes ${start}-${end}/${fileSize}`);
+        
+        // Send 206 Partial Content response
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader("Content-Length", chunkSize);
+        
+        // Send only the requested chunk
+        return res.send(fileBuffer.slice(start, end + 1));
+      } else {
+        // Send entire file
+        res.setHeader("Content-Length", fileSize);
+        logger.info(`Served file: ${storageKey}, size: ${fileSize} bytes`);
+        return res.send(fileBuffer);
+      }
     } catch (error) {
       logger.error(`Error serving file: ${error}`, {
         route: "/api/serve-file",
