@@ -526,6 +526,23 @@ export const insertUserAchievementSchema = createInsertSchema(userAchievements)
 export type InsertAchievementType = z.infer<typeof insertAchievementTypeSchema>;
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
 
+// Upload Sessions table for chunked file uploads
+export const uploadSessions = pgTable("upload_sessions", {
+  id: text("id").primaryKey(), // UUID
+  userId: integer("user_id").notNull(),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  totalSize: integer("total_size").notNull(),
+  chunkSize: integer("chunk_size").notNull(),
+  nextChunkIndex: integer("next_chunk_index").default(0),
+  uploadedBytes: integer("uploaded_bytes").default(0),
+  tempFilePath: text("temp_file_path").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export type UploadSession = typeof uploadSessions.$inferSelect;
+
 // System state table to track notification scheduler state
 export const systemState = pgTable("system_state", {
   id: serial("id").primaryKey(),

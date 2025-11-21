@@ -70,6 +70,7 @@ import { inviteCodeRouter } from "./invite-code-routes";
 import { emailVerificationRouter } from "./email-verification-routes";
 import { spartaStorage } from "./sparta-object-storage";
 import { smsService } from "./sms-service";
+import { uploadSessionManager } from "./upload-sessions";
 
 // Configure multer for memory storage (Object Storage only)
 const upload = multer({
@@ -1533,6 +1534,130 @@ export const registerRoutes = async (
       res.status(500).json({
         message: "Failed to fetch posts",
         error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Chunked upload endpoints for large files (to bypass 413 proxy limit)
+  
+  // Initialize a chunked upload session
+  router.post("/api/uploads/sessions", authenticate, express.json(), async (req, res) => {
+    try {
+      const { filename, mimeType, totalSize, chunkSize } = req.body;
+      
+      if (!filename || !mimeType || !totalSize) {
+        return res.status(400).json({ message: "Missing required fields: filename, mimeType, totalSize" });
+      }
+      
+      const session = uploadSessionManager.createSession(
+        req.user.id,
+        filename,
+        mimeType,
+        totalSize,
+        chunkSize
+      );
+      
+      res.json({
+        sessionId: session.id,
+        chunkSize: session.chunkSize,
+        expiresAt: session.expiresAt,
+      });
+    } catch (error) {
+      logger.error("Error creating upload session:", error);
+      res.status(500).json({ message: "Failed to create upload session" });
+    }
+  });
+  
+  // Upload a chunk
+  router.patch("/api/uploads/sessions/:sessionId/chunk", authenticate, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const chunkIndex = parseInt(req.query.chunkIndex as string);
+      
+      if (isNaN(chunkIndex)) {
+        return res.status(400).json({ message: "Invalid chunk index" });
+      }
+      
+      const session = uploadSessionManager.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found or expired" });
+      }
+      
+      if (session.userId !== req.user.id) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Read raw chunk data from request body
+      const chunks: Buffer[] = [];
+      req.on('data', chunk => chunks.push(chunk));
+      req.on('end', async () => {
+        try {
+          const chunkData = Buffer.concat(chunks);
+          uploadSessionManager.appendChunk(sessionId, chunkIndex, chunkData);
+          
+          const progress = uploadSessionManager.getSessionProgress(sessionId);
+          res.json({
+            success: true,
+            progress: progress?.progress || 0,
+            uploadedBytes: progress?.uploadedBytes || 0,
+            totalSize: progress?.totalSize || 0,
+          });
+        } catch (error) {
+          logger.error("Error appending chunk:", error);
+          res.status(500).json({ message: error instanceof Error ? error.message : "Failed to append chunk" });
+        }
+      });
+    } catch (error) {
+      logger.error("Error uploading chunk:", error);
+      res.status(500).json({ message: "Failed to upload chunk" });
+    }
+  });
+  
+  // Finalize upload and get the file buffer
+  router.post("/api/uploads/sessions/:sessionId/finalize", authenticate, express.json(), async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { postType } = req.body;
+      
+      const session = uploadSessionManager.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found or expired" });
+      }
+      
+      if (session.userId !== req.user.id) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Finalize and get complete file
+      const fileBuffer = uploadSessionManager.finalizeSession(sessionId);
+      
+      // Determine if this is a video
+      const isVideo = session.mimeType.startsWith('video/');
+      
+      // Store file using existing SpartaObjectStorage
+      const { spartaObjectStorage } = await import("./sparta-object-storage");
+      const fileInfo = await spartaObjectStorage.storeFile(
+        fileBuffer,
+        session.filename,
+        session.mimeType,
+        isVideo
+      );
+      
+      // Clean up session
+      uploadSessionManager.deleteSession(sessionId);
+      
+      // Return file info for use in post creation
+      res.json({
+        success: true,
+        mediaUrl: fileInfo.url,
+        thumbnailUrl: fileInfo.thumbnailUrl,
+        filename: fileInfo.filename,
+        isVideo,
+      });
+    } catch (error) {
+      logger.error("Error finalizing upload:", error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to finalize upload" 
       });
     }
   });
