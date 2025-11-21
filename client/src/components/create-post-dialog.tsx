@@ -354,16 +354,24 @@ export function CreatePostDialog({
         // Use the content as-is without adding a [VIDEO] marker
         let content = data.content?.trim() || '';
 
-        const postData = {
+        const postData: any = {
           type: data.type,
           content: content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
           createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString(),
           postScope: data.postScope || postScope || "my_team",
-          targetOrganizationId: data.targetOrganizationId || null,
-          targetGroupId: data.targetGroupId || null,
-          targetTeamId: data.targetTeamId || null,
         };
+        
+        // Only add targeting fields if they have actual values
+        if (data.targetOrganizationId) {
+          postData.targetOrganizationId = data.targetOrganizationId;
+        }
+        if (data.targetGroupId) {
+          postData.targetGroupId = data.targetGroupId;
+        }
+        if (data.targetTeamId) {
+          postData.targetTeamId = data.targetTeamId;
+        }
 
         console.log("📦 POST DATA OBJECT BEFORE STRINGIFY:", postData);
         console.log("📦 SCOPE FIELDS:", {
@@ -427,12 +435,38 @@ export function CreatePostDialog({
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Server returned error", errorData);
-          throw new Error(errorData.message || `Failed to create post: ${response.status}`);
+          try {
+            const errorText = await response.text();
+            console.error("Server returned error (text):", errorText);
+            try {
+              const errorData = JSON.parse(errorText);
+              throw new Error(errorData.message || `Failed to create post: ${response.status}`);
+            } catch (parseError) {
+              throw new Error(`Failed to create post: ${response.status} ${response.statusText}`);
+            }
+          } catch (error) {
+            throw new Error(`Failed to create post: ${response.status} ${response.statusText}`);
+          }
         }
 
-        return response.json();
+        // Fix for Expo Go fetch polyfill issue with large uploads
+        // Use text() instead of json() to avoid DOMException
+        try {
+          const responseText = await response.text();
+          console.log("Response text received, length:", responseText.length);
+          
+          if (!responseText || responseText.trim().length === 0) {
+            console.warn("Empty response from server");
+            return null;
+          }
+          
+          const parsedData = JSON.parse(responseText);
+          console.log("Successfully parsed response JSON");
+          return parsedData;
+        } catch (parseError) {
+          console.error("Error parsing response:", parseError);
+          throw new Error("Failed to parse server response. Please try again.");
+        }
       } catch (error) {
         console.error("Post creation error:", error);
         throw error;
