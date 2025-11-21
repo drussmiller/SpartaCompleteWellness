@@ -261,6 +261,15 @@ export class SpartaObjectStorageFinal {
   }
 
   /**
+   * Download file as a stream (for large files like videos)
+   * This avoids loading the entire file into memory
+   */
+  downloadAsStream(storageKey: string): NodeJS.ReadableStream {
+    console.log(`Streaming file from Object Storage: ${storageKey}`);
+    return this.objectStorage.downloadAsStream(storageKey);
+  }
+
+  /**
    * List files in Object Storage
    */
   async listFiles(prefix?: string): Promise<string[]> {
