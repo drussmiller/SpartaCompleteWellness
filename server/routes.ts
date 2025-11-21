@@ -1619,20 +1619,30 @@ export const registerRoutes = async (
       const { sessionId } = req.params;
       const { postType } = req.body;
       
+      console.log(`📤 [Finalize Upload] Starting for session ${sessionId}, postType: ${postType}`);
+      
       const session = uploadSessionManager.getSession(sessionId);
       if (!session) {
+        console.error(`❌ [Finalize Upload] Session not found: ${sessionId}`);
         return res.status(404).json({ message: "Session not found or expired" });
       }
       
       if (session.userId !== req.user.id) {
+        console.error(`❌ [Finalize Upload] Unauthorized access to session ${sessionId}`);
         return res.status(403).json({ message: "Unauthorized" });
       }
+      
+      console.log(`📤 [Finalize Upload] Session found, finalizing ${session.totalSize} bytes...`);
       
       // Finalize and get complete file
       const fileBuffer = uploadSessionManager.finalizeSession(sessionId);
       
+      console.log(`✅ [Finalize Upload] File buffer ready: ${fileBuffer.length} bytes`);
+      
       // Determine if this is a video
       const isVideo = session.mimeType.startsWith('video/');
+      
+      console.log(`📤 [Finalize Upload] Storing file in Object Storage, isVideo: ${isVideo}`);
       
       // Store file using existing SpartaObjectStorage
       const { spartaStorage } = await import("./sparta-object-storage");
@@ -1642,6 +1652,13 @@ export const registerRoutes = async (
         session.mimeType,
         isVideo
       );
+      
+      console.log(`✅ [Finalize Upload] File stored successfully:`, {
+        mediaUrl: fileInfo.url,
+        thumbnailUrl: fileInfo.thumbnailUrl,
+        filename: fileInfo.filename,
+        isVideo
+      });
       
       // Clean up session
       uploadSessionManager.deleteSession(sessionId);
@@ -1655,6 +1672,7 @@ export const registerRoutes = async (
         isVideo,
       });
     } catch (error) {
+      console.error("❌ [Finalize Upload] Error:", error);
       logger.error("Error finalizing upload:", error);
       res.status(500).json({ 
         message: error instanceof Error ? error.message : "Failed to finalize upload" 
@@ -1856,7 +1874,12 @@ export const registerRoutes = async (
       
       // Check if we used chunked upload (for large files)
       if (postData.chunkedUploadMediaUrl) {
-        console.log("Using chunked upload result for post creation");
+        console.log("✅ Using chunked upload result for post creation:", {
+          mediaUrl: postData.chunkedUploadMediaUrl,
+          thumbnailUrl: postData.chunkedUploadThumbnailUrl,
+          filename: postData.chunkedUploadFilename,
+          isVideo: postData.chunkedUploadIsVideo
+        });
         mediaUrl = postData.chunkedUploadMediaUrl;
         posterUrl = postData.chunkedUploadThumbnailUrl;
         isVideo = postData.chunkedUploadIsVideo || false;

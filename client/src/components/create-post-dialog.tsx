@@ -317,8 +317,9 @@ export function CreatePostDialog({
               formData.append("is_video", "true");
               formData.append("selected_media_type", "video");
 
-              // Attach the generated thumbnail if we have one
-              if (videoThumbnail) {
+              // Attach the generated thumbnail ONLY if we're NOT using chunked upload
+              // (chunked upload generates its own thumbnail on the server)
+              if (videoThumbnail && !usedChunkedUpload) {
                 console.log("Attaching video thumbnail to the form data");
 
                 // Convert the data URL to a Blob that we can send to the server
