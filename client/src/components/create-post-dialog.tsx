@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { shouldUseChunkedUpload, uploadFileInChunks } from "@/lib/chunked-upload";
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
@@ -290,13 +291,18 @@ export function CreatePostDialog({
               const videoFile = videoInputRef.current.files[0];
               
               // Check if file is larger than 30MB - use chunked upload
-              const FILE_SIZE_THRESHOLD = 30 * 1024 * 1024; // 30MB
-              if (videoFile.size > FILE_SIZE_THRESHOLD) {
+              if (shouldUseChunkedUpload(videoFile)) {
                 console.log(`Video file ${videoFile.size} bytes exceeds threshold, using chunked upload`);
                 
-                // Use chunked upload
-                chunkedUploadResult = await uploadFileInChunks(videoFile, (progress) => {
-                  console.log(`Upload progress: ${progress}%`);
+                // Use chunked upload with proper options
+                chunkedUploadResult = await uploadFileInChunks(videoFile, {
+                  onProgress: (progress) => {
+                    console.log(`Upload progress: ${progress}%`);
+                  },
+                  finalizePayload: {
+                    postType: data.type === 'introductory_video' ? 'introductory_video' : 
+                             data.type === 'memory_verse' ? 'memory_verse' : 'video'
+                  }
                 });
                 
                 usedChunkedUpload = true;
