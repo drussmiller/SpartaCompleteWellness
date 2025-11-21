@@ -6564,56 +6564,42 @@ export const registerRoutes = async (
       );
       res.setHeader("Accept-Ranges", "bytes");
 
-      // For videos or large files, use streaming to avoid memory issues
-      if (isVideo) {
-        logger.info(`Streaming video from Object Storage: ${storageKey}`);
+      // Download file from Object Storage
+      let fileBuffer: Buffer | null = null;
+      
+      // For small files (images, thumbnails), check cache first
+      if (!isVideo) {
+        fileBuffer = getCachedFile(storageKey);
+      }
+      
+      if (!fileBuffer) {
+        logger.info(`Downloading ${storageKey} from Object Storage (${isVideo ? 'video, no cache' : 'not in cache'})`);
+        const result = await spartaObjectStorage.downloadFile(storageKey);
         
-        // Get stream from Object Storage
-        const stream = spartaObjectStorage.downloadAsStream(storageKey);
-        
-        // Handle stream errors
-        stream.on('error', (error) => {
-          logger.error(`Stream error for ${storageKey}:`, error);
-          if (!res.headersSent) {
-            res.status(404).json({
-              error: "File not found",
-              message: error instanceof Error ? error.message : "Stream error",
-            });
-          }
-        });
-
-        // Pipe directly to response - this streams without loading into memory
-        stream.pipe(res);
-      } else {
-        // For small files (images, thumbnails), use cache
-        let fileBuffer: Buffer | null = getCachedFile(storageKey);
-        
-        if (!fileBuffer) {
-          logger.info(`Downloading ${storageKey} from Object Storage (small file, not in cache)`);
-          const result = await spartaObjectStorage.downloadFile(storageKey);
-          
-          // Handle the Object Storage response format
-          if (Buffer.isBuffer(result)) {
-            fileBuffer = result;
-          } else if (result && typeof result === "object" && "value" in result) {
-            if (Buffer.isBuffer(result.value)) {
-              fileBuffer = result.value;
-            } else if (Array.isArray(result.value)) {
-              fileBuffer = Buffer.from(result.value);
-            } else {
-              fileBuffer = Buffer.from(result.value, "base64");
-            }
+        // Handle the Object Storage response format
+        if (Buffer.isBuffer(result)) {
+          fileBuffer = result;
+        } else if (result && typeof result === "object" && "value" in result) {
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
           } else {
-            throw new Error(`Unexpected Object Storage response format for ${storageKey}`);
+            fileBuffer = Buffer.from(result.value, "base64");
           }
-          
+        } else {
+          throw new Error(`Unexpected Object Storage response format for ${storageKey}`);
+        }
+        
+        // Only cache small files (not videos)
+        if (!isVideo) {
           setCachedFile(storageKey, fileBuffer);
         }
-
-        res.setHeader("Content-Length", fileBuffer.length);
-        logger.info(`Served cached file: ${storageKey}, size: ${fileBuffer.length} bytes`);
-        return res.send(fileBuffer);
       }
+
+      res.setHeader("Content-Length", fileBuffer.length);
+      logger.info(`Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
     } catch (error) {
       logger.error(`Error serving file: ${error}`, {
         route: "/api/serve-file",
