@@ -6479,6 +6479,49 @@ export const registerRoutes = async (
     }
   }
 
+  // Regenerate thumbnail for a video
+  app.post("/api/regenerate-thumbnail", async (req: AuthRequest, res: Response) => {
+    try {
+      const { videoFilename } = req.body;
+      
+      if (!videoFilename) {
+        return res.status(400).json({ error: "Video filename required" });
+      }
+
+      logger.info(`Regenerating thumbnail for: ${videoFilename}`);
+
+      // Import dependencies
+      const { createMovThumbnail } = await import("./mov-frame-extractor-new");
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const fs = await import("fs");
+      const path = await import("path");
+
+      // Download video from Object Storage
+      const storageKey = `shared/uploads/${videoFilename}`;
+      const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
+      
+      // Write to temp file
+      const tempVideoPath = `/tmp/${videoFilename}`;
+      fs.writeFileSync(tempVideoPath, videoBuffer);
+
+      // Generate thumbnail
+      const thumbnailFilename = await createMovThumbnail(tempVideoPath);
+
+      // Clean up temp file
+      fs.unlinkSync(tempVideoPath);
+
+      if (thumbnailFilename) {
+        logger.info(`Successfully regenerated thumbnail: ${thumbnailFilename}`);
+        return res.json({ success: true, thumbnailFilename });
+      } else {
+        return res.status(500).json({ error: "Thumbnail generation failed" });
+      }
+    } catch (error) {
+      logger.error("Error regenerating thumbnail:", error);
+      return res.status(500).json({ error: "Failed to regenerate thumbnail" });
+    }
+  });
+
   // Main file serving route with HTTP range request support for video streaming
   app.get("/api/serve-file", async (req: Request, res: Response) => {
     try {

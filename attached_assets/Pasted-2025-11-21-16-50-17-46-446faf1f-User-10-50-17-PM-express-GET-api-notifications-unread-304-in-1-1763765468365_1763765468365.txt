@@ -1,0 +1,97 @@
+2025-11-21 16:50:17.46
+446faf1f
+User
+10:50:17 PM [express] GET /api/notifications/unread 304 in 184ms :: {"unreadCount":0}
+
+2025-11-21 16:50:17.49
+446faf1f
+User
+10:50:17 PM [express] GET /api/notifications 304 in 184ms :: []
+2025-11-21 16:50:17.52
+446faf1f
+User
+10:50:17 PM [express] GET /api/notifications/unread 304 in 217ms :: {"unreadCount":0}
+2025-11-21 16:50:17.52
+446faf1f
+User
+Loaded 0 videos from cache directory
+2025-11-21 16:50:17.52
+446faf1f
+User
+Created video cache directory: /tmp/video-cache
+2025-11-21 16:50:17.52
+446faf1f
+User
+Attempting to download file from Object Storage: shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:17.52
+446faf1f
+User
+Downloading shared/uploads/1763731302840-IMG_9481.mov to cache...
+2025-11-21 16:50:18.01
+446faf1f
+User
+Successfully downloaded shared/uploads/1763731302840-IMG_9481.mov, size: 39987588 bytes
+2025-11-21 16:50:18.01
+446faf1f
+User
+Download result for shared/uploads/1763731302840-IMG_9481.mov: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 16:50:18.03
+446faf1f
+User
+Cached shared/uploads/1763731302840-IMG_9481.mov to /tmp/video-cache/shared_uploads_1763731302840-IMG_9481.mov (39987588 bytes)
+2025-11-21 16:50:18.07
+446faf1f
+User
+10:50:18 PM [express] GET /api/serve-file 206 in 549ms
+2025-11-21 16:50:18.32
+446faf1f
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:18.86
+446faf1f
+User
+10:50:18 PM [express] GET /api/serve-file 206 in 132ms
+2025-11-21 16:50:19.16
+446faf1f
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:19.16
+446faf1f
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:35.02
+446faf1f
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:35.17
+446faf1f
+User
+10:50:35 PM [express] GET /api/serve-file 206 in 148ms
+2025-11-21 16:50:35.17
+446faf1f
+User
+10:50:35 PM [express] GET /api/serve-file 206 in 148ms
+2025-11-21 16:50:35.30
+446faf1f
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:35.43
+446faf1f
+User
+10:50:35 PM [express] GET /api/serve-file 206 in 133ms
+2025-11-21 16:50:35.60
+446faf1f
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:35.74
+446faf1f
+User
+10:50:35 PM [express] GET /api/serve-file 206 in 134ms
+2025-11-21 16:50:35.96
+446faf1f
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 16:50:35.99
+446faf1f
+User
+10:50:35 PM [express] GET /api/serve-file 206 in 36ms
