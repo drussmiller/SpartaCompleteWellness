@@ -6592,12 +6592,36 @@ export const registerRoutes = async (
           res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
           res.setHeader("Content-Length", chunkSize);
           
+          // Handle stream errors
+          stream.on('error', (error) => {
+            logger.error(`Stream error for ${storageKey}:`, error);
+            if (!res.headersSent) {
+              res.status(500).json({ error: 'Stream error' });
+            }
+          });
+
+          stream.on('end', () => {
+            logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
+          });
+          
           return stream.pipe(res);
         } else {
           // Send entire file from disk
           logger.info(`Streaming entire video from disk: ${storageKey}, size: ${fileSize}`);
           const fs = await import("fs");
           const stream = fs.createReadStream(filePath);
+          
+          // Handle stream errors
+          stream.on('error', (error) => {
+            logger.error(`Stream error for ${storageKey}:`, error);
+            if (!res.headersSent) {
+              res.status(500).json({ error: 'Stream error' });
+            }
+          });
+
+          stream.on('end', () => {
+            logger.info(`Stream completed for ${storageKey}`);
+          });
           
           res.setHeader("Content-Length", fileSize);
           return stream.pipe(res);
