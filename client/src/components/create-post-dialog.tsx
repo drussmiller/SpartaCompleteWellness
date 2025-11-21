@@ -243,13 +243,17 @@ export function CreatePostDialog({
         console.log("Starting post creation for type:", data.type);
         const formData = new FormData();
 
-        if ((data.type === 'food' || data.type === 'workout') && (!data.mediaUrl || data.mediaUrl.length === 0)) {
+        // Check for required images/videos based on input refs
+        const hasImageFile = fileInputRef.current?.files && fileInputRef.current.files.length > 0;
+        const hasVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
+        
+        if ((data.type === 'food' || data.type === 'workout') && !hasImageFile) {
           console.error(`${data.type} post missing required image`);
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
 
         // Add explicit validation for memory verse posts
-        if (data.type === 'memory_verse' && (!data.mediaUrl || (data.mediaUrl.length === 0 && !data.mediaUrl.startsWith('EXISTING_VIDEO:')))) {
+        if (data.type === 'memory_verse' && !hasVideoFile && (!data.mediaUrl || !data.mediaUrl.startsWith('EXISTING_VIDEO:'))) {
           console.error('Memory verse post missing required video');
           throw new Error('Memory verse posts require a video file');
         }
@@ -266,11 +270,11 @@ export function CreatePostDialog({
           // We don't need to append any image/video file since we're using an existing one
         }
         // Handle regular media uploads
-        else if (data.mediaUrl && data.mediaUrl.length > 0) {
-          console.log("Media URL found, preparing to upload", {
+        else if (hasImageFile || hasVideoFile) {
+          console.log("Media file found, preparing to upload", {
             type: data.type,
-            mediaUrlLength: data.mediaUrl.length,
-            urlPreview: data.mediaUrl.substring(0, 30) + "..."
+            hasImageFile,
+            hasVideoFile
           });
 
           try {
@@ -921,8 +925,8 @@ export function CreatePostDialog({
                                   console.error("Error in thumbnail generation:", error);
                                 }
 
-                                // Set the field value to the blob URL to pass URL validation
-                                field.onChange(videoUrl);
+                                // Set field to empty string - actual file uploaded via input ref
+                                field.onChange("");
 
                                 // Log detailed information about the selected file
                                 console.log("Memory verse video file selected:", {
@@ -1061,8 +1065,8 @@ export function CreatePostDialog({
                                         }
                                       });
 
-                                      // Set the field value to the blob URL to pass URL validation
-                                      field.onChange(videoUrl);
+                                      // Set field to empty string - actual file uploaded via input ref
+                                      field.onChange("");
 
                                       // Log detailed information about the selected file
                                       console.log("Miscellaneous video file selected:", {
