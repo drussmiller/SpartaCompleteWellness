@@ -6492,10 +6492,8 @@ export const registerRoutes = async (
 
       logger.info(`Serving file: ${filename}`, { route: "/api/serve-file" });
 
-      // Import the Object Storage utility that was working before
-      const { spartaObjectStorage } = await import(
-        "./sparta-object-storage-final"
-      );
+      // Import the Object Storage client directly for streaming
+      const objectStorage = new ObjectStorageClient();
 
       // Check if this is a thumbnail request
       const isThumbnail = req.query.thumbnail === "true";
@@ -6511,51 +6509,6 @@ export const registerRoutes = async (
         storageKey = filename.startsWith("shared/")
           ? filename
           : `shared/uploads/${filename}`;
-      }
-
-      // Check cache first to avoid re-downloading large files
-      let fileBuffer: Buffer | null = getCachedFile(storageKey);
-      
-      if (!fileBuffer) {
-        // Download the file from Object Storage
-        logger.info(`Downloading ${storageKey} from Object Storage (not in cache)`);
-        const result = await spartaObjectStorage.downloadFile(storageKey);
-
-        // Handle the Object Storage response format
-        if (Buffer.isBuffer(result)) {
-          fileBuffer = result;
-        } else if (result && typeof result === "object" && "value" in result) {
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-          } else if (Array.isArray(result.value)) {
-            fileBuffer = Buffer.from(result.value);
-          } else {
-            fileBuffer = Buffer.from(result.value, "base64");
-          }
-        } else {
-          logger.error(
-            `Unexpected Object Storage response format for ${storageKey}:`,
-            typeof result,
-          );
-          return res
-            .status(404)
-            .json({
-              error: "File not found",
-              message: `Could not retrieve ${storageKey}`,
-            });
-        }
-        
-        // Cache the downloaded file for future requests
-        setCachedFile(storageKey, fileBuffer);
-      }
-
-      // Ensure fileBuffer is not null before proceeding
-      if (!fileBuffer) {
-        logger.error(`File buffer is null after download attempt for ${storageKey}`);
-        return res.status(404).json({
-          error: "File not found",
-          message: `Could not load ${storageKey}`,
-        });
       }
 
       // Set appropriate content type
@@ -6609,35 +6562,43 @@ export const registerRoutes = async (
         "Access-Control-Allow-Headers",
         "Origin, X-Requested-With, Content-Type, Accept, Range",
       );
-
-      // Handle HTTP range requests for video streaming
-      if (isVideo && req.headers.range) {
-        const range = req.headers.range;
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileBuffer.length - 1;
-        const chunkSize = end - start + 1;
-
-        logger.info(
-          `Range request for ${storageKey}: bytes ${start}-${end}/${fileBuffer.length}`,
-        );
-
-        res.status(206);
-        res.setHeader("Content-Range", `bytes ${start}-${end}/${fileBuffer.length}`);
-        res.setHeader("Accept-Ranges", "bytes");
-        res.setHeader("Content-Length", chunkSize);
-        
-        return res.send(fileBuffer.slice(start, end + 1));
-      }
-
-      // Normal response (no range request)
       res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Content-Length", fileBuffer.length);
 
-      logger.info(
-        `Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`,
-      );
-      return res.send(fileBuffer);
+      // For videos or large files, use streaming to avoid memory issues
+      if (isVideo) {
+        logger.info(`Streaming video from Object Storage: ${storageKey}`);
+        
+        // Get stream from Object Storage
+        const stream = objectStorage.downloadAsStream(storageKey);
+        
+        // Handle stream errors
+        stream.on('error', (error) => {
+          logger.error(`Stream error for ${storageKey}:`, error);
+          if (!res.headersSent) {
+            res.status(404).json({
+              error: "File not found",
+              message: error instanceof Error ? error.message : "Stream error",
+            });
+          }
+        });
+
+        // Pipe directly to response - this streams without loading into memory
+        stream.pipe(res);
+      } else {
+        // For small files (images, thumbnails), use cache
+        let fileBuffer: Buffer | null = getCachedFile(storageKey);
+        
+        if (!fileBuffer) {
+          logger.info(`Downloading ${storageKey} from Object Storage (small file, not in cache)`);
+          const result = await objectStorage.downloadAsBytes(storageKey);
+          fileBuffer = Buffer.isBuffer(result) ? result : Buffer.from(result as any);
+          setCachedFile(storageKey, fileBuffer);
+        }
+
+        res.setHeader("Content-Length", fileBuffer.length);
+        logger.info(`Served cached file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+        return res.send(fileBuffer);
+      }
     } catch (error) {
       logger.error(`Error serving file: ${error}`, {
         route: "/api/serve-file",
