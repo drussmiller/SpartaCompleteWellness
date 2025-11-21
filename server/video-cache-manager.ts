@@ -106,10 +106,10 @@ export class VideoCacheManager {
   }
 
   /**
-   * Download video from Object Storage to disk using HTTP streaming (zero memory buffering)
+   * Download video from Object Storage to disk using downloadToFilename (streams internally)
    */
   private async downloadVideo(storageKey: string): Promise<string> {
-    console.log(`Streaming ${storageKey} to cache via HTTP...`);
+    console.log(`Downloading ${storageKey} to cache...`);
 
     // Create safe filename (replace slashes with underscores)
     const safeFilename = storageKey.replace(/\//g, '_');
@@ -121,34 +121,18 @@ export class VideoCacheManager {
     const client = new Client();
 
     try {
-      // Use raw HTTP method to get streaming response
-      const res: any = await (client as any).raw({
-        method: 'GET',
-        path: storageKey
-      });
+      // Use downloadToFilename which streams directly to disk (no memory buffering)
+      const result = await client.downloadToFilename(storageKey, tempPath);
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: Failed to download ${storageKey}`);
+      if (!result.ok) {
+        throw new Error(`Failed to download ${storageKey}: ${result.error.message}`);
       }
-
-      // Stream response body directly to disk
-      const writeStream = fs.createWriteStream(tempPath);
-      
-      // Convert web ReadableStream to Node stream if needed
-      let nodeStream: any = res.body;
-      if (res.body && typeof res.body.getReader === 'function') {
-        // Convert web stream to Node stream
-        nodeStream = Readable.from(res.body);
-      }
-
-      // Pipe to disk with zero memory buffering
-      await pipeline(nodeStream, writeStream);
 
       // Get file size
       const stats = fs.statSync(tempPath);
       const fileSize = stats.size;
 
-      console.log(`Streamed ${storageKey} to temp file (${fileSize} bytes)`);
+      console.log(`Downloaded ${storageKey} to temp file (${fileSize} bytes)`);
 
       // Ensure we have enough space before finalizing
       await this.ensureSpace(fileSize);
@@ -170,7 +154,7 @@ export class VideoCacheManager {
       return finalPath;
 
     } catch (error) {
-      console.error(`Failed to stream ${storageKey}:`, error);
+      console.error(`Failed to download ${storageKey}:`, error);
       // Clean up temp/partial files on error
       if (fs.existsSync(tempPath)) {
         fs.unlinkSync(tempPath);
