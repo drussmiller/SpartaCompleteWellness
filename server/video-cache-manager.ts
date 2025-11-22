@@ -67,7 +67,7 @@ export class VideoCacheManager {
       }
       
       let totalSize = 0;
-      for (const entry of this.cache.values()) {
+      for (const entry of Array.from(this.cache.values())) {
         totalSize += entry.size;
       }
       const totalMB = (totalSize / (1024 * 1024)).toFixed(2);
