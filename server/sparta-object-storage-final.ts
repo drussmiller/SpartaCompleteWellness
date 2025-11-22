@@ -184,10 +184,10 @@ export class SpartaObjectStorageFinal {
         let thumbnailFilename: string;
 
         if (isVideo) {
-          // Create temporary file for video processing
+          // Create temporary file for video processing (use converted file)
           const tempVideoPath = `/tmp/${uniqueFilename}`;
 
-          fs.writeFileSync(tempVideoPath, fileBuffer);
+          fs.writeFileSync(tempVideoPath, finalBuffer);
 
           // Call createMovThumbnail which will create a thumbnail with matching filename
           const createdThumbnailFilename = await createMovThumbnail(tempVideoPath);
