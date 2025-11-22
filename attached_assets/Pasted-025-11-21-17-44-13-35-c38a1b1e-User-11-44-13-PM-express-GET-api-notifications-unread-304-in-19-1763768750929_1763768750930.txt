@@ -1,0 +1,109 @@
+025-11-21 17:44:13.35
+c38a1b1e
+User
+11:44:13 PM [express] GET /api/notifications/unread 304 in 191ms :: {"unreadCount":0}
+2025-11-21 17:44:13.36
+c38a1b1e
+User
+11:44:13 PM [express] GET /api/notifications 304 in 197ms :: []
+
+2025-11-21 17:44:13.43
+c38a1b1e
+User
+Created video cache directory: /tmp/video-cache
+2025-11-21 17:44:13.43
+c38a1b1e
+User
+Loaded 0 videos from cache directory
+2025-11-21 17:44:13.43
+c38a1b1e
+User
+Downloading shared/uploads/1763765567135-IMG_9482.mov to cache...
+2025-11-21 17:44:14.43
+c38a1b1e
+User
+Downloaded shared/uploads/1763765567135-IMG_9482.mov to temp file (29976059 bytes)
+2025-11-21 17:44:14.43
+c38a1b1e
+User
+Cached shared/uploads/1763765567135-IMG_9482.mov to /tmp/video-cache/shared_uploads_1763765567135-IMG_9482.mov
+2025-11-21 17:44:14.47
+c38a1b1e
+User
+11:44:14 PM [express] GET /api/serve-file 206 in 1041ms
+2025-11-21 17:44:14.71
+c38a1b1e
+User
+Cache hit for shared/uploads/1763765567135-IMG_9482.mov
+2025-11-21 17:44:14.82
+c38a1b1e
+User
+11:44:14 PM [express] GET /api/serve-file 206 in 106ms
+2025-11-21 17:44:15.17
+c38a1b1e
+User
+Cache hit for shared/uploads/1763765567135-IMG_9482.mov
+2025-11-21 17:44:15.21
+c38a1b1e
+User
+11:44:15 PM [express] GET /api/serve-file 206 in 36ms
+2025-11-21 17:44:15.58
+c38a1b1e
+User
+11:44:15 PM [express] GET /favicon.ico 200 in 38ms
+2025-11-21 17:44:15.73
+c38a1b1e
+User
+Cache hit for shared/uploads/1763765567135-IMG_9482.mov
+2025-11-21 17:44:15.82
+c38a1b1e
+User
+Cache hit for shared/uploads/1763765567135-IMG_9482.mov
+2025-11-21 17:44:15.86
+c38a1b1e
+User
+11:44:15 PM [express] GET /api/serve-file 206 in 35ms
+2025-11-21 17:44:15.88
+c38a1b1e
+User
+11:44:15 PM [express] GET /api/serve-file 206 in 148ms
+2025-11-21 17:44:21.35
+c38a1b1e
+User
+Downloading shared/uploads/1763765643166-IMG_9481.mov to cache...
+2025-11-21 17:44:22.28
+c38a1b1e
+User
+Cached shared/uploads/1763765643166-IMG_9481.mov to /tmp/video-cache/shared_uploads_1763765643166-IMG_9481.mov
+2025-11-21 17:44:22.28
+c38a1b1e
+User
+Downloaded shared/uploads/1763765643166-IMG_9481.mov to temp file (39987588 bytes)
+2025-11-21 17:44:22.32
+c38a1b1e
+User
+11:44:22 PM [express] GET /api/serve-file 206 in 966ms
+2025-11-21 17:44:22.47
+c38a1b1e
+User
+Cache hit for shared/uploads/1763765643166-IMG_9481.mov
+2025-11-21 17:44:22.77
+c38a1b1e
+User
+Cache hit for shared/uploads/1763765643166-IMG_9481.mov
+2025-11-21 17:44:22.93
+c38a1b1e
+User
+11:44:22 PM [express] GET /api/serve-file 206 in 151ms
+2025-11-21 17:44:23.05
+c38a1b1e
+User
+Cache hit for shared/uploads/1763765643166-IMG_9481.mov
+2025-11-21 17:44:23.09
+c38a1b1e
+User
+11:44:23 PM [express] GET /api/serve-file 206 in 35ms
+2025-11-21 17:44:23.09
+c38a1b1e
+User
+11:44:23 PM [express] GET /api/serve-file 206 in 35ms
