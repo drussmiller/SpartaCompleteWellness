@@ -123,36 +123,36 @@ export class SpartaObjectStorageFinal {
     let uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
     let finalBuffer = fileBuffer;
 
-    // Convert video to H.264/MP4 if needed for browser compatibility
+    // Convert MOV to MP4 with faststart for browser compatibility
     if (isVideo) {
-      const { needsConversion, convertToH264Mp4 } = await import('./video-converter');
+      const { isMovFile, convertToMp4WithFaststart } = await import('./video-converter');
       
-      // Write to temp file for conversion check
+      // Write to temp file for format check
       const tempOriginalPath = `/tmp/${uniqueFilename}`;
       fs.writeFileSync(tempOriginalPath, fileBuffer);
 
       try {
-        const needsConv = await needsConversion(tempOriginalPath);
+        const isMov = await isMovFile(tempOriginalPath);
         
-        if (needsConv) {
-          console.log(`[Video Upload] Video needs conversion to H.264/MP4`);
+        if (isMov) {
+          console.log(`[Video Upload] MOV file detected, remuxing to MP4 with faststart`);
           
-          // Convert to .mp4 with H.264 codec
-          const convertedFilename = `${timestamp}-${baseName}.mp4`;
-          const tempConvertedPath = `/tmp/${convertedFilename}`;
+          // Convert to .mp4 with faststart (no re-encoding, just remux)
+          const mp4Filename = `${timestamp}-${baseName}.mp4`;
+          const tempMp4Path = `/tmp/${mp4Filename}`;
           
-          await convertToH264Mp4(tempOriginalPath, tempConvertedPath);
+          await convertToMp4WithFaststart(tempOriginalPath, tempMp4Path);
           
           // Read converted file
-          finalBuffer = fs.readFileSync(tempConvertedPath);
-          uniqueFilename = convertedFilename; // Use .mp4 extension
+          finalBuffer = fs.readFileSync(tempMp4Path);
+          uniqueFilename = mp4Filename; // Use .mp4 extension
           
-          // Clean up converted temp file
-          fs.unlinkSync(tempConvertedPath);
+          // Clean up temp files
+          fs.unlinkSync(tempMp4Path);
           
-          console.log(`[Video Upload] Conversion complete: ${uniqueFilename}`);
+          console.log(`[Video Upload] Remux complete: ${uniqueFilename}`);
         } else {
-          console.log(`[Video Upload] Video already H.264, no conversion needed`);
+          console.log(`[Video Upload] Already MP4 or other format, no remux needed`);
         }
         
         // Clean up original temp file
