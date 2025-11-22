@@ -69,6 +69,7 @@ import { groupAdminRouter } from "./group-admin-routes";
 import { inviteCodeRouter } from "./invite-code-routes";
 import { emailVerificationRouter } from "./email-verification-routes";
 import { spartaStorage } from "./sparta-object-storage";
+import { spartaObjectStorage } from "./sparta-object-storage-final";
 import { smsService } from "./sms-service";
 import { uploadSessionManager } from "./upload-sessions";
 
@@ -1645,7 +1646,6 @@ export const registerRoutes = async (
       console.log(`📤 [Finalize Upload] Storing file in Object Storage, isVideo: ${isVideo}`);
       
       // Store file using SpartaObjectStorageFinal (includes MOV->MP4 conversion)
-      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
       const fileInfo = await spartaObjectStorage.storeFile(
         fileBuffer,
         session.filename,
