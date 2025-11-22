@@ -1,0 +1,103 @@
+✅ [Finalize Upload] File stored successfully: {
+2025-11-21 20:31:37.11
+c461330d
+User
+filename: '1763778695204-IMG_9481.mp4',
+2025-11-21 20:31:37.11
+c461330d
+User
+Deleted upload session 0d1a323a-1a14-4084-a889-498a5b606b86
+2025-11-21 20:31:37.14
+c461330d
+User
+2:31:37 AM [express] POST /api/uploads/sessions/0d1a323a-1a14-4084-a889-498a5b606b86/finalize 200 in…
+2025-11-21 20:31:37.28
+c461330d
+User
+Assigning points: { type: 'miscellaneous', points: 0 }
+2025-11-21 20:31:37.28
+c461330d
+User
+isVideo: true
+2025-11-21 20:31:37.28
+c461330d
+User
+filename: '1763778695204-IMG_9481.mp4',
+2025-11-21 20:31:37.28
+c461330d
+User
+hasFile: false,
+2025-11-21 20:31:37.28
+c461330d
+User
+filesKeys: []
+2025-11-21 20:31:37.28
+c461330d
+User
+✅ Using chunked upload result for post creation: {
+2025-11-21 20:31:37.28
+c461330d
+User
+Successfully parsed post data: { postType: 'miscellaneous' }
+2025-11-21 20:31:37.28
+c461330d
+User
+contentType: 'multipart/form-data; boundary=----WebKitFormBoundaryWJh2nzBm3Dtd616P',
+2025-11-21 20:31:37.28
+c461330d
+User
+thumbnailUrl: 'shared/uploads/1763778695204-IMG_9481.jpg',
+2025-11-21 20:31:37.28
+c461330d
+User
+fileDetails: 'No file uploaded',
+2025-11-21 20:31:37.28
+c461330d
+User
+bodyKeys: [ 'is_video', 'selected_media_type', 'data' ],
+2025-11-21 20:31:37.28
+c461330d
+User
+}
+2025-11-21 20:31:37.28
+c461330d
+User
+}
+2025-11-21 20:31:37.28
+c461330d
+User
+POST /api/posts - Request received {
+2025-11-21 20:31:37.28
+c461330d
+User
+mediaUrl: '/api/object-storage/direct-download?storageKey=shared/uploads/1763778695204-IMG_9481.mp4',
+2025-11-21 20:31:38.24
+c461330d
+User
+2:31:38 AM [express] GET /api/notifications/unread 304 in 75ms :: {"unreadCount":0}
+2025-11-21 20:31:38.39
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1763778695204-IMG_9481.jpg
+2025-11-21 20:31:38.45
+c461330d
+User
+Download result for shared/uploads/1763778695204-IMG_9481.jpg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 20:31:38.45
+c461330d
+User
+Successfully downloaded shared/uploads/1763778695204-IMG_9481.jpg, size: 92463 bytes
+2025-11-21 20:31:38.49
+c461330d
+User
+2:31:38 AM [express] GET /api/serve-file 200 in 97ms
+2025-11-21 20:31:38.52
+c461330d
+User
+2:31:38 AM [express] GET /api/posts/51/reactions 200 in 87ms :: []
+
+Collapse
+
+Wrap
+
+Colors

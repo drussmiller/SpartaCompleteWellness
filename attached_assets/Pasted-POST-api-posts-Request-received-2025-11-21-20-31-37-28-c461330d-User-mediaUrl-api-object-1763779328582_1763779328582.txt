@@ -1,0 +1,85 @@
+POST /api/posts - Request received {
+2025-11-21 20:31:37.28
+c461330d
+User
+mediaUrl: '/api/object-storage/direct-download?storageKey=shared/uploads/1763778695204-IMG_9481.mp4',
+2025-11-21 20:31:38.24
+c461330d
+User
+2:31:38 AM [express] GET /api/notifications/unread 304 in 75ms :: {"unreadCount":0}
+2025-11-21 20:31:38.39
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1763778695204-IMG_9481.jpg
+2025-11-21 20:31:38.45
+c461330d
+User
+Download result for shared/uploads/1763778695204-IMG_9481.jpg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 20:31:38.45
+c461330d
+User
+Successfully downloaded shared/uploads/1763778695204-IMG_9481.jpg, size: 92463 bytes
+2025-11-21 20:31:38.49
+c461330d
+User
+2:31:38 AM [express] GET /api/serve-file 200 in 97ms
+2025-11-21 20:31:38.52
+c461330d
+User
+2:31:38 AM [express] GET /api/posts/51/reactions 200 in 87ms :: []
+2025-11-21 20:40:58.95
+c461330d
+User
+Found 0 unread messages for user 1
+2025-11-21 20:40:59.06
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications 304 in 330ms :: []
+2025-11-21 20:40:59.08
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications/unread 304 in 324ms :: {"unreadCount":0}
+2025-11-21 20:40:59.09
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications/unread 304 in 335ms :: {"unreadCount":0}
+2025-11-21 20:40:59.12
+c461330d
+User
+2:40:59 AM [express] GET /api/messages/unread/count 304 in 330ms :: {"unreadCount":0}
+2025-11-21 20:40:59.13
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications/unread 304 in 337ms :: {"unreadCount":0}
+2025-11-21 20:40:59.15
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications/unread 304 in 326ms :: {"unreadCount":0}
+2025-11-21 20:40:59.16
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications/unread 304 in 335ms :: {"unreadCount":0}
+2025-11-21 20:40:59.18
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications 304 in 328ms :: []
+2025-11-21 20:40:59.19
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications/unread 304 in 335ms :: {"unreadCount":0}
+2025-11-21 20:40:59.21
+c461330d
+User
+2:40:59 AM [express] GET /api/notifications 304 in 332ms :: []
+2025-11-21 20:41:00.83
+c461330d
+User
+2:41:00 AM [express] GET /api/object-storage/direct-download 206 in 37ms
+2025-11-21 20:41:00.96
+c461330d
+User
+2:41:00 AM [express] GET /api/object-storage/direct-download 206 in 34ms
+2025-11-21 20:41:01.10
+c461330d
+User
+2:41:01 AM
