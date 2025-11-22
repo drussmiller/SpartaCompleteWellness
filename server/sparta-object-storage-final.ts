@@ -118,13 +118,58 @@ export class SpartaObjectStorageFinal {
 
     // Generate unique filename
     const timestamp = Date.now();
-    const fileExt = path.extname(originalFilename);
+    let fileExt = path.extname(originalFilename);
     const baseName = path.basename(originalFilename, fileExt);
-    const uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
+    let uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
+    let finalBuffer = fileBuffer;
 
-    // Upload main file to Object Storage
+    // Convert video to H.264/MP4 if needed for browser compatibility
+    if (isVideo) {
+      const { needsConversion, convertToH264Mp4 } = await import('./video-converter');
+      
+      // Write to temp file for conversion check
+      const tempOriginalPath = `/tmp/${uniqueFilename}`;
+      fs.writeFileSync(tempOriginalPath, fileBuffer);
+
+      try {
+        const needsConv = await needsConversion(tempOriginalPath);
+        
+        if (needsConv) {
+          console.log(`[Video Upload] Video needs conversion to H.264/MP4`);
+          
+          // Convert to .mp4 with H.264 codec
+          const convertedFilename = `${timestamp}-${baseName}.mp4`;
+          const tempConvertedPath = `/tmp/${convertedFilename}`;
+          
+          await convertToH264Mp4(tempOriginalPath, tempConvertedPath);
+          
+          // Read converted file
+          finalBuffer = fs.readFileSync(tempConvertedPath);
+          uniqueFilename = convertedFilename; // Use .mp4 extension
+          
+          // Clean up converted temp file
+          fs.unlinkSync(tempConvertedPath);
+          
+          console.log(`[Video Upload] Conversion complete: ${uniqueFilename}`);
+        } else {
+          console.log(`[Video Upload] Video already H.264, no conversion needed`);
+        }
+        
+        // Clean up original temp file
+        fs.unlinkSync(tempOriginalPath);
+        
+      } catch (error) {
+        // Clean up on error
+        if (fs.existsSync(tempOriginalPath)) {
+          fs.unlinkSync(tempOriginalPath);
+        }
+        throw error;
+      }
+    }
+
+    // Upload main file to Object Storage (potentially converted)
     const mainKey = `shared/uploads/${uniqueFilename}`;
-    await this.uploadToObjectStorage(mainKey, fileBuffer);
+    await this.uploadToObjectStorage(mainKey, finalBuffer);
 
     const result = {
       filename: uniqueFilename,
