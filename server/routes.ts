@@ -1644,9 +1644,9 @@ export const registerRoutes = async (
       
       console.log(`📤 [Finalize Upload] Storing file in Object Storage, isVideo: ${isVideo}`);
       
-      // Store file using existing SpartaObjectStorage
-      const { spartaStorage } = await import("./sparta-object-storage");
-      const fileInfo = await spartaStorage.storeFile(
+      // Store file using SpartaObjectStorageFinal (includes MOV->MP4 conversion)
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const fileInfo = await spartaObjectStorage.storeFile(
         fileBuffer,
         session.filename,
         session.mimeType,
