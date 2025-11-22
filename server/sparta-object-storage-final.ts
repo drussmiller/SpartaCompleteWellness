@@ -123,37 +123,31 @@ export class SpartaObjectStorageFinal {
     let uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
     let finalBuffer = fileBuffer;
 
-    // Convert MOV to MP4 with faststart for browser compatibility
+    // Convert ALL videos to Edge-compatible MP4 with faststart
     if (isVideo) {
-      const { isMovFile, convertToMp4WithFaststart } = await import('./video-converter');
+      const { convertToMp4WithFaststart } = await import('./video-converter');
       
-      // Write to temp file for format check
-      const tempOriginalPath = `/tmp/${uniqueFilename}`;
+      console.log(`[Video Upload] Processing video, converting to H.264/AAC MP4 with faststart`);
+      
+      // Use distinct filenames to avoid ffmpeg input/output collision
+      const tempOriginalPath = `/tmp/${timestamp}-${baseName}-source${fileExt}`;
+      const mp4Filename = `${timestamp}-${baseName}.mp4`;
+      const tempMp4Path = `/tmp/${mp4Filename}`;
+      
       fs.writeFileSync(tempOriginalPath, fileBuffer);
 
       try {
-        const isMov = await isMovFile(tempOriginalPath);
+        // Always convert to .mp4 with faststart (and H.264 if needed)
+        await convertToMp4WithFaststart(tempOriginalPath, tempMp4Path);
         
-        if (isMov) {
-          console.log(`[Video Upload] MOV file detected, remuxing to MP4 with faststart`);
-          
-          // Convert to .mp4 with faststart (no re-encoding, just remux)
-          const mp4Filename = `${timestamp}-${baseName}.mp4`;
-          const tempMp4Path = `/tmp/${mp4Filename}`;
-          
-          await convertToMp4WithFaststart(tempOriginalPath, tempMp4Path);
-          
-          // Read converted file
-          finalBuffer = fs.readFileSync(tempMp4Path);
-          uniqueFilename = mp4Filename; // Use .mp4 extension
-          
-          // Clean up temp files
-          fs.unlinkSync(tempMp4Path);
-          
-          console.log(`[Video Upload] Remux complete: ${uniqueFilename}`);
-        } else {
-          console.log(`[Video Upload] Already MP4 or other format, no remux needed`);
-        }
+        // Read converted file
+        finalBuffer = fs.readFileSync(tempMp4Path);
+        uniqueFilename = mp4Filename; // Use .mp4 extension
+        
+        // Clean up temp files
+        fs.unlinkSync(tempMp4Path);
+        
+        console.log(`[Video Upload] Conversion complete: ${uniqueFilename}`);
         
         // Clean up original temp file
         fs.unlinkSync(tempOriginalPath);
