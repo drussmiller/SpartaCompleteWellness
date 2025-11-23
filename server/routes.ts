@@ -6609,10 +6609,29 @@ export const registerRoutes = async (
 
       // Handle videos with disk-backed streaming cache
       if (isVideo) {
-        const { videoCacheManager } = await import("./video-cache-manager");
+        let filePath: string;
         
-        // Get file path from cache (downloads if needed)
-        const filePath = await videoCacheManager.getVideoFile(storageKey);
+        // Check if this is a .mov file that needs conversion
+        const isMovFile = ext === 'mov';
+        
+        if (isMovFile) {
+          // Use MOV conversion cache manager for .mov files
+          logger.info(`MOV file detected: ${storageKey}, converting to MP4`);
+          const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
+          
+          // Get converted MP4 file path (converts if needed)
+          filePath = await movConversionCacheManager.getConvertedMp4(storageKey);
+          
+          // Override content type to MP4 since we're serving a converted file
+          res.setHeader("Content-Type", "video/mp4");
+        } else {
+          // Use regular video cache manager for other video formats
+          const { videoCacheManager } = await import("./video-cache-manager");
+          
+          // Get file path from cache (downloads if needed)
+          filePath = await videoCacheManager.getVideoFile(storageKey);
+        }
+        
         const stats = await import("fs").then(fs => fs.promises.stat(filePath));
         const fileSize = stats.size;
 
