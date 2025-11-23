@@ -16,8 +16,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
   
-  // State to force re-render when waking from sleep/screen saver
-  const [, setWakeCounter] = useState(0);
+  // State to track if we've woken from sleep/switched apps (needs more padding)
+  const [hasWoken, setHasWoken] = useState(false);
 
   // Detect Android device - apply padding for Android to keep buttons in safe zone
   const isAndroid = useMemo(() => {
@@ -27,8 +27,10 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   }, []);
 
   // Android-specific: Add bottom padding to keep buttons in safe zone
-  // Use max() to avoid double-counting fallback on initial load
-  const androidPadding = 'max(env(safe-area-inset-bottom), 16px)';
+  // Initial load needs less padding, wake/switch needs more
+  const androidPadding = hasWoken 
+    ? 'max(env(safe-area-inset-bottom), 32px)'
+    : 'max(env(safe-area-inset-bottom), 16px)';
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
@@ -59,18 +61,18 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Bottom nav: Page became visible, refreshing notification count and padding');
+        console.log('Bottom nav: Page became visible, applying wake padding');
         refetchNotificationCount();
-        // Force re-render to ensure Android padding is applied
-        setWakeCounter(prev => prev + 1);
+        // Apply wake padding (32px)
+        setHasWoken(true);
       }
     };
 
     const handleFocus = () => {
-      console.log('Bottom nav: Window gained focus, refreshing notification count and padding');
+      console.log('Bottom nav: Window gained focus, applying wake padding');
       refetchNotificationCount();
-      // Force re-render to ensure Android padding is applied
-      setWakeCounter(prev => prev + 1);
+      // Apply wake padding (32px)
+      setHasWoken(true);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
