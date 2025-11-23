@@ -348,39 +348,50 @@ export class SpartaObjectStorage {
       return;
     }
 
-    console.log(`Attempting to delete file from URL: ${fileUrl}`);
+    console.log(`[DELETE] Attempting to delete file: ${fileUrl}`);
 
-    // Extract filename from URL
-    const filename = path.basename(fileUrl);
+    // Handle both full paths and filenames
+    // If fileUrl already contains 'shared/uploads/', use it as-is
+    // Otherwise, extract filename and build the path
+    let objectStorageKey = fileUrl;
+    if (!fileUrl.startsWith('shared/uploads/')) {
+      const filename = path.basename(fileUrl);
+      objectStorageKey = `shared/uploads/${filename}`;
+    }
+
+    console.log(`[DELETE] Object Storage key: ${objectStorageKey}`);
+
+    // Extract just the filename for local filesystem
+    const filename = path.basename(objectStorageKey);
     const filePath = path.join(this.baseDir, filename);
-
-    console.log(`Looking for file at path: ${filePath}`);
 
     // Delete from local filesystem
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-      console.log(`Deleted local file: ${filePath}`);
+      console.log(`[DELETE] Deleted local file: ${filePath}`);
     } else {
-      console.log(`Local file not found: ${filePath}`);
+      console.log(`[DELETE] Local file not found: ${filePath}`);
     }
 
-    // Delete thumbnail if it exists
+    // Delete thumbnail if it exists (old naming convention)
     const thumbnailFilename = `thumb-${filename.replace(/\.[^/.]+$/, '.jpg')}`;
     const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
     if (fs.existsSync(thumbnailPath)) {
       fs.unlinkSync(thumbnailPath);
-      console.log(`Deleted thumbnail: ${thumbnailPath}`);
+      console.log(`[DELETE] Deleted old-style thumbnail: ${thumbnailPath}`);
     }
 
-    // Delete from Object Storage if available
+    // Delete from Object Storage
     if (this.objectStorage) {
       try {
-        const key = `shared/uploads/${filename}`;
-        await this.objectStorage.delete(key);
-        console.log(`Deleted from Object Storage: ${key}`);
+        await this.objectStorage.delete(objectStorageKey);
+        console.log(`[DELETE] Successfully deleted from Object Storage: ${objectStorageKey}`);
       } catch (error) {
-        console.error(`Error deleting from Object Storage:`, error);
+        console.error(`[DELETE] Error deleting from Object Storage (${objectStorageKey}):`, error);
+        throw error; // Re-throw to let caller know deletion failed
       }
+    } else {
+      console.warn(`[DELETE] Object Storage not available, cannot delete: ${objectStorageKey}`);
     }
   }
 
