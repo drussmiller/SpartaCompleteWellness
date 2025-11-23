@@ -102,11 +102,17 @@ export function VideoPlayer({
   // Handle thumbnail click - open video dialog overlay
   const handleThumbnailClick = () => {
     console.log("Thumbnail clicked, opening video player dialog");
+    console.log("Video src that will be used:", src);
     setIsDialogOpen(true);
     
     // Small delay to ensure video element is rendered before attempting play
     setTimeout(() => {
       if (videoRef.current) {
+        console.log("Video element found after dialog open");
+        console.log("Video element src:", videoRef.current.src);
+        console.log("Video element currentSrc:", videoRef.current.currentSrc);
+        console.log("Video element readyState:", videoRef.current.readyState);
+        console.log("Video element networkState:", videoRef.current.networkState);
         console.log("Attempting to play video after dialog open");
         
         // On Android, request fullscreen on the video element itself
@@ -119,6 +125,8 @@ export function VideoPlayer({
         videoRef.current.play().catch(error => {
           console.log('Initial play attempt failed:', error);
         });
+      } else {
+        console.error("Video element NOT found after dialog open!");
       }
     }, 100);
   };
