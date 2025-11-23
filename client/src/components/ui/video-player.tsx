@@ -81,6 +81,7 @@ export function VideoPlayer({
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showControls, setShowControls] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -135,11 +136,17 @@ export function VideoPlayer({
   const handleDialogClose = () => {
     console.log("Video player dialog closed");
     setIsDialogOpen(false);
+    setShowControls(false); // Reset controls visibility when closing
     
     // Pause video when closing dialog
     if (videoRef.current) {
       videoRef.current.pause();
     }
+  };
+
+  // Handle video click to show controls
+  const handleVideoClick = () => {
+    setShowControls(true);
   };
 
 
@@ -320,14 +327,15 @@ export function VideoPlayer({
             <video
               ref={videoRef}
               src={src}
-              controls
+              controls={showControls}
               autoPlay
               playsInline
               preload="auto"
               controlsList="nodownload noremoteplayback"
               disablePictureInPicture={false}
               disableRemotePlayback
-              className="max-w-full max-h-full object-contain"
+              onClick={handleVideoClick}
+              className="max-w-full max-h-full object-contain cursor-pointer"
               style={{
                 width: 'auto',
                 height: 'auto',
