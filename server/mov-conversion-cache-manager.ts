@@ -129,10 +129,12 @@ export class MovConversionCacheManager {
     const startTime = Date.now();
     console.log(`[MOV CONVERSION START] ${storageKey}`);
 
-    // Create safe filename
-    const safeFilename = storageKey.replace(/\//g, '_');
-    const movTempPath = path.join(this.cacheDir, `${safeFilename}.tmp.mov`);
-    const mp4FinalPath = path.join(this.cacheDir, safeFilename.replace(/\.MOV$/i, '.mp4'));
+    // Extract just the filename from the storage key (e.g., "shared/uploads/filename.MOV" -> "filename.MOV")
+    const filename = storageKey.split('/').pop() || storageKey;
+    
+    // Create paths with shorter filenames (use hash if still too long)
+    const movTempPath = path.join(this.cacheDir, `${filename}.tmp.mov`);
+    const mp4FinalPath = path.join(this.cacheDir, filename.replace(/\.MOV$/i, '.mp4'));
     const mp4TempPath = `${mp4FinalPath}.tmp`;
 
     // Import Object Storage client
