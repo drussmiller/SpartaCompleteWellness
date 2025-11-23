@@ -29,8 +29,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // Android-specific: Add bottom padding to keep buttons in safe zone
   // Initial load needs less padding, wake/switch needs more
   const androidPadding = hasWoken 
-    ? 'max(env(safe-area-inset-bottom), 32px)'
-    : 'max(env(safe-area-inset-bottom), 16px)';
+    ? 'max(env(safe-area-inset-bottom), 40px)'
+    : 'max(env(safe-area-inset-bottom), 0px)';
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
