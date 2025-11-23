@@ -315,7 +315,7 @@ export function VideoPlayer({
               controls
               autoPlay
               playsInline
-              preload="metadata"
+              preload="auto"
               controlsList="nodownload noremoteplayback"
               disablePictureInPicture={false}
               disableRemotePlayback
