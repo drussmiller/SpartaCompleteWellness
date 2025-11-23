@@ -157,6 +157,7 @@ export function ImageViewer({ src, alt, isOpen, onClose }: ImageViewerProps) {
             e.stopPropagation();
             onClose();
           }}
+          className="!outline-none !ring-0 focus-visible:!ring-0 focus-visible:!ring-offset-0 !border-0"
           data-testid="button-close-viewer"
         >
           <X className="h-5 w-5" />

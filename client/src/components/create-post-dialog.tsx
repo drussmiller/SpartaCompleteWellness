@@ -651,7 +651,7 @@ export function CreatePostDialog({
           <Button
             onClick={() => setOpen(false)}
             variant="ghost"
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 !outline-none !ring-0 focus-visible:!ring-0 focus-visible:!ring-offset-0 !border-0"
             aria-label="Close"
           >
             <span className="text-2xl font-bold">×</span>

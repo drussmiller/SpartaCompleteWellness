@@ -317,7 +317,7 @@ export function VideoPlayer({
               onClick={handleDialogClose}
               variant="ghost"
               size="icon"
-              className="absolute top-4 left-4 z-50 text-white hover:bg-white/20 !h-10 !w-10"
+              className="absolute top-4 left-4 z-50 text-white hover:bg-white/20 !h-10 !w-10 !outline-none !ring-0 focus-visible:!ring-0 focus-visible:!ring-offset-0 !border-0"
               data-testid="button-close-video"
             >
               <X className="!h-8 !w-8" />
