@@ -132,10 +132,12 @@ export class MovConversionCacheManager {
     // Extract just the filename from the storage key (e.g., "shared/uploads/filename.MOV" -> "filename.MOV")
     const filename = storageKey.split('/').pop() || storageKey;
     
-    // Create paths with shorter filenames (use hash if still too long)
-    const movTempPath = path.join(this.cacheDir, `${filename}.tmp.mov`);
+    // Use /tmp for temp files during conversion to avoid issues with fluent-ffmpeg
+    const movTempPath = path.join('/tmp', `mov-source-${Date.now()}-${filename}`);
+    const mp4TempPath = path.join('/tmp', `mp4-temp-${Date.now()}-${filename.replace(/\.MOV$/i, '.mp4')}`);
+    
+    // Final destination in cache directory
     const mp4FinalPath = path.join(this.cacheDir, filename.replace(/\.MOV$/i, '.mp4'));
-    const mp4TempPath = `${mp4FinalPath}.tmp`;
 
     // Import Object Storage client
     const { Client } = await import('@replit/object-storage');
