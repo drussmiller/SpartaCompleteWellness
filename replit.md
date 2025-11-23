@@ -6,6 +6,9 @@ The Team Fitness Tracker is a full-stack application enabling users to create po
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+### UI/UX Preferences
+- **Close buttons**: Never add borders to close buttons in the media player (video-player.tsx, image-viewer.tsx) or Create Post dialog (create-post-dialog.tsx). These buttons should remain borderless.
+
 ## System Architecture
 
 The application uses a monorepo structure, separating client, server, and shared components.
