@@ -135,7 +135,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             className={cn(
               "flex flex-col items-center justify-center gap-1 relative",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Disabled or enabled cursor
               isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               // Text styles
@@ -161,7 +161,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
             // Size styles
-            orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
             // Text styles
             location === "/menu"
               ? "text-primary"
