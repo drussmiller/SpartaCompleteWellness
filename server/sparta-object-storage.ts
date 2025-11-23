@@ -163,17 +163,13 @@ export class SpartaObjectStorage {
           url: key,
         } as any;
         
-        // Create thumbnail if it's an image or video
-        if (mimeType.startsWith('image/') || isVideo) {
+        // Create thumbnail only for videos (images are displayed at original size)
+        if (isVideo) {
           try {
             const thumbnailFilename = `${uniqueFilename.replace(fileExt, '.jpg')}`;
             const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
 
-            if (isVideo) {
-              await this.createVideoThumbnail(filePath, thumbnailPath);
-            } else {
-              await this.createThumbnail(filePath, thumbnailPath);
-            }
+            await this.createVideoThumbnail(filePath, thumbnailPath);
 
             // Upload thumbnail to Object Storage
             if (fs.existsSync(thumbnailPath)) {
@@ -210,17 +206,13 @@ export class SpartaObjectStorage {
       url: `/uploads/${uniqueFilename}`,
     } as any;
 
-    // Create thumbnail if it's an image or video
-    if (mimeType.startsWith('image/') || isVideo) {
+    // Create thumbnail only for videos (images are displayed at original size)
+    if (isVideo) {
       try {
         const thumbnailFilename = `thumb-${uniqueFilename.replace(fileExt, '.jpg')}`;
         const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
 
-        if (isVideo) {
-          await this.createVideoThumbnail(filePath, thumbnailPath);
-        } else {
-          await this.createThumbnail(filePath, thumbnailPath);
-        }
+        await this.createVideoThumbnail(filePath, thumbnailPath);
 
         // Upload thumbnail to Object Storage if available
         if (this.objectStorage && fs.existsSync(thumbnailPath)) {

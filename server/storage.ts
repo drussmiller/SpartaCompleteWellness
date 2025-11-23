@@ -422,16 +422,17 @@ export const storage = {
               logger.warn(`Could not delete main media file ${filePath}: ${err}`);
             }
             
-            // Delete the thumbnail (for both images and videos)
-            // Thumbnails have the same base name but .jpg extension
-            const baseName = filename.substring(0, filename.lastIndexOf('.'));
-            const thumbnailPath = `shared/uploads/${baseName}.jpg`;
-            
-            try {
-              await spartaStorage.deleteFile(thumbnailPath);
-              logger.info(`Deleted thumbnail: ${thumbnailPath}`);
-            } catch (err) {
-              logger.debug(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
+            // Delete the thumbnail only for videos (images don't have thumbnails)
+            if (isVideo) {
+              const baseName = filename.substring(0, filename.lastIndexOf('.'));
+              const thumbnailPath = `shared/uploads/${baseName}.jpg`;
+              
+              try {
+                await spartaStorage.deleteFile(thumbnailPath);
+                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
+              } catch (err) {
+                logger.debug(`Could not delete video thumbnail ${thumbnailPath}: ${err}`);
+              }
             }
           }
         } catch (mediaError) {
