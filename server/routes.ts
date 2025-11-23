@@ -6729,6 +6729,160 @@ export const registerRoutes = async (
     }
   });
 
+  // Direct download route for files stored in Object Storage with Range support for video streaming
+  app.get("/api/object-storage/direct-download", async (req: Request, res: Response) => {
+    try {
+      const storageKey = req.query.storageKey as string;
+
+      if (!storageKey) {
+        return res.status(400).json({ error: "storageKey parameter is required" });
+      }
+
+      logger.info(`Direct download: ${storageKey}`, { route: "/api/object-storage/direct-download" });
+
+      // Import the Object Storage utility
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+
+      // Determine content type from file extension
+      const ext = storageKey.toLowerCase().split(".").pop();
+      let contentType = "application/octet-stream";
+      let isVideo = false;
+
+      switch (ext) {
+        case "jpg":
+        case "jpeg":
+          contentType = "image/jpeg";
+          break;
+        case "png":
+          contentType = "image/png";
+          break;
+        case "gif":
+          contentType = "image/gif";
+          break;
+        case "webp":
+          contentType = "image/webp";
+          break;
+        case "mp4":
+          contentType = "video/mp4";
+          isVideo = true;
+          break;
+        case "mov":
+          contentType = "video/quicktime";
+          isVideo = true;
+          break;
+        case "webm":
+          contentType = "video/webm";
+          isVideo = true;
+          break;
+      }
+
+      // Set common headers
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader("Access-Control-Allow-Origin", "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Range");
+      res.setHeader("Accept-Ranges", "bytes");
+
+      // Handle videos with disk-backed streaming cache for Range requests
+      if (isVideo) {
+        let filePath: string;
+        
+        // Check if this is a .mov file that needs conversion
+        const isMovFile = ext === 'mov';
+        
+        if (isMovFile) {
+          // Use MOV conversion cache manager for .mov files
+          logger.info(`MOV file detected: ${storageKey}, converting to MP4`);
+          const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
+          
+          // Get converted MP4 file path (converts if needed)
+          filePath = await movConversionCacheManager.getConvertedMp4(storageKey);
+          
+          // Override content type to MP4 since we're serving a converted file
+          res.setHeader("Content-Type", "video/mp4");
+        } else {
+          // Use regular video cache manager for other video formats
+          const { videoCacheManager } = await import("./video-cache-manager");
+          
+          // Get file path from cache (downloads if needed)
+          filePath = await videoCacheManager.getVideoFile(storageKey);
+        }
+        
+        const stats = await import("fs").then(fs => fs.promises.stat(filePath));
+        const fileSize = stats.size;
+
+        const range = req.headers.range;
+        if (range) {
+          // Parse range header (e.g., "bytes=0-1023")
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+          const chunkSize = end - start + 1;
+
+          logger.info(`Streaming range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
+
+          // Stream from disk (no memory overhead)
+          const fs = await import("fs");
+          const stream = fs.createReadStream(filePath, { start, end });
+
+          // Send 206 Partial Content response
+          res.status(206);
+          res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+          res.setHeader("Content-Length", chunkSize);
+          
+          // Handle stream errors
+          stream.on('error', (error) => {
+            logger.error(`Stream error for ${storageKey}:`, error);
+            if (!res.headersSent) {
+              res.status(500).json({ error: 'Stream error' });
+            }
+          });
+
+          stream.on('end', () => {
+            logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
+          });
+          
+          return stream.pipe(res);
+        } else {
+          // Send entire file from disk
+          logger.info(`Streaming entire video from disk: ${storageKey}, size: ${fileSize}`);
+          const fs = await import("fs");
+          const stream = fs.createReadStream(filePath);
+          
+          // Handle stream errors
+          stream.on('error', (error) => {
+            logger.error(`Stream error for ${storageKey}:`, error);
+            if (!res.headersSent) {
+              res.status(500).json({ error: 'Stream error' });
+            }
+          });
+
+          stream.on('end', () => {
+            logger.info(`Stream completed for ${storageKey}`);
+          });
+          
+          res.setHeader("Content-Length", fileSize);
+          return stream.pipe(res);
+        }
+      }
+
+      // For non-videos, download and send directly
+      const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
+      res.setHeader("Content-Length", fileBuffer.length);
+      logger.info(`Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
+    } catch (error) {
+      logger.error(`Error in direct-download: ${error}`, {
+        route: "/api/object-storage/direct-download",
+      });
+      return res.status(404).json({
+        error: "File not found",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add document upload endpoint for activities
   router.post(
     "/api/activities/upload-doc",
