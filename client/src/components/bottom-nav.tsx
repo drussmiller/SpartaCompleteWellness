@@ -19,15 +19,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // State to force re-render when waking from sleep/screen saver
   const [, setWakeCounter] = useState(0);
 
-  // Detect Android device - apply padding to everything that's NOT Android
+  // Detect Android device - apply padding for Android to keep buttons in safe zone
   const isAndroid = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const userAgent = navigator.userAgent.toLowerCase();
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Always use 0 padding (no extra bottom spacing needed)
-  const androidPadding = '0';
+  // Android-specific: Add bottom padding to keep buttons in safe zone
+  const androidPadding = 'calc(env(safe-area-inset-bottom, 16px) + 12px)';
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
