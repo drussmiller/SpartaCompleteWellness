@@ -15,6 +15,9 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  
+  // State to force re-render when waking from sleep/screen saver
+  const [, setWakeCounter] = useState(0);
 
   // Detect Android device - apply padding to everything that's NOT Android
   const isAndroid = useMemo(() => {
@@ -48,20 +51,25 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     enabled: !!user
   });
 
-  // Refresh notification count when page becomes visible or window gains focus
+  // Refresh notification count and force re-render when page becomes visible or window gains focus
+  // This ensures Android padding is properly applied after waking from sleep/screen saver
   useEffect(() => {
     if (!user) return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Bottom nav: Page became visible, refreshing notification count');
+        console.log('Bottom nav: Page became visible, refreshing notification count and padding');
         refetchNotificationCount();
+        // Force re-render to ensure Android padding is applied
+        setWakeCounter(prev => prev + 1);
       }
     };
 
     const handleFocus = () => {
-      console.log('Bottom nav: Window gained focus, refreshing notification count');
+      console.log('Bottom nav: Window gained focus, refreshing notification count and padding');
       refetchNotificationCount();
+      // Force re-render to ensure Android padding is applied
+      setWakeCounter(prev => prev + 1);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
