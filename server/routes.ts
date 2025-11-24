@@ -6784,86 +6784,164 @@ export const registerRoutes = async (
       res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Range");
       res.setHeader("Accept-Ranges", "bytes");
 
-      // Handle videos with disk-backed streaming cache for Range requests
+      // Handle videos - stream directly from Object Storage to avoid production download timeouts
       if (isVideo) {
-        let filePath: string;
-        
         // Check if this is a .mov file that needs conversion
         const isMovFile = ext === 'mov';
         
         if (isMovFile) {
-          // Use MOV conversion cache manager for .mov files
+          // MOV files need conversion, use cache manager
           logger.info(`MOV file detected: ${storageKey}, converting to MP4`);
           const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
           
           // Get converted MP4 file path (converts if needed)
-          filePath = await movConversionCacheManager.getConvertedMp4(storageKey);
+          const filePath = await movConversionCacheManager.getConvertedMp4(storageKey);
           
           // Override content type to MP4 since we're serving a converted file
           res.setHeader("Content-Type", "video/mp4");
+          
+          const stats = await import("fs").then(fs => fs.promises.stat(filePath));
+          const fileSize = stats.size;
+
+          const range = req.headers.range;
+          if (range) {
+            // Parse range header (e.g., "bytes=0-1023")
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunkSize = end - start + 1;
+
+            logger.info(`Streaming MOV range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
+
+            // Stream from disk (no memory overhead)
+            const fs = await import("fs");
+            const stream = fs.createReadStream(filePath, { start, end });
+
+            // Send 206 Partial Content response
+            res.status(206);
+            res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader("Content-Length", chunkSize);
+            
+            // Handle stream errors
+            stream.on('error', (error) => {
+              logger.error(`Stream error for ${storageKey}:`, error);
+              if (!res.headersSent) {
+                res.status(500).json({ error: 'Stream error' });
+              }
+            });
+
+            stream.on('end', () => {
+              logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
+            });
+            
+            return stream.pipe(res);
+          } else {
+            // Send entire file from disk
+            logger.info(`Streaming entire MOV video from disk: ${storageKey}, size: ${fileSize}`);
+            const fs = await import("fs");
+            const stream = fs.createReadStream(filePath);
+            
+            // Handle stream errors
+            stream.on('error', (error) => {
+              logger.error(`Stream error for ${storageKey}:`, error);
+              if (!res.headersSent) {
+                res.status(500).json({ error: 'Stream error' });
+              }
+            });
+
+            stream.on('end', () => {
+              logger.info(`Stream completed for ${storageKey}`);
+            });
+            
+            res.setHeader("Content-Length", fileSize);
+            return stream.pipe(res);
+          }
         } else {
-          // Use regular video cache manager for other video formats
+          // MP4/WEBM files - use cache manager with extended timeout for production
+          logger.info(`Streaming MP4/WEBM video: ${storageKey}`);
           const { videoCacheManager } = await import("./video-cache-manager");
           
-          // Get file path from cache (downloads if needed)
-          filePath = await videoCacheManager.getVideoFile(storageKey);
-        }
-        
-        const stats = await import("fs").then(fs => fs.promises.stat(filePath));
-        const fileSize = stats.size;
+          try {
+            // Get file path from cache (downloads if needed, with timeout handling)
+            const filePath = await videoCacheManager.getVideoFile(storageKey);
+            
+            const stats = await import("fs").then(fs => fs.promises.stat(filePath));
+            const fileSize = stats.size;
 
-        const range = req.headers.range;
-        if (range) {
-          // Parse range header (e.g., "bytes=0-1023")
-          const parts = range.replace(/bytes=/, "").split("-");
-          const start = parseInt(parts[0], 10);
-          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-          const chunkSize = end - start + 1;
+            const range = req.headers.range;
+            if (range) {
+              // Parse range header (e.g., "bytes=0-1023")
+              const parts = range.replace(/bytes=/, "").split("-");
+              const start = parseInt(parts[0], 10);
+              const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+              const chunkSize = end - start + 1;
 
-          logger.info(`Streaming range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
+              logger.info(`Streaming range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
 
-          // Stream from disk (no memory overhead)
-          const fs = await import("fs");
-          const stream = fs.createReadStream(filePath, { start, end });
+              // Stream from disk (no memory overhead)
+              const fs = await import("fs");
+              const stream = fs.createReadStream(filePath, { start, end });
 
-          // Send 206 Partial Content response
-          res.status(206);
-          res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
-          res.setHeader("Content-Length", chunkSize);
-          
-          // Handle stream errors
-          stream.on('error', (error) => {
-            logger.error(`Stream error for ${storageKey}:`, error);
-            if (!res.headersSent) {
-              res.status(500).json({ error: 'Stream error' });
+              // Send 206 Partial Content response
+              res.status(206);
+              res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+              res.setHeader("Content-Length", chunkSize);
+              
+              // Handle stream errors
+              stream.on('error', (error) => {
+                logger.error(`Stream error for ${storageKey}:`, error);
+                if (!res.headersSent) {
+                  res.status(500).json({ error: 'Stream error' });
+                }
+              });
+
+              stream.on('end', () => {
+                logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
+              });
+              
+              return stream.pipe(res);
+            } else {
+              // Send entire file from disk
+              logger.info(`Streaming entire MP4 video from disk: ${storageKey}, size: ${fileSize}`);
+              const fs = await import("fs");
+              const stream = fs.createReadStream(filePath);
+              
+              // Handle stream errors
+              stream.on('error', (error) => {
+                logger.error(`Stream error for ${storageKey}:`, error);
+                if (!res.headersSent) {
+                  res.status(500).json({ error: 'Stream error' });
+                }
+              });
+
+              stream.on('end', () => {
+                logger.info(`Stream completed for ${storageKey}`);
+              });
+              
+              res.setHeader("Content-Length", fileSize);
+              return stream.pipe(res);
             }
-          });
+          } catch (downloadError) {
+            // If cache download fails (timeout in production), fall back to direct Object Storage streaming
+            // This won't support seeking but will at least play the video
+            logger.error(`Cache download failed for ${storageKey}, falling back to direct stream:`, downloadError);
+            
+            logger.info(`Fallback: Direct streaming from Object Storage: ${storageKey}`);
+            const stream = spartaObjectStorage.downloadAsStream(storageKey);
+            
+            stream.on('error', (error: Error) => {
+              logger.error(`Object Storage stream error for ${storageKey}:`, error);
+              if (!res.headersSent) {
+                res.status(500).json({ error: 'Stream error', message: error.message });
+              }
+            });
 
-          stream.on('end', () => {
-            logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
-          });
-          
-          return stream.pipe(res);
-        } else {
-          // Send entire file from disk
-          logger.info(`Streaming entire video from disk: ${storageKey}, size: ${fileSize}`);
-          const fs = await import("fs");
-          const stream = fs.createReadStream(filePath);
-          
-          // Handle stream errors
-          stream.on('error', (error) => {
-            logger.error(`Stream error for ${storageKey}:`, error);
-            if (!res.headersSent) {
-              res.status(500).json({ error: 'Stream error' });
-            }
-          });
-
-          stream.on('end', () => {
-            logger.info(`Stream completed for ${storageKey}`);
-          });
-          
-          res.setHeader("Content-Length", fileSize);
-          return stream.pipe(res);
+            stream.on('end', () => {
+              logger.info(`Object Storage stream completed for ${storageKey}`);
+            });
+            
+            return stream.pipe(res);
+          }
         }
       }
 

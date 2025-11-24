@@ -115,7 +115,7 @@ export class VideoCacheManager {
   }
 
   /**
-   * Download video from Object Storage to disk using downloadToFilename (streams internally)
+   * Download video from Object Storage to disk using streaming (prevents timeout on large files)
    */
   private async downloadVideo(storageKey: string): Promise<string> {
     const startTime = Date.now();
@@ -131,12 +131,13 @@ export class VideoCacheManager {
     const client = new Client();
 
     try {
-      // Use downloadToFilename which streams directly to disk (no memory buffering)
-      const result = await client.downloadToFilename(storageKey, tempPath);
+      // Use downloadAsStream for large files to avoid timeout - stream to file manually
+      console.log(`[VIDEO DOWNLOAD] Using stream download for ${storageKey}`);
+      const readStream = client.downloadAsStream(storageKey);
+      const writeStream = fs.createWriteStream(tempPath);
 
-      if (!result.ok) {
-        throw new Error(`Failed to download ${storageKey}: ${result.error.message}`);
-      }
+      // Pipe the read stream to write stream
+      await pipeline(readStream, writeStream);
 
       // Get file size
       const stats = fs.statSync(tempPath);
