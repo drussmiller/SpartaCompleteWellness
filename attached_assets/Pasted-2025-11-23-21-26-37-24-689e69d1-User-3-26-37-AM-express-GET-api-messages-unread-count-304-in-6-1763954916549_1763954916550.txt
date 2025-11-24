@@ -1,0 +1,73 @@
+2025-11-23 21:26:37.24
+689e69d1
+User
+3:26:37 AM [express] GET /api/messages/unread/count 304 in 65ms :: {"unreadCount":0}
+2025-11-23 21:26:40.44
+689e69d1
+User
+3:26:40 AM [express] GET /api/notifications 304 in 68ms :: []
+2025-11-23 21:26:40.72
+689e69d1
+User
+3:26:40 AM [express] GET /api/notifications/unread 304 in 65ms :: {"unreadCount":0}
+2025-11-23 21:26:43.65
+689e69d1
+User
+[VIDEO CACHE HIT] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:26:43.68
+689e69d1
+User
+3:26:43 AM [express] GET /api/object-storage/direct-download 206 in 34ms
+2025-11-23 21:26:43.76
+689e69d1
+User
+[VIDEO CACHE HIT] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:26:43.88
+689e69d1
+User
+3:26:43 AM [express] GET /api/object-storage/direct-download 206 in 115ms
+2025-11-23 21:26:44.03
+689e69d1
+User
+[VIDEO CACHE HIT] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:26:44.14
+689e69d1
+User
+3:26:44 AM [express] GET /api/object-storage/direct-download 206 in 115ms
+2025-11-23 21:26:44.29
+689e69d1
+User
+[VIDEO CACHE HIT] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:26:44.32
+689e69d1
+User
+3:26:44 AM [express] GET /api/object-storage/direct-download 206 in 36ms
+2025-11-23 21:26:44.46
+689e69d1
+User
+[VIDEO CACHE HIT] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:26:44.49
+689e69d1
+User
+3:26:44 AM [express] GET /api/object-storage/direct-download 206 in 35ms
+2025-11-23 21:26:44.59
+689e69d1
+User
+[VIDEO CACHE HIT] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:26:44.90
+689e69d1
+User
+3:26:44 AM [express] GET /api/object-storage/direct-download 206 in 314ms
+
+2025-11-23 21:26:44.96
+689e69d1
+User
+[VIDEO CACHE HIT] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:26:45.08
+689e69d1
+User
+3:26:45 AM [express] GET /api/object-storage/direct-download 206 in 115ms
+2025-11-23 21:26:45.08
+689e69d1
+User
+3:26:45 AM [express] GET /api/object-storage/direct-download 206 in 115ms

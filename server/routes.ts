@@ -6656,9 +6656,21 @@ export const registerRoutes = async (
           
           // Handle stream errors
           stream.on('error', (error) => {
-            logger.error(`Stream error for ${storageKey}:`, error);
+            logger.error(`[VIDEO SERVE ERROR] Stream error for ${storageKey}:`, {
+              error: error.message,
+              stack: error.stack,
+              filePath,
+              start,
+              end,
+              fileSize,
+              endpoint: '/api/serve-file'
+            });
             if (!res.headersSent) {
-              res.status(500).json({ error: 'Stream error' });
+              res.status(500).json({ 
+                error: 'Stream error',
+                message: error.message,
+                details: `Failed to stream ${storageKey} from ${filePath}`
+              });
             }
           });
 
@@ -6675,9 +6687,19 @@ export const registerRoutes = async (
           
           // Handle stream errors
           stream.on('error', (error) => {
-            logger.error(`Stream error for ${storageKey}:`, error);
+            logger.error(`[VIDEO SERVE ERROR] Stream error for ${storageKey} (full file):`, {
+              error: error.message,
+              stack: error.stack,
+              filePath,
+              fileSize,
+              endpoint: '/api/serve-file'
+            });
             if (!res.headersSent) {
-              res.status(500).json({ error: 'Stream error' });
+              res.status(500).json({ 
+                error: 'Stream error',
+                message: error.message,
+                details: `Failed to stream ${storageKey} from ${filePath}`
+              });
             }
           });
 
