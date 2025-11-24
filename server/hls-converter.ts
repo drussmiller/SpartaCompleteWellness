@@ -80,7 +80,7 @@ export class HLSConverter {
 
       // Upload playlist and segments to Object Storage
       const playlistContent = fs.readFileSync(playlistPath, 'utf-8');
-      const playlistKey = `shared/hls/${baseFilename}/${playlistFilename}`;
+      const playlistKey = `shared/uploads/hls/${baseFilename}/${playlistFilename}`;
       
       await spartaObjectStorage.uploadToObjectStorage(
         playlistKey,
@@ -97,7 +97,7 @@ export class HLSConverter {
       for (const segmentFile of segmentFiles) {
         const segmentPath = path.join(workDir, segmentFile);
         const segmentBuffer = fs.readFileSync(segmentPath);
-        const segmentKey = `shared/hls/${baseFilename}/${segmentFile}`;
+        const segmentKey = `shared/uploads/hls/${baseFilename}/${segmentFile}`;
         
         await spartaObjectStorage.uploadToObjectStorage(segmentKey, segmentBuffer);
         segmentKeys.push(segmentKey);
