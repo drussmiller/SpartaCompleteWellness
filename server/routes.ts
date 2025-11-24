@@ -1496,6 +1496,7 @@ export const registerRoutes = async (
           content: posts.content,
           type: posts.type,
           mediaUrl: posts.mediaUrl,
+          thumbnailUrl: posts.thumbnailUrl,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
