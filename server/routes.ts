@@ -6754,24 +6754,17 @@ export const registerRoutes = async (
   // Direct download route for files stored in Object Storage with Range support for video streaming
   app.get("/api/object-storage/direct-download", async (req: Request, res: Response) => {
     const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    logger.info(`[REQ START v4] New request ${requestId}`, { 
-      storageKey: req.query.storageKey,
-      range: req.headers.range,
-      method: req.method
-    });
+    console.log(`[REQ START v4] New request ${requestId} - storageKey: ${req.query.storageKey}, range: ${req.headers.range}, method: ${req.method}`);
     
     try {
       const storageKey = req.query.storageKey as string;
 
       if (!storageKey) {
-        logger.error(`[REQ ERROR v4] ${requestId}: Missing storageKey`);
+        console.error(`[REQ ERROR v4] ${requestId}: Missing storageKey`);
         return res.status(400).json({ error: "storageKey parameter is required" });
       }
 
-      logger.info(`[REQ v4] ${requestId}: Direct download: ${storageKey}`, { 
-        route: "/api/object-storage/direct-download",
-        range: req.headers.range 
-      });
+      console.log(`[REQ v4] ${requestId}: Direct download: ${storageKey}, route: /api/object-storage/direct-download, range: ${req.headers.range}`);
 
       // Import the Object Storage utility
       const { spartaObjectStorage } = await import("./sparta-object-storage-final");
@@ -6819,13 +6812,13 @@ export const registerRoutes = async (
 
       // Handle videos - stream directly from Object Storage to avoid production download timeouts
       if (isVideo) {
-        logger.info(`[VIDEO PATH v4] ${requestId}: Video detected: ${storageKey}, ext: ${ext}, range: ${req.headers.range || 'none'}`);
+        console.log(`[VIDEO PATH v4] ${requestId}: Video detected: ${storageKey}, ext: ${ext}, range: ${req.headers.range || 'none'}`);
         // Check if this is a .mov file that needs conversion
         const isMovFile = ext === 'mov';
         
         if (isMovFile) {
           // MOV files need conversion, use cache manager
-          logger.info(`[MOV PATH v4] ${requestId}: MOV file detected: ${storageKey}, converting to MP4`);
+          console.log(`[MOV PATH v4] ${requestId}: MOV file detected: ${storageKey}, converting to MP4`);
           const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
           
           // Get converted MP4 file path (converts if needed)
@@ -6892,19 +6885,19 @@ export const registerRoutes = async (
           }
         } else {
           // MP4/WEBM files - use cache manager with extended timeout for production
-          logger.info(`[MP4 PATH v4] ${requestId}: MP4/WEBM file detected: ${storageKey}`);
-          logger.info(`[VIDEO STREAM v4] ${requestId}: Starting MP4/WEBM video stream: ${storageKey}`);
+          console.log(`[MP4 PATH v4] ${requestId}: MP4/WEBM file detected: ${storageKey}`);
+          console.log(`[VIDEO STREAM v4] ${requestId}: Starting MP4/WEBM video stream: ${storageKey}`);
           const { videoCacheManager } = await import("./video-cache-manager");
           
           try {
             // Get file path from cache (downloads if needed, with timeout handling)
-            logger.info(`[VIDEO STREAM v4] ${requestId}: Getting video file from cache: ${storageKey}`);
+            console.log(`[VIDEO STREAM v4] ${requestId}: Getting video file from cache: ${storageKey}`);
             const filePath = await videoCacheManager.getVideoFile(storageKey);
-            logger.info(`[VIDEO STREAM v4] ${requestId}: Video file path obtained: ${filePath}`);
+            console.log(`[VIDEO STREAM v4] ${requestId}: Video file path obtained: ${filePath}`);
             
             const stats = await import("fs").then(fs => fs.promises.stat(filePath));
             const fileSize = stats.size;
-            logger.info(`[VIDEO STREAM] File stats - size: ${fileSize}, path: ${filePath}`);
+            console.log(`[VIDEO STREAM v4] ${requestId}: File stats - size: ${fileSize}, path: ${filePath}`);
 
             const range = req.headers.range;
             if (range) {
@@ -6914,13 +6907,13 @@ export const registerRoutes = async (
               const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
               const chunkSize = end - start + 1;
 
-              logger.info(`[VIDEO STREAM v4] ${requestId}: Range request: ${start}-${end}/${fileSize} (${chunkSize} bytes)`);
+              console.log(`[VIDEO STREAM v4] ${requestId}: Range request: ${start}-${end}/${fileSize} (${chunkSize} bytes)`);
 
               // Stream from disk (no memory overhead)
               const fs = await import("fs");
               
               try {
-                logger.info(`[STREAM CREATE v4] ${requestId}: Creating read stream for ${filePath}, range ${start}-${end}`);
+                console.log(`[STREAM CREATE v4] ${requestId}: Creating read stream for ${filePath}, range ${start}-${end}`);
                 const stream = fs.createReadStream(filePath, { start, end });
 
                 // Send 206 Partial Content response
@@ -6928,19 +6921,11 @@ export const registerRoutes = async (
                 res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
                 res.setHeader("Content-Length", chunkSize);
                 
-                logger.info(`[STREAM START v4] ${requestId}: Headers set (206), piping stream for range ${start}-${end}`);
+                console.log(`[STREAM START v4] ${requestId}: Headers set (206), piping stream for range ${start}-${end}`);
                 
                 // Handle stream errors
                 stream.on('error', (error) => {
-                  logger.error(`[STREAM ERROR v4] ${requestId}: Stream error for ${storageKey}:`, {
-                    error: error.message,
-                    stack: error.stack,
-                    filePath,
-                    start,
-                    end,
-                    fileSize,
-                    headersSent: res.headersSent
-                  });
+                  console.error(`[STREAM ERROR v4] ${requestId}: Stream error for ${storageKey} - error: ${error.message}, stack: ${error.stack}, filePath: ${filePath}, start: ${start}, end: ${end}, fileSize: ${fileSize}, headersSent: ${res.headersSent}`);
                   if (!res.headersSent) {
                     res.status(500).json({ 
                       error: 'Stream error', 
@@ -6948,29 +6933,21 @@ export const registerRoutes = async (
                       details: `Failed to stream ${storageKey} from ${filePath}`
                     });
                   } else {
-                    logger.error(`[STREAM ERROR v4] ${requestId}: Headers already sent, cannot send error response`);
+                    console.error(`[STREAM ERROR v4] ${requestId}: Headers already sent, cannot send error response`);
                   }
                 });
 
                 stream.on('end', () => {
-                  logger.info(`[STREAM COMPLETE v4] ${requestId}: Stream completed for ${storageKey}: bytes ${start}-${end}`);
+                  console.log(`[STREAM COMPLETE v4] ${requestId}: Stream completed for ${storageKey}: bytes ${start}-${end}`);
                 });
 
                 stream.on('close', () => {
-                  logger.info(`[STREAM CLOSE v4] ${requestId}: Stream closed for ${storageKey}: bytes ${start}-${end}`);
+                  console.log(`[STREAM CLOSE v4] ${requestId}: Stream closed for ${storageKey}: bytes ${start}-${end}`);
                 });
                 
                 return stream.pipe(res);
               } catch (streamError) {
-                logger.error(`[STREAM CREATE ERROR v4] ${requestId}: Failed to create read stream:`, {
-                  error: streamError instanceof Error ? streamError.message : String(streamError),
-                  stack: streamError instanceof Error ? streamError.stack : undefined,
-                  filePath,
-                  start,
-                  end,
-                  fileSize,
-                  storageKey
-                });
+                console.error(`[STREAM CREATE ERROR v4] ${requestId}: Failed to create read stream - error: ${streamError instanceof Error ? streamError.message : String(streamError)}, stack: ${streamError instanceof Error ? streamError.stack : undefined}, filePath: ${filePath}, start: ${start}, end: ${end}, fileSize: ${fileSize}, storageKey: ${storageKey}`);
                 throw streamError;
               }
             } else {
@@ -7018,23 +6995,15 @@ export const registerRoutes = async (
             }
           } catch (downloadError) {
             // Detailed error logging for cache/download failures
-            logger.error(`[VIDEO STREAM ERROR] Cache operation failed for ${storageKey}:`, {
-              error: downloadError instanceof Error ? downloadError.message : String(downloadError),
-              stack: downloadError instanceof Error ? downloadError.stack : undefined,
-              storageKey,
-              errorType: downloadError instanceof Error ? downloadError.constructor.name : typeof downloadError
-            });
+            console.error(`[VIDEO STREAM ERROR v4] ${requestId}: Cache operation failed for ${storageKey} - error: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}, stack: ${downloadError instanceof Error ? downloadError.stack : undefined}, errorType: ${downloadError instanceof Error ? downloadError.constructor.name : typeof downloadError}`);
             
             // If cache download fails (timeout in production), fall back to direct Object Storage streaming
             // This won't support seeking but will at least play the video
-            logger.info(`[VIDEO STREAM] Fallback: Direct streaming from Object Storage: ${storageKey}`);
+            console.log(`[VIDEO STREAM FALLBACK v4] ${requestId}: Direct streaming from Object Storage: ${storageKey}`);
             const stream = spartaObjectStorage.downloadAsStream(storageKey);
             
             stream.on('error', (error: Error) => {
-              logger.error(`[VIDEO STREAM ERROR] Object Storage stream error for ${storageKey}:`, {
-                error: error.message,
-                stack: error.stack
-              });
+              console.error(`[VIDEO STREAM ERROR v4] ${requestId}: Object Storage stream error for ${storageKey} - error: ${error.message}, stack: ${error.stack}`);
               if (!res.headersSent) {
                 res.status(500).json({ 
                   error: 'Stream error', 
@@ -7045,7 +7014,7 @@ export const registerRoutes = async (
             });
 
             stream.on('end', () => {
-              logger.info(`[VIDEO STREAM] Object Storage stream completed for ${storageKey}`);
+              console.log(`[VIDEO STREAM COMPLETE v4] ${requestId}: Object Storage stream completed for ${storageKey}`);
             });
             
             return stream.pipe(res);
@@ -7056,21 +7025,13 @@ export const registerRoutes = async (
       // For non-videos, download and send directly
       const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
       res.setHeader("Content-Length", fileBuffer.length);
-      logger.info(`Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      console.log(`[FILE SERVED v4] ${requestId}: Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
       return res.send(fileBuffer);
     } catch (error) {
-      logger.error(`[ENDPOINT ERROR v4] ${requestId}: Error in direct-download endpoint:`, {
-        route: "/api/object-storage/direct-download",
-        storageKey: req.query.storageKey,
-        range: req.headers.range,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        errorType: error instanceof Error ? error.constructor.name : typeof error,
-        headersSent: res.headersSent
-      });
+      console.error(`[ENDPOINT ERROR v4] ${requestId}: Error in direct-download endpoint - route: /api/object-storage/direct-download, storageKey: ${req.query.storageKey}, range: ${req.headers.range}, error: ${error instanceof Error ? error.message : String(error)}, stack: ${error instanceof Error ? error.stack : undefined}, errorType: ${error instanceof Error ? error.constructor.name : typeof error}, headersSent: ${res.headersSent}`);
       
       if (res.headersSent) {
-        logger.error(`[ENDPOINT ERROR v4] ${requestId}: Cannot send error response, headers already sent`);
+        console.error(`[ENDPOINT ERROR v4] ${requestId}: Cannot send error response, headers already sent`);
         return;
       }
       

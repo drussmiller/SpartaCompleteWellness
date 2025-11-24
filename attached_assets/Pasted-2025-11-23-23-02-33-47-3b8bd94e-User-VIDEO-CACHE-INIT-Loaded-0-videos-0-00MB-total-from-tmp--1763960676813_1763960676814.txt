@@ -1,0 +1,208 @@
+2025-11-23 23:02:33.47
+3b8bd94e
+User
+[VIDEO CACHE INIT] Loaded 0 videos (0.00MB total) from /tmp/video-cache
+2025-11-23 23:02:33.47
+3b8bd94e
+User
+[CACHE MISS v4] shared/uploads/1763949420423-IMG_9507.mp4 - Starting download from Object Storage
+2025-11-23 23:02:33.47
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:33.47
+3b8bd94e
+User
+[DOWNLOAD v4] File paths - temp: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4.tmp, final: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:33.47
+3b8bd94e
+User
+[DOWNLOAD v4] Using stream download for shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:33.47
+3b8bd94e
+User
+[DOWNLOAD START v4] shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:33.47
+3b8bd94e
+User
+5:02:33 AM [express] GET /api/notifications/unread 304 in 221ms :: {"unreadCount":0}
+2025-11-23 23:02:34.12
+3b8bd94e
+User
+[DOWNLOAD COMPLETE v4] shared/uploads/1763949420423-IMG_9507.mp4 - 32.93MB in 0.66s
+2025-11-23 23:02:34.12
+3b8bd94e
+User
+[DOWNLOAD RETURN v4] Returning downloaded file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.12
+3b8bd94e
+User
+[DOWNLOAD v4] Ensuring space for 32.93MB file
+2025-11-23 23:02:34.12
+3b8bd94e
+User
+[CACHED v4] shared/uploads/1763949420423-IMG_9507.mp4 to /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4 - Cache now: 32.93/500MB (6.6%)
+2025-11-23 23:02:34.12
+3b8bd94e
+User
+[DOWNLOAD v4] Moving temp file to final location: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4.tmp -> /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.12
+3b8bd94e
+User
+[CACHE RETURN v4] Returning newly downloaded file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.16
+3b8bd94e
+User
+5:02:34 AM [express] GET /api/object-storage/direct-download 206 in 697ms
+2025-11-23 23:02:34.44
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.44
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.44
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:34.61
+3b8bd94e
+User
+5:02:34 AM [express] GET /api/object-storage/direct-download 206 in 163ms
+2025-11-23 23:02:34.92
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.92
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.92
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.04
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 114ms
+2025-11-23 23:02:35.22
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.22
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.22
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.28
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 56ms
+2025-11-23 23:02:35.38
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.38
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.38
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.41
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 33ms
+2025-11-23 23:02:34.61
+3b8bd94e
+User
+5:02:34 AM [express] GET /api/object-storage/direct-download 206 in 163ms
+2025-11-23 23:02:34.92
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.92
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:34.92
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.04
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 114ms
+2025-11-23 23:02:35.22
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.22
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.22
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.28
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 56ms
+2025-11-23 23:02:35.38
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.38
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.38
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.41
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 33ms
+2025-11-23 23:02:35.52
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.52
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.52
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.64
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 118ms
+2025-11-23 23:02:35.78
+3b8bd94e
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.78
+3b8bd94e
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:02:35.78
+3b8bd94e
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:02:35.90
+3b8bd94e
+User
+5:02:35 AM [express] GET /api/object-storage/direct-download 206 in 125ms
+2025-11-23 23:03:03.60
+3b8bd94e
+User
+5:03:03 AM [express] GET /api/notifications/unread 304 in 64ms :: {"unreadCount":0}
