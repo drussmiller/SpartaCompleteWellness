@@ -1,0 +1,64 @@
+2025-11-23 22:49:48.12
+374af7e1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 67.78/500MB (13.6%)
+2025-11-23 22:49:48.15
+374af7e1
+User
+4:49:48 AM [express] GET /api/object-storage/direct-download 206 in 34ms
+2025-11-23 22:49:48.26
+374af7e1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 67.78/500MB (13.6%)
+2025-11-23 22:49:48.38
+374af7e1
+User
+4:49:48 AM [express] GET /api/object-storage/direct-download 206 in 119ms
+2025-11-23 22:49:48.54
+374af7e1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 67.78/500MB (13.6%)
+2025-11-23 22:49:48.65
+374af7e1
+User
+4:49:48 AM [express] GET /api/object-storage/direct-download 206 in 116ms
+2025-11-23 22:49:48.82
+374af7e1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 67.78/500MB (13.6%)
+2025-11-23 22:49:48.86
+374af7e1
+User
+4:49:48 AM [express] GET /api/object-storage/direct-download 206 in 34ms
+2025-11-23 22:49:48.97
+374af7e1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 67.78/500MB (13.6%)
+2025-11-23 22:49:49.00
+374af7e1
+User
+4:49:49 AM [express] GET /api/object-storage/direct-download 206 in 33ms
+2025-11-23 22:49:49.11
+374af7e1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 67.78/500MB (13.6%)
+2025-11-23 22:49:49.23
+374af7e1
+User
+4:49:49 AM [express] GET /api/object-storage/direct-download 206 in 116ms
+2025-11-23 22:49:49.36
+374af7e1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 67.78/500MB (13.6%)
+2025-11-23 22:49:49.48
+374af7e1
+User
+4:49:49 AM [express] GET /api/object-storage/direct-download 206 in 112ms
+2025-11-23 22:50:18.27
+374af7e1
+User
+4:50:18 AM [express] GET /api/notifications/unread 304 in 68ms :: {"unreadCount":0}
+2025-11-23 22:50:27.28
+374af7e1
+User
+Found 0 unread messages for user 1
