@@ -82,7 +82,7 @@ export class SpartaObjectStorageFinal {
   /**
    * Upload file to Object Storage with retries
    */
-  private async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
+  async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
     await this.retryOperation(
       () => this.objectStorage.uploadFromBytes(key, buffer),
       `Upload ${key}`
@@ -161,13 +161,77 @@ export class SpartaObjectStorageFinal {
       }
     }
 
-    // Upload main file to Object Storage (potentially converted)
+    // Check if large video needs HLS conversion
+    const fileSize = finalBuffer.length;
+    let isHLS = false;
+    
+    if (isVideo) {
+      const { HLSConverter } = await import('./hls-converter');
+      
+      if (HLSConverter.shouldConvertToHLS(fileSize)) {
+        console.log(`[Video Upload] Large video detected (${(fileSize / 1024 / 1024).toFixed(2)} MB), converting to HLS`);
+        
+        // Write converted MP4 to temp file for HLS conversion
+        const tempVideoPath = `/tmp/${uniqueFilename}`;
+        fs.writeFileSync(tempVideoPath, finalBuffer);
+        
+        try {
+          const { hlsConverter } = await import('./hls-converter');
+          const hlsResult = await hlsConverter.convertToHLS(tempVideoPath, uniqueFilename.replace('.mp4', ''));
+          
+          isHLS = true;
+          console.log(`[Video Upload] HLS conversion complete: ${hlsResult.segmentKeys.length} segments`);
+          
+          // Clean up temp file
+          fs.unlinkSync(tempVideoPath);
+          
+          // Return HLS playlist URL instead of direct video URL
+          const result = {
+            filename: uniqueFilename,
+            url: `/api/hls/${uniqueFilename.replace('.mp4', '')}/playlist.m3u8`,
+            isHLS: true,
+          } as any;
+          
+          // Still create thumbnail for HLS videos
+          if (mimeType.startsWith('image/') || isVideo) {
+            try {
+              // Write video back to temp for thumbnail creation
+              fs.writeFileSync(tempVideoPath, finalBuffer);
+              const createdThumbnailFilename = await createMovThumbnail(tempVideoPath);
+              
+              if (createdThumbnailFilename) {
+                console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
+                result.thumbnailUrl = `shared/uploads/${createdThumbnailFilename}`;
+                fs.unlinkSync(tempVideoPath);
+              } else {
+                fs.unlinkSync(tempVideoPath);
+              }
+            } catch (error) {
+              console.error(`Failed to create thumbnail for HLS video: ${error}`);
+              result.thumbnailUrl = result.url;
+            }
+          }
+          
+          return result;
+        } catch (error) {
+          console.error(`[Video Upload] HLS conversion failed: ${error}`);
+          // Fall back to regular MP4 upload
+          if (fs.existsSync(tempVideoPath)) {
+            fs.unlinkSync(tempVideoPath);
+          }
+          console.log(`[Video Upload] Falling back to regular MP4 upload`);
+        }
+      }
+    }
+
+    // Upload main file to Object Storage (regular MP4 or small video)
     const mainKey = `shared/uploads/${uniqueFilename}`;
     await this.uploadToObjectStorage(mainKey, finalBuffer);
 
     const result = {
       filename: uniqueFilename,
       url: `/api/object-storage/direct-download?storageKey=${mainKey}`,
+      isHLS: false,
     } as any;
 
     // Create and upload thumbnail if needed

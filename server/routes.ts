@@ -7101,6 +7101,71 @@ export const registerRoutes = async (
     }
   });
 
+  // HLS playlist endpoint - serves .m3u8 playlist files for HLS streaming
+  app.get("/api/hls/:baseFilename/playlist.m3u8", async (req: Request, res: Response) => {
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[HLS PLAYLIST] ${requestId}: Request for ${req.params.baseFilename}`);
+    
+    try {
+      const { baseFilename } = req.params;
+      const playlistKey = `shared/hls/${baseFilename}/${baseFilename}.m3u8`;
+      
+      console.log(`[HLS PLAYLIST] ${requestId}: Fetching playlist: ${playlistKey}`);
+      
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const playlistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
+      
+      res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      
+      console.log(`[HLS PLAYLIST] ${requestId}: Serving playlist (${playlistBuffer.length} bytes)`);
+      return res.send(playlistBuffer);
+    } catch (error) {
+      console.error(`[HLS PLAYLIST ERROR] ${requestId}: ${error instanceof Error ? error.message : String(error)}`);
+      return res.status(404).json({
+        error: "Playlist not found",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // HLS segment endpoint - serves .ts segment files for HLS streaming
+  app.get("/api/hls/:baseFilename/:segmentFilename", async (req: Request, res: Response) => {
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[HLS SEGMENT] ${requestId}: Request for ${req.params.baseFilename}/${req.params.segmentFilename}`);
+    
+    try {
+      const { baseFilename, segmentFilename } = req.params;
+      
+      // Validate segment filename (must be .ts file)
+      if (!segmentFilename.endsWith('.ts')) {
+        return res.status(400).json({ error: "Invalid segment filename" });
+      }
+      
+      const segmentKey = `shared/hls/${baseFilename}/${segmentFilename}`;
+      
+      console.log(`[HLS SEGMENT] ${requestId}: Fetching segment: ${segmentKey}`);
+      
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const segmentBuffer = await spartaObjectStorage.downloadFile(segmentKey);
+      
+      res.setHeader("Content-Type", "video/mp2t");
+      res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year (segments never change)
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Content-Length", segmentBuffer.length);
+      
+      console.log(`[HLS SEGMENT] ${requestId}: Serving segment (${(segmentBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+      return res.send(segmentBuffer);
+    } catch (error) {
+      console.error(`[HLS SEGMENT ERROR] ${requestId}: ${error instanceof Error ? error.message : String(error)}`);
+      return res.status(404).json({
+        error: "Segment not found",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add document upload endpoint for activities
   router.post(
     "/api/activities/upload-doc",

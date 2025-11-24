@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import Hls from 'hls.js';
 import './video-player.css'; // Import the custom CSS
 
 interface VideoPlayerProps {
@@ -84,6 +85,7 @@ export function VideoPlayer({
   const [showControls, setShowControls] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
   // Initialize thumbnail loading
   useEffect(() => {
@@ -165,10 +167,80 @@ export function VideoPlayer({
     // As requested by user, no fallback images or alternatives - just fail silently
   };
 
-  // Set up video loaded event
+  // Set up HLS or native video playback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src) return;
+
+    const isHLS = src.endsWith('.m3u8');
+    
+    if (isHLS && Hls.isSupported()) {
+      console.log('[HLS] Initializing HLS.js for:', src);
+      
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 90, // Keep 90s of data in buffer
+      });
+      
+      hlsRef.current = hls;
+      
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('[HLS] Manifest parsed, video ready to play');
+        if (onLoad) onLoad();
+      });
+      
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error('[HLS] Error:', data.type, data.details, data);
+        
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.error('[HLS] Fatal network error, trying to recover');
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.error('[HLS] Fatal media error, trying to recover');
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error('[HLS] Fatal error, cannot recover');
+              if (onError) onError(new Error(`HLS Error: ${data.details}`));
+              hls.destroy();
+              break;
+          }
+        }
+      });
+      
+      return () => {
+        console.log('[HLS] Cleaning up HLS instance');
+        hls.destroy();
+        hlsRef.current = null;
+      };
+    } else if (isHLS) {
+      // HLS not supported, check if browser natively supports it (Safari)
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        console.log('[HLS] Using native HLS support');
+        video.src = src;
+      } else {
+        console.error('[HLS] HLS not supported on this browser');
+        if (onError) onError(new Error('HLS playback not supported'));
+      }
+    }
+    // else: regular video, browser will handle it natively
+    
+  }, [src, onLoad, onError]);
+
+  // Set up video loaded event (for non-HLS videos)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    const isHLS = src?.endsWith('.m3u8');
+    if (isHLS) return; // HLS events are handled above
 
     const handleVideoLoaded = () => {
       console.log("Video data loaded");
@@ -187,7 +259,7 @@ export function VideoPlayer({
       video.removeEventListener('loadeddata', handleVideoLoaded);
       video.removeEventListener('error', handleError);
     };
-  }, [onLoad, onError]);
+  }, [src, onLoad, onError]);
 
   // Listen for thumbnail regeneration events
   useEffect(() => {
@@ -326,7 +398,7 @@ export function VideoPlayer({
             {/* Video player */}
             <video
               ref={videoRef}
-              src={src}
+              src={src?.endsWith('.m3u8') ? undefined : src}
               controls={showControls}
               autoPlay
               playsInline
