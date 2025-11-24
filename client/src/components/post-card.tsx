@@ -215,6 +215,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   }, [post.mediaUrl]);
 
   const thumbnailUrl = useMemo(() => {
+    // Use database thumbnailUrl if available (for HLS videos and new uploads)
+    if ((post as any).thumbnailUrl) {
+      return (post as any).thumbnailUrl;
+    }
+    
     if (!post.mediaUrl) return null;
     
     // For video files, create thumbnail URL by replacing extension with .jpg
@@ -242,7 +247,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
     // For non-video files, use the existing thumbnail logic
     return createThumbnailUrl(post.mediaUrl);
-  }, [post.mediaUrl]);
+  }, [post.mediaUrl, (post as any).thumbnailUrl]);
 
     const { Play } = useMemo(() => {
         return {

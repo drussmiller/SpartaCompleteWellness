@@ -176,6 +176,7 @@ export const posts = pgTable("posts", {
   type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video"] }).notNull(),
   content: text("content"),
   mediaUrl: text("image_url"), // Using the existing image_url column for both images and videos
+  thumbnailUrl: text("thumbnail_url"), // Thumbnail URL for videos (especially HLS videos)
   is_video: boolean("is_video").default(false), // Flag to explicitly mark video content
   points: integer("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),

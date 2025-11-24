@@ -2105,6 +2105,7 @@ export const registerRoutes = async (
           type: postData.type,
           content: postData.content?.trim() || '',
           mediaUrl: mediaUrl,
+          thumbnailUrl: posterUrl || null, // Save thumbnail URL for videos
           is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
           postScope: postScope,
