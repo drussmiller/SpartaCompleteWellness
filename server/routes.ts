@@ -6858,15 +6858,18 @@ export const registerRoutes = async (
           }
         } else {
           // MP4/WEBM files - use cache manager with extended timeout for production
-          logger.info(`Streaming MP4/WEBM video: ${storageKey}`);
+          logger.info(`[VIDEO STREAM] Starting MP4/WEBM video stream: ${storageKey}`);
           const { videoCacheManager } = await import("./video-cache-manager");
           
           try {
             // Get file path from cache (downloads if needed, with timeout handling)
+            logger.info(`[VIDEO STREAM] Getting video file from cache: ${storageKey}`);
             const filePath = await videoCacheManager.getVideoFile(storageKey);
+            logger.info(`[VIDEO STREAM] Video file path obtained: ${filePath}`);
             
             const stats = await import("fs").then(fs => fs.promises.stat(filePath));
             const fileSize = stats.size;
+            logger.info(`[VIDEO STREAM] File stats - size: ${fileSize}, path: ${filePath}`);
 
             const range = req.headers.range;
             if (range) {
@@ -6876,68 +6879,130 @@ export const registerRoutes = async (
               const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
               const chunkSize = end - start + 1;
 
-              logger.info(`Streaming range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
+              logger.info(`[VIDEO STREAM] Range request: ${start}-${end}/${fileSize} (${chunkSize} bytes)`);
 
               // Stream from disk (no memory overhead)
               const fs = await import("fs");
-              const stream = fs.createReadStream(filePath, { start, end });
-
-              // Send 206 Partial Content response
-              res.status(206);
-              res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
-              res.setHeader("Content-Length", chunkSize);
               
-              // Handle stream errors
-              stream.on('error', (error) => {
-                logger.error(`Stream error for ${storageKey}:`, error);
-                if (!res.headersSent) {
-                  res.status(500).json({ error: 'Stream error' });
-                }
-              });
+              try {
+                const stream = fs.createReadStream(filePath, { start, end });
 
-              stream.on('end', () => {
-                logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
-              });
-              
-              return stream.pipe(res);
+                // Send 206 Partial Content response
+                res.status(206);
+                res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+                res.setHeader("Content-Length", chunkSize);
+                
+                logger.info(`[VIDEO STREAM] Headers set, starting stream for range ${start}-${end}`);
+                
+                // Handle stream errors
+                stream.on('error', (error) => {
+                  logger.error(`[VIDEO STREAM ERROR] Stream error for ${storageKey}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    filePath,
+                    start,
+                    end,
+                    fileSize
+                  });
+                  if (!res.headersSent) {
+                    res.status(500).json({ 
+                      error: 'Stream error', 
+                      message: error.message,
+                      details: `Failed to stream ${storageKey} from ${filePath}`
+                    });
+                  }
+                });
+
+                stream.on('end', () => {
+                  logger.info(`[VIDEO STREAM] Stream completed for ${storageKey}: bytes ${start}-${end}`);
+                });
+                
+                return stream.pipe(res);
+              } catch (streamError) {
+                logger.error(`[VIDEO STREAM ERROR] Failed to create read stream:`, {
+                  error: streamError instanceof Error ? streamError.message : String(streamError),
+                  stack: streamError instanceof Error ? streamError.stack : undefined,
+                  filePath,
+                  start,
+                  end,
+                  fileSize,
+                  storageKey
+                });
+                throw streamError;
+              }
             } else {
               // Send entire file from disk
-              logger.info(`Streaming entire MP4 video from disk: ${storageKey}, size: ${fileSize}`);
+              logger.info(`[VIDEO STREAM] Streaming entire MP4 video: ${storageKey}, size: ${fileSize}`);
               const fs = await import("fs");
-              const stream = fs.createReadStream(filePath);
               
-              // Handle stream errors
-              stream.on('error', (error) => {
-                logger.error(`Stream error for ${storageKey}:`, error);
-                if (!res.headersSent) {
-                  res.status(500).json({ error: 'Stream error' });
-                }
-              });
+              try {
+                const stream = fs.createReadStream(filePath);
+                
+                // Handle stream errors
+                stream.on('error', (error) => {
+                  logger.error(`[VIDEO STREAM ERROR] Stream error for ${storageKey}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    filePath,
+                    fileSize
+                  });
+                  if (!res.headersSent) {
+                    res.status(500).json({ 
+                      error: 'Stream error',
+                      message: error.message,
+                      details: `Failed to stream ${storageKey} from ${filePath}`
+                    });
+                  }
+                });
 
-              stream.on('end', () => {
-                logger.info(`Stream completed for ${storageKey}`);
-              });
-              
-              res.setHeader("Content-Length", fileSize);
-              return stream.pipe(res);
+                stream.on('end', () => {
+                  logger.info(`[VIDEO STREAM] Stream completed for ${storageKey}`);
+                });
+                
+                res.setHeader("Content-Length", fileSize);
+                logger.info(`[VIDEO STREAM] Headers set, starting full file stream`);
+                return stream.pipe(res);
+              } catch (streamError) {
+                logger.error(`[VIDEO STREAM ERROR] Failed to create read stream for full file:`, {
+                  error: streamError instanceof Error ? streamError.message : String(streamError),
+                  stack: streamError instanceof Error ? streamError.stack : undefined,
+                  filePath,
+                  fileSize,
+                  storageKey
+                });
+                throw streamError;
+              }
             }
           } catch (downloadError) {
+            // Detailed error logging for cache/download failures
+            logger.error(`[VIDEO STREAM ERROR] Cache operation failed for ${storageKey}:`, {
+              error: downloadError instanceof Error ? downloadError.message : String(downloadError),
+              stack: downloadError instanceof Error ? downloadError.stack : undefined,
+              storageKey,
+              errorType: downloadError instanceof Error ? downloadError.constructor.name : typeof downloadError
+            });
+            
             // If cache download fails (timeout in production), fall back to direct Object Storage streaming
             // This won't support seeking but will at least play the video
-            logger.error(`Cache download failed for ${storageKey}, falling back to direct stream:`, downloadError);
-            
-            logger.info(`Fallback: Direct streaming from Object Storage: ${storageKey}`);
+            logger.info(`[VIDEO STREAM] Fallback: Direct streaming from Object Storage: ${storageKey}`);
             const stream = spartaObjectStorage.downloadAsStream(storageKey);
             
             stream.on('error', (error: Error) => {
-              logger.error(`Object Storage stream error for ${storageKey}:`, error);
+              logger.error(`[VIDEO STREAM ERROR] Object Storage stream error for ${storageKey}:`, {
+                error: error.message,
+                stack: error.stack
+              });
               if (!res.headersSent) {
-                res.status(500).json({ error: 'Stream error', message: error.message });
+                res.status(500).json({ 
+                  error: 'Stream error', 
+                  message: error.message,
+                  details: 'Failed to stream from Object Storage'
+                });
               }
             });
 
             stream.on('end', () => {
-              logger.info(`Object Storage stream completed for ${storageKey}`);
+              logger.info(`[VIDEO STREAM] Object Storage stream completed for ${storageKey}`);
             });
             
             return stream.pipe(res);
