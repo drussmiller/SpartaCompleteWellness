@@ -6479,6 +6479,138 @@ export const registerRoutes = async (
     }
   }
 
+  // Migrate old large videos to HLS format
+  app.post("/api/migrate-videos-to-hls", async (req: AuthRequest, res: Response) => {
+    try {
+      // Only allow admin users
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      logger.info('[HLS Migration] Starting migration of large videos to HLS format');
+
+      // Find all posts with video URLs pointing to direct-download
+      const videoPosts = await db
+        .select({
+          id: posts.id,
+          mediaUrl: posts.mediaUrl,
+        })
+        .from(posts)
+        .where(
+          and(
+            isNotNull(posts.mediaUrl),
+            like(posts.mediaUrl, '%/api/object-storage/direct-download%')
+          )
+        );
+
+      logger.info(`[HLS Migration] Found ${videoPosts.length} posts with direct-download videos`);
+
+      const results = {
+        total: videoPosts.length,
+        converted: 0,
+        skipped: 0,
+        failed: 0,
+        errors: [] as string[],
+      };
+
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const { HLSConverter } = await import('./hls-converter');
+      const { hlsConverter } = await import('./hls-converter');
+      const fs = await import("fs");
+
+      for (const post of videoPosts) {
+        try {
+          // Extract storage key from URL
+          const urlParams = new URLSearchParams(post.mediaUrl!.split('?')[1]);
+          const storageKey = urlParams.get('storageKey');
+          
+          if (!storageKey) {
+            logger.warn(`[HLS Migration] Post ${post.id}: No storage key found in URL`);
+            results.skipped++;
+            continue;
+          }
+
+          // Download video to check size
+          const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
+          const fileSize = videoBuffer.length;
+
+          // Check if video needs HLS conversion
+          if (!HLSConverter.shouldConvertToHLS(fileSize)) {
+            logger.info(`[HLS Migration] Post ${post.id}: Video too small (${(fileSize / 1024 / 1024).toFixed(2)} MB), skipping`);
+            results.skipped++;
+            continue;
+          }
+
+          logger.info(`[HLS Migration] Post ${post.id}: Converting video (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+
+          // Extract filename
+          const filename = storageKey.split('/').pop() || '';
+          const baseFilename = filename.replace('.mp4', '');
+          const playlistKey = `shared/uploads/hls/${baseFilename}/playlist.m3u8`;
+
+          // Check if HLS version already exists
+          try {
+            await spartaObjectStorage.downloadFile(playlistKey);
+            logger.info(`[HLS Migration] Post ${post.id}: HLS version already exists`);
+            
+            // Update database URL even if HLS exists
+            const newMediaUrl = `/api/hls/${baseFilename}/playlist.m3u8`;
+            await db
+              .update(posts)
+              .set({ mediaUrl: newMediaUrl })
+              .where(eq(posts.id, post.id));
+            
+            results.converted++;
+            continue;
+          } catch {
+            // HLS doesn't exist, convert now
+          }
+
+          // Write video to temp file for conversion
+          const tempVideoPath = `/tmp/${filename}`;
+          fs.writeFileSync(tempVideoPath, videoBuffer);
+
+          try {
+            // Convert to HLS
+            await hlsConverter.convertToHLS(tempVideoPath, baseFilename);
+            
+            // Update database with new HLS URL
+            const newMediaUrl = `/api/hls/${baseFilename}/playlist.m3u8`;
+            await db
+              .update(posts)
+              .set({ mediaUrl: newMediaUrl })
+              .where(eq(posts.id, post.id));
+
+            logger.info(`[HLS Migration] Post ${post.id}: Successfully converted and updated URL`);
+            results.converted++;
+
+            // Clean up temp file
+            fs.unlinkSync(tempVideoPath);
+          } catch (conversionError) {
+            logger.error(`[HLS Migration] Post ${post.id}: Conversion failed:`, conversionError);
+            results.failed++;
+            results.errors.push(`Post ${post.id}: ${conversionError instanceof Error ? conversionError.message : 'Unknown error'}`);
+            
+            // Clean up temp file
+            if (fs.existsSync(tempVideoPath)) {
+              fs.unlinkSync(tempVideoPath);
+            }
+          }
+        } catch (error) {
+          logger.error(`[HLS Migration] Post ${post.id}: Error processing:`, error);
+          results.failed++;
+          results.errors.push(`Post ${post.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      logger.info(`[HLS Migration] Complete: ${results.converted} converted, ${results.skipped} skipped, ${results.failed} failed`);
+      return res.json(results);
+    } catch (error) {
+      logger.error("[HLS Migration] Migration failed:", error);
+      return res.status(500).json({ error: "Migration failed", message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
   // Regenerate thumbnail for a video
   app.post("/api/regenerate-thumbnail", async (req: AuthRequest, res: Response) => {
     try {
@@ -6819,6 +6951,52 @@ export const registerRoutes = async (
           const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
           const fileSize = videoBuffer.length;
           console.log(`[VIDEO v5] ${requestId}: Downloaded ${fileSize} bytes from Object Storage`);
+          
+          // Check if large video needs HLS conversion (on-demand for old videos)
+          const { HLSConverter } = await import('./hls-converter');
+          if (HLSConverter.shouldConvertToHLS(fileSize)) {
+            console.log(`[VIDEO v5] ${requestId}: Large video detected (${(fileSize / 1024 / 1024).toFixed(2)} MB), checking for HLS version`);
+            
+            // Extract filename from storageKey
+            const filename = storageKey.split('/').pop() || '';
+            const baseFilename = filename.replace('.mp4', '');
+            const playlistKey = `shared/uploads/hls/${baseFilename}/playlist.m3u8`;
+            
+            // Check if HLS playlist already exists
+            try {
+              await spartaObjectStorage.downloadFile(playlistKey);
+              console.log(`[VIDEO v5] ${requestId}: HLS version exists, redirecting to playlist`);
+              // Redirect to HLS playlist
+              return res.redirect(302, `/api/hls/${baseFilename}/playlist.m3u8`);
+            } catch (playlistError) {
+              // HLS doesn't exist, convert now
+              console.log(`[VIDEO v5] ${requestId}: HLS version not found, converting on-demand`);
+              
+              // Write video to temp file for conversion
+              const tempVideoPath = `/tmp/${filename}`;
+              fs.writeFileSync(tempVideoPath, videoBuffer);
+              
+              try {
+                const { hlsConverter } = await import('./hls-converter');
+                await hlsConverter.convertToHLS(tempVideoPath, baseFilename);
+                
+                console.log(`[VIDEO v5] ${requestId}: On-demand HLS conversion complete, redirecting to playlist`);
+                
+                // Clean up temp file
+                fs.unlinkSync(tempVideoPath);
+                
+                // Redirect to HLS playlist
+                return res.redirect(302, `/api/hls/${baseFilename}/playlist.m3u8`);
+              } catch (conversionError) {
+                console.error(`[VIDEO v5] ${requestId}: On-demand HLS conversion failed: ${conversionError}`);
+                // Clean up temp file
+                if (fs.existsSync(tempVideoPath)) {
+                  fs.unlinkSync(tempVideoPath);
+                }
+                // Fall through to regular video serving (will likely fail in production, but better than crashing)
+              }
+            }
+          }
           
           // Parse range header if present
           const range = req.headers.range;
