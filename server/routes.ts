@@ -1530,6 +1530,13 @@ export const registerRoutes = async (
       logger.info(
         `Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}, teamOnly=${teamOnly}`,
       );
+      
+      // DEBUG: Log post 824 data to verify thumbnailUrl is being returned
+      const post824 = result.find((p: any) => p.id === 824);
+      if (post824) {
+        logger.info(`[DEBUG] Post 824 data being sent to frontend: mediaUrl=${post824.mediaUrl}, thumbnailUrl=${post824.thumbnailUrl}`);
+      }
+      
       res.json(result);
     } catch (error) {
       logger.error("Error fetching posts:", error);
@@ -2172,6 +2179,7 @@ export const registerRoutes = async (
           content: posts.content,
           type: posts.type,
           mediaUrl: posts.mediaUrl,
+          thumbnailUrl: posts.thumbnailUrl,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
