@@ -82,6 +82,8 @@ export class VideoCacheManager {
    * Returns file path for streaming
    */
   async getVideoFile(storageKey: string): Promise<string> {
+    console.log(`[CACHE GET v4] Getting video file: ${storageKey}`);
+    
     // Check if already in cache
     const cached = this.cache.get(storageKey);
     if (cached && fs.existsSync(cached.filePath)) {
@@ -90,24 +92,28 @@ export class VideoCacheManager {
       const sizeMB = (cached.size / (1024 * 1024)).toFixed(2);
       const stats = this.getStats();
       const cacheMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
-      console.log(`[VIDEO CACHE HIT v3] ${storageKey} (${sizeMB}MB) - Cache: ${cacheMB}/${stats.maxSize / (1024 * 1024)}MB (${stats.utilization.toFixed(1)}%)`);
+      console.log(`[CACHE HIT v4] ${storageKey} (${sizeMB}MB) - Path: ${cached.filePath}, Cache: ${cacheMB}/${stats.maxSize / (1024 * 1024)}MB (${stats.utilization.toFixed(1)}%)`);
+      console.log(`[CACHE RETURN v4] Returning cached file path: ${cached.filePath}`);
       return cached.filePath;
     }
 
     // Check if already downloading
     const existingDownload = this.downloadLocks.get(storageKey);
     if (existingDownload) {
-      console.log(`[VIDEO CACHE] Waiting for existing download of ${storageKey}`);
-      return existingDownload;
+      console.log(`[CACHE WAIT v4] Waiting for existing download of ${storageKey}`);
+      const filePath = await existingDownload;
+      console.log(`[CACHE RETURN v4] Returning file path after wait: ${filePath}`);
+      return filePath;
     }
 
     // Start download
-    console.log(`[VIDEO CACHE MISS] ${storageKey} - Starting download from Object Storage`);
+    console.log(`[CACHE MISS v4] ${storageKey} - Starting download from Object Storage`);
     const downloadPromise = this.downloadVideo(storageKey);
     this.downloadLocks.set(storageKey, downloadPromise);
 
     try {
       const filePath = await downloadPromise;
+      console.log(`[CACHE RETURN v4] Returning newly downloaded file path: ${filePath}`);
       return filePath;
     } finally {
       this.downloadLocks.delete(storageKey);
@@ -119,12 +125,14 @@ export class VideoCacheManager {
    */
   private async downloadVideo(storageKey: string): Promise<string> {
     const startTime = Date.now();
-    console.log(`[VIDEO DOWNLOAD START] ${storageKey}`);
+    console.log(`[DOWNLOAD START v4] ${storageKey}`);
 
     // Create safe filename (replace slashes with underscores)
     const safeFilename = storageKey.replace(/\//g, '_');
     const finalPath = path.join(this.cacheDir, safeFilename);
     const tempPath = `${finalPath}.tmp`;
+
+    console.log(`[DOWNLOAD v4] File paths - temp: ${tempPath}, final: ${finalPath}`);
 
     // Import Object Storage client
     const { Client } = await import('@replit/object-storage');
@@ -132,7 +140,7 @@ export class VideoCacheManager {
 
     try {
       // Use downloadAsStream for large files to avoid timeout - stream to file manually
-      console.log(`[VIDEO DOWNLOAD] Using stream download for ${storageKey}`);
+      console.log(`[DOWNLOAD v4] Using stream download for ${storageKey}`);
       const readStream = client.downloadAsStream(storageKey);
       const writeStream = fs.createWriteStream(tempPath);
 
@@ -145,19 +153,17 @@ export class VideoCacheManager {
       const sizeMB = (fileSize / (1024 * 1024)).toFixed(2);
       const downloadTime = ((Date.now() - startTime) / 1000).toFixed(2);
 
-      console.log(`[VIDEO DOWNLOAD COMPLETE] ${storageKey} - ${sizeMB}MB in ${downloadTime}s`);
+      console.log(`[DOWNLOAD COMPLETE v4] ${storageKey} - ${sizeMB}MB in ${downloadTime}s`);
 
       // Ensure we have enough space before finalizing
+      console.log(`[DOWNLOAD v4] Ensuring space for ${sizeMB}MB file`);
       await this.ensureSpace(fileSize);
 
       // Move temp file to final location
+      console.log(`[DOWNLOAD v4] Moving temp file to final location: ${tempPath} -> ${finalPath}`);
       fs.renameSync(tempPath, finalPath);
 
-      const cacheStats = this.getStats();
-      const cacheMB = (cacheStats.totalSize / (1024 * 1024)).toFixed(2);
-      console.log(`[VIDEO CACHED] ${storageKey} to ${finalPath} - Cache now: ${cacheMB}/${cacheStats.maxSize / (1024 * 1024)}MB (${cacheStats.utilization.toFixed(1)}%)`);
-
-      // Add to cache
+      // Add to cache BEFORE getting stats (fixes 0.00MB bug)
       this.cache.set(storageKey, {
         filePath: finalPath,
         size: fileSize,
@@ -166,6 +172,11 @@ export class VideoCacheManager {
         downloading: false,
       });
 
+      const cacheStats = this.getStats();
+      const cacheMB = (cacheStats.totalSize / (1024 * 1024)).toFixed(2);
+      console.log(`[CACHED v4] ${storageKey} to ${finalPath} - Cache now: ${cacheMB}/${cacheStats.maxSize / (1024 * 1024)}MB (${cacheStats.utilization.toFixed(1)}%)`);
+
+      console.log(`[DOWNLOAD RETURN v4] Returning downloaded file path: ${finalPath}`);
       return finalPath;
 
     } catch (error) {
