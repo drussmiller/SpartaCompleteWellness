@@ -90,7 +90,7 @@ export class VideoCacheManager {
       const sizeMB = (cached.size / (1024 * 1024)).toFixed(2);
       const stats = this.getStats();
       const cacheMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
-      console.log(`[VIDEO CACHE HIT v2024-11-23] ${storageKey} (${sizeMB}MB) - Cache: ${cacheMB}/${stats.maxSize / (1024 * 1024)}MB (${stats.utilization.toFixed(1)}%)`);
+      console.log(`[VIDEO CACHE HIT v3] ${storageKey} (${sizeMB}MB) - Cache: ${cacheMB}/${stats.maxSize / (1024 * 1024)}MB (${stats.utilization.toFixed(1)}%)`);
       return cached.filePath;
     }
 
