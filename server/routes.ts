@@ -6808,12 +6808,13 @@ export const registerRoutes = async (
 
       // Handle videos - stream directly from Object Storage to avoid production download timeouts
       if (isVideo) {
+        logger.info(`[VIDEO PATH v4] Video detected: ${storageKey}, ext: ${ext}`);
         // Check if this is a .mov file that needs conversion
         const isMovFile = ext === 'mov';
         
         if (isMovFile) {
           // MOV files need conversion, use cache manager
-          logger.info(`MOV file detected: ${storageKey}, converting to MP4`);
+          logger.info(`[MOV PATH v4] MOV file detected: ${storageKey}, converting to MP4`);
           const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
           
           // Get converted MP4 file path (converts if needed)
@@ -6880,7 +6881,8 @@ export const registerRoutes = async (
           }
         } else {
           // MP4/WEBM files - use cache manager with extended timeout for production
-          logger.info(`[VIDEO STREAM] Starting MP4/WEBM video stream: ${storageKey}`);
+          logger.info(`[MP4 PATH v4] MP4/WEBM file detected: ${storageKey}`);
+          logger.info(`[VIDEO STREAM v4] Starting MP4/WEBM video stream: ${storageKey}`);
           const { videoCacheManager } = await import("./video-cache-manager");
           
           try {
