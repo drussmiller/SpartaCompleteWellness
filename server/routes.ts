@@ -6810,14 +6810,40 @@ export const registerRoutes = async (
       res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Range");
       res.setHeader("Accept-Ranges", "bytes");
 
-      // Handle videos - stream directly from Object Storage to avoid production download timeouts
+      // Handle videos - use full buffer download for production compatibility (no streaming/range support)
       if (isVideo) {
-        console.log(`[VIDEO PATH v4] ${requestId}: Video detected: ${storageKey}, ext: ${ext}, range: ${req.headers.range || 'none'}`);
-        // Check if this is a .mov file that needs conversion
-        const isMovFile = ext === 'mov';
+        console.log(`[VIDEO PATH v4 PROD] ${requestId}: Video detected: ${storageKey}, ext: ${ext} - Using buffered download for production`);
         
+        // For production: Download entire video and send as 200 response (no range support)
+        // This avoids the infrastructure issue with 206 streaming responses
+        console.log(`[VIDEO DOWNLOAD v4 PROD] ${requestId}: Downloading full video from Object Storage: ${storageKey}`);
+        
+        try {
+          const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
+          console.log(`[VIDEO DOWNLOADED v4 PROD] ${requestId}: Downloaded ${videoBuffer.length} bytes`);
+          
+          res.setHeader("Content-Length", videoBuffer.length);
+          // Remove Accept-Ranges header since we're not supporting ranges
+          res.removeHeader("Accept-Ranges");
+          
+          console.log(`[VIDEO SEND v4 PROD] ${requestId}: Sending full video as 200 response`);
+          return res.send(videoBuffer);
+        } catch (downloadError) {
+          console.error(`[VIDEO ERROR v4 PROD] ${requestId}: Failed to download video: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
+          if (!res.headersSent) {
+            return res.status(500).json({ 
+              error: 'Video download failed', 
+              message: downloadError instanceof Error ? downloadError.message : 'Unknown error'
+            });
+          }
+          return;
+        }
+        
+      }
+      
+      /* OLD STREAMING CODE - DISABLED due to production infrastructure issues
+        const isMovFile = ext === 'mov';
         if (isMovFile) {
-          // MOV files need conversion, use cache manager
           console.log(`[MOV PATH v4] ${requestId}: MOV file detected: ${storageKey}, converting to MP4`);
           const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
           
@@ -7020,7 +7046,7 @@ export const registerRoutes = async (
             return stream.pipe(res);
           }
         }
-      }
+      END OF OLD STREAMING CODE */
 
       // For non-videos, download and send directly
       const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
