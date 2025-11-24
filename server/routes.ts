@@ -6826,8 +6826,10 @@ export const registerRoutes = async (
           // Remove Accept-Ranges header since we're not supporting ranges
           res.removeHeader("Accept-Ranges");
           
-          console.log(`[VIDEO SEND v4 PROD] ${requestId}: Sending full video as 200 response`);
-          return res.send(videoBuffer);
+          console.log(`[VIDEO SEND v4 PROD] ${requestId}: Sending full video as 200 response (${videoBuffer.length} bytes)`);
+          res.end(videoBuffer);
+          console.log(`[VIDEO SENT v4 PROD] ${requestId}: Response completed`);
+          return;
         } catch (downloadError) {
           console.error(`[VIDEO ERROR v4 PROD] ${requestId}: Failed to download video: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
           if (!res.headersSent) {

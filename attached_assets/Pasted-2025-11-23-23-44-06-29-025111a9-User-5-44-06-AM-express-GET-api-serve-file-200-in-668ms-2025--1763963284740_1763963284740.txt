@@ -1,0 +1,184 @@
+2025-11-23 23:44:06.29
+025111a9
+User
+5:44:06 AM [express] GET /api/serve-file 200 in 668ms
+2025-11-23 23:44:06.36
+025111a9
+User
+5:44:06 AM [express] GET /api/serve-file 200 in 676ms
+2025-11-23 23:44:06.68
+025111a9
+User
+5:44:06 AM [express] GET /api/serve-file 200 in 598ms
+2025-11-23 23:44:06.69
+025111a9
+User
+5:44:06 AM [express] GET /api/serve-file 200 in 603ms
+2025-11-23 23:44:07.29
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/65/reactions 200 in 1173ms :: []
+2025-11-23 23:44:07.43
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/66/reactions 200 in 1175ms :: []
+2025-11-23 23:44:07.46
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/67/reactions 200 in 1199ms :: []
+2025-11-23 23:44:07.46
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/63/reactions 200 in 1175ms :: []
+2025-11-23 23:44:07.55
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/64/reactions 200 in 1164ms :: []
+2025-11-23 23:44:07.59
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/61/reactions 200 in 1165ms :: []
+2025-11-23 23:44:07.60
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/60/reactions 200 in 1143ms :: []
+2025-11-23 23:44:07.62
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/62/reactions 200 in 1170ms :: []
+2025-11-23 23:44:07.66
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/54/reactions 200 in 1170ms :: []
+2025-11-23 23:44:07.69
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/52/reactions 200 in 1166ms :: []
+2025-11-23 23:44:07.72
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/33/reactions 200 in 1167ms :: []
+2025-11-23 23:44:07.76
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/32/reactions 200 in 1167ms :: []
+2025-11-23 23:44:07.76
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/30/reactions 200 in 1145ms :: []
+2025-11-23 23:44:07.82
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/21/reactions 200 in 1200ms :: [{"id":2,"userId":19,"postId":21,"…
+2025-11-23 23:44:07.86
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/15/reactions 200 in 1103ms :: []
+2025-11-23 23:44:07.89
+025111a9
+User
+5:44:07 AM [express] GET /api/posts/6/reactions 200 in 1073ms :: []
+2025-11-23 23:44:11.80
+025111a9
+User
+5:44:11 AM [express] GET /api/notifications/unread 304 in 231ms :: {"unreadCount":0}
+2025-11-23 23:44:11.80
+025111a9
+User
+5:44:11 AM [express] GET /api/notifications/unread 304 in 204ms :: {"unreadCount":0}
+2025-11-23 23:44:11.83
+025111a9
+User
+5:44:11 AM [express] GET /api/notifications 304 in 232ms :: []
+2025-11-23 23:44:11.83
+025111a9
+User
+5:44:11 AM [express] GET /api/notifications/unread 304 in 202ms :: {"unreadCount":0}
+2025-11-23 23:44:11.86
+025111a9
+User
+5:44:11 AM [express] GET /api/notifications 304 in 235ms :: []
+2025-11-23 23:44:11.87
+025111a9
+User
+[REQ START v4] New request 1763963051870-tqkhx5jqh - storageKey: shared/uploads/1763949420423-IMG_9507.mp4, range: bytes=0-1, method: GET
+2025-11-23 23:44:11.87
+025111a9
+User
+[REQ v4] 1763963051870-tqkhx5jqh: Direct download: shared/uploads/1763949420423-IMG_9507.mp4, route: /api/object-storage/direct-download, range: bytes=0-1
+2025-11-23 23:44:11.87
+025111a9
+User
+[VIDEO DOWNLOAD v4 PROD] 1763963051870-tqkhx5jqh: Downloading full video from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:44:11.87
+025111a9
+User
+[VIDEO PATH v4 PROD] 1763963051870-tqkhx5jqh: Video detected: shared/uploads/1763949420423-IMG_9507.mp4, ext: mp4 - Using buffered download for production
+2025-11-23 23:44:11.87
+025111a9
+User
+Attempting to download file from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:44:11.90
+025111a9
+User
+5:44:11 AM [express] GET /api/notifications/unread 304 in 233ms :: {"unreadCount":0}
+2025-11-23 23:44:12.42
+025111a9
+User
+[VIDEO DOWNLOADED v4 PROD] 1763963051870-tqkhx5jqh: Downloaded 34529527 bytes
+2025-11-23 23:44:12.42
+025111a9
+User
+[VIDEO SEND v4 PROD] 1763963051870-tqkhx5jqh: Sending full video as 200 response
+2025-11-23 23:44:12.42
+025111a9
+User
+Download result for shared/uploads/1763949420423-IMG_9507.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-23 23:44:12.42
+025111a9
+User
+Successfully downloaded shared/uploads/1763949420423-IMG_9507.mp4, size: 34529527 bytes
+2025-11-23 23:44:12.55
+025111a9
+User
+5:44:12 AM [express] GET /api/object-storage/direct-download 200 in 682ms
+2025-11-23 23:44:12.82
+025111a9
+User
+[REQ START v4] New request 1763963052821-mm2mk2em4 - storageKey: shared/uploads/1763949420423-IMG_9507.mp4, range: bytes=0-1445, method: GET
+2025-11-23 23:44:12.82
+025111a9
+User
+[VIDEO PATH v4 PROD] 1763963052821-mm2mk2em4: Video detected: shared/uploads/1763949420423-IMG_9507.mp4, ext: mp4 - Using buffered download for production
+2025-11-23 23:44:12.82
+025111a9
+User
+Attempting to download file from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:44:12.82
+025111a9
+User
+[VIDEO DOWNLOAD v4 PROD] 1763963052821-mm2mk2em4: Downloading full video from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:44:12.82
+025111a9
+User
+[REQ v4] 1763963052821-mm2mk2em4: Direct download: shared/uploads/1763949420423-IMG_9507.mp4, route: /api/object-storage/direct-download, range: bytes=0-1445
+2025-11-23 23:44:13.31
+025111a9
+User
+[VIDEO DOWNLOADED v4 PROD] 1763963052821-mm2mk2em4: Downloaded 34529527 bytes
+2025-11-23 23:44:13.31
+025111a9
+User
+Successfully downloaded shared/uploads/1763949420423-IMG_9507.mp4, size: 34529527 bytes
+2025-11-23 23:44:13.31
+025111a9
+User
+Download result for shared/uploads/1763949420423-IMG_9507.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-23 23:44:13.31
+025111a9
+User
+[VIDEO SEND v4 PROD] 1763963052821-mm2mk2em4: Sending full video as 200 response
+2025-11-23 23:44:13.45
+025111a9
+User
+5:44:13 AM [express] GET /api/object-storage/direct-download 200 in 634ms
