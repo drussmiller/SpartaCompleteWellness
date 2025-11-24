@@ -1,0 +1,82 @@
+2025-11-23 21:43:54.32
+433485b1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:43:54.48
+433485b1
+User
+3:43:54 AM [express] GET /api/object-storage/direct-download 206 in 165ms
+2025-11-23 21:43:54.53
+433485b1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:43:54.64
+433485b1
+User
+3:43:54 AM [express] GET /api/object-storage/direct-download 206 in 112ms
+2025-11-23 21:43:54.80
+433485b1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:43:54.91
+433485b1
+User
+3:43:54 AM [express] GET /api/object-storage/direct-download 206 in 118ms
+2025-11-23 21:43:55.06
+433485b1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:43:55.10
+433485b1
+User
+3:43:55 AM [express] GET /api/object-storage/direct-download 206 in 34ms
+2025-11-23 21:43:55.22
+433485b1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:43:55.25
+433485b1
+User
+3:43:55 AM [express] GET /api/object-storage/direct-download 206 in 34ms
+2025-11-23 21:43:55.34
+433485b1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:43:55.45
+433485b1
+User
+3:43:55 AM [express] GET /api/object-storage/direct-download 206 in 114ms
+2025-11-23 21:43:55.59
+433485b1
+User
+[VIDEO CACHE HIT v3] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Cache: 32.93/500MB (6.6%)
+2025-11-23 21:43:55.72
+433485b1
+User
+3:43:55 AM [express] GET /api/object-storage/direct-download 206 in 128ms
+2025-11-23 21:44:08.32
+433485b1
+User
+3:44:08 AM [express] GET /api/notifications/unread 304 in 71ms :: {"unreadCount":0}
+2025-11-23 21:44:08.32
+433485b1
+User
+3:44:08 AM [express] GET /api/notifications/unread 304 in 71ms :: {"unreadCount":0}
+2025-11-23 21:44:32.25
+433485b1
+User
+Found 0 unread messages for user 1
+2025-11-23 21:44:32.29
+433485b1
+User
+3:44:32 AM [express] GET /api/messages/unread/count 304 in 76ms :: {"unreadCount":0}
+2025-11-23 21:44:37.45
+433485b1
+User
+3:44:37 AM [express] GET /api/notifications 304 in 68ms :: []
+2025-11-23 21:44:38.50
+433485b1
+User
+3:44:38 AM [express] GET /api/notifications/unread 304 in 64ms :: {"unreadCount":0}
+
+Coll
