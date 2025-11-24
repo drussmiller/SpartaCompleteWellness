@@ -6810,28 +6810,59 @@ export const registerRoutes = async (
       res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Range");
       res.setHeader("Accept-Ranges", "bytes");
 
-      // Handle videos - use full buffer download for production compatibility (no streaming/range support)
+      // Handle videos - use buffer slicing for production-compatible 206 range responses
       if (isVideo) {
-        console.log(`[VIDEO PATH v4 PROD] ${requestId}: Video detected: ${storageKey}, ext: ${ext} - Using buffered download for production`);
-        
-        // For production: Download entire video and send as 200 response (no range support)
-        // This avoids the infrastructure issue with 206 streaming responses
-        console.log(`[VIDEO DOWNLOAD v4 PROD] ${requestId}: Downloading full video from Object Storage: ${storageKey}`);
+        console.log(`[VIDEO v5] ${requestId}: Video detected: ${storageKey}, range: ${req.headers.range || 'none'}`);
         
         try {
+          // Download full video from Object Storage and cache it
           const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
-          console.log(`[VIDEO DOWNLOADED v4 PROD] ${requestId}: Downloaded ${videoBuffer.length} bytes`);
+          const fileSize = videoBuffer.length;
+          console.log(`[VIDEO v5] ${requestId}: Downloaded ${fileSize} bytes from Object Storage`);
           
-          res.setHeader("Content-Length", videoBuffer.length);
-          // Remove Accept-Ranges header since we're not supporting ranges
-          res.removeHeader("Accept-Ranges");
-          
-          console.log(`[VIDEO SEND v4 PROD] ${requestId}: Sending full video as 200 response (${videoBuffer.length} bytes)`);
-          res.end(videoBuffer);
-          console.log(`[VIDEO SENT v4 PROD] ${requestId}: Response completed`);
-          return;
+          // Parse range header if present
+          const range = req.headers.range;
+          if (range) {
+            // Parse range header (e.g., "bytes=0-1", "bytes=1024-2048")
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            
+            // Validate range
+            if (start >= fileSize || end >= fileSize || start > end) {
+              console.error(`[VIDEO v5] ${requestId}: Invalid range ${range} for file size ${fileSize}`);
+              return res.status(416).setHeader("Content-Range", `bytes */${fileSize}`).end();
+            }
+            
+            const chunkSize = end - start + 1;
+            console.log(`[VIDEO v5] ${requestId}: Range request ${range} -> slice [${start}, ${end}] = ${chunkSize} bytes`);
+            
+            // Slice the buffer to get the requested range
+            const chunk = videoBuffer.slice(start, end + 1);
+            
+            // Send 206 Partial Content with the chunk
+            res.status(206);
+            res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader("Content-Length", chunkSize);
+            res.setHeader("Content-Type", contentType);
+            res.setHeader("Accept-Ranges", "bytes");
+            
+            console.log(`[VIDEO v5] ${requestId}: Sending 206 response: ${chunkSize} bytes (${start}-${end}/${fileSize})`);
+            res.end(chunk);
+            console.log(`[VIDEO v5] ${requestId}: 206 response completed`);
+            return;
+          } else {
+            // No range header - send full file as 200
+            console.log(`[VIDEO v5] ${requestId}: No range header, sending full file (${fileSize} bytes)`);
+            res.setHeader("Content-Length", fileSize);
+            res.setHeader("Content-Type", contentType);
+            res.setHeader("Accept-Ranges", "bytes");
+            res.end(videoBuffer);
+            console.log(`[VIDEO v5] ${requestId}: 200 response completed`);
+            return;
+          }
         } catch (downloadError) {
-          console.error(`[VIDEO ERROR v4 PROD] ${requestId}: Failed to download video: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
+          console.error(`[VIDEO v5 ERROR] ${requestId}: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
           if (!res.headersSent) {
             return res.status(500).json({ 
               error: 'Video download failed', 
