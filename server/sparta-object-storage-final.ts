@@ -201,14 +201,15 @@ export class SpartaObjectStorageFinal {
               
               if (createdThumbnailFilename) {
                 console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
-                result.thumbnailUrl = `shared/uploads/${createdThumbnailFilename}`;
+                result.thumbnailUrl = `/api/serve-file?filename=${createdThumbnailFilename}`;
                 fs.unlinkSync(tempVideoPath);
               } else {
                 fs.unlinkSync(tempVideoPath);
+                result.thumbnailUrl = null;
               }
             } catch (error) {
               console.error(`Failed to create thumbnail for HLS video: ${error}`);
-              result.thumbnailUrl = result.url;
+              result.thumbnailUrl = null;
             }
           }
           
