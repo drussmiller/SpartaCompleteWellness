@@ -93,7 +93,7 @@ main img {
   overflow: visible !important;
 }
 
-video {
+.post-card video {
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
