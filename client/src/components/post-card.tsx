@@ -232,7 +232,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     
     if (!post.mediaUrl) return null;
     
-    // For video files, create thumbnail URL by replacing extension with .jpg
+    // Don't try to create thumbnails for HLS playlists
+    if (post.mediaUrl.includes('.m3u8') || post.mediaUrl.includes('/api/hls/')) {
+      return null;
+    }
+    
+    // For regular video files, create thumbnail URL by replacing extension with .jpg
     if (post.mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
       let filename = post.mediaUrl;
       
@@ -255,8 +260,8 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}&_cb=${post.id}`;
     }
 
-    // For non-video files, use the existing thumbnail logic
-    return createThumbnailUrl(post.mediaUrl);
+    // For non-video files, don't create a thumbnail
+    return null;
   }, [post.mediaUrl, (post as any).thumbnailUrl, (post as any).thumbnail_url]);
 
     const { Play } = useMemo(() => {

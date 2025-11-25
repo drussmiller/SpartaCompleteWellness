@@ -340,13 +340,18 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
     // Helper function to get video thumbnail URL
     const getVideoThumbnailUrl = (mediaUrl: string) => {
-      // Use database thumbnailUrl if available
+      // Use database thumbnailUrl if available (for HLS videos and new uploads)
       const dbThumbnail = (comment as any).thumbnailUrl || (comment as any).thumbnail_url;
       if (dbThumbnail) {
         return dbThumbnail;
       }
       
-      // For video files, create thumbnail URL by replacing extension with .jpg
+      // Don't try to create thumbnails for HLS playlists
+      if (mediaUrl.includes('.m3u8') || mediaUrl.includes('/api/hls/')) {
+        return undefined;
+      }
+      
+      // For regular video files, create thumbnail URL by replacing extension with .jpg
       if (mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
         let filename = mediaUrl;
         
@@ -369,8 +374,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}&_cb=${comment.id}`;
       }
 
-      // For non-video files, use the existing thumbnail logic
-      return createThumbnailUrl(mediaUrl);
+      // For other files, don't create a thumbnail
+      return undefined;
     };
 
     return (
