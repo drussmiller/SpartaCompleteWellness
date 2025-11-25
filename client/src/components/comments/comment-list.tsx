@@ -394,15 +394,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             <Card
                 className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
                 onClick={(e) => {
-                  // Don't show menu if clicking on a link or video player
+                  // Don't show menu if clicking on a link or the play button
                   if (e.target instanceof HTMLElement && (
                     e.target.tagName === 'A' || 
                     e.target.closest('a') ||
-                    e.target.tagName === 'VIDEO' ||
-                    e.target.closest('video') ||
-                    e.target.closest('[data-video-player]') ||
-                    e.target.closest('button[aria-label*="play"]') ||
-                    e.target.closest('.video-player')
+                    e.target.closest('button[data-play-button]')
                   )) {
                     return;
                   }
@@ -455,10 +451,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div 
-                    className="mt-2" 
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="mt-2">
                     <VideoPlayer
                       src={createMediaUrl(comment.mediaUrl)}
                       poster={getVideoThumbnailUrl(comment.mediaUrl)}

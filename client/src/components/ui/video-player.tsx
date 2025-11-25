@@ -341,7 +341,6 @@ export function VideoPlayer({
               <>
                 <div 
                   className="w-full cursor-pointer video-thumbnail-container"
-                  onClick={handleThumbnailClick}
                   style={{ 
                     width: '100%',
                     maxWidth: '600px',
@@ -365,10 +364,14 @@ export function VideoPlayer({
                   />
                 </div>
                 {/* Play button overlay on thumbnail */}
-                <div className="absolute inset-0 flex items-end justify-start bg-black/10">
+                <div className="absolute inset-0 flex items-end justify-start bg-black/10 pointer-events-none">
                   <div 
-                    className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
-                    onClick={handleThumbnailClick}
+                    className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80 pointer-events-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleThumbnailClick();
+                    }}
+                    data-play-button
                     style={{ transition: 'none' }}
                   >
                     <Play size={24} className="text-white" fill="white" />
