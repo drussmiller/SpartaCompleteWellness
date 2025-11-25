@@ -50,11 +50,17 @@ export class HLSConverter {
       const duration = await this.getVideoDuration(videoPath);
       console.log(`[HLS] Video duration: ${duration}s`);
 
-      // Convert to HLS using ffmpeg
+      // Convert to HLS using ffmpeg with proper rotation handling
+      // FFmpeg automatically applies rotation metadata when re-encoding (not using -c copy)
       await new Promise<void>((resolve, reject) => {
         ffmpeg(videoPath)
+          .videoCodec('libx264')
+          .audioCodec('aac')
+          .audioBitrate('128k')
           .outputOptions([
-            '-c copy', // Copy codecs (fast, no re-encoding if already H.264/AAC)
+            '-preset fast', // Fast encoding preset
+            '-crf 23', // Constant quality (23 = good quality)
+            '-metadata:s:v rotate=0', // Remove rotation metadata after applying it
             '-start_number 0', // Start segment numbering at 0
             `-hls_time ${this.SEGMENT_DURATION}`, // Segment duration in seconds
             '-hls_list_size 0', // Include all segments in playlist
