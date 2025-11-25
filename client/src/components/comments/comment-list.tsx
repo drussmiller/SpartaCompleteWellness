@@ -450,13 +450,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div 
-                    className="mt-2"
-                    onClick={(e) => {
-                      // Stop propagation to prevent comment actions drawer from opening
-                      e.stopPropagation();
-                    }}
-                  >
+                  <div className="mt-2">
                     <VideoPlayer
                       src={createMediaUrl(comment.mediaUrl)}
                       poster={getVideoThumbnailUrl(comment.mediaUrl)}
