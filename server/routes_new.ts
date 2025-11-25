@@ -2170,6 +2170,13 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           }
         }
         
+        console.log(`Creating comment with is_video: ${commentIsVideo}`, {
+          userId: req.user.id,
+          mediaUrl: commentMediaUrl,
+          is_video: commentIsVideo,
+          parentId: postData.parentId
+        });
+        
         const post = await storage.createComment({
           userId: req.user.id,
           content: postData.content.trim(),
@@ -2179,6 +2186,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
           is_video: commentIsVideo // Add the is_video flag
         });
+        
+        console.log(`Comment created with ID ${post.id}, is_video: ${post.is_video}`);
         return res.status(201).json(post);
       }
 
