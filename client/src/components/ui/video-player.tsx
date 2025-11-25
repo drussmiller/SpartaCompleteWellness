@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import Hls from 'hls.js';
 import './video-player.css'; // Import the custom CSS
@@ -398,8 +398,7 @@ export function VideoPlayer({
 
       {/* Video Player Dialog Overlay */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal>
-        <DialogContent className="max-w-[95vw] md:max-w-[750px] max-h-[95vh] w-full h-full p-0 bg-black border-0">
-          <DialogTitle className="sr-only">Video Player</DialogTitle>
+        <DialogContent className="max-w-[95vw] md:max-w-[750px] max-h-[95vh] w-full h-full p-0 bg-black border-0" style={{ zIndex: 2147483647 }}>
           <div className="relative w-full h-full flex items-center justify-center">
             {/* Close button */}
             <Button
