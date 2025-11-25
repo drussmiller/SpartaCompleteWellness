@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useVideoUpload } from "@/hooks/use-video-upload";
 
 
 interface CommentFormProps {
@@ -29,11 +30,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null); // Added state for video thumbnail
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient(); 
   const { toast } = useToast();
+  
+  // Use the video upload hook for handling video files
+  const videoUpload = useVideoUpload({
+    maxSizeMB: 100,
+    autoGenerateThumbnail: true,
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -82,14 +88,17 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   const handleSubmit = async () => {
     try {
-      if (!content.trim() && !selectedFile) return;
+      if (!content.trim() && !selectedFile && !videoUpload.state.file) return;
 
+      // Use video file from hook if available, otherwise use selectedFile
+      const fileToSubmit = videoUpload.state.file || selectedFile || undefined;
+      
       // Always pass both content and file (file can be undefined)
-      await onSubmit(content, selectedFile || undefined);
+      await onSubmit(content, fileToSubmit);
 
       setContent('');
       setSelectedFile(null);
-      setVideoThumbnail(null); // Clear thumbnail after submit
+      videoUpload.clear(); // Clear video upload state
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -118,24 +127,24 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       className="flex flex-col gap-1 w-full"
       ref={containerRef}
     >
-      {selectedFile && (
+      {(selectedFile || videoUpload.state.file) && (
         <div className="mb-2">
           <div className="relative inline-flex items-start gap-2">
-            {selectedFile.type.startsWith('image/') ? (
+            {selectedFile?.type.startsWith('image/') ? (
               <img 
                 src={URL.createObjectURL(selectedFile)} 
                 alt="Selected image" 
                 className="max-h-24 max-w-full rounded-lg object-cover"
               />
-            ) : selectedFile.type.startsWith('video/') ? (
+            ) : (videoUpload.state.file || selectedFile?.type.startsWith('video/')) ? (
               <img 
-                src={videoThumbnail || ''} // Display thumbnail if available
+                src={videoUpload.state.thumbnail || ''} 
                 alt="Video Thumbnail" 
                 className="max-h-24 max-w-full rounded-lg object-cover"
               />
             ) : (
               <span className="text-xs text-muted-foreground">
-                {selectedFile.name}
+                {selectedFile?.name}
               </span>
             )}
             <Button
@@ -145,7 +154,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedFile(null);
-                setVideoThumbnail(null); // Clear thumbnail when removing file
+                videoUpload.clear();
                 if (fileInputRef.current) {
                   fileInputRef.current.value = '';
                 }
@@ -162,65 +171,24 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           ref={fileInputRef}
           accept="image/*,video/*"
           className="hidden"
-          onChange={(e) => {
+          onChange={async (e) => {
             const file = e.target.files?.[0];
             if (file) {
-              if (file.size > 100 * 1024 * 1024) { // 100MB limit
-                toast({
-                  title: "Error",
-                  description: "File is too large. Maximum size is 100MB.",
-                  variant: "destructive",
-                });
-                return;
-              }
-
-              setSelectedFile(file);
-
-              // Handle video files
+              // Handle video files with the useVideoUpload hook
               if (file.type.startsWith('video/')) {
-                const url = URL.createObjectURL(file);
-                const video = document.createElement('video');
-                video.src = url;
-                video.preload = 'metadata';
-                video.muted = true;
-                video.playsInline = true;
-                
-                // When the video loads, set the current time to the first frame
-                video.onloadedmetadata = () => {
-                  video.currentTime = 0.1;  // Set to a small value to ensure we get the first frame
-                };
-                
-                // When the video has seeked to the requested time, capture the frame
-                video.onseeked = () => {
-                  try {
-                    // Create canvas and draw video frame
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                      
-                      // Convert to data URL for thumbnail
-                      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
-                      setVideoThumbnail(thumbnailUrl);
-                      console.log("Generated video thumbnail in comment form");
-                      
-                      // Show file details to user
-                      const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
-                      toast({
-                        description: videoDetails,
-                        duration: 2000,
-                      });
-                    }
-                  } catch (error) {
-                    console.error("Error generating thumbnail:", error);
-                  }
-                };
-                
-                // Start loading the video
-                video.load();
+                await videoUpload.selectFile(file);
               } else {
+                // Handle image files normally
+                if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                  toast({
+                    title: "Error",
+                    description: "File is too large. Maximum size is 100MB.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
+                setSelectedFile(file);
                 toast({
                   description: `Selected file: ${file.name}`,
                   duration: 2000,
