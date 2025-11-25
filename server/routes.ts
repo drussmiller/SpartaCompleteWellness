@@ -1531,10 +1531,13 @@ export const registerRoutes = async (
         `Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}, teamOnly=${teamOnly}`,
       );
       
-      // DEBUG: Log post 824 data to verify thumbnailUrl is being returned
+      // DEBUG: Log ALL posts data to verify thumbnailUrl is being returned
+      logger.info(`[DEBUG] Returning ${result.length} posts. First post keys:`, result.length > 0 ? Object.keys(result[0]) : 'no posts');
       const post824 = result.find((p: any) => p.id === 824);
       if (post824) {
-        logger.info(`[DEBUG] Post 824 data being sent to frontend: mediaUrl=${post824.mediaUrl}, thumbnailUrl=${post824.thumbnailUrl}`);
+        logger.info(`[DEBUG] Found post 824: mediaUrl=${post824.mediaUrl}, thumbnailUrl=${post824.thumbnailUrl}`);
+      } else {
+        logger.info(`[DEBUG] Post 824 NOT found in query results!`);
       }
       
       res.json(result);

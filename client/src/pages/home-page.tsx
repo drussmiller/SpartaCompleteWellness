@@ -118,7 +118,7 @@ export default function HomePage() {
     },
     enabled: !!user,
     refetchOnWindowFocus: false, // Prevent refetch on window focus
-    staleTime: 1000 * 60 * 2, // Consider data stale after 2 minutes
+    staleTime: 0, // TEMPORARY: Force fresh fetch to get thumbnailUrl field
   });
 
   // Import usePrayerRequests hook to mark prayer requests as viewed
