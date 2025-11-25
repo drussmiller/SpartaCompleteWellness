@@ -2086,6 +2086,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         
         // Process media file if present for comments too
         let commentMediaUrl = null;
+        let commentIsVideo = false;
         
         // Check if we have a file upload with the comment
         if (req.file) {
@@ -2141,27 +2142,27 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                                      originalFilename.endsWith('.mkv');
               
               // Final video determination
-              const isVideo = isVideoMimetype || isVideoExtension;
+              commentIsVideo = isVideoMimetype || isVideoExtension;
               
               // Store the file using SpartaObjectStorage
               console.log(`Processing comment media file:`, {
                 originalFilename: req.file.originalname,
                 mimetype: req.file.mimetype,
-                isVideo: isVideo,
+                isVideo: commentIsVideo,
                 fileSize: req.file.size
               });
               
-              logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
+              logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${commentIsVideo}, size: ${req.file.size}`);
               
               const fileInfo = await spartaStorage.storeFileFromBuffer(
                 req.file.buffer,
                 req.file.originalname,
                 req.file.mimetype,
-                isVideo
+                commentIsVideo
               );
               
               commentMediaUrl = fileInfo.url;
-              console.log(`Stored comment media file:`, { url: commentMediaUrl });
+              console.log(`Stored comment media file:`, { url: commentMediaUrl, isVideo: commentIsVideo });
             }
           } catch (error) {
             logger.error("Error processing comment media file:", error);
@@ -2175,7 +2176,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           parentId: postData.parentId,
           depth: postData.depth || 0,
           points: commentPoints, // Always set to 0 points for comments
-          mediaUrl: commentMediaUrl // Add the media URL if a file was uploaded
+          mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
+          is_video: commentIsVideo // Add the is_video flag
         });
         return res.status(201).json(post);
       }
