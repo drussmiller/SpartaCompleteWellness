@@ -8,7 +8,7 @@ import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
-import { createMediaUrl } from "@/lib/media-utils";
+import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 
 interface PostViewProps {
   post: Post & { author: User };
@@ -16,6 +16,49 @@ interface PostViewProps {
 
 export function PostView({ post }: PostViewProps) {
   const { count: commentCount } = useCommentCount(post.id);
+  
+  // Helper function to get video thumbnail URL (same logic as post-card.tsx)
+  const getVideoThumbnailUrl = () => {
+    // Use database thumbnailUrl if available (for HLS videos and new uploads)
+    const dbThumbnail = (post as any).thumbnailUrl || (post as any).thumbnail_url;
+    if (dbThumbnail) {
+      return dbThumbnail;
+    }
+    
+    if (!post.mediaUrl) return undefined;
+    
+    // Don't try to create thumbnails for HLS playlists
+    if (post.mediaUrl.includes('.m3u8') || post.mediaUrl.includes('/api/hls/')) {
+      return undefined;
+    }
+    
+    // For regular video files, create thumbnail URL by replacing extension with .jpg
+    if (post.mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+      let filename = post.mediaUrl;
+      
+      // Extract filename from URL if needed
+      if (filename.includes('filename=')) {
+        const urlParams = new URLSearchParams(filename.split('?')[1]);
+        filename = urlParams.get('filename') || filename;
+      } else if (filename.includes('/')) {
+        filename = filename.split('/').pop() || filename;
+      }
+      
+      // Remove query parameters
+      if (filename.includes('?')) {
+        filename = filename.split('?')[0];
+      }
+      
+      // Replace video extension with .jpg
+      const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
+      // Add cache-busting using post ID to force reload of previously failed thumbnails
+      return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}&_cb=${post.id}`;
+    }
+
+    // For other files, don't create a thumbnail
+    return undefined;
+  };
+  
   return (
     <Card className="relative w-full rounded-md bg-white overflow-hidden">
       <CardContent className="pt-4 px-4">
@@ -51,7 +94,7 @@ export function PostView({ post }: PostViewProps) {
             <div className="mt-3 mb-3 w-full video-container" data-post-id={post.id}>
               <VideoPlayer
                 src={createMediaUrl(post.mediaUrl)}
-                poster={getThumbnailUrl(post.mediaUrl, 'medium')}
+                poster={getVideoThumbnailUrl()}
                 className="w-full video-player-container rounded-md"
                 preload="metadata"
                 playsInline
