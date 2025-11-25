@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { VideoPlayer } from "@/components/ui/video-player";
-import { createMediaUrl } from "@/lib/media-utils";
+import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import {
   AlertDialog,
@@ -338,6 +338,41 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     const isReplying = replyingTo === comment.id;
     const [imageError, setImageError] = useState(false);
 
+    // Helper function to get video thumbnail URL
+    const getVideoThumbnailUrl = (mediaUrl: string) => {
+      // Use database thumbnailUrl if available
+      const dbThumbnail = (comment as any).thumbnailUrl || (comment as any).thumbnail_url;
+      if (dbThumbnail) {
+        return dbThumbnail;
+      }
+      
+      // For video files, create thumbnail URL by replacing extension with .jpg
+      if (mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+        let filename = mediaUrl;
+        
+        // Extract filename from URL if needed
+        if (filename.includes('filename=')) {
+          const urlParams = new URLSearchParams(filename.split('?')[1]);
+          filename = urlParams.get('filename') || filename;
+        } else if (filename.includes('/')) {
+          filename = filename.split('/').pop() || filename;
+        }
+        
+        // Remove query parameters
+        if (filename.includes('?')) {
+          filename = filename.split('?')[0];
+        }
+        
+        // Replace video extension with .jpg
+        const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
+        // Add cache-busting using comment ID to force reload of previously failed thumbnails
+        return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}&_cb=${comment.id}`;
+      }
+
+      // For non-video files, use the existing thumbnail logic
+      return createThumbnailUrl(mediaUrl);
+    };
+
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
         <div className="flex items-start gap-4">
@@ -413,6 +448,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   <div className="mt-2">
                     <VideoPlayer
                       src={createMediaUrl(comment.mediaUrl)}
+                      poster={getVideoThumbnailUrl(comment.mediaUrl)}
                       className="w-full h-auto object-contain rounded-md max-h-[300px]"
                       onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                     />
