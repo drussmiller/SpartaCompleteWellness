@@ -423,9 +423,11 @@ export function VideoPlayer({
               disablePictureInPicture={false}
               disableRemotePlayback
               onClick={handleVideoClick}
-              className="w-auto max-w-full max-h-[75vh] md:max-w-[560px] object-contain cursor-pointer"
+              className="w-full max-w-full max-h-[75vh] md:max-w-[560px] object-contain cursor-pointer"
               style={{
-                objectFit: 'contain'
+                objectFit: 'contain',
+                minWidth: '300px',
+                minHeight: '200px'
               }}
               onLoadStart={() => {
                 console.log('Video load started:', src);
