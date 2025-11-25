@@ -397,19 +397,8 @@ export function VideoPlayer({
       </div>
 
       {/* Video Player Dialog Overlay */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          // Only allow closing via the close button, not by clicking overlay or pressing escape
-          return;
-        }
-        setIsDialogOpen(open);
-      }} modal>
-        <DialogContent 
-          className="max-w-[95vw] md:max-w-[750px] max-h-[95vh] w-full h-full p-0 bg-black border-0" 
-          style={{ zIndex: 2147483647 }}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          onPointerDownOutside={(e) => e.preventDefault()}
-        >
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal>
+        <DialogContent className="max-w-[95vw] md:max-w-[750px] max-h-[95vh] w-full h-full p-0 bg-black border-0" style={{ zIndex: 2147483647 }}>
           <div className="relative w-full h-full flex items-center justify-center">
             {/* Close button */}
             <Button
