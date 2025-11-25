@@ -169,10 +169,15 @@ export function VideoPlayer({
 
   // Set up HLS or native video playback
   useEffect(() => {
+    console.log('[HLS DEBUG] useEffect triggered, src:', src, 'videoRef:', !!videoRef.current);
     const video = videoRef.current;
-    if (!video || !src) return;
+    if (!video || !src) {
+      console.log('[HLS DEBUG] Early return - video:', !!video, 'src:', !!src);
+      return;
+    }
 
     const isHLS = src.endsWith('.m3u8');
+    console.log('[HLS DEBUG] isHLS:', isHLS, 'Hls.isSupported():', Hls.isSupported());
     
     if (isHLS && Hls.isSupported()) {
       console.log('[HLS] Initializing HLS.js for:', src);
@@ -232,7 +237,7 @@ export function VideoPlayer({
     }
     // else: regular video, browser will handle it natively
     
-  }, [src, onLoad, onError]);
+  }, [src, onLoad, onError, isDialogOpen]);
 
   // Set up video loaded event (for non-HLS videos)
   useEffect(() => {
