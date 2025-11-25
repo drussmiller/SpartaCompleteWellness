@@ -2391,6 +2391,7 @@ export const registerRoutes = async (
         .select({
           id: posts.id,
           userId: posts.userId,
+          mediaUrl: posts.mediaUrl,
         })
         .from(posts)
         .where(eq(posts.id, postId))
@@ -2402,6 +2403,58 @@ export const registerRoutes = async (
 
       if (post.userId !== req.user.id && !req.user.isAdmin) {
         return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      // Delete associated HLS files if this is an HLS video
+      if (post.mediaUrl && post.mediaUrl.includes('/api/hls/')) {
+        try {
+          // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
+          const match = post.mediaUrl.match(/\/api\/hls\/([^\/]+)\//);
+          if (match && match[1]) {
+            const baseFilename = match[1];
+            const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+            const { Client } = await import("@replit/object-storage");
+            const client = new Client();
+            
+            // Delete all files in the HLS directory
+            const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+            logger.info(`[POST DELETE] Deleting HLS files with prefix: ${hlsPrefix}`);
+            
+            try {
+              // List and delete all files with this prefix
+              const filesToDelete: string[] = [];
+              
+              // Try to delete common HLS files (playlist + segments)
+              const potentialFiles = [
+                `${hlsPrefix}${baseFilename}.m3u8`,
+                `${hlsPrefix}playlist.m3u8`, // Alternative naming
+              ];
+              
+              // Add potential segment files (0-99)
+              for (let i = 0; i < 100; i++) {
+                potentialFiles.push(`${hlsPrefix}${baseFilename}-${i}.ts`);
+              }
+              
+              // Attempt to delete each file
+              for (const file of potentialFiles) {
+                try {
+                  await client.delete(file);
+                  filesToDelete.push(file);
+                } catch (e) {
+                  // File doesn't exist, ignore
+                }
+              }
+              
+              logger.info(`[POST DELETE] Deleted ${filesToDelete.length} HLS files for post ${postId}`);
+            } catch (hlsError) {
+              logger.error(`[POST DELETE] Error deleting HLS files:`, hlsError);
+              // Continue with post deletion even if HLS cleanup fails
+            }
+          }
+        } catch (error) {
+          logger.error(`[POST DELETE] Error cleaning up HLS files:`, error);
+          // Continue with post deletion even if HLS cleanup fails
+        }
       }
 
       await storage.deletePost(postId);
