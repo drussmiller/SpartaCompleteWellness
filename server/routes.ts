@@ -7301,7 +7301,7 @@ export const registerRoutes = async (
     
     try {
       const { baseFilename } = req.params;
-      const playlistKey = `shared/hls/${baseFilename}/${baseFilename}.m3u8`;
+      const playlistKey = `shared/uploads/hls/${baseFilename}/playlist.m3u8`;
       
       console.log(`[HLS PLAYLIST] ${requestId}: Fetching playlist: ${playlistKey}`);
       
@@ -7336,7 +7336,7 @@ export const registerRoutes = async (
         return res.status(400).json({ error: "Invalid segment filename" });
       }
       
-      const segmentKey = `shared/hls/${baseFilename}/${segmentFilename}`;
+      const segmentKey = `shared/uploads/hls/${baseFilename}/${segmentFilename}`;
       
       console.log(`[HLS SEGMENT] ${requestId}: Fetching segment: ${segmentKey}`);
       

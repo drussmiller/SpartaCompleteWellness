@@ -65,6 +65,12 @@ export function createMediaUrl(mediaUrl: string | null): string {
     return mediaUrl;
   }
 
+  // If it's an HLS playlist URL, return as-is
+  if (mediaUrl.startsWith('/api/hls/')) {
+    console.log('HLS playlist URL, returning as-is');
+    return mediaUrl;
+  }
+
   // Extract just the filename from the end of the path
   let filename = mediaUrl;
   
