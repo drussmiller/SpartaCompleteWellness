@@ -216,16 +216,17 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
   const thumbnailUrl = useMemo(() => {
     // Debug: log post object to see what fields we have
-    if (post.id === 824) {
-      console.log('[DEBUG] Post 824 data:', JSON.stringify(post, null, 2));
-      console.log('[DEBUG] Has thumbnailUrl?', !!(post as any).thumbnailUrl);
-      console.log('[DEBUG] Has thumbnail_url?', !!(post as any).thumbnail_url);
+    if (post.id === 825 || post.id === 824) {
+      console.log(`[DEBUG] Post ${post.id} data:`, JSON.stringify(post, null, 2));
+      console.log(`[DEBUG] Post ${post.id} Has thumbnailUrl?`, !!(post as any).thumbnailUrl);
+      console.log(`[DEBUG] Post ${post.id} Has thumbnail_url?`, !!(post as any).thumbnail_url);
     }
     
     // Use database thumbnailUrl if available (for HLS videos and new uploads)
     // Try both camelCase and snake_case since Drizzle mapping might vary
     const dbThumbnail = (post as any).thumbnailUrl || (post as any).thumbnail_url;
     if (dbThumbnail) {
+      console.log(`[DEBUG] Post ${post.id} using dbThumbnail:`, dbThumbnail);
       return dbThumbnail;
     }
     
