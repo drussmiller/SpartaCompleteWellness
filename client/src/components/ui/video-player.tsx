@@ -420,7 +420,7 @@ export function VideoPlayer({
               disablePictureInPicture={false}
               disableRemotePlayback
               onClick={handleVideoClick}
-              className="w-auto max-w-full max-h-[85vh] md:max-w-[750px] object-contain cursor-pointer"
+              className="w-auto max-w-full max-h-[75vh] md:max-w-[560px] object-contain cursor-pointer"
               style={{
                 objectFit: 'contain'
               }}
