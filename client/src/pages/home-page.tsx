@@ -4,7 +4,7 @@ import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { Loader2, Filter, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -46,6 +46,16 @@ export default function HomePage() {
   
   // Restore scroll position when returning from video player
   useRestoreScroll(scrollContainerRef);
+  
+  // ONE-TIME: Clear stale posts cache to force refetch with thumbnailUrl field
+  useEffect(() => {
+    const cacheCleared = localStorage.getItem("postsv2CacheCleared");
+    if (!cacheCleared) {
+      console.log("[CACHE CLEAR] Removing posts cache to force refetch with thumbnailUrl field");
+      queryClient.removeQueries({ queryKey: ["/api/posts"] });
+      localStorage.setItem("postsv2CacheCleared", "true");
+    }
+  }, []);
 
   // Only refetch post limits when needed
   useEffect(() => {
@@ -65,7 +75,7 @@ export default function HomePage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["/api/posts", "team-posts", user?.teamId, user?.id, showIntroVideosOnly],
+    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, showIntroVideosOnly], // v2: includes thumbnailUrl field
     queryFn: async () => {
       // Admin/Group Admin filter for introductory videos from team-less users
       if (showIntroVideosOnly && (user?.isAdmin || user?.isGroupAdmin)) {
