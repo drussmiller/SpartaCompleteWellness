@@ -7301,19 +7301,68 @@ export const registerRoutes = async (
     
     try {
       const { baseFilename } = req.params;
-      const playlistKey = `shared/uploads/hls/${baseFilename}/playlist.m3u8`;
+      const playlistKey = `shared/uploads/hls/${baseFilename}/${baseFilename}.m3u8`;
       
       console.log(`[HLS PLAYLIST] ${requestId}: Fetching playlist: ${playlistKey}`);
       
       const { spartaObjectStorage } = await import("./sparta-object-storage-final");
-      const playlistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
       
-      res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-      res.setHeader("Cache-Control", "public, max-age=3600");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      
-      console.log(`[HLS PLAYLIST] ${requestId}: Serving playlist (${playlistBuffer.length} bytes)`);
-      return res.send(playlistBuffer);
+      try {
+        const playlistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
+        
+        res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        
+        console.log(`[HLS PLAYLIST] ${requestId}: Serving playlist (${playlistBuffer.length} bytes)`);
+        return res.send(playlistBuffer);
+      } catch (playlistError) {
+        // HLS playlist doesn't exist - try on-demand conversion
+        console.log(`[HLS PLAYLIST] ${requestId}: Playlist not found, attempting on-demand conversion`);
+        
+        // Try to find and convert the original video
+        const originalVideoKey = `shared/uploads/${baseFilename}.MOV`;
+        
+        try {
+          console.log(`[HLS PLAYLIST] ${requestId}: Fetching original video: ${originalVideoKey}`);
+          const videoBuffer = await spartaObjectStorage.downloadFile(originalVideoKey);
+          
+          // Write video to temp file for conversion
+          const tempVideoPath = `/tmp/${baseFilename}.MOV`;
+          fs.writeFileSync(tempVideoPath, videoBuffer);
+          
+          try {
+            console.log(`[HLS PLAYLIST] ${requestId}: Starting on-demand HLS conversion`);
+            const { hlsConverter } = await import('./hls-converter');
+            await hlsConverter.convertToHLS(tempVideoPath, baseFilename);
+            
+            console.log(`[HLS PLAYLIST] ${requestId}: On-demand conversion complete, fetching playlist`);
+            
+            // Clean up temp file
+            fs.unlinkSync(tempVideoPath);
+            
+            // Now fetch the newly created playlist
+            const newPlaylistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
+            
+            res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+            res.setHeader("Cache-Control", "public, max-age=3600");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            
+            console.log(`[HLS PLAYLIST] ${requestId}: Serving converted playlist (${newPlaylistBuffer.length} bytes)`);
+            return res.send(newPlaylistBuffer);
+          } catch (conversionError) {
+            console.error(`[HLS PLAYLIST] ${requestId}: On-demand conversion failed:`, conversionError);
+            // Clean up temp file
+            if (fs.existsSync(tempVideoPath)) {
+              fs.unlinkSync(tempVideoPath);
+            }
+            throw conversionError;
+          }
+        } catch (videoError) {
+          console.error(`[HLS PLAYLIST] ${requestId}: Original video not found or conversion failed:`, videoError);
+          throw playlistError; // Return the original error
+        }
+      }
     } catch (error) {
       console.error(`[HLS PLAYLIST ERROR] ${requestId}: ${error instanceof Error ? error.message : String(error)}`);
       return res.status(404).json({

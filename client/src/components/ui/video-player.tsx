@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
@@ -83,9 +83,19 @@ export function VideoPlayer({
   const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  
+  // Callback ref to detect when video element is actually mounted
+  const videoCallbackRef = useCallback((node: HTMLVideoElement | null) => {
+    if (node) {
+      console.log('[HLS DEBUG] Video element mounted in DOM');
+      videoRef.current = node;
+      setVideoElement(node);
+    }
+  }, []);
 
   // Initialize thumbnail loading
   useEffect(() => {
@@ -169,14 +179,22 @@ export function VideoPlayer({
 
   // Set up HLS or native video playback
   useEffect(() => {
-    console.log('[HLS DEBUG] useEffect triggered, src:', src, 'videoRef:', !!videoRef.current);
-    const video = videoRef.current;
-    if (!video || !src) {
-      console.log('[HLS DEBUG] Early return - video:', !!video, 'src:', !!src);
+    console.log('[HLS DEBUG] useEffect triggered, src:', src, 'videoElement:', !!videoElement, 'isDialogOpen:', isDialogOpen);
+    
+    // Only initialize when dialog is open (for HLS videos) or immediately (for thumbnails)
+    if (!videoElement || !src) {
+      console.log('[HLS DEBUG] Early return - videoElement:', !!videoElement, 'src:', !!src);
+      return;
+    }
+    
+    const isHLS = src.endsWith('.m3u8');
+    
+    // For HLS videos, only initialize when dialog is actually open
+    if (isHLS && !isDialogOpen) {
+      console.log('[HLS DEBUG] HLS video but dialog not open yet, waiting...');
       return;
     }
 
-    const isHLS = src.endsWith('.m3u8');
     console.log('[HLS DEBUG] isHLS:', isHLS, 'Hls.isSupported():', Hls.isSupported());
     
     if (isHLS && Hls.isSupported()) {
@@ -191,7 +209,7 @@ export function VideoPlayer({
       hlsRef.current = hls;
       
       hls.loadSource(src);
-      hls.attachMedia(video);
+      hls.attachMedia(videoElement);
       
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         console.log('[HLS] Manifest parsed, video ready to play');
@@ -227,9 +245,9 @@ export function VideoPlayer({
       };
     } else if (isHLS) {
       // HLS not supported, check if browser natively supports it (Safari)
-      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
         console.log('[HLS] Using native HLS support');
-        video.src = src;
+        videoElement.src = src;
       } else {
         console.error('[HLS] HLS not supported on this browser');
         if (onError) onError(new Error('HLS playback not supported'));
@@ -237,7 +255,7 @@ export function VideoPlayer({
     }
     // else: regular video, browser will handle it natively
     
-  }, [src, onLoad, onError, isDialogOpen]);
+  }, [src, onLoad, onError, isDialogOpen, videoElement]);
 
   // Set up video loaded event (for non-HLS videos)
   useEffect(() => {
@@ -402,7 +420,7 @@ export function VideoPlayer({
 
             {/* Video player */}
             <video
-              ref={videoRef}
+              ref={videoCallbackRef}
               src={src?.endsWith('.m3u8') ? undefined : src}
               controls={showControls}
               autoPlay
