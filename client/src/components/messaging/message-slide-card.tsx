@@ -923,6 +923,14 @@ export function MessageSlideCard() {
                                     // Stop touch propagation to allow video player interactions
                                     e.stopPropagation();
                                   }}
+                                  onTouchEnd={(e) => {
+                                    // Stop touch end propagation to prevent panel from closing
+                                    e.stopPropagation();
+                                  }}
+                                  onMouseDown={(e) => {
+                                    // Stop mouse down propagation for desktop
+                                    e.stopPropagation();
+                                  }}
                                   data-context-menu="true"
                                 >
                                   <VideoPlayer
