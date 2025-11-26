@@ -1818,9 +1818,21 @@ export const registerRoutes = async (
 
         // Process media file if present for comments too
         let commentMediaUrl = null;
-
-        // Check if we have a file upload with the comment
-        if (uploadedFile && uploadedFile.buffer) {
+        let commentIsVideo = false;
+        
+        // Check if chunked upload was used (for large videos with HLS conversion)
+        // Note: For comments, the data comes directly in req.body from FormData, not in postData
+        if (req.body.chunkedUploadMediaUrl) {
+          console.log("✅ Using chunked upload result for comment:", {
+            mediaUrl: req.body.chunkedUploadMediaUrl,
+            thumbnailUrl: req.body.chunkedUploadThumbnailUrl,
+            isVideo: req.body.chunkedUploadIsVideo
+          });
+          commentMediaUrl = req.body.chunkedUploadMediaUrl;
+          commentIsVideo = req.body.chunkedUploadIsVideo === 'true' || req.body.chunkedUploadIsVideo === true;
+        }
+        // Check if we have a file upload with the comment (for small files)
+        else if (uploadedFile && uploadedFile.buffer) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage } = await import('./sparta-object-storage');
@@ -1841,32 +1853,39 @@ export const registerRoutes = async (
 
 
             // Combined video detection - for miscellaneous posts, only trust the explicit markers
-            const isVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
+            commentIsVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
 
 
             console.log("Processing comment media file:", {
               originalFilename: uploadedFile.originalname,
               mimetype: uploadedFile.mimetype,
-              isVideo: isVideo,
+              isVideo: commentIsVideo,
               fileSize: uploadedFile.size
             });
 
-            logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}, size: ${uploadedFile.size}`);
+            logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${commentIsVideo}, size: ${uploadedFile.size}`);
 
             const fileInfo = await spartaStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               uploadedFile.mimetype,
-              isVideo,
+              commentIsVideo,
             );
 
             commentMediaUrl = fileInfo.url;
-            console.log(`Stored comment media file:`, { url: commentMediaUrl });
+            console.log(`Stored comment media file:`, { url: commentMediaUrl, isVideo: commentIsVideo });
           } catch (error) {
             logger.error("Error processing comment media file:", error);
             // Continue with comment creation even if media processing fails
           }
         }
+
+        console.log(`Creating comment with is_video: ${commentIsVideo}`, {
+          userId: req.user.id,
+          mediaUrl: commentMediaUrl,
+          is_video: commentIsVideo,
+          parentId: postData.parentId
+        });
 
         const post = await storage.createComment({
           userId: req.user.id,
@@ -1874,8 +1893,11 @@ export const registerRoutes = async (
           parentId: postData.parentId,
           depth: postData.depth || 0,
           points: commentPoints, // Always set to 0 points for comments
-          mediaUrl: commentMediaUrl // Add the media URL if a file was uploaded
+          mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
+          is_video: commentIsVideo // Add the is_video flag
         });
+        
+        console.log(`Comment created with ID ${post.id}, is_video: ${post.is_video}`);
         return res.status(201).json(post);
       }
 
