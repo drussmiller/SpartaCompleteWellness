@@ -762,7 +762,7 @@ export function MessageSlideCard() {
           height: `${viewportHeight}px`,
           left: 0,
           right: 0,
-          touchAction: 'none'
+          touchAction: 'pan-y'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -801,8 +801,7 @@ export function MessageSlideCard() {
               style={{
                 touchAction: 'pan-y',
                 WebkitOverflowScrolling: 'touch',
-                overscrollBehavior: 'contain',
-                scrollBehavior: 'smooth'
+                overscrollBehavior: 'contain'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -851,11 +850,10 @@ export function MessageSlideCard() {
                 style={{
                   touchAction: 'pan-y',
                   WebkitOverflowScrolling: 'touch',
-                  overscrollBehavior: 'none',
-                  overscrollBehaviorY: 'none',
+                  overscrollBehavior: 'contain',
+                  overscrollBehaviorY: 'contain',
                   paddingBottom: '16px',
-                  overflowY: 'auto',
-                  scrollBehavior: 'smooth'
+                  overflowY: 'auto'
                 }}
               >
                 <div className="space-y-4 p-4 bg-white pb-4">
