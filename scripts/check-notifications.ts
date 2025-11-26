@@ -92,7 +92,7 @@ async function checkNotifications() {
             }
           });
 
-          const missedItems = [];
+          const missedItems: string[] = [];
           const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
           if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
@@ -120,7 +120,7 @@ async function checkNotifications() {
             } else if (missedItems.length === 2) {
               message += missedItems[0] + " and " + missedItems[1] + ".";
             } else {
-              const lastItem = missedItems.pop();
+              const lastItem = missedItems.pop()!;
               message += missedItems.join(", ") + ", and " + lastItem + ".";
             }
           } else {
