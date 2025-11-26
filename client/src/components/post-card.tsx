@@ -108,13 +108,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const shouldShowAsVideo = useMemo(() => {
     if (post.type === 'memory_verse') return true;
 
+    // Check for the is_video flag for ANY post type (set during upload)
+    if (post.is_video) {
+      return true;
+    }
+
+    // Check for HLS playlist URLs (used for large videos)
+    if (post.mediaUrl && (post.mediaUrl.includes('.m3u8') || post.mediaUrl.includes('/api/hls/'))) {
+      return true;
+    }
+
     // For miscellaneous posts, check more aggressively for video markers
     if (post.type === 'miscellaneous' && post.mediaUrl) {
-      // Always check for the is_video flag (set during upload)
-      if (post.is_video) {
-        return true;
-      }
-
       // Fall back to URL pattern detection
       return isLikelyVideo(post.mediaUrl, post.content || undefined);
     }
