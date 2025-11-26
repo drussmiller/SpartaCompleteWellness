@@ -614,15 +614,29 @@ export function MessageSlideCard() {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       const target = event.target as HTMLElement;
+      
       // Don't close if clicking inside the context menu
       const contextMenuElement = document.querySelector('[data-context-menu="true"]');
       if (contextMenuElement && contextMenuElement.contains(target)) {
         return;
       }
+      
       // Don't close if there's a context menu open (click might be on its buttons)
       if (contextMenu) {
         return;
       }
+      
+      // Don't close if clicking on a dialog (video player, etc.)
+      const dialogElement = target.closest('[role="dialog"]');
+      if (dialogElement) {
+        return;
+      }
+      
+      // Don't close if clicking on a dialog overlay/backdrop
+      if (target.hasAttribute('data-radix-dialog-overlay') || target.closest('[data-radix-dialog-overlay]')) {
+        return;
+      }
+      
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSelectedMember(null);
