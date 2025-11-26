@@ -451,12 +451,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2" style={{ width: '75%', maxHeight: '225px' }}>
+                  <div className="mt-2 w-3/4 max-h-[225px] overflow-hidden">
                     <VideoPlayer
                       src={createMediaUrl(comment.mediaUrl)}
                       poster={getVideoThumbnailUrl(comment.mediaUrl)}
-                      className="w-full h-auto object-contain rounded-md"
-                      style={{ maxHeight: '225px' }}
+                      className="w-full h-full max-w-full max-h-[225px] object-contain rounded-md"
                       onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                     />
                   </div>
