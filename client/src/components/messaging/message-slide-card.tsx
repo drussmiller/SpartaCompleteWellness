@@ -764,16 +764,19 @@ export function MessageSlideCard() {
           right: 0,
           touchAction: 'pan-y'
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <Card
           className={`w-full h-full rounded-none bg-white shadow-none flex flex-col ${!isMobile ? 'border-x border-gray-200' : 'border-none'}`}
           style={{ overflow: 'hidden' }}
         >
           {/* Header - Fixed at top */}
-          <div className="flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 sticky top-0" style={{ paddingTop: '4rem' }}>
+          <div 
+            className="flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 sticky top-0" 
+            style={{ paddingTop: '4rem' }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <Button
               variant="ghost"
               size="icon"
