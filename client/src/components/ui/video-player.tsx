@@ -333,35 +333,21 @@ export function VideoPlayer({
       >
         {/* Show content based on current state */}
         {!showVideo && (
-          <div className="relative w-full h-full min-h-[200px]">
+          <div className="relative w-full max-w-full overflow-hidden">
             {/* No blank placeholder - removed per user request */}
 
             {/* Show thumbnail after placeholder, only when loaded */}
             {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
-              <>
-                <div 
-                  className="w-full max-w-full cursor-pointer video-thumbnail-container"
+              <div className="relative w-full max-w-full overflow-hidden cursor-pointer video-thumbnail-container">
+                <img 
+                  src={simplifiedPoster} 
+                  alt="Video thumbnail" 
+                  className="w-full h-auto max-w-full object-cover rounded-md"
                   style={{ 
-                    width: '100%',
-                    maxWidth: '100%',
-                    aspectRatio: '3/2',
-                    overflow: 'hidden',
-                    position: 'relative'
+                    display: 'block',
+                    maxHeight: '300px'
                   }}
-                >
-                  <img 
-                    src={simplifiedPoster} 
-                    alt="Video thumbnail" 
-                    className="w-full h-full object-cover"
-                    style={{ 
-                      display: 'block',
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      objectPosition: 'center'
-                    }}
-                  />
-                </div>
+                />
                 {/* Play button overlay on thumbnail */}
                 <div className="absolute inset-0 flex items-end justify-start bg-black/10 pointer-events-none">
                   <div 
@@ -376,7 +362,7 @@ export function VideoPlayer({
                     <Play size={24} className="text-white" fill="white" />
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
             {/* No fallback - if poster fails, show nothing */}
