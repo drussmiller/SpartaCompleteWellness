@@ -409,7 +409,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
               )}
-              <CardContent className="pt-3 px-4 pb-3">
+              <CardContent className="pt-3 px-4 pb-3 overflow-hidden">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
@@ -451,11 +451,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2">
+                  <div className="mt-2 w-full max-w-full overflow-hidden">
                       <VideoPlayer
                         src={createMediaUrl(comment.mediaUrl)}
                         poster={getVideoThumbnailUrl(comment.mediaUrl)}
-                        className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                        className="w-full max-w-full h-auto object-contain rounded-md max-h-[300px]"
                         onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                       />
                   </div>
