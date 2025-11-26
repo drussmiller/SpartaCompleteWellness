@@ -3,9 +3,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Image, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { shouldUseChunkedUpload, uploadFileInChunks, type ChunkedUploadResult } from "@/lib/chunked-upload";
+
+export interface ChunkedUploadInfo {
+  mediaUrl: string;
+  thumbnailUrl?: string;
+  filename: string;
+  isVideo: boolean;
+}
 
 interface MessageFormProps {
-  onSubmit: (content: string, imageData: string | null, isVideo?: boolean) => Promise<void>;
+  onSubmit: (content: string, imageData: string | null, isVideo?: boolean, chunkedUploadResult?: ChunkedUploadInfo) => Promise<void>;
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -29,6 +37,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null); // Added state for selected file
   const [isVideo, setIsVideo] = useState<boolean>(false); // Add state to track if the current file is a video
+  const [isChunkedUploading, setIsChunkedUploading] = useState(false);
+  const [chunkedUploadProgress, setChunkedUploadProgress] = useState(0);
+  const [chunkedUploadResult, setChunkedUploadResult] = useState<ChunkedUploadInfo | null>(null);
+  
+  // Version token to prevent stale chunked upload promises from overwriting current selection
+  const uploadVersionRef = useRef<number>(0);
+  
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -142,32 +157,48 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     try {
       if (!content.trim() && !pastedImage) return;
 
+      // Check if chunked upload is still in progress
+      if (isChunkedUploading) {
+        toast({
+          title: "Please wait",
+          description: "Video is still uploading...",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Determine if this is a video file
       const isVideoBySelectedFile = selectedFile?.type.startsWith('video/') || false;
       // Check for video file in the global window object (set earlier when capturing video preview)
       const hasStoredVideoFile = !!(window as any)._SPARTA_ORIGINAL_VIDEO_FILE;
+      // Check for chunked upload result
+      const hasChunkedUpload = !!chunkedUploadResult;
 
       // Pass the appropriate isVideo flag
-      const finalIsVideo = isVideo || isVideoBySelectedFile || hasStoredVideoFile;
+      const finalIsVideo = isVideo || isVideoBySelectedFile || hasStoredVideoFile || hasChunkedUpload;
 
-      // Check if we're trying to send a video but the global variable is missing
-      if (finalIsVideo && !(window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+      // For chunked uploads, we don't need the global video file
+      if (finalIsVideo && !hasChunkedUpload && !(window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
         console.warn("Trying to send a video message but the original video file is missing.");
-        // Still proceed, but log a warning
         console.log("Will attempt to send message without the original video file");
       }
 
       console.log("Submitting message with isVideo:", finalIsVideo, 
                  "hasStoredVideo:", hasStoredVideoFile,
+                 "hasChunkedUpload:", hasChunkedUpload,
+                 "chunkedUploadResult:", chunkedUploadResult,
                  "originalVideoSize:", (window as any)._SPARTA_ORIGINAL_VIDEO_FILE?.size || 'N/A');
 
-      await onSubmit(content, pastedImage, finalIsVideo);
+      // Pass chunked upload result if available
+      await onSubmit(content, pastedImage, finalIsVideo, chunkedUploadResult || undefined);
 
       // Reset state
       setContent('');
       setPastedImage(null);
-      setSelectedFile(null); // Reset selected file
-      setIsVideo(false); // Reset isVideo flag
+      setSelectedFile(null);
+      setIsVideo(false);
+      setChunkedUploadResult(null);
+      setChunkedUploadProgress(0);
 
       // Clear the global stored video file reference
       if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
@@ -237,59 +268,179 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               // Set the isVideo state to true
               setIsVideo(true);
 
-              // Create video element for thumbnail generation
-              const video = document.createElement('video');
-              video.src = url;
-              video.preload = 'metadata';
-              video.muted = true;
-              video.playsInline = true;
+              // Check if this is a large video that needs chunked upload
+              if (shouldUseChunkedUpload(file)) {
+                console.log('Large video detected, using chunked upload:', file.name, file.size);
+                
+                // Generate thumbnail first for preview
+                const video = document.createElement('video');
+                video.src = url;
+                video.preload = 'metadata';
+                video.muted = true;
+                video.playsInline = true;
 
-              // Store the original video file in global window object for later use
-              // This is needed to preserve the actual video file when sending
-              (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = file;
-              console.log('Stored original video file in window object:', file.name, file.type, file.size, 'isVideo state set to true');
+                video.onloadedmetadata = () => {
+                  video.currentTime = 0.1;
+                };
 
-              // When the video loads, set the current time to the first frame
-              video.onloadedmetadata = () => {
-                video.currentTime = 0.1;  // Set to a small value to ensure we get the first frame
-              };
+                video.onseeked = () => {
+                  try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                      setPastedImage(thumbnailUrl);
+                      console.log("Generated video thumbnail for large video preview");
+                    }
+                  } catch (error) {
+                    console.error("Error generating thumbnail:", error);
+                  }
+                };
 
-              // When the video has seeked to the requested time, capture the frame
-              video.onseeked = () => {
-                try {
-                  // Create canvas and draw video frame
-                  const canvas = document.createElement('canvas');
-                  canvas.width = video.videoWidth;
-                  canvas.height = video.videoHeight;
-                  const ctx = canvas.getContext('2d');
-                  if (ctx) {
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                video.load();
 
-                    // Convert to data URL for thumbnail
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    setPastedImage(thumbnailUrl);
-                    console.log("Generated video thumbnail in message form");
+                // Start chunked upload immediately for large videos
+                // Increment version to invalidate any previous in-flight uploads
+                uploadVersionRef.current += 1;
+                const currentUploadVersion = uploadVersionRef.current;
+                
+                // Clear any previous stored video file since chunked upload doesn't use it
+                if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+                  console.log('Clearing stored video file for chunked upload');
+                  (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
+                }
+                
+                setIsChunkedUploading(true);
+                setChunkedUploadProgress(0);
 
-                    // Show toast with video details
-                    const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
+                toast({
+                  description: `Uploading large video (${(file.size / (1024 * 1024)).toFixed(1)}MB)...`,
+                  duration: 3000,
+                });
+
+                uploadFileInChunks(file, {
+                  onProgress: (progress) => {
+                    // Only update progress if this upload is still the current one
+                    if (uploadVersionRef.current === currentUploadVersion) {
+                      setChunkedUploadProgress(progress);
+                    }
+                  },
+                  finalizePayload: { postType: 'message' },
+                }).then((result) => {
+                  // Only apply result if this upload is still the current one
+                  // This prevents stale uploads from overwriting new file selections
+                  if (uploadVersionRef.current === currentUploadVersion) {
+                    console.log('Chunked upload complete for message video:', result);
+                    setChunkedUploadResult({
+                      mediaUrl: result.mediaUrl,
+                      thumbnailUrl: result.thumbnailUrl,
+                      filename: result.filename,
+                      isVideo: result.isVideo,
+                    });
+                    setIsChunkedUploading(false);
                     toast({
-                      description: videoDetails,
+                      description: "Video ready to send!",
                       duration: 2000,
                     });
+                  } else {
+                    console.log('Ignoring stale chunked upload result (version mismatch)');
                   }
-                } catch (error) {
-                  console.error("Error generating thumbnail:", error);
-                }
-              };
+                }).catch((error) => {
+                  // Only handle error if this upload is still the current one
+                  if (uploadVersionRef.current === currentUploadVersion) {
+                    console.error('Chunked upload failed:', error);
+                    setIsChunkedUploading(false);
+                    setChunkedUploadResult(null);
+                    setPastedImage(null);
+                    setIsVideo(false);
+                    toast({
+                      title: "Upload failed",
+                      description: "Failed to upload video. Please try again.",
+                      variant: "destructive",
+                    });
+                  } else {
+                    console.log('Ignoring stale chunked upload error (version mismatch)');
+                  }
+                });
+              } else {
+                // For smaller videos, use the original approach
+                // Increment version to invalidate any in-flight chunked uploads
+                uploadVersionRef.current += 1;
+                // Clear any previous chunked upload result when selecting a new small file
+                setChunkedUploadResult(null);
+                setChunkedUploadProgress(0);
+                setIsChunkedUploading(false);
+                
+                // Create video element for thumbnail generation
+                const video = document.createElement('video');
+                video.src = url;
+                video.preload = 'metadata';
+                video.muted = true;
+                video.playsInline = true;
 
-              // Start loading the video
-              video.load();
+                // Store the original video file in global window object for later use
+                // This is needed to preserve the actual video file when sending
+                (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = file;
+                console.log('Stored original video file in window object:', file.name, file.type, file.size, 'isVideo state set to true');
+
+                // When the video loads, set the current time to the first frame
+                video.onloadedmetadata = () => {
+                  video.currentTime = 0.1;  // Set to a small value to ensure we get the first frame
+                };
+
+                // When the video has seeked to the requested time, capture the frame
+                video.onseeked = () => {
+                  try {
+                    // Create canvas and draw video frame
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                      // Convert to data URL for thumbnail
+                      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                      setPastedImage(thumbnailUrl);
+                      console.log("Generated video thumbnail in message form");
+
+                      // Show toast with video details
+                      const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
+                      toast({
+                        description: videoDetails,
+                        duration: 2000,
+                      });
+                    }
+                  } catch (error) {
+                    console.error("Error generating thumbnail:", error);
+                  }
+                };
+
+                // Start loading the video
+                video.load();
+              }
             } else {
               // Handle images normally
               setPastedImage(url);
 
               // Reset isVideo state to false for images
               setIsVideo(false);
+              
+              // Increment version to invalidate any in-flight chunked uploads
+              uploadVersionRef.current += 1;
+              // Clear any previous chunked upload result when selecting an image
+              setChunkedUploadResult(null);
+              setChunkedUploadProgress(0);
+              setIsChunkedUploading(false);
+              
+              // Clear any previous stored video file to prevent stale state
+              if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+                console.log('Clearing stored video file when switching to image');
+                (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
+              }
 
               // Show toast with file details
               toast({
@@ -307,6 +458,12 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             alt="Pasted image" 
             className="max-h-24 max-w-full rounded-lg object-cover"
           />
+          {isChunkedUploading && (
+            <div className="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center">
+              <Loader2 className="h-6 w-6 text-white animate-spin mb-1" />
+              <span className="text-white text-xs font-medium">{Math.round(chunkedUploadProgress)}%</span>
+            </div>
+          )}
           <Button
             variant="destructive"
             size="icon"
@@ -314,6 +471,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             onClick={() => {
               setPastedImage(null);
               setIsVideo(false);
+              setChunkedUploadResult(null);
+              setIsChunkedUploading(false);
+              setChunkedUploadProgress(0);
               // Also clear the global stored video file
               if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
                 console.log("Clearing original video file when removing preview");

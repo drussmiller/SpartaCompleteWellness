@@ -104,6 +104,45 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
+    // Check if this is a JSON request with chunked upload data
+    const contentType = req.headers['content-type'] || '';
+    const isJsonRequest = contentType.includes('application/json');
+    
+    // Handle chunked upload (pre-uploaded video via HLS conversion)
+    if (isJsonRequest && req.body.chunkedUploadMediaUrl) {
+      console.log('Processing message with chunked upload result:', req.body);
+      
+      const { content, recipientId, chunkedUploadMediaUrl, chunkedUploadThumbnailUrl, is_video } = req.body;
+      
+      // Validate recipient exists
+      const [recipient] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(recipientId)))
+        .limit(1);
+
+      if (!recipient) {
+        return res.status(404).json({ message: "Recipient not found" });
+      }
+      
+      // Create message with pre-uploaded media URLs
+      const [message] = await db
+        .insert(messages)
+        .values({
+          senderId: req.user.id,
+          recipientId: parseInt(recipientId),
+          content: content || null,
+          imageUrl: chunkedUploadMediaUrl, // HLS playlist or video URL
+          posterUrl: chunkedUploadThumbnailUrl || null, // Video thumbnail
+          isRead: false,
+          is_video: is_video === true || is_video === 'true',
+        })
+        .returning();
+
+      logger.info(`Message sent with chunked upload from user ${req.user.id} to ${recipientId} (mediaUrl: ${chunkedUploadMediaUrl})`);
+      return res.status(201).json(message);
+    }
+
     const { content, recipientId, is_video } = req.body;
 
     // Validate recipient exists

@@ -11,7 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
-import { MessageForm } from "./message-form";
+import { MessageForm, type ChunkedUploadInfo } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
@@ -907,7 +907,7 @@ export function MessageSlideCard() {
                             {(message.imageUrl || message.mediaUrl) &&
                              (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
                              (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
-                              message.is_video ? (
+                              (message.is_video || (message.imageUrl || message.mediaUrl || '').includes('.m3u8') || (message.imageUrl || message.mediaUrl || '').includes('/api/hls/')) ? (
                                 <div 
                                   onClick={(e) => {
                                     // Stop propagation to prevent long-press menu from interfering
@@ -958,63 +958,88 @@ export function MessageSlideCard() {
               >
                 {/* MessageForm component now handles its own input and submission logic */}
                 <MessageForm
-                  onSubmit={async (content, imageData, isVideo = false) => {
+                  onSubmit={async (content, imageData, isVideo = false, chunkedUploadResult?: ChunkedUploadInfo) => {
                     if (!content.trim() && !imageData) return;
                     if (!selectedMember) return;
 
                     try {
-                      const formData = new FormData();
+                      // Check if we have a chunked upload result (for large videos)
+                      if (chunkedUploadResult) {
+                        console.log('Using chunked upload result for message:', chunkedUploadResult);
+                        
+                        // For chunked uploads, use JSON payload instead of FormData
+                        const res = await fetch('/api/messages', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            content: content.trim() || null,
+                            recipientId: selectedMember.id,
+                            chunkedUploadMediaUrl: chunkedUploadResult.mediaUrl,
+                            chunkedUploadThumbnailUrl: chunkedUploadResult.thumbnailUrl,
+                            is_video: true,
+                          }),
+                          credentials: 'include'
+                        });
 
-                      // Add message content if present
-                      if (content.trim()) {
-                        formData.append('content', content.trim());
-                      }
-
-                      // Add image/video if present
-                      if (imageData) {
-                        // Check if we have a saved video file to use
-                        if ((isVideo || isVideoFile) && window._SPARTA_ORIGINAL_VIDEO_FILE) {
-                          // Use the original video file we saved
-                          console.log('MessageForm using original video file for upload with type:',
-                                     window._SPARTA_ORIGINAL_VIDEO_FILE.type);
-
-                          // Determine appropriate extension based on MIME type
-                          const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' :
-                                        window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
-
-                          // Attach the video with proper extension
-                          formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
-
-                          // Set is_video flag
-                          formData.append('is_video', 'true');
-                        } else {
-                          // Standard image handling
-                          const response = await fetch(imageData);
-                          const blob = await response.blob();
-
-                          formData.append('image', blob, 'pasted-image.png');
-                          formData.append('is_video', 'false');
+                        if (!res.ok) {
+                          throw new Error("Failed to send message");
                         }
+
+                        const data = await res.json();
+                        console.log('Message sent with chunked upload:', data);
+                      } else {
+                        // Standard FormData upload for small files
+                        const formData = new FormData();
+
+                        // Add message content if present
+                        if (content.trim()) {
+                          formData.append('content', content.trim());
+                        }
+
+                        // Add image/video if present
+                        if (imageData) {
+                          // Check if we have a saved video file to use
+                          if ((isVideo || isVideoFile) && window._SPARTA_ORIGINAL_VIDEO_FILE) {
+                            // Use the original video file we saved
+                            console.log('MessageForm using original video file for upload with type:',
+                                       window._SPARTA_ORIGINAL_VIDEO_FILE.type);
+
+                            // Determine appropriate extension based on MIME type
+                            const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' :
+                                          window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
+
+                            // Attach the video with proper extension
+                            formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
+
+                            // Set is_video flag
+                            formData.append('is_video', 'true');
+                          } else {
+                            // Standard image handling
+                            const response = await fetch(imageData);
+                            const blob = await response.blob();
+
+                            formData.append('image', blob, 'pasted-image.png');
+                            formData.append('is_video', 'false');
+                          }
+                        }
+
+                        formData.append('recipientId', selectedMember.id.toString());
+
+                        // Submit the message via fetch directly instead of using the mutation
+                        const res = await fetch('/api/messages', {
+                          method: 'POST',
+                          body: formData,
+                          credentials: 'include'
+                        });
+
+                        if (!res.ok) {
+                          throw new Error("Failed to send message");
+                        }
+
+                        const data = await res.json();
                       }
-
-                      formData.append('recipientId', selectedMember.id.toString());
-
-                      // Update state variables with the content and image
-                      setMessageText(content);
-                      setPastedImage(imageData);
-
-                      // Submit the message via fetch directly instead of using the mutation
-                      const res = await fetch('/api/messages', {
-                        method: 'POST',
-                        body: formData,
-                        credentials: 'include'
-                      });
-
-                      if (!res.ok) {
-                        throw new Error("Failed to send message");
-                      }
-
-                      const data = await res.json();
 
                       // Clear the form on success
                       setMessageText("");
