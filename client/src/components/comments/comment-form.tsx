@@ -4,18 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useVideoUpload } from "@/hooks/use-video-upload";
-import { shouldUseChunkedUpload, uploadFileInChunks } from "@/lib/chunked-upload";
-
-export interface ChunkedUploadData {
-  mediaUrl: string;
-  thumbnailUrl?: string;
-  filename: string;
-  isVideo: boolean;
-}
+import { useVideoUpload, VideoUploadResult } from "@/hooks/use-video-upload";
 
 interface CommentFormProps {
-  onSubmit: (content: string, file?: File, chunkedUploadData?: ChunkedUploadData) => Promise<void>; 
+  onSubmit: (content: string, file?: File, chunkedUploadData?: VideoUploadResult) => Promise<void>; 
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -93,9 +85,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
   };
 
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
   const handleSubmit = async () => {
     try {
       if (!content.trim() && !selectedFile && !videoUpload.state.file) return;
@@ -103,50 +92,26 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       // Use video file from hook if available, otherwise use selectedFile
       const fileToSubmit = videoUpload.state.file || selectedFile || undefined;
       
-      let chunkedUploadData: ChunkedUploadData | undefined = undefined;
+      let chunkedUploadResult: VideoUploadResult | undefined = undefined;
       
-      // For large video files, use chunked upload with HLS conversion
-      if (fileToSubmit && fileToSubmit.type.startsWith('video/') && shouldUseChunkedUpload(fileToSubmit)) {
-        console.log(`Video file ${fileToSubmit.size} bytes exceeds threshold, using chunked upload for comment`);
-        setIsUploading(true);
-        setUploadProgress(0);
-        
-        try {
-          const result = await uploadFileInChunks(fileToSubmit, {
-            onProgress: (progress) => {
-              console.log(`Comment video upload progress: ${progress}%`);
-              setUploadProgress(progress);
-            },
-            finalizePayload: {
-              postType: 'comment'
-            }
-          });
-          
-          console.log('Comment chunked upload completed:', result);
-          chunkedUploadData = {
-            mediaUrl: result.mediaUrl,
-            thumbnailUrl: result.thumbnailUrl,
-            filename: result.filename,
-            isVideo: result.isVideo
-          };
-        } catch (uploadError) {
-          console.error('Error during chunked upload for comment:', uploadError);
-          toast({
-            title: "Upload Error",
-            description: "Failed to upload video. Please try again.",
-            variant: "destructive",
-          });
-          setIsUploading(false);
-          setUploadProgress(0);
-          return;
+      // For video files, use the hook's uploadVideo method which handles chunked upload
+      if (videoUpload.state.file) {
+        console.log('Uploading video via useVideoUpload hook for comment');
+        const result = await videoUpload.uploadVideo('comment');
+        if (result) {
+          chunkedUploadResult = result;
+          console.log('Video upload completed via hook:', result);
         }
-        
-        setIsUploading(false);
-        setUploadProgress(0);
+        // If result is null, it means the file was too small for chunked upload
+        // and will be uploaded directly via FormData
       }
       
       // Pass chunked upload data if available, otherwise pass the file for small videos/images
-      await onSubmit(content, chunkedUploadData ? undefined : fileToSubmit, chunkedUploadData);
+      await onSubmit(
+        content, 
+        chunkedUploadResult ? undefined : fileToSubmit, 
+        chunkedUploadResult
+      );
 
       setContent('');
       setSelectedFile(null);
@@ -325,14 +290,14 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           size="icon"
           variant="ghost"
           onClick={handleSubmit}
-          disabled={isSubmitting || isUploading || (!content.trim() && !selectedFile && !videoUpload.state.file)}
+          disabled={isSubmitting || videoUpload.state.isUploading || (!content.trim() && !selectedFile && !videoUpload.state.file)}
           className="ml-2"
         >
-          {isSubmitting || isUploading ? (
+          {isSubmitting || videoUpload.state.isUploading ? (
             <div className="flex flex-col items-center">
               <Loader2 className="h-5 w-5 animate-spin" />
-              {isUploading && uploadProgress > 0 && (
-                <span className="text-[10px] text-muted-foreground">{uploadProgress}%</span>
+              {videoUpload.state.isUploading && videoUpload.state.uploadProgress > 0 && (
+                <span className="text-[10px] text-muted-foreground">{videoUpload.state.uploadProgress}%</span>
               )}
             </div>
           ) : (

@@ -2,6 +2,7 @@ import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
+import { VideoUploadResult } from "@/hooks/use-video-upload";
 import { Post, User } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -274,12 +275,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     mutationFn: async ({ content, file, chunkedUploadData }: { 
       content: string, 
       file?: File,
-      chunkedUploadData?: {
-        mediaUrl: string;
-        thumbnailUrl?: string;
-        filename: string;
-        isVideo: boolean;
-      }
+      chunkedUploadData?: VideoUploadResult
     }) => {
       if (!content.trim() && !file && !chunkedUploadData) {
         throw new Error("Comment content cannot be empty");

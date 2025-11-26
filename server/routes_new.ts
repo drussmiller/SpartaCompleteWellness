@@ -2088,8 +2088,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         let commentMediaUrl = null;
         let commentIsVideo = false;
         
-        // Check if we have a file upload with the comment
-        if (req.file) {
+        // Check if chunked upload was used (for large videos with HLS conversion)
+        if (req.body.chunkedUploadMediaUrl) {
+          console.log("✅ Using chunked upload result for comment:", {
+            mediaUrl: req.body.chunkedUploadMediaUrl,
+            thumbnailUrl: req.body.chunkedUploadThumbnailUrl,
+            isVideo: req.body.chunkedUploadIsVideo
+          });
+          commentMediaUrl = req.body.chunkedUploadMediaUrl;
+          commentIsVideo = req.body.chunkedUploadIsVideo === 'true' || req.body.chunkedUploadIsVideo === true;
+        }
+        // Check if we have a file upload with the comment (for small files)
+        else if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage } = await import('./sparta-object-storage');
