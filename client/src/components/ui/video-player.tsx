@@ -147,7 +147,9 @@ export function VideoPlayer({
   };
 
   // Handle video click to show controls
-  const handleVideoClick = () => {
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
     setShowControls(true);
   };
 
@@ -383,8 +385,19 @@ export function VideoPlayer({
 
       {/* Video Player Dialog Overlay */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal>
-        <DialogContent className="max-w-[95vw] md:max-w-[750px] max-h-[95vh] w-full h-full p-0 bg-black border-0" style={{ zIndex: 2147483647 }}>
-          <div className="relative w-full h-full flex items-center justify-center">
+        <DialogContent 
+          className="max-w-[95vw] md:max-w-[750px] max-h-[95vh] w-full h-full p-0 bg-black border-0" 
+          style={{ zIndex: 2147483647 }}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+        >
+          <div 
+            className="relative w-full h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             {/* Close button */}
             <Button
               onClick={handleDialogClose}
