@@ -345,9 +345,10 @@ server.listen(port, "0.0.0.0", () => {
       // Register API routes after server is listening
       await registerRoutes(app);
       
-      // NOTE: Notification scheduling is now handled by Replit Scheduled Deployment
-      // running scripts/check-notifications.ts every hour. The in-process scheduler
-      // has been removed to prevent duplicate notifications.
+      // Start the in-process notification scheduler for production reliability
+      // This runs every hour to check for missed posts and send notifications
+      logger.info('[SCHEDULER] Initializing hourly notification scheduler...');
+      scheduleDailyScoreCheck();
       
       // Global API error handlers
       app.use('/api', (err: any, _req: Request, res: Response, _next: NextFunction) => {
