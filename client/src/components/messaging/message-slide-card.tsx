@@ -70,6 +70,7 @@ export function MessageSlideCard() {
   const keyboardHeight = useKeyboardAdjustment();
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
+  const longPressTriggered = useRef<boolean>(false);
   const isMobile = useIsMobile();
 
   // Track viewport height and position changes for keyboard
@@ -513,26 +514,13 @@ export function MessageSlideCard() {
   // Long press handlers
   const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, messageId: number, content: string) => {
     console.log('Long press start triggered for message:', messageId);
-    
-    // Don't trigger long-press on video player thumbnails or images
-    const target = e.target as HTMLElement;
-    const isVideoOrImage = target.closest('.video-thumbnail') || 
-                          target.closest('[data-video-player]') ||
-                          target.tagName === 'VIDEO' ||
-                          target.tagName === 'IMG' ||
-                          target.closest('img');
-    
-    if (isVideoOrImage) {
-      console.log('Tap on video/image detected, skipping long-press');
-      return;
-    }
-    
-    e.stopPropagation();
+    longPressTriggered.current = false;
     const touch = 'touches' in e ? e.touches[0] : e;
     longPressStartPos.current = { x: touch.clientX, y: touch.clientY };
     
     longPressTimer.current = setTimeout(() => {
       console.log('Long press timer fired, showing context menu');
+      longPressTriggered.current = true;
       setContextMenu({
         messageId,
         x: touch.clientX,
@@ -553,15 +541,27 @@ export function MessageSlideCard() {
       console.log('Movement detected, canceling long press');
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+      longPressTriggered.current = false;
     }
   };
 
-  const handleLongPressEnd = () => {
-    console.log('Long press end triggered');
+  const handleLongPressEnd = (e: React.TouchEvent | React.MouseEvent) => {
+    console.log('Long press end triggered, was triggered:', longPressTriggered.current);
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    
+    // If long press was triggered, prevent any subsequent click events
+    if (longPressTriggered.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Reset after a short delay to allow the context menu to appear
+      setTimeout(() => {
+        longPressTriggered.current = false;
+      }, 100);
+    }
+    
     longPressStartPos.current = null;
   };
 
