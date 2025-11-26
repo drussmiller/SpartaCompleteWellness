@@ -612,11 +612,15 @@ export function MessageSlideCard() {
 
   // Close messaging overlay when clicking outside and prevent body scroll
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       const target = event.target as HTMLElement;
       // Don't close if clicking inside the context menu
       const contextMenuElement = document.querySelector('[data-context-menu="true"]');
       if (contextMenuElement && contextMenuElement.contains(target)) {
+        return;
+      }
+      // Don't close if there's a context menu open (click might be on its buttons)
+      if (contextMenu) {
         return;
       }
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
@@ -629,14 +633,16 @@ export function MessageSlideCard() {
       // Prevent body scrolling when message overlay is open
       document.body.style.overflow = 'hidden';
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside as any);
 
       return () => {
         // Restore body scrolling when overlay is closed
         document.body.style.overflow = '';
         document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside as any);
       };
     }
-  }, [isOpen]);
+  }, [isOpen, contextMenu]);
 
   // Close context menu when clicking outside
   useEffect(() => {
