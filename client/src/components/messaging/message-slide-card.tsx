@@ -801,7 +801,8 @@ export function MessageSlideCard() {
               style={{
                 touchAction: 'pan-y',
                 WebkitOverflowScrolling: 'touch',
-                overscrollBehavior: 'contain'
+                overscrollBehavior: 'contain',
+                scrollBehavior: 'smooth'
               }}
             >
               <div className="space-y-2 p-4 pb-32 bg-white">
@@ -853,7 +854,8 @@ export function MessageSlideCard() {
                   overscrollBehavior: 'none',
                   overscrollBehaviorY: 'none',
                   paddingBottom: '16px',
-                  overflowY: 'auto'
+                  overflowY: 'auto',
+                  scrollBehavior: 'smooth'
                 }}
               >
                 <div className="space-y-4 p-4 bg-white pb-4">
