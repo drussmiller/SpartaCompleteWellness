@@ -42,12 +42,13 @@ export async function convertToMp4WithFaststart(
   outputPath: string
 ): Promise<void> {
   const { codec, pixelFormat } = await probeVideoCodec(inputPath);
-  // Transcode if not H.264 OR if pixel format is not yuv420p (required for mobile browsers)
-  const needsTranscode = codec !== 'h264' || (pixelFormat !== 'yuv420p' && pixelFormat !== 'yuvj420p');
+  // Always transcode for maximum browser compatibility
+  // iOS MOV files even with H.264/yuv420p can have encoding features that browsers don't support
+  const needsTranscode = true; // Force transcoding for all videos
   
   return new Promise((resolve, reject) => {
     if (needsTranscode) {
-      console.log(`[Video Convert] Transcoding ${codec}/${pixelFormat} → H.264/yuv420p for mobile compatibility: ${path.basename(inputPath)}`);
+      console.log(`[Video Convert] Transcoding ${codec}/${pixelFormat} → H.264 baseline/yuv420p for maximum browser compatibility: ${path.basename(inputPath)}`);
       
       (ffmpeg(inputPath) as any)
         .outputOptions([
