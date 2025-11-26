@@ -1,77 +1,76 @@
-
-
-import { useCallback, useRef } from 'react';
+import { useEffect, useRef, RefObject } from 'react';
 
 interface UseSwipeToCloseOptions {
   onSwipeRight: () => void;
+  elementRef: RefObject<HTMLElement>;
   threshold?: number;
-  maxVerticalMovement?: number;
 }
 
 export function useSwipeToClose({ 
   onSwipeRight, 
-  threshold = 60, 
-  maxVerticalMovement = 150 
+  elementRef,
+  threshold = 80
 }: UseSwipeToCloseOptions) {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
-  const isSwipeInProgress = useRef<boolean>(false);
+  const directionLocked = useRef<'horizontal' | 'vertical' | null>(null);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartX.current = touch.clientX;
-    touchStartY.current = touch.clientY;
-    isSwipeInProgress.current = false;
-    
-    // Don't prevent default to allow normal scrolling
-    console.log('🟦 SWIPE START at:', touch.clientX, touch.clientY, 'Target:', e.target);
-  }, []);
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isSwipeInProgress.current) {
+    const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
-      const deltaX = touch.clientX - touchStartX.current;
-      const deltaY = Math.abs(touch.clientY - touchStartY.current);
-      
-      // Check if this looks like a horizontal swipe
-      if (Math.abs(deltaX) > 15 && deltaY < 50) {
-        isSwipeInProgress.current = true;
-        console.log('🟩 HORIZONTAL SWIPE detected, deltaX:', deltaX, 'deltaY:', deltaY);
-        
-        // For right swipes, prevent default to avoid conflicts
-        if (deltaX > 0) {
-          console.log('🟩 Preventing default for right swipe');
-          e.preventDefault();
+      touchStartX.current = touch.clientX;
+      touchStartY.current = touch.clientY;
+      directionLocked.current = null;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (directionLocked.current) return;
+
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartX.current);
+      const dy = Math.abs(touch.clientY - touchStartY.current);
+
+      // Lock direction once movement exceeds threshold
+      if (dx >= 16 || dy >= 16) {
+        if (dx >= 1.5 * dy) {
+          directionLocked.current = 'horizontal';
+        } else {
+          directionLocked.current = 'vertical';
         }
       }
-    }
-  }, []);
+    };
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartX.current;
-    const deltaY = Math.abs(touch.clientY - touchStartY.current);
-    
-    console.log('🟨 SWIPE END - deltaX:', deltaX, 'deltaY:', deltaY, 'threshold:', threshold, 'maxVertical:', maxVerticalMovement);
-    
-    // Check for right swipe: positive deltaX with minimum distance and not too much vertical movement
-    if (deltaX > threshold && deltaY < maxVerticalMovement) {
-      console.log('🟥 SWIPE RIGHT DETECTED! Executing close action');
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Execute immediately without delay
-      onSwipeRight();
-    } else {
-      console.log('🟫 Swipe conditions not met - deltaX:', deltaX, '> threshold:', threshold, '?', deltaX > threshold, 'deltaY:', deltaY, '< maxVertical:', maxVerticalMovement, '?', deltaY < maxVerticalMovement);
-    }
-    
-    isSwipeInProgress.current = false;
-  }, [onSwipeRight, threshold, maxVerticalMovement]);
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStartX.current;
+      const dy = Math.abs(touch.clientY - touchStartY.current);
 
-  return {
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd
-  };
+      // Check if this was a right swipe with primarily horizontal movement
+      if (
+        directionLocked.current === 'horizontal' &&
+        dx > threshold &&
+        dy <= 0.5 * Math.abs(dx)
+      ) {
+        onSwipeRight();
+      }
+
+      directionLocked.current = null;
+    };
+
+    // Add passive event listeners
+    element.addEventListener('touchstart', handleTouchStart, { passive: true });
+    element.addEventListener('touchmove', handleTouchMove, { passive: true });
+    element.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      element.removeEventListener('touchstart', handleTouchStart);
+      element.removeEventListener('touchmove', handleTouchMove);
+      element.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [onSwipeRight, elementRef, threshold]);
+
+  return {};
 }
