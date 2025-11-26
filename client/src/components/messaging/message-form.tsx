@@ -73,18 +73,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     parentOnBlur?.();
   };
 
-  // Auto-focus the textarea when component mounts and keyboard is not visible
-  useEffect(() => {
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      const textarea = document.getElementById('message-textarea') as HTMLTextAreaElement;
-      if (textarea && document.activeElement !== textarea) {
-        textarea.focus();
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, []);
+  // Removed auto-focus to prevent keyboard from appearing automatically on mobile
 
   // Note: Removed scroll prevention as it was causing issues on iOS Safari
   // The position: fixed input should handle positioning correctly
