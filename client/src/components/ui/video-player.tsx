@@ -416,6 +416,7 @@ export function VideoPlayer({
               poster={simplifiedPoster}
               controls
               autoPlay
+              muted
               playsInline
               preload="auto"
               controlsList="nodownload noremoteplayback"
@@ -426,7 +427,8 @@ export function VideoPlayer({
               style={{
                 objectFit: 'contain',
                 minWidth: '300px',
-                minHeight: '200px'
+                minHeight: '200px',
+                backgroundColor: 'black'
               }}
               onLoadStart={() => {
                 console.log('Video load started:', src);
@@ -465,9 +467,22 @@ export function VideoPlayer({
                 if (videoRef.current) {
                   console.log('Attempting to play video via onCanPlay');
                   
+                  // Make sure video is muted first if autoplay fails with sound
                   videoRef.current.play().catch(error => {
-                    console.log('Autoplay was prevented:', error);
-                    // On mobile, autoplay might be blocked - user can still use controls
+                    console.log('Autoplay with sound was prevented, trying muted:', error);
+                    // Try muted autoplay (more likely to be allowed on mobile)
+                    if (videoRef.current) {
+                      videoRef.current.muted = true;
+                      videoRef.current.play().then(() => {
+                        // Successfully started muted, now try to unmute
+                        if (videoRef.current) {
+                          videoRef.current.muted = false;
+                        }
+                      }).catch(mutedError => {
+                        console.log('Even muted autoplay was prevented:', mutedError);
+                        // User will need to manually tap to play
+                      });
+                    }
                   });
                 }
               }}
