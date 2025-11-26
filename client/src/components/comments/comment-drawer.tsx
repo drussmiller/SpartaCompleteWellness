@@ -288,6 +288,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       if (file) {
         console.log("Appending file to comment:", file.name, file.type);
         formData.append('image', file); // Using 'image' instead of 'file' to match the server's multer config
+        
+        // Set is_video flag for video files
+        if (file.type.startsWith('video/')) {
+          formData.append('is_video', 'true');
+          formData.append('selected_media_type', 'video');
+          console.log("Marked comment as video");
+        }
       }
 
       try {
