@@ -340,14 +340,13 @@ export function VideoPlayer({
             {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
               <>
                 <div 
-                  className="w-full cursor-pointer video-thumbnail-container"
+                  className="w-full max-w-full cursor-pointer video-thumbnail-container"
                   style={{ 
                     width: '100%',
-                    maxWidth: '600px',
+                    maxWidth: '100%',
                     aspectRatio: '3/2',
                     overflow: 'hidden',
-                    position: 'relative',
-                    margin: '0 auto'
+                    position: 'relative'
                   }}
                 >
                   <img 
