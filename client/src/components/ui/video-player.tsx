@@ -413,7 +413,8 @@ export function VideoPlayer({
             <video
               ref={videoCallbackRef}
               src={src?.endsWith('.m3u8') ? undefined : src}
-              controls={showControls}
+              poster={simplifiedPoster}
+              controls
               autoPlay
               playsInline
               preload="auto"
