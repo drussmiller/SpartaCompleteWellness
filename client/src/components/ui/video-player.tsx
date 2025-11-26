@@ -125,6 +125,10 @@ export function VideoPlayer({
         console.log("Video element networkState:", videoRef.current.networkState);
         console.log("Attempting to play video after dialog open");
         
+        // Unmute the video before playing
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1.0;
+        
         videoRef.current.play().catch(error => {
           console.log('Initial play attempt failed:', error);
         });
