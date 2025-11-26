@@ -513,6 +513,20 @@ export function MessageSlideCard() {
   // Long press handlers
   const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, messageId: number, content: string) => {
     console.log('Long press start triggered for message:', messageId);
+    
+    // Don't trigger long-press on video player thumbnails or images
+    const target = e.target as HTMLElement;
+    const isVideoOrImage = target.closest('.video-thumbnail') || 
+                          target.closest('[data-video-player]') ||
+                          target.tagName === 'VIDEO' ||
+                          target.tagName === 'IMG' ||
+                          target.closest('img');
+    
+    if (isVideoOrImage) {
+      console.log('Tap on video/image detected, skipping long-press');
+      return;
+    }
+    
     e.stopPropagation();
     const touch = 'touches' in e ? e.touches[0] : e;
     longPressStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -869,8 +883,7 @@ export function MessageSlideCard() {
                         }`}
                         style={{
                           userSelect: 'none',
-                          WebkitUserSelect: 'none',
-                          touchAction: message.sender.id === user?.id ? 'none' : 'auto'
+                          WebkitUserSelect: 'none'
                         }}
                         onTouchStart={message.sender.id === user?.id ? (e) => handleLongPressStart(e, message.id, message.content || '') : undefined}
                         onTouchMove={message.sender.id === user?.id ? handleLongPressMove : undefined}
