@@ -271,12 +271,21 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   }, [isOpen, postId]);
 
   const createCommentMutation = useMutation({
-    mutationFn: async ({ content, file }: { content: string, file?: File }) => {
-      if (!content.trim()) {
+    mutationFn: async ({ content, file, chunkedUploadData }: { 
+      content: string, 
+      file?: File,
+      chunkedUploadData?: {
+        mediaUrl: string;
+        thumbnailUrl?: string;
+        filename: string;
+        isVideo: boolean;
+      }
+    }) => {
+      if (!content.trim() && !file && !chunkedUploadData) {
         throw new Error("Comment content cannot be empty");
       }
 
-      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file });
+      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file, hasChunkedUpload: !!chunkedUploadData });
 
       // Use FormData to handle both text and file uploads
       const formData = new FormData();
@@ -285,8 +294,20 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       formData.append('parentId', postId.toString());
       formData.append('points', '1');
 
-      // Append file if provided
-      if (file) {
+      // If we have chunked upload data (HLS converted video), use that instead of raw file
+      if (chunkedUploadData) {
+        console.log("Using chunked upload data for comment:", chunkedUploadData);
+        formData.append('chunkedUploadMediaUrl', chunkedUploadData.mediaUrl);
+        if (chunkedUploadData.thumbnailUrl) {
+          formData.append('chunkedUploadThumbnailUrl', chunkedUploadData.thumbnailUrl);
+        }
+        formData.append('chunkedUploadFilename', chunkedUploadData.filename);
+        formData.append('chunkedUploadIsVideo', 'true');
+        formData.append('is_video', 'true');
+        formData.append('selected_media_type', 'video');
+      }
+      // Append file if provided (for images and small videos)
+      else if (file) {
         console.log("Appending file to comment:", file.name, file.type);
         formData.append('image', file); // Using 'image' instead of 'file' to match the server's multer config
         
@@ -527,8 +548,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           {isCommentBoxVisible && (
             <div className={`fixed bottom-0 left-0 right-0 px-4 pt-4 border-t bg-background z-[99999] ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
-                onSubmit={async (content, file) => {
-                  await createCommentMutation.mutateAsync({ content, file });
+                onSubmit={async (content, file, chunkedUploadData) => {
+                  await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
                 }}
                 isSubmitting={createCommentMutation.isPending}
                 inputRef={commentInputRef}

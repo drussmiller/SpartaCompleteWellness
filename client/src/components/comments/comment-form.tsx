@@ -5,10 +5,17 @@ import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useVideoUpload } from "@/hooks/use-video-upload";
+import { shouldUseChunkedUpload, uploadFileInChunks } from "@/lib/chunked-upload";
 
+export interface ChunkedUploadData {
+  mediaUrl: string;
+  thumbnailUrl?: string;
+  filename: string;
+  isVideo: boolean;
+}
 
 interface CommentFormProps {
-  onSubmit: (content: string, file?: File) => Promise<void>; 
+  onSubmit: (content: string, file?: File, chunkedUploadData?: ChunkedUploadData) => Promise<void>; 
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -86,6 +93,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     }
   };
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const handleSubmit = async () => {
     try {
       if (!content.trim() && !selectedFile && !videoUpload.state.file) return;
@@ -93,8 +103,50 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       // Use video file from hook if available, otherwise use selectedFile
       const fileToSubmit = videoUpload.state.file || selectedFile || undefined;
       
-      // Always pass both content and file (file can be undefined)
-      await onSubmit(content, fileToSubmit);
+      let chunkedUploadData: ChunkedUploadData | undefined = undefined;
+      
+      // For large video files, use chunked upload with HLS conversion
+      if (fileToSubmit && fileToSubmit.type.startsWith('video/') && shouldUseChunkedUpload(fileToSubmit)) {
+        console.log(`Video file ${fileToSubmit.size} bytes exceeds threshold, using chunked upload for comment`);
+        setIsUploading(true);
+        setUploadProgress(0);
+        
+        try {
+          const result = await uploadFileInChunks(fileToSubmit, {
+            onProgress: (progress) => {
+              console.log(`Comment video upload progress: ${progress}%`);
+              setUploadProgress(progress);
+            },
+            finalizePayload: {
+              postType: 'comment'
+            }
+          });
+          
+          console.log('Comment chunked upload completed:', result);
+          chunkedUploadData = {
+            mediaUrl: result.mediaUrl,
+            thumbnailUrl: result.thumbnailUrl,
+            filename: result.filename,
+            isVideo: result.isVideo
+          };
+        } catch (uploadError) {
+          console.error('Error during chunked upload for comment:', uploadError);
+          toast({
+            title: "Upload Error",
+            description: "Failed to upload video. Please try again.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          setUploadProgress(0);
+          return;
+        }
+        
+        setIsUploading(false);
+        setUploadProgress(0);
+      }
+      
+      // Pass chunked upload data if available, otherwise pass the file for small videos/images
+      await onSubmit(content, chunkedUploadData ? undefined : fileToSubmit, chunkedUploadData);
 
       setContent('');
       setSelectedFile(null);
@@ -273,11 +325,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           size="icon"
           variant="ghost"
           onClick={handleSubmit}
-          disabled={isSubmitting || !content.trim()}
+          disabled={isSubmitting || isUploading || (!content.trim() && !selectedFile && !videoUpload.state.file)}
           className="ml-2"
         >
-          {isSubmitting ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+          {isSubmitting || isUploading ? (
+            <div className="flex flex-col items-center">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              {isUploading && uploadProgress > 0 && (
+                <span className="text-[10px] text-muted-foreground">{uploadProgress}%</span>
+              )}
+            </div>
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-primary">
               <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
