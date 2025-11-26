@@ -1818,6 +1818,7 @@ export const registerRoutes = async (
 
         // Process media file if present for comments too
         let commentMediaUrl = null;
+        let commentThumbnailUrl = null;
         let commentIsVideo = false;
         
         // Check if chunked upload was used (for large videos with HLS conversion)
@@ -1829,6 +1830,7 @@ export const registerRoutes = async (
             isVideo: req.body.chunkedUploadIsVideo
           });
           commentMediaUrl = req.body.chunkedUploadMediaUrl;
+          commentThumbnailUrl = req.body.chunkedUploadThumbnailUrl || null;
           commentIsVideo = req.body.chunkedUploadIsVideo === 'true' || req.body.chunkedUploadIsVideo === true;
         }
         // Check if we have a file upload with the comment (for small files)
@@ -1883,6 +1885,7 @@ export const registerRoutes = async (
         console.log(`Creating comment with is_video: ${commentIsVideo}`, {
           userId: req.user.id,
           mediaUrl: commentMediaUrl,
+          thumbnailUrl: commentThumbnailUrl,
           is_video: commentIsVideo,
           parentId: postData.parentId
         });
@@ -1894,6 +1897,7 @@ export const registerRoutes = async (
           depth: postData.depth || 0,
           points: commentPoints, // Always set to 0 points for comments
           mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
+          thumbnailUrl: commentThumbnailUrl, // Add thumbnail URL for videos
           is_video: commentIsVideo // Add the is_video flag
         });
         

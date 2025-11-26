@@ -693,6 +693,7 @@ export const storage = {
           content: data.content,
           parentId: safeParentId, // Use the safe parentId
           mediaUrl: data.mediaUrl || null, // Added mediaUrl field
+          thumbnailUrl: data.thumbnailUrl || null, // Added thumbnailUrl field for video thumbnails
           is_video: data.is_video || false, // Added is_video field with default false
           depth: data.depth || 0,
           points: data.points !== undefined ? data.points : 0, // Use provided points or default to 0
