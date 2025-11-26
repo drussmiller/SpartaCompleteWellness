@@ -225,8 +225,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
               if (comment.type === 'memory_verse') {
                 return {...comment, is_video: true};
               } 
-              // For miscellaneous comments, check for video indicators
-              else if (comment.type === 'miscellaneous') {
+              // For miscellaneous and regular comments, check for video indicators
+              else if (comment.type === 'miscellaneous' || comment.type === 'comment') {
                 const mediaUrl = comment.mediaUrl.toLowerCase();
                 const isVideo = 
                   // Check file extensions
@@ -240,6 +240,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                   mediaUrl.includes('/video/') ||
                   mediaUrl.includes('/memory_verse/') ||
                   mediaUrl.includes('/miscellaneous/') ||
+                  mediaUrl.includes('/hls/') ||
                   // Check content for [VIDEO] marker
                   (comment.content && comment.content.includes('[VIDEO]'));
 
@@ -343,8 +344,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                 if (comment.type === 'memory_verse') {
                   return {...comment, is_video: true};
                 } 
-                // For miscellaneous comments, check for video indicators
-                else if (comment.type === 'miscellaneous') {
+                // For miscellaneous and regular comments, check for video indicators
+                else if (comment.type === 'miscellaneous' || comment.type === 'comment') {
                   const mediaUrl = comment.mediaUrl.toLowerCase();
                   const isVideo = 
                     // Check file extensions
@@ -358,6 +359,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                     mediaUrl.includes('/video/') ||
                     mediaUrl.includes('/memory_verse/') ||
                     mediaUrl.includes('/miscellaneous/') ||
+                    mediaUrl.includes('/hls/') ||
                     // Check content for [VIDEO] marker
                     (comment.content && comment.content.includes('[VIDEO]'));
 
