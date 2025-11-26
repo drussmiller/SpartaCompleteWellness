@@ -620,6 +620,7 @@ export const storage = {
           type: posts.type,
           content: posts.content,
           mediaUrl: posts.mediaUrl, // Updated to mediaUrl to match frontend expectations
+          thumbnailUrl: posts.thumbnailUrl, // Added thumbnailUrl for video thumbnails
           is_video: posts.is_video, // Added is_video field
           points: posts.points,
           createdAt: posts.createdAt,
