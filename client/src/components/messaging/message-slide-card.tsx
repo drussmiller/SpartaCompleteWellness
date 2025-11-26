@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { MessagesSquare, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -798,14 +797,7 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <ScrollArea
-              className="flex-1 bg-white overflow-y-auto"
-              style={{
-                touchAction: 'pan-y',
-                WebkitOverflowScrolling: 'touch',
-                overscrollBehavior: 'contain'
-              }}
-            >
+            <div className="flex-1 overflow-y-auto bg-white">
               <div className="space-y-2 p-4 pb-32 bg-white">
                 {teamMembersLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 bg-white">
@@ -841,21 +833,16 @@ export function MessageSlideCard() {
                   ))
                 )}
               </div>
-            </ScrollArea>
+            </div>
           ) : (
             // Messages View
             <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea
+              <div
                 ref={scrollAreaRef}
-                className="flex-1 bg-white"
+                className="flex-1 bg-white overflow-y-auto"
                 style={{
-                  touchAction: 'pan-y',
-                  WebkitOverflowScrolling: 'touch',
-                  overscrollBehavior: 'contain',
-                  overscrollBehaviorY: 'contain',
-                  paddingBottom: '16px',
-                  overflowY: 'auto'
+                  paddingBottom: '16px'
                 }}
               >
                 <div className="space-y-4 p-4 bg-white pb-4">
@@ -974,7 +961,7 @@ export function MessageSlideCard() {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
 
               {/* Message Input - Fixed at bottom of container */}
               <div
