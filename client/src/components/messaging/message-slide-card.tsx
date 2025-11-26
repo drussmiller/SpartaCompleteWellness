@@ -979,7 +979,7 @@ export function MessageSlideCard() {
                 className={`px-4 pt-3 bg-white flex-shrink-0 ${keyboardHeight > 0 ? 'pb-5' : 'pb-8'}`}
                 style={{
                   backgroundColor: '#ffffff',
-                  paddingBottom: `calc(${keyboardHeight > 0 ? '1.25rem' : '2rem'} + env(safe-area-inset-bottom))`
+                  paddingBottom: `calc(${keyboardHeight > 0 ? '1.25rem' : '2rem'} + 1rem)`
                 }}
                 data-testid="message-form"
               >
