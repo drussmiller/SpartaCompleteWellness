@@ -915,28 +915,13 @@ export function MessageSlideCard() {
                              (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
                               (message.is_video || (message.imageUrl || message.mediaUrl || '').includes('.m3u8') || (message.imageUrl || message.mediaUrl || '').includes('/api/hls/')) ? (
                                 <div 
-                                  onClick={(e) => {
-                                    // Stop propagation to prevent long-press menu from interfering
-                                    e.stopPropagation();
-                                  }}
-                                  onTouchStart={(e) => {
-                                    // Stop touch propagation to allow video player interactions
-                                    e.stopPropagation();
-                                  }}
-                                  onTouchEnd={(e) => {
-                                    // Stop touch end propagation to prevent panel from closing
-                                    e.stopPropagation();
-                                  }}
-                                  onMouseDown={(e) => {
-                                    // Stop mouse down propagation for desktop
-                                    e.stopPropagation();
-                                  }}
                                   data-context-menu="true"
+                                  className="mt-2"
                                 >
                                   <VideoPlayer
                                     src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
                                     poster={message.posterUrl ? createMediaUrl(message.posterUrl) : undefined}
-                                    className="max-w-full rounded mt-2"
+                                    className="max-w-full rounded"
                                     onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
                                   />
                                 </div>
