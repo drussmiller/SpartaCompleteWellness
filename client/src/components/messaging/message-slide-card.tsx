@@ -1098,6 +1098,28 @@ export function MessageSlideCard() {
           return null;
         }
         
+        const handleEditClick = (e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Edit button clicked, message:', message);
+          if (message) handleEdit(contextMenu.messageId, message.content || '');
+        };
+        
+        const handleDeleteClick = (e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Delete button clicked');
+          handleDelete(contextMenu.messageId);
+        };
+        
+        const handleCopyClick = (e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Copy button clicked, content:', message?.content);
+          if (message?.content) handleCopy(message.content);
+          else setContextMenu(null);
+        };
+        
         return createPortal(
           <div
             data-context-menu="true"
@@ -1106,18 +1128,16 @@ export function MessageSlideCard() {
               left: `${Math.min(contextMenu.x, window.innerWidth - 150)}px`,
               top: `${Math.min(contextMenu.y, window.innerHeight - 200)}px`,
             }}
-            onClick={() => console.log('Context menu container clicked')}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden min-w-[140px] border border-gray-200">
               <div className="flex flex-col">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('Edit button clicked, message:', message);
-                    if (message) handleEdit(contextMenu.messageId, message.content || '');
-                    setContextMenu(null);
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
+                  onClick={handleEditClick}
+                  onTouchEnd={handleEditClick}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left border-b border-gray-100"
                   data-testid="button-edit-message"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1128,13 +1148,9 @@ export function MessageSlideCard() {
                 </button>
                 
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('Delete button clicked');
-                    handleDelete(contextMenu.messageId);
-                    setContextMenu(null);
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
+                  onClick={handleDeleteClick}
+                  onTouchEnd={handleDeleteClick}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left border-b border-gray-100"
                   data-testid="button-delete-message"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1146,13 +1162,9 @@ export function MessageSlideCard() {
                 </button>
                 
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('Copy button clicked, content:', message?.content);
-                    if (message?.content) handleCopy(message.content);
-                    setContextMenu(null);
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                  onClick={handleCopyClick}
+                  onTouchEnd={handleCopyClick}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
                   data-testid="button-copy-message"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
