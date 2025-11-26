@@ -848,7 +848,7 @@ export function MessageSlideCard() {
                         </Avatar>
                       )}
                       <div
-                        className={`max-w-[70%] p-3 rounded-lg ${
+                        className={`max-w-[70%] ${(message.imageUrl || message.mediaUrl) ? 'min-w-[200px]' : ''} p-3 rounded-lg ${
                           message.sender.id === user?.id
                             ? "bg-[#8A2BE2] text-white ml-2"
                             : "bg-muted mr-2"
