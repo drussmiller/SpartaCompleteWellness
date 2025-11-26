@@ -7,7 +7,12 @@ import path from 'path';
  * @param inputPath - Path to input video file
  * @returns Promise resolving to codec name (e.g., 'h264', 'hevc')
  */
-async function probeVideoCodec(inputPath: string): Promise<string> {
+interface VideoProbeResult {
+  codec: string;
+  pixelFormat: string;
+}
+
+async function probeVideoCodec(inputPath: string): Promise<VideoProbeResult> {
   return new Promise((resolve, reject) => {
     ffmpeg.ffprobe(inputPath, (err: any, metadata: any) => {
       if (err) {
@@ -17,8 +22,9 @@ async function probeVideoCodec(inputPath: string): Promise<string> {
       
       const videoStream = metadata.streams.find((s: any) => s.codec_type === 'video');
       const codec = videoStream?.codec_name?.toLowerCase() || 'unknown';
-      console.log(`[Video Probe] Detected codec: ${codec}`);
-      resolve(codec);
+      const pixelFormat = videoStream?.pix_fmt?.toLowerCase() || 'unknown';
+      console.log(`[Video Probe] Detected codec: ${codec}, pixel format: ${pixelFormat}`);
+      resolve({ codec, pixelFormat });
     });
   });
 }
@@ -35,19 +41,21 @@ export async function convertToMp4WithFaststart(
   inputPath: string,
   outputPath: string
 ): Promise<void> {
-  const codec = await probeVideoCodec(inputPath);
-  const needsTranscode = codec !== 'h264';
+  const { codec, pixelFormat } = await probeVideoCodec(inputPath);
+  // Transcode if not H.264 OR if pixel format is not yuv420p (required for mobile browsers)
+  const needsTranscode = codec !== 'h264' || (pixelFormat !== 'yuv420p' && pixelFormat !== 'yuvj420p');
   
   return new Promise((resolve, reject) => {
     if (needsTranscode) {
-      console.log(`[Video Convert] Transcoding ${codec} → H.264 for Edge compatibility: ${path.basename(inputPath)}`);
+      console.log(`[Video Convert] Transcoding ${codec}/${pixelFormat} → H.264/yuv420p for mobile compatibility: ${path.basename(inputPath)}`);
       
       (ffmpeg(inputPath) as any)
         .outputOptions([
           '-c:v libx264',              // Transcode video to H.264
           '-preset veryfast',          // Fast encoding (good enough quality)
-          '-profile:v high',           // H.264 High Profile
-          '-level 4.1',                // Wide compatibility
+          '-profile:v baseline',       // H.264 Baseline Profile (maximum mobile compatibility)
+          '-level 3.1',                // Wide compatibility with mobile devices
+          '-pix_fmt yuv420p',          // Required pixel format for most browsers
           '-c:a aac',                  // Transcode audio to AAC
           '-b:a 160k',                 // Audio bitrate
           '-movflags +faststart'       // Move metadata to beginning for streaming
