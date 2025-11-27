@@ -708,10 +708,18 @@ export const registerRoutes = async (
           chunkedUploadIsVideo
         });
 
-        if (!content || !parentId) {
-          // Set JSON content type on error
+        // Validate: must have either content or media (file or chunked upload)
+        const hasMedia = !!req.file || !!chunkedUploadMediaUrl;
+        const hasContent = content && content.trim().length > 0;
+        
+        if (!hasContent && !hasMedia) {
           res.set("Content-Type", "application/json");
-          return res.status(400).json({ message: "Missing required fields" });
+          return res.status(400).json({ message: "Comment must have either text content or media" });
+        }
+        
+        if (!parentId) {
+          res.set("Content-Type", "application/json");
+          return res.status(400).json({ message: "Parent post ID is required" });
         }
 
         // Make sure parentId is a valid number

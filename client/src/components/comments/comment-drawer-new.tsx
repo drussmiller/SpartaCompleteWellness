@@ -185,6 +185,14 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
 
   const createCommentMutation = useMutation({
     mutationFn: async ({ content, file, chunkedUploadData }: { content: string; file?: File; chunkedUploadData?: any }) => {
+      // Validate: must have either content or media
+      const hasMedia = !!file || !!chunkedUploadData;
+      const hasContent = content && content.trim().length > 0;
+      
+      if (!hasContent && !hasMedia) {
+        throw new Error("Comment must have either text or media");
+      }
+      
       console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file, hasChunkedUpload: !!chunkedUploadData });
       
       try {

@@ -277,8 +277,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       file?: File,
       chunkedUploadData?: VideoUploadResult
     }) => {
-      if (!content.trim() && !file && !chunkedUploadData) {
-        throw new Error("Comment content cannot be empty");
+      // Validate: must have either content or media
+      const hasMedia = !!file || !!chunkedUploadData;
+      const hasContent = content && content.trim().length > 0;
+      
+      if (!hasContent && !hasMedia) {
+        throw new Error("Comment must have either text or media");
       }
 
       console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file, hasChunkedUpload: !!chunkedUploadData });
