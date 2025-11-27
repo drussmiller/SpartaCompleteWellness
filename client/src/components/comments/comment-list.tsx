@@ -313,7 +313,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     if (comment.parentId === postId) {
       topLevelComments.push(commentWithReplies);
     } else if (comment.parentId && commentMap[comment.parentId]) {
-      commentMap[comment.parentId].replies?.push(commentWithReplies);
+      commentMap[comment.parentId].replies.push(commentWithReplies);
     } else if (comment.parentId) {
       console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
       topLevelComments.push(commentWithReplies);
@@ -380,24 +380,19 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
-        <div className="flex items-start gap-4 relative">
-          <div className="relative flex-shrink-0">
-            <Avatar className={depth > 0 ? 'h-7 w-7' : 'h-10 w-10'}>
-              {comment.author?.imageUrl && <AvatarImage src={comment.author.imageUrl} />}
-              <AvatarFallback
-                style={{ backgroundColor: comment.author?.avatarColor || '#6366F1' }}
-                className="text-white"
-              >
-                {comment.author?.username?.[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {depth > 0 && (
-              <div className="absolute -left-7 -top-[350px] h-[350px] w-7 border-l-2 border-b-2 border-gray-400 rounded-bl-xl pointer-events-none"></div>
-            )}
-          </div>
+        <div className="flex items-start gap-4">
+          <Avatar className={depth > 0 ? 'h-7 w-7' : 'h-10 w-10'}>
+            {comment.author?.imageUrl && <AvatarImage src={comment.author.imageUrl} />}
+            <AvatarFallback
+              style={{ backgroundColor: comment.author?.avatarColor || '#6366F1' }}
+              className="text-white"
+            >
+              {comment.author?.username?.[0].toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 flex flex-col gap-2">
             <Card
-                className={`w-full ${depth > 0 ? 'bg-gray-200' : 'bg-gray-100'}`}
+                className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
                 onClick={(e) => {
                   // Don't show menu if clicking on a link or the play button
                   if (e.target instanceof HTMLElement && (
@@ -411,6 +406,9 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   setIsActionsOpen(true);
                 }}
             >
+              {depth > 0 && (
+                <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
+              )}
               <CardContent className="pt-3 px-4 pb-3 overflow-hidden">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
@@ -424,7 +422,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
                 {/* Display media if present */}
                 {comment.mediaUrl && !comment.is_video && (
-                  <div className="mt-2 max-w-[280px]">
+                  <div className="mt-2">
                     {imageError ? (
                       <div className="w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded-md">
                         <span>Failed to load image</span>
@@ -433,17 +431,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                       <img 
                         src={getThumbnailUrl(comment.mediaUrl, 'medium')}
                         alt="Comment image" 
-                        className="w-full h-auto object-cover rounded-md max-h-[200px]"
+                        className="w-full h-auto object-contain rounded-md max-h-[300px]"
                         onLoad={(e) => {
-                          const img = e.target as HTMLImageElement;
                           console.log("Comment image loaded successfully:", comment.mediaUrl);
-                          console.log("Image dimensions:", img.naturalWidth, "x", img.naturalHeight);
+                          console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
                           setImageError(false);
                         }}
                         onError={(e) => {
-                          const img = e.target as HTMLImageElement;
                           console.error("Error loading comment image:", comment.mediaUrl);
-                          console.error("Full URL attempted:", img.src);
+                          console.error("Full URL attempted:", e.target.src);
                           setImageError(true);
                         }}
                         style={{
@@ -455,11 +451,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2 max-w-[280px] overflow-hidden">
+                  <div className="mt-2 w-full max-w-full overflow-hidden">
                       <VideoPlayer
                         src={createMediaUrl(comment.mediaUrl)}
                         poster={getVideoThumbnailUrl(comment.mediaUrl)}
-                        className="w-full h-auto object-cover rounded-md max-h-[200px]"
+                        className="w-full max-w-full h-auto object-contain rounded-md max-h-[300px]"
                         onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                       />
                   </div>
