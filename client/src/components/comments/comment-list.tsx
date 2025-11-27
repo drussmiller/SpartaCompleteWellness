@@ -313,7 +313,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     if (comment.parentId === postId) {
       topLevelComments.push(commentWithReplies);
     } else if (comment.parentId && commentMap[comment.parentId]) {
-      commentMap[comment.parentId].replies.push(commentWithReplies);
+      commentMap[comment.parentId].replies?.push(commentWithReplies);
     } else if (comment.parentId) {
       console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
       topLevelComments.push(commentWithReplies);
@@ -407,7 +407,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 }}
             >
               {depth > 0 && (
-                <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
+                <div className="absolute -left-10 -top-4 h-10 w-10 border-l-2 border-t-2 border-gray-400 rounded-tl-2xl"></div>
               )}
               <CardContent className="pt-3 px-4 pb-3 overflow-hidden">
                 <div className="flex justify-between">
@@ -433,13 +433,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                         alt="Comment image" 
                         className="w-full h-auto object-contain rounded-md max-h-[300px]"
                         onLoad={(e) => {
+                          const img = e.target as HTMLImageElement;
                           console.log("Comment image loaded successfully:", comment.mediaUrl);
-                          console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
+                          console.log("Image dimensions:", img.naturalWidth, "x", img.naturalHeight);
                           setImageError(false);
                         }}
                         onError={(e) => {
+                          const img = e.target as HTMLImageElement;
                           console.error("Error loading comment image:", comment.mediaUrl);
-                          console.error("Full URL attempted:", e.target.src);
+                          console.error("Full URL attempted:", img.src);
                           setImageError(true);
                         }}
                         style={{
