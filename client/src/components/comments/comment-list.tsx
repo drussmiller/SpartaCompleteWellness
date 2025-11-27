@@ -392,7 +392,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </Avatar>
           <div className="flex-1 flex flex-col gap-2">
             <Card
-                className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                className={`w-full relative ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
                 onClick={(e) => {
                   // Don't show menu if clicking on a link or the play button
                   if (e.target instanceof HTMLElement && (
