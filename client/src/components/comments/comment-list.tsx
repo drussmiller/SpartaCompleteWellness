@@ -392,7 +392,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </Avatar>
           <div className="flex-1 flex flex-col gap-2">
             <Card
-                className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                className={`w-full overflow-hidden ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
                 onClick={(e) => {
                   // Don't show menu if clicking on a link or the play button
                   if (e.target instanceof HTMLElement && (
@@ -409,7 +409,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
               )}
-              <CardContent className="pt-3 px-4 pb-3 overflow-hidden">
+              <CardContent className="pt-3 px-4 pb-3 overflow-hidden max-w-full">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
@@ -451,11 +451,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2 w-full max-w-full overflow-hidden">
+                  <div className="mt-2 w-full overflow-hidden" style={{ maxWidth: '100%' }}>
                       <VideoPlayer
                         src={createMediaUrl(comment.mediaUrl)}
                         poster={getVideoThumbnailUrl(comment.mediaUrl)}
-                        className="w-full max-w-full h-auto object-contain rounded-md max-h-[300px]"
+                        className="w-full h-auto object-contain rounded-md max-h-[300px]"
                         onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                       />
                   </div>
