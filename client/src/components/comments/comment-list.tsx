@@ -381,7 +381,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
         <div className="flex items-start gap-4">
-          <Avatar>
+          <Avatar className={depth > 0 ? 'h-7 w-7' : 'h-10 w-10'}>
             {comment.author?.imageUrl && <AvatarImage src={comment.author.imageUrl} />}
             <AvatarFallback
               style={{ backgroundColor: comment.author?.avatarColor || '#6366F1' }}
