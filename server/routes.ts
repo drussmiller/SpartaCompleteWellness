@@ -671,6 +671,12 @@ export const registerRoutes = async (
               .status(400)
               .json({ message: "Invalid JSON data in FormData" });
           }
+          
+          // Check for chunked upload data in FormData fields
+          chunkedUploadMediaUrl = req.body.chunkedUploadMediaUrl || null;
+          chunkedUploadThumbnailUrl = req.body.chunkedUploadThumbnailUrl || null;
+          chunkedUploadFilename = req.body.chunkedUploadFilename || null;
+          chunkedUploadIsVideo = req.body.chunkedUploadIsVideo === 'true' || req.body.is_video === 'true';
         } else {
           // Regular JSON request
           content = req.body.content;
@@ -682,6 +688,13 @@ export const registerRoutes = async (
           chunkedUploadThumbnailUrl = req.body.chunkedUploadThumbnailUrl;
           chunkedUploadFilename = req.body.chunkedUploadFilename;
           chunkedUploadIsVideo = req.body.chunkedUploadIsVideo || false;
+          
+          console.log("📦 [Comment JSON] Chunked upload data:", {
+            mediaUrl: chunkedUploadMediaUrl,
+            thumbnailUrl: chunkedUploadThumbnailUrl,
+            filename: chunkedUploadFilename,
+            isVideo: chunkedUploadIsVideo
+          });
         }
 
         logger.info("Creating comment with data:", {
@@ -690,6 +703,9 @@ export const registerRoutes = async (
           contentLength: content ? content.length : 0,
           depth,
           hasFile: !!req.file,
+          chunkedUploadMediaUrl,
+          chunkedUploadThumbnailUrl,
+          chunkedUploadIsVideo
         });
 
         if (!content || !parentId) {
