@@ -708,11 +708,19 @@ export const registerRoutes = async (
 
         // Process media file if present
         let commentMediaUrl = null;
+        let commentThumbnailUrl = null;
+        let commentIsVideo = false;
         
         // Priority: chunked upload > regular file upload
         if (chunkedUploadMediaUrl) {
           commentMediaUrl = chunkedUploadMediaUrl;
-          console.log(`Using chunked upload media URL for comment:`, { url: commentMediaUrl });
+          commentThumbnailUrl = chunkedUploadThumbnailUrl;
+          commentIsVideo = chunkedUploadIsVideo;
+          console.log(`Using chunked upload media URL for comment:`, { 
+            url: commentMediaUrl, 
+            thumbnailUrl: commentThumbnailUrl,
+            isVideo: commentIsVideo 
+          });
         } else if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
@@ -730,12 +738,12 @@ export const registerRoutes = async (
             const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
 
             // Combined video detection
-            const isVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
+            commentIsVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
 
             console.log(`Processing comment media file:`, {
               originalFilename: req.file.originalname,
               mimetype: req.file.mimetype,
-              isVideo: isVideo,
+              isVideo: commentIsVideo,
               fileSize: req.file.size,
             });
 
@@ -763,12 +771,17 @@ export const registerRoutes = async (
               req.file.buffer,
               cleanFilename,
               req.file.mimetype,
-              isVideo,
+              commentIsVideo,
             );
 
             // Store just the storage key for the database, not the full URL
             commentMediaUrl = `shared/uploads/${fileInfo.filename}`;
-            console.log(`Stored comment media file:`, { url: commentMediaUrl });
+            commentThumbnailUrl = fileInfo.thumbnailUrl || null;
+            console.log(`Stored comment media file:`, { 
+              url: commentMediaUrl, 
+              thumbnailUrl: commentThumbnailUrl,
+              isVideo: commentIsVideo 
+            });
           } catch (error) {
             logger.error("Error processing comment media file:", error);
             // Continue with comment creation even if media processing fails
@@ -783,6 +796,8 @@ export const registerRoutes = async (
           type: "comment", // Explicitly set type for comments
           points: 0, // Comments have 0 points
           mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
+          thumbnailUrl: commentThumbnailUrl, // Add thumbnail URL for videos
+          is_video: commentIsVideo // Add the is_video flag
         });
 
         // Return the created comment with author information
