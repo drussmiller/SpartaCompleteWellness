@@ -392,7 +392,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               </AvatarFallback>
             </Avatar>
             {depth > 0 && (
-              <div className="absolute -left-7 -top-1 h-6 w-7 border-l-2 border-b-2 border-gray-400 rounded-bl-xl"></div>
+              <div className="absolute -left-7 -top-8 h-12 w-7 border-l-2 border-b-2 border-gray-400 rounded-bl-xl"></div>
             )}
           </div>
           <div className="flex-1 flex flex-col gap-2">
@@ -424,7 +424,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
                 {/* Display media if present */}
                 {comment.mediaUrl && !comment.is_video && (
-                  <div className="mt-2">
+                  <div className="mt-2 max-w-[280px]">
                     {imageError ? (
                       <div className="w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded-md">
                         <span>Failed to load image</span>
@@ -455,11 +455,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2 w-full max-w-full overflow-hidden">
+                  <div className="mt-2 max-w-[280px] overflow-hidden">
                       <VideoPlayer
                         src={createMediaUrl(comment.mediaUrl)}
                         poster={getVideoThumbnailUrl(comment.mediaUrl)}
-                        className="w-full max-w-full h-auto object-cover rounded-md max-h-[200px]"
+                        className="w-full h-auto object-cover rounded-md max-h-[200px]"
                         onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
                       />
                   </div>
