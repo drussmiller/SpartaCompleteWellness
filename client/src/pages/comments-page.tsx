@@ -152,7 +152,7 @@ export default function CommentsPage() {
         // If we have a file, use FormData
         if (data.file) {
           const formData = new FormData();
-          formData.append('image', data.file);
+          formData.append('file', data.file);
           
           const commentData = {
             type: "comment",

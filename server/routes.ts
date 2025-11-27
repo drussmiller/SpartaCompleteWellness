@@ -653,7 +653,11 @@ export const registerRoutes = async (
         // Check if we have FormData or regular JSON body
         let content,
           parentId,
-          depth = 0;
+          depth = 0,
+          chunkedUploadMediaUrl = null,
+          chunkedUploadThumbnailUrl = null,
+          chunkedUploadFilename = null,
+          chunkedUploadIsVideo = false;
 
         if (req.body.data) {
           // FormData request - parse the JSON data
@@ -672,6 +676,12 @@ export const registerRoutes = async (
           content = req.body.content;
           parentId = req.body.parentId;
           depth = req.body.depth || 0;
+          
+          // Check for chunked upload data
+          chunkedUploadMediaUrl = req.body.chunkedUploadMediaUrl;
+          chunkedUploadThumbnailUrl = req.body.chunkedUploadThumbnailUrl;
+          chunkedUploadFilename = req.body.chunkedUploadFilename;
+          chunkedUploadIsVideo = req.body.chunkedUploadIsVideo || false;
         }
 
         logger.info("Creating comment with data:", {
@@ -698,7 +708,12 @@ export const registerRoutes = async (
 
         // Process media file if present
         let commentMediaUrl = null;
-        if (req.file) {
+        
+        // Priority: chunked upload > regular file upload
+        if (chunkedUploadMediaUrl) {
+          commentMediaUrl = chunkedUploadMediaUrl;
+          console.log(`Using chunked upload media URL for comment:`, { url: commentMediaUrl });
+        } else if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage: spartaObjectStorage } = await import("./sparta-object-storage");

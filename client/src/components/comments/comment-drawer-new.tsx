@@ -223,7 +223,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
         // If we have a file, use FormData
         if (file) {
           const formData = new FormData();
-          formData.append('image', file);
+          formData.append('file', file);
           
           const data = {
             type: "comment",
