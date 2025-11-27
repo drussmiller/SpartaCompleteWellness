@@ -187,16 +187,25 @@ export async function checkNotifications() {
       }
     }
 
+    const summary = {
+      success: true,
+      timestamp: now.toISOString(),
+      utcTime: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+      notificationsCreated,
+      smsNotificationsSent,
+      usersChecked: allUsers.length,
+    };
+
     await db
       .insert(systemState)
       .values({
         key: "last_notification_check",
-        value: now.toISOString(),
+        value: JSON.stringify(summary),
       })
       .onConflictDoUpdate({
         target: systemState.key,
         set: {
-          value: now.toISOString(),
+          value: JSON.stringify(summary),
           updatedAt: now,
         },
       });
@@ -205,12 +214,7 @@ export async function checkNotifications() {
     logger.info(`[SCHEDULER] Created ${notificationsCreated} in-app notifications`);
     logger.info(`[SCHEDULER] Sent ${smsNotificationsSent} SMS notifications`);
 
-    return {
-      success: true,
-      notificationsCreated,
-      smsNotificationsSent,
-      usersChecked: allUsers.length,
-    };
+    return summary;
   } catch (error) {
     logger.error("[SCHEDULER] Error in notification check:", error);
     throw error;
