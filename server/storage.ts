@@ -664,8 +664,13 @@ export const storage = {
   async createComment(data: Partial<Post>): Promise<Post> {
     try {
       logger.debug("Creating comment with data:", data);
-      if (!data.userId || !data.content || !data.parentId) {
+      // Require userId and parentId, but allow empty content if media is provided
+      if (!data.userId || !data.parentId) {
         throw new Error("Missing required fields for comment");
+      }
+      // Validate that either content or media is provided
+      if (!data.content && !data.mediaUrl) {
+        throw new Error("Comment must have either text content or media");
       }
       
       // Check for potentially problematic parent ID values (like JS timestamps)
