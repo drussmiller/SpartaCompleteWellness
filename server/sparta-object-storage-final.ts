@@ -116,6 +116,9 @@ export class SpartaObjectStorageFinal {
       throw new Error('Invalid file data: must be Buffer or file path string');
     }
 
+    // Capture original file size BEFORE any processing for HLS threshold check
+    const originalFileSize = fileBuffer.length;
+
     // Generate unique filename
     const timestamp = Date.now();
     let fileExt = path.extname(originalFilename);
@@ -162,14 +165,15 @@ export class SpartaObjectStorageFinal {
     }
 
     // Check if large video needs HLS conversion
-    const fileSize = finalBuffer.length;
+    // Use ORIGINAL file size for threshold check, not converted size
+    const hlsCheckSize = isVideo ? originalFileSize : finalBuffer.length;
     let isHLS = false;
     
     if (isVideo) {
       const { HLSConverter } = await import('./hls-converter');
       
-      if (HLSConverter.shouldConvertToHLS(fileSize)) {
-        console.log(`[Video Upload] Large video detected (${(fileSize / 1024 / 1024).toFixed(2)} MB), converting to HLS`);
+      if (HLSConverter.shouldConvertToHLS(hlsCheckSize)) {
+        console.log(`[Video Upload] Large video detected (original: ${(originalFileSize / 1024 / 1024).toFixed(2)} MB, converted: ${(finalBuffer.length / 1024 / 1024).toFixed(2)} MB), converting to HLS`);
         
         // Write converted MP4 to temp file for HLS conversion
         const tempVideoPath = `/tmp/${uniqueFilename}`;
