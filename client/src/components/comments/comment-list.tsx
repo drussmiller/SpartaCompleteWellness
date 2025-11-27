@@ -392,7 +392,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               </AvatarFallback>
             </Avatar>
             {depth > 0 && (
-              <div className="absolute -left-7 -top-16 h-20 w-7 border-l-2 border-b-2 border-gray-400 rounded-bl-xl pointer-events-none"></div>
+              <div 
+                className="absolute -left-7 border-l-2 border-b-2 border-gray-400 rounded-bl-xl pointer-events-none w-7"
+                style={{
+                  top: depth === 1 ? 'calc(-1 * (1rem + 0.75rem + 1.25rem))' : 'calc(-1 * (1rem + 0.75rem + 0.875rem))',
+                  height: depth === 1 ? 'calc(0.875rem + 1rem + 0.75rem + 1.25rem)' : 'calc(0.875rem + 1rem + 0.75rem + 0.875rem)'
+                }}
+              ></div>
             )}
           </div>
           <div className="flex-1 flex flex-col gap-2">
