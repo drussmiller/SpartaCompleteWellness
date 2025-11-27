@@ -201,7 +201,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
             chunkedUploadIsVideo: chunkedUploadData.isVideo,
           };
           
-          const res = await fetch('/api/posts', {
+          const res = await fetch('/api/posts/comments', {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
@@ -234,7 +234,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           
           formData.append('data', JSON.stringify(data));
           
-          const res = await fetch('/api/posts', {
+          const res = await fetch('/api/posts/comments', {
             method: 'POST',
             body: formData,
             credentials: 'include'
@@ -257,7 +257,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           points: 1
         };
 
-        const res = await fetch('/api/posts', {
+        const res = await fetch('/api/posts/comments', {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
