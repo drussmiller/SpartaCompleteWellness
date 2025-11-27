@@ -126,106 +126,85 @@ export class SpartaObjectStorageFinal {
     let uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
     let finalBuffer = fileBuffer;
 
-    // Convert ALL videos to Edge-compatible MP4 with faststart
-    if (isVideo) {
-      const { convertToMp4WithFaststart } = await import('./video-converter');
-      
-      console.log(`[Video Upload] Processing video, converting to H.264/AAC MP4 with faststart`);
-      
-      // Use distinct filenames to avoid ffmpeg input/output collision
-      const tempOriginalPath = `/tmp/${timestamp}-${baseName}-source${fileExt}`;
-      const mp4Filename = `${timestamp}-${baseName}.mp4`;
-      const tempMp4Path = `/tmp/${mp4Filename}`;
-      
-      fs.writeFileSync(tempOriginalPath, fileBuffer);
-
-      try {
-        // Always convert to .mp4 with faststart (and H.264 if needed)
-        await convertToMp4WithFaststart(tempOriginalPath, tempMp4Path);
-        
-        // Read converted file
-        finalBuffer = fs.readFileSync(tempMp4Path);
-        uniqueFilename = mp4Filename; // Use .mp4 extension
-        
-        // Clean up temp files
-        fs.unlinkSync(tempMp4Path);
-        
-        console.log(`[Video Upload] Conversion complete: ${uniqueFilename}`);
-        
-        // Clean up original temp file
-        fs.unlinkSync(tempOriginalPath);
-        
-      } catch (error) {
-        // Clean up on error
-        if (fs.existsSync(tempOriginalPath)) {
-          fs.unlinkSync(tempOriginalPath);
-        }
-        throw error;
-      }
-    }
-
-    // Check if large video needs HLS conversion
-    // Use ORIGINAL file size for threshold check, not converted size
-    const hlsCheckSize = isVideo ? originalFileSize : finalBuffer.length;
-    let isHLS = false;
-    
+    // PATH 1: Large video (>30MB) → Direct HLS conversion (no MP4 step)
     if (isVideo) {
       const { HLSConverter } = await import('./hls-converter');
       
-      if (HLSConverter.shouldConvertToHLS(hlsCheckSize)) {
-        console.log(`[Video Upload] Large video detected (original: ${(originalFileSize / 1024 / 1024).toFixed(2)} MB, converted: ${(finalBuffer.length / 1024 / 1024).toFixed(2)} MB), converting to HLS`);
+      if (HLSConverter.shouldConvertToHLS(originalFileSize)) {
+        console.log(`[Video Upload] Large video (${(originalFileSize / 1024 / 1024).toFixed(2)} MB) → Direct HLS conversion (skipping MP4)`);
         
-        // Write converted MP4 to temp file for HLS conversion
-        const tempVideoPath = `/tmp/${uniqueFilename}`;
-        fs.writeFileSync(tempVideoPath, finalBuffer);
+        const tempSourcePath = `/tmp/${timestamp}-${baseName}-hls-source${fileExt}`;
+        fs.writeFileSync(tempSourcePath, fileBuffer);
         
         try {
+          // Convert directly to HLS from original
           const { hlsConverter } = await import('./hls-converter');
-          const hlsResult = await hlsConverter.convertToHLS(tempVideoPath, uniqueFilename.replace('.mp4', ''));
+          const baseFilename = `${timestamp}-${baseName}`;
+          const hlsResult = await hlsConverter.convertToHLS(tempSourcePath, baseFilename);
           
-          isHLS = true;
           console.log(`[Video Upload] HLS conversion complete: ${hlsResult.segmentKeys.length} segments`);
           
-          // Clean up temp file
-          fs.unlinkSync(tempVideoPath);
-          
-          // Return HLS playlist URL instead of direct video URL
-          const result = {
-            filename: uniqueFilename,
-            url: `/api/hls/${uniqueFilename.replace('.mp4', '')}/playlist.m3u8`,
-            isHLS: true,
-          } as any;
-          
-          // Still create thumbnail for HLS videos
-          if (mimeType.startsWith('image/') || isVideo) {
-            try {
-              // Write video back to temp for thumbnail creation
-              fs.writeFileSync(tempVideoPath, finalBuffer);
-              const createdThumbnailFilename = await createMovThumbnail(tempVideoPath);
-              
-              if (createdThumbnailFilename) {
-                console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
-                result.thumbnailUrl = `/api/serve-file?filename=${createdThumbnailFilename}`;
-                fs.unlinkSync(tempVideoPath);
-              } else {
-                fs.unlinkSync(tempVideoPath);
-                result.thumbnailUrl = null;
-              }
-            } catch (error) {
-              console.error(`Failed to create thumbnail for HLS video: ${error}`);
-              result.thumbnailUrl = null;
+          // Create thumbnail from original source
+          let thumbnailUrl = null;
+          try {
+            const createdThumbnailFilename = await createMovThumbnail(tempSourcePath);
+            if (createdThumbnailFilename) {
+              thumbnailUrl = `/api/serve-file?filename=${createdThumbnailFilename}`;
+              console.log(`[Video Upload] HLS thumbnail created: ${createdThumbnailFilename}`);
             }
+          } catch (error) {
+            console.error(`[Video Upload] HLS thumbnail creation failed: ${error}`);
           }
           
-          return result;
+          // Clean up temp source file
+          fs.unlinkSync(tempSourcePath);
+          
+          // Return HLS result
+          return {
+            filename: `${baseFilename}.mp4`,
+            url: `/api/hls/${baseFilename}/playlist.m3u8`,
+            thumbnailUrl,
+            isHLS: true,
+          };
         } catch (error) {
           console.error(`[Video Upload] HLS conversion failed: ${error}`);
-          // Fall back to regular MP4 upload
-          if (fs.existsSync(tempVideoPath)) {
-            fs.unlinkSync(tempVideoPath);
+          // Clean up on error
+          if (fs.existsSync(tempSourcePath)) {
+            fs.unlinkSync(tempSourcePath);
           }
-          console.log(`[Video Upload] Falling back to regular MP4 upload`);
+          // Fall through to regular MP4 upload
+          console.log(`[Video Upload] Falling back to MP4 upload`);
         }
+      }
+    }
+
+    // PATH 2: Small video (<30MB) or image → MP4 conversion with faststart
+    if (isVideo) {
+      const { convertToMp4WithFaststart } = await import('./video-converter');
+      
+      console.log(`[Video Upload] Small video → MP4 conversion with faststart`);
+      
+      const tempSourcePath = `/tmp/${timestamp}-${baseName}-source${fileExt}`;
+      const mp4Filename = `${timestamp}-${baseName}.mp4`;
+      const tempMp4Path = `/tmp/${mp4Filename}`;
+      
+      fs.writeFileSync(tempSourcePath, fileBuffer);
+
+      try {
+        await convertToMp4WithFaststart(tempSourcePath, tempMp4Path);
+        finalBuffer = fs.readFileSync(tempMp4Path);
+        uniqueFilename = mp4Filename;
+        
+        // Clean up temp files
+        fs.unlinkSync(tempMp4Path);
+        fs.unlinkSync(tempSourcePath);
+        
+        console.log(`[Video Upload] MP4 conversion complete: ${uniqueFilename}`);
+      } catch (error) {
+        // Clean up on error
+        if (fs.existsSync(tempSourcePath)) fs.unlinkSync(tempSourcePath);
+        if (fs.existsSync(tempMp4Path)) fs.unlinkSync(tempMp4Path);
+        throw error;
       }
     }
 
