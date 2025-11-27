@@ -124,11 +124,60 @@ export default function CommentsPage() {
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: async (data: { content: string; postId: number }) => {
+    mutationFn: async (data: { content: string; postId: number; file?: File; chunkedUploadData?: any }) => {
       if (!user?.id) throw new Error("You must be logged in to comment");
 
       try {
-        // Submit the comment
+        // If we have chunked upload data, use JSON request with chunked upload info
+        if (data.chunkedUploadData) {
+          const response = await apiRequest("POST", `/api/posts/comments`, {
+            type: "comment",
+            content: data.content,
+            parentId: data.postId,
+            chunkedUploadMediaUrl: data.chunkedUploadData.mediaUrl,
+            chunkedUploadThumbnailUrl: data.chunkedUploadData.thumbnailUrl,
+            chunkedUploadFilename: data.chunkedUploadData.filename,
+            chunkedUploadIsVideo: data.chunkedUploadData.isVideo,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to create comment");
+          }
+
+          await queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+          return await response.json();
+        }
+
+        // If we have a file, use FormData
+        if (data.file) {
+          const formData = new FormData();
+          formData.append('image', data.file);
+          
+          const commentData = {
+            type: "comment",
+            content: data.content,
+            parentId: data.postId
+          };
+          
+          formData.append('data', JSON.stringify(commentData));
+          
+          const response = await fetch('/api/posts/comments', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to create comment");
+          }
+
+          await queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+          return await response.json();
+        }
+
+        // Otherwise, use regular JSON request
         const response = await apiRequest("POST", `/api/posts/comments`, {
           type: "comment",
           content: data.content,
@@ -279,10 +328,12 @@ export default function CommentsPage() {
           >
             <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
             <CommentForm
-              onSubmit={async (content) => {
+              onSubmit={async (content, file, chunkedUploadData) => {
                 await createCommentMutation.mutateAsync({
-                  content: content,
-                  postId: parseInt(postId)
+                  content,
+                  postId: parseInt(postId),
+                  file,
+                  chunkedUploadData
                 });
               }}
               isSubmitting={createCommentMutation.isPending}
