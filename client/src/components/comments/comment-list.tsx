@@ -392,7 +392,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               </AvatarFallback>
             </Avatar>
             {depth > 0 && (
-              <div className="absolute -left-7 -top-8 h-12 w-7 border-l-2 border-b-2 border-gray-400 rounded-bl-xl"></div>
+              <div className="absolute -left-7 -top-16 h-20 w-7 border-l-2 border-b-2 border-gray-400 rounded-bl-xl pointer-events-none"></div>
             )}
           </div>
           <div className="flex-1 flex flex-col gap-2">
