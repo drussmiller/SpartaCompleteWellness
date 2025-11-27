@@ -44,7 +44,7 @@ The application uses a monorepo structure, separating client, server, and shared
 - **Post Management**: Create text, image, or video posts; support for general, memory_verse, and workout tracking types; reaction system; post deletion with cascade cleanup.
 - **Messaging**: Private messaging, file attachments, image pasting, message history.
 - **Onboarding**: Introductory video onboarding for team-less users, restricting posts to video only until team assignment.
-- **Notifications**: Daily reminders for missed posts via Replit Scheduled Deployments (runs `scripts/check-notifications.ts` hourly), SMS notifications via Twilio (opt-in only), user-configurable daily and confirmation message toggles. Works reliably in production even when main app scales to zero.
+- **Notifications**: Daily reminders for missed posts via external cron service (cron-job.org calls `/api/check-notifications` endpoint hourly), SMS notifications via Twilio (opt-in only), user-configurable daily and confirmation message toggles. Works reliably with Autoscale deployments. See `EXTERNAL_CRON_SETUP.md` for setup instructions.
 - **Mobile UI**: Dedicated scroll container architecture for iOS momentum scrolling, header/nav auto-hide on scroll, pull-to-refresh on Home page (80px threshold), scroll position restoration when returning from video player.
 
 ### Data Flow

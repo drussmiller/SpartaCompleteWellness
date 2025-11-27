@@ -5686,6 +5686,86 @@ export const registerRoutes = async (
     }
   });
 
+  // External cron endpoint for hourly notification checks
+  // This is called by an external service (e.g., cron-job.org) every hour
+  router.post("/api/check-notifications", express.json(), async (req, res) => {
+    try {
+      // Verify the API token from header
+      const providedToken = req.headers['x-job-token'];
+      const expectedToken = process.env.NOTIFICATION_CRON_SECRET;
+
+      if (!expectedToken) {
+        logger.error("[CRON] NOTIFICATION_CRON_SECRET not configured");
+        return res.status(500).json({ 
+          success: false, 
+          message: "Server configuration error" 
+        });
+      }
+
+      if (!providedToken || typeof providedToken !== 'string') {
+        logger.warn("[CRON] Missing or invalid token in request");
+        return res.status(401).json({ 
+          success: false, 
+          message: "Unauthorized" 
+        });
+      }
+
+      // Use timing-safe comparison to prevent timing attacks
+      const crypto = await import('crypto');
+      const providedBuffer = Buffer.from(providedToken);
+      const expectedBuffer = Buffer.from(expectedToken);
+
+      if (providedBuffer.length !== expectedBuffer.length || 
+          !crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
+        logger.warn("[CRON] Invalid token provided");
+        return res.status(401).json({ 
+          success: false, 
+          message: "Unauthorized" 
+        });
+      }
+
+      // Rate limiting: check if we ran in the last 50 minutes
+      const fiftyMinutesAgo = new Date(Date.now() - 50 * 60 * 1000);
+      const recentCheck = await db
+        .select()
+        .from(systemState)
+        .where(
+          and(
+            eq(systemState.key, 'last_notification_check'),
+            gte(systemState.updatedAt, fiftyMinutesAgo)
+          )
+        )
+        .limit(1);
+
+      if (recentCheck.length > 0) {
+        logger.info("[CRON] Skipping check - last run was less than 50 minutes ago");
+        return res.json({
+          success: true,
+          skipped: true,
+          message: "Check skipped - too soon since last run",
+          lastCheck: recentCheck[0].updatedAt
+        });
+      }
+
+      // Import and run the notification check
+      const { checkNotifications } = await import('./notification-check');
+      const result = await checkNotifications();
+
+      res.json({
+        success: true,
+        ...result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error("[CRON] Error in notification check endpoint:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Get messages with a specific user
   router.get("/api/messages/:userId", authenticate, async (req, res) => {
     try {
