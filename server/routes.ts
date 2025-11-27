@@ -1946,7 +1946,7 @@ export const registerRoutes = async (
 
         const post = await storage.createComment({
           userId: req.user.id,
-          content: postData.content.trim(),
+          content: postData.content ? postData.content.trim() : '',
           parentId: postData.parentId,
           depth: postData.depth || 0,
           points: commentPoints, // Always set to 0 points for comments
