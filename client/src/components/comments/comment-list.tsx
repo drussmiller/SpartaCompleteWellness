@@ -380,7 +380,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 min-w-0">
           <Avatar className={depth > 0 ? 'h-7 w-7' : 'h-10 w-10'}>
             {comment.author?.imageUrl && <AvatarImage src={comment.author.imageUrl} />}
             <AvatarFallback
@@ -390,7 +390,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               {comment.author?.username?.[0].toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 flex flex-col gap-2">
+          <div className="flex-1 flex flex-col gap-2 min-w-0">
             <Card
                 className={`w-full overflow-hidden ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
                 onClick={(e) => {
@@ -451,7 +451,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2 w-full overflow-hidden" style={{ maxWidth: '100%' }}>
+                  <div className="mt-2 w-full max-w-full overflow-hidden">
                       <VideoPlayer
                         src={createMediaUrl(comment.mediaUrl)}
                         poster={getVideoThumbnailUrl(comment.mediaUrl)}
