@@ -184,17 +184,79 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   }, [isOpen, postId]);
 
   const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const data = {
-        type: "comment",
-        content: content.trim(),
-        parentId: postId,
-        points: 1
-      };
-
-      console.log(`Creating comment for post ${postId}...`, data);
+    mutationFn: async ({ content, file, chunkedUploadData }: { content: string; file?: File; chunkedUploadData?: any }) => {
+      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file, hasChunkedUpload: !!chunkedUploadData });
       
       try {
+        // If we have chunked upload data, use JSON request
+        if (chunkedUploadData) {
+          const data = {
+            type: "comment",
+            content: content.trim(),
+            parentId: postId,
+            points: 1,
+            chunkedUploadMediaUrl: chunkedUploadData.mediaUrl,
+            chunkedUploadThumbnailUrl: chunkedUploadData.thumbnailUrl,
+            chunkedUploadFilename: chunkedUploadData.filename,
+            chunkedUploadIsVideo: chunkedUploadData.isVideo,
+          };
+          
+          const res = await fetch('/api/posts', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data),
+            credentials: 'include'
+          });
+
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`Comment creation error (${res.status}):`, errorText);
+            throw new Error(errorText || "Failed to create comment");
+          }
+
+          return await res.json();
+        }
+        
+        // If we have a file, use FormData
+        if (file) {
+          const formData = new FormData();
+          formData.append('image', file);
+          
+          const data = {
+            type: "comment",
+            content: content.trim(),
+            parentId: postId,
+            points: 1
+          };
+          
+          formData.append('data', JSON.stringify(data));
+          
+          const res = await fetch('/api/posts', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
+
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`Comment creation error (${res.status}):`, errorText);
+            throw new Error(errorText || "Failed to create comment");
+          }
+
+          return await res.json();
+        }
+        
+        // Otherwise, use regular JSON request
+        const data = {
+          type: "comment",
+          content: content.trim(),
+          parentId: postId,
+          points: 1
+        };
+
         const res = await fetch('/api/posts', {
           method: 'POST',
           headers: {
@@ -352,8 +414,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 {isCommentBoxVisible && (
                   <div className="p-4 pb-28 border-t bg-background fixed bottom-0 left-0 right-0">
                     <CommentForm
-                      onSubmit={async (content) => {
-                        await createCommentMutation.mutateAsync(content);
+                      onSubmit={async (content, file, chunkedUploadData) => {
+                        await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
                       }}
                       isSubmitting={createCommentMutation.isPending}
                       ref={commentInputRef}
