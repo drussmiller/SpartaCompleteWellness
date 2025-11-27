@@ -102,6 +102,7 @@ export class SpartaObjectStorageFinal {
     filename: string;
     url: string;
     thumbnailUrl?: string;
+    isHLS?: boolean;
   }> {
     if (!this.allowedTypes.includes(mimeType)) {
       throw new Error(`File type ${mimeType} not allowed`);
@@ -149,19 +150,22 @@ export class SpartaObjectStorageFinal {
           try {
             const createdThumbnailFilename = await createMovThumbnail(tempSourcePath);
             if (createdThumbnailFilename) {
-              thumbnailUrl = `/api/serve-file?filename=${createdThumbnailFilename}`;
+              // Include full storage key for /api/serve-file
+              thumbnailUrl = `/api/serve-file?filename=shared/uploads/${createdThumbnailFilename}`;
               console.log(`[Video Upload] HLS thumbnail created: ${createdThumbnailFilename}`);
             }
           } catch (error) {
             console.error(`[Video Upload] HLS thumbnail creation failed: ${error}`);
+          } finally {
+            // Clean up temp source file after thumbnail creation
+            if (fs.existsSync(tempSourcePath)) {
+              fs.unlinkSync(tempSourcePath);
+            }
           }
           
-          // Clean up temp source file
-          fs.unlinkSync(tempSourcePath);
-          
-          // Return HLS result
+          // Return HLS result (use logical MP4 filename for backward compatibility)
           return {
-            filename: `${baseFilename}.mp4`,
+            filename: `${baseFilename}.mp4`, // Logical filename (not actual storage key)
             url: `/api/hls/${baseFilename}/playlist.m3u8`,
             thumbnailUrl,
             isHLS: true,
@@ -238,8 +242,8 @@ export class SpartaObjectStorageFinal {
             // The thumbnail should already be uploaded to Object Storage by createMovThumbnail
             console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
             
-            // Set the thumbnail URL
-            result.thumbnailUrl = `shared/uploads/${createdThumbnailFilename}`;
+            // Set the thumbnail URL - include full storage key
+            result.thumbnailUrl = `/api/serve-file?filename=shared/uploads/${createdThumbnailFilename}`;
 
             // Clean up temp video file
             fs.unlinkSync(tempVideoPath);
