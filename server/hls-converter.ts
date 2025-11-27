@@ -58,7 +58,7 @@ export class HLSConverter {
           .audioCodec('aac')
           .audioBitrate('128k')
           .outputOptions([
-            '-preset fast', // Fast encoding preset
+            '-preset veryfast', // Very fast encoding preset (2-3x faster than 'fast')
             '-crf 23', // Constant quality (23 = good quality)
             '-metadata:s:v rotate=0', // Remove rotation metadata after applying it
             '-start_number 0', // Start segment numbering at 0
