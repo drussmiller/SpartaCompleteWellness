@@ -1378,7 +1378,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     <AppLayout 
       sidebarWidth="80"
       headerContent={
-        <div className="px-4 pt-12 pb-2 flex items-center">
+        <div className="px-4 pt-16 pb-2 flex items-center">
           {onClose && (
             <Button
               variant="ghost"
