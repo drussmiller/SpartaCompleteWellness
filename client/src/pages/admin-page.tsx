@@ -1375,32 +1375,30 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     : filteredUsersForDisplay.filter((user) => user.status === 1);
 
   return (
-    <AppLayout sidebarWidth="80">
+    <AppLayout 
+      sidebarWidth="80"
+      headerContent={
+        <div className="px-4 pt-1 pb-2 flex items-center">
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="mr-2 scale-125"
+            >
+              <ChevronLeft className="h-8 w-8 scale-125" />
+            </Button>
+          )}
+          <h1 className="text-xl font-bold">Admin Dashboard</h1>
+        </div>
+      }
+    >
       <div
-        className="min-h-screen pb-20"
+        className="pb-20"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Fixed title bar */}
-        <div className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="px-4 pt-1 pb-2 flex items-center">
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="mr-2 scale-125"
-              >
-                <ChevronLeft className="h-8 w-8 scale-125" />
-              </Button>
-            )}
-            <h1 className="text-xl font-bold">Admin Dashboard</h1>
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="pb-20">
           <div className="container p-4 md:px-8">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
@@ -3879,7 +3877,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-background">
           <BottomNav />
         </div>
-      </div>
     </AppLayout>
   );
 }

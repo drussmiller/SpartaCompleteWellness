@@ -8,6 +8,7 @@ import { ScrollContainerContext } from "@/contexts/scroll-container-context";
 interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
+  headerContent?: React.ReactNode;
   sidebarWidth?: string;
   isBottomNavVisible?: boolean;
   scrollOffset?: number;
@@ -17,6 +18,7 @@ interface AppLayoutProps {
 export function AppLayout({ 
   children, 
   title, 
+  headerContent,
   sidebarWidth = "320", 
   isBottomNavVisible = true, 
   scrollOffset = 0,
@@ -33,8 +35,13 @@ export function AppLayout({
     <ScrollContainerContext.Provider value={{ scrollContainerRef: containerRef }}>
       <div className="flex h-full" style={{ touchAction: 'pan-y pinch-zoom' }}>
         <div className={cn("flex flex-col flex-1 h-screen overflow-hidden")}>
-          {title && (
-            <header className="sticky top-0 z-50 border-b border-border bg-background">
+          {headerContent && (
+            <header className="flex-shrink-0 z-50 border-b border-border bg-background">
+              {headerContent}
+            </header>
+          )}
+          {title && !headerContent && (
+            <header className="flex-shrink-0 z-50 border-b border-border bg-background">
               <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6' : 'container'} py-3`}>
                 <h1 className="text-lg font-semibold">{title}</h1>
               </div>
