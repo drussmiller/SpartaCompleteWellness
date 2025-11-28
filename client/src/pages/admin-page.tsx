@@ -1377,13 +1377,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   return (
     <AppLayout sidebarWidth="80">
       <div
-        className="flex flex-col h-full pb-20"
+        className="min-h-screen pb-20"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {/* Fixed title bar */}
-        <div className="flex-shrink-0 bg-background border-b border-border">
+        <div className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="px-4 pt-1 pb-2 flex items-center">
             {onClose && (
               <Button
@@ -1400,7 +1400,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 overflow-y-auto pb-20 min-h-0">
+        <div className="pb-20">
           <div className="container p-4 md:px-8">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
