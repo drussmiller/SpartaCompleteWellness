@@ -2566,31 +2566,23 @@ export const registerRoutes = async (
               logger.info(`[POST DELETE] Deleting HLS files with prefix: ${hlsPrefix}`);
               
               try {
-                // List and delete all files with this prefix
-                const filesToDelete: string[] = [];
+                // List all files with the HLS prefix
+                const listResult = await client.list({ prefix: hlsPrefix });
+                logger.info(`[POST DELETE] Found ${listResult.length} HLS files to delete`);
                 
-                // Try to delete common HLS files (playlist + segments)
-                const potentialFiles = [
-                  `${hlsPrefix}${baseFilename}.m3u8`,
-                  `${hlsPrefix}playlist.m3u8`, // Alternative naming
-                ];
-                
-                // Add potential segment files (0-99)
-                for (let i = 0; i < 100; i++) {
-                  potentialFiles.push(`${hlsPrefix}${baseFilename}-${i}.ts`);
-                }
-                
-                // Attempt to delete each file
-                for (const file of potentialFiles) {
+                // Delete all files in the HLS directory
+                let deletedCount = 0;
+                for (const fileKey of listResult) {
                   try {
-                    await client.delete(file);
-                    filesToDelete.push(file);
-                  } catch (e) {
-                    // File doesn't exist, ignore
+                    await client.delete(fileKey);
+                    deletedCount++;
+                    logger.info(`[POST DELETE] Deleted HLS file: ${fileKey}`);
+                  } catch (deleteError) {
+                    logger.error(`[POST DELETE] Error deleting HLS file ${fileKey}:`, deleteError);
                   }
                 }
                 
-                logger.info(`[POST DELETE] Deleted ${filesToDelete.length} HLS files for post ${postId}`);
+                logger.info(`[POST DELETE] Successfully deleted ${deletedCount}/${listResult.length} HLS files for post ${postId}`);
               } catch (hlsError) {
                 logger.error(`[POST DELETE] Error deleting HLS files:`, hlsError);
                 // Continue with post deletion even if HLS cleanup fails
