@@ -2472,6 +2472,7 @@ export const registerRoutes = async (
           id: posts.id,
           userId: posts.userId,
           mediaUrl: posts.mediaUrl,
+          thumbnailUrl: posts.thumbnailUrl,
         })
         .from(posts)
         .where(eq(posts.id, postId))
@@ -2534,6 +2535,33 @@ export const registerRoutes = async (
         } catch (error) {
           logger.error(`[POST DELETE] Error cleaning up HLS files:`, error);
           // Continue with post deletion even if HLS cleanup fails
+        }
+      }
+
+      // Delete associated thumbnail if it exists
+      if (post.thumbnailUrl) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          // Extract the storage path from the thumbnail URL
+          // Thumbnail URLs are like "/api/thumbnails/shared/uploads/thumbnails/filename.jpg"
+          const thumbnailMatch = post.thumbnailUrl.match(/\/api\/thumbnails\/(.+)/);
+          if (thumbnailMatch && thumbnailMatch[1]) {
+            const thumbnailPath = thumbnailMatch[1];
+            logger.info(`[POST DELETE] Deleting thumbnail: ${thumbnailPath}`);
+            
+            try {
+              await client.delete(thumbnailPath);
+              logger.info(`[POST DELETE] Successfully deleted thumbnail for post ${postId}`);
+            } catch (thumbError) {
+              logger.error(`[POST DELETE] Error deleting thumbnail:`, thumbError);
+              // Continue with post deletion even if thumbnail cleanup fails
+            }
+          }
+        } catch (error) {
+          logger.error(`[POST DELETE] Error cleaning up thumbnail:`, error);
+          // Continue with post deletion even if thumbnail cleanup fails
         }
       }
 
