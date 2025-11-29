@@ -459,40 +459,44 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
         }}
       />
       {pastedImage && (
-        <div className="relative inline-block max-w-xs mb-2">
-          <img 
-            src={pastedImage} 
-            alt="Pasted image" 
-            className="max-h-24 max-w-full rounded-lg object-cover"
-          />
-          {isChunkedUploading && (
-            <div className="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center">
-              <Loader2 className="h-6 w-6 text-white animate-spin mb-1" />
-              <span className="text-white text-xs font-medium">{Math.round(chunkedUploadProgress)}%</span>
-              {chunkedUploadStatusMessage && chunkedUploadStatusMessage.trim() && (
-                <span className="text-white/80 text-[10px] mt-1">{chunkedUploadStatusMessage}</span>
+        <div className="mb-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <img 
+                src={pastedImage} 
+                alt="Pasted image" 
+                className="max-h-24 max-w-full rounded-lg object-cover"
+              />
+              {isChunkedUploading && (
+                <div className="flex flex-col items-center gap-1">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-xs font-medium">{Math.round(chunkedUploadProgress)}%</span>
+                  {chunkedUploadStatusMessage && chunkedUploadStatusMessage.trim() && (
+                    <span className="text-[10px] text-muted-foreground text-center max-w-[100px]">{chunkedUploadStatusMessage}</span>
+                  )}
+                </div>
               )}
             </div>
-          )}
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-            onClick={() => {
-              setPastedImage(null);
-              setIsVideo(false);
-              setChunkedUploadResult(null);
-              setIsChunkedUploading(false);
-              setChunkedUploadProgress(0);
-              // Also clear the global stored video file
-              if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
-                console.log("Clearing original video file when removing preview");
-                (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
-              }
-            }}
-          >
-            <X className="h-3 w-3" />
-          </Button>
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-6 w-6 rounded-full flex-shrink-0"
+              onClick={() => {
+                setPastedImage(null);
+                setIsVideo(false);
+                setChunkedUploadResult(null);
+                setIsChunkedUploading(false);
+                setChunkedUploadProgress(0);
+                // Also clear the global stored video file
+                if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+                  console.log("Clearing original video file when removing preview");
+                  (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
+                }
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       )}
 
