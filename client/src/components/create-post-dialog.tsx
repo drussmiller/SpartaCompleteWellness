@@ -296,8 +296,8 @@ export function CreatePostDialog({
                 
                 // Use chunked upload with proper options
                 chunkedUploadResult = await uploadFileInChunks(videoFile, {
-                  onProgress: (progress) => {
-                    console.log(`Upload progress: ${progress}%`);
+                  onProgress: (info) => {
+                    console.log(`Upload progress: ${info.progress}% - ${info.statusMessage}`);
                   },
                   finalizePayload: {
                     postType: data.type === 'introductory_video' ? 'introductory_video' : 
