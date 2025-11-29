@@ -2578,12 +2578,16 @@ export const registerRoutes = async (
                 // List all files with the HLS prefix
                 console.log(`[HLS DELETE] Calling client.list() with prefix...`);
                 const listResult = await client.list({ prefix: hlsPrefix });
-                console.log(`[HLS DELETE] List returned ${listResult.length} files`);
-                console.log(`[HLS DELETE] Files found:`, JSON.stringify(listResult, null, 2));
+                console.log(`[HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
+                
+                // Extract the file array from the result
+                const files = listResult.value || [];
+                console.log(`[HLS DELETE] Found ${files.length} files to delete`);
                 
                 // Delete all files in the HLS directory
                 let deletedCount = 0;
-                for (const fileKey of listResult) {
+                for (const fileItem of files) {
+                  const fileKey = fileItem.name;
                   console.log(`[HLS DELETE] Attempting to delete: ${fileKey}`);
                   try {
                     await client.delete(fileKey);
@@ -2594,7 +2598,7 @@ export const registerRoutes = async (
                   }
                 }
                 
-                console.log(`[HLS DELETE] Deletion complete: ${deletedCount}/${listResult.length} files deleted`);
+                console.log(`[HLS DELETE] Deletion complete: ${deletedCount}/${files.length} files deleted`);
               } catch (hlsError) {
                 console.error(`[HLS DELETE] Error during HLS cleanup:`, hlsError);
                 // Continue with post deletion even if HLS cleanup fails
