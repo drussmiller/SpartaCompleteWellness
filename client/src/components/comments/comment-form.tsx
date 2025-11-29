@@ -131,6 +131,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       });
     } catch (error) {
       console.error('Error submitting comment:', error);
+      // Clear upload state to allow retry
+      videoUpload.clear();
+      setSelectedFile(null);
     }
   };
 

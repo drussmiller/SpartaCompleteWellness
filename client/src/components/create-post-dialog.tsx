@@ -56,6 +56,12 @@ export function CreatePostDialog({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusMessage, setUploadStatusMessage] = useState('');
 
+  // Reset upload progress state (call on any error or success)
+  const resetUploadProgress = () => {
+    setUploadProgress(0);
+    setUploadStatusMessage('');
+  };
+
   // Fetch organizations for admin users
   const { data: organizations = [] } = useQuery({
     queryKey: ["/api/organizations"],
@@ -296,21 +302,28 @@ export function CreatePostDialog({
               if (shouldUseChunkedUpload(videoFile)) {
                 console.log(`Video file ${videoFile.size} bytes exceeds threshold, using chunked upload`);
                 
-                // Use chunked upload with proper options
-                chunkedUploadResult = await uploadFileInChunks(videoFile, {
-                  onProgress: (info) => {
-                    console.log(`Upload progress: ${info.progress}% - ${info.statusMessage}`);
-                    setUploadProgress(info.progress);
-                    setUploadStatusMessage(info.statusMessage);
-                  },
-                  finalizePayload: {
-                    postType: data.type === 'introductory_video' ? 'introductory_video' : 
-                             data.type === 'memory_verse' ? 'memory_verse' : 'video'
-                  }
-                });
-                
-                usedChunkedUpload = true;
-                console.log('Chunked upload completed:', chunkedUploadResult);
+                try {
+                  // Use chunked upload with proper options
+                  chunkedUploadResult = await uploadFileInChunks(videoFile, {
+                    onProgress: (info) => {
+                      console.log(`Upload progress: ${info.progress}% - ${info.statusMessage}`);
+                      setUploadProgress(info.progress);
+                      setUploadStatusMessage(info.statusMessage);
+                    },
+                    finalizePayload: {
+                      postType: data.type === 'introductory_video' ? 'introductory_video' : 
+                               data.type === 'memory_verse' ? 'memory_verse' : 'video'
+                    }
+                  });
+                  
+                  usedChunkedUpload = true;
+                  console.log('Chunked upload completed:', chunkedUploadResult);
+                } catch (uploadError) {
+                  console.error('Chunked upload error:', uploadError);
+                  // Reset progress state before rethrowing to allow retry
+                  resetUploadProgress();
+                  throw uploadError;
+                }
               } else {
                 // Append the video file to the formData with the 'image' field name
                 // The server will detect the post type based on the data.type field
@@ -379,8 +392,7 @@ export function CreatePostDialog({
           } catch (error) {
             console.error("Error processing media:", error);
             // Reset upload progress on media processing error
-            setUploadProgress(0);
-            setUploadStatusMessage('');
+            resetUploadProgress();
             throw new Error("Failed to process media file");
           }
         }
@@ -511,6 +523,8 @@ export function CreatePostDialog({
         }
       } catch (error) {
         console.error("Post creation error:", error);
+        // Reset upload progress on any mutation error
+        resetUploadProgress();
         throw error;
       }
     },
@@ -542,8 +556,7 @@ export function CreatePostDialog({
       setSelectedMediaType(null);
       setSelectedExistingVideo(null);
       setPostScope("my_team");
-      setUploadProgress(0);
-      setUploadStatusMessage('');
+      resetUploadProgress();
 
       // Clear any file inputs
       if (videoInputRef.current) {
@@ -602,8 +615,7 @@ export function CreatePostDialog({
         queryClient.setQueryData(["/api/posts", "team-posts"], context.previousPosts);
       }
       // Reset upload progress state so user can retry
-      setUploadProgress(0);
-      setUploadStatusMessage('');
+      resetUploadProgress();
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
@@ -646,6 +658,7 @@ export function CreatePostDialog({
         setSelectedMediaType(null);
         setSelectedExistingVideo(null);
         setPostScope("my_team");
+        resetUploadProgress();
       }
     }}>
       <DialogTrigger asChild>
@@ -754,6 +767,7 @@ export function CreatePostDialog({
                         setSelectedMediaType(null);
                         setImagePreview(null);
                         setVideoThumbnail(null);
+                        resetUploadProgress();
                       }}
                     >
                       <FormControl>
@@ -992,6 +1006,7 @@ export function CreatePostDialog({
                                 // Generate a thumbnail for the video
                                 console.log("Starting thumbnail generation for video:", file.name, file.type);
                                 setVideoThumbnail(null); // Reset thumbnail state
+                                resetUploadProgress(); // Reset any previous upload progress
                                 
                                 try {
                                   const thumbnailUrl = await generateVideoThumbnail(file);
@@ -1208,6 +1223,7 @@ export function CreatePostDialog({
                               setImagePreview(null);
                               setVideoThumbnail(null);
                               field.onChange(null);
+                              resetUploadProgress();
                               // Reset media type for miscellaneous posts
                               if (form.watch("type") === "miscellaneous") {
                                 setSelectedMediaType(null);

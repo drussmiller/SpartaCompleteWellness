@@ -322,7 +322,8 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                     }
                   },
                   finalizePayload: { postType: 'message' },
-                }).then((result) => {
+                })
+                .then((result) => {
                   // Only apply result if this upload is still the current one
                   // This prevents stale uploads from overwriting new file selections
                   if (uploadVersionRef.current === currentUploadVersion) {
@@ -341,11 +342,11 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                   } else {
                     console.log('Ignoring stale chunked upload result (version mismatch)');
                   }
-                }).catch((error) => {
+                })
+                .catch((error) => {
                   // Only handle error if this upload is still the current one
                   if (uploadVersionRef.current === currentUploadVersion) {
                     console.error('Chunked upload failed:', error);
-                    setIsChunkedUploading(false);
                     setChunkedUploadResult(null);
                     setChunkedUploadProgress(0);
                     setChunkedUploadStatus('uploading');
@@ -359,6 +360,12 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                     });
                   } else {
                     console.log('Ignoring stale chunked upload error (version mismatch)');
+                  }
+                })
+                .finally(() => {
+                  // Always reset isChunkedUploading flag to allow retry
+                  if (uploadVersionRef.current === currentUploadVersion) {
+                    setIsChunkedUploading(false);
                   }
                 });
               } else {
