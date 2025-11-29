@@ -43,6 +43,15 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const [chunkedUploadStatusMessage, setChunkedUploadStatusMessage] = useState('');
   const [chunkedUploadResult, setChunkedUploadResult] = useState<ChunkedUploadInfo | null>(null);
   
+  // Centralized reset helper for chunked upload state
+  const resetChunkedUploadState = () => {
+    setChunkedUploadProgress(0);
+    setChunkedUploadStatus('uploading');
+    setChunkedUploadStatusMessage('');
+    setChunkedUploadResult(null);
+    setIsChunkedUploading(false);
+  };
+  
   // Version token to prevent stale chunked upload promises from overwriting current selection
   const uploadVersionRef = useRef<number>(0);
   
@@ -347,10 +356,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                   // Only handle error if this upload is still the current one
                   if (uploadVersionRef.current === currentUploadVersion) {
                     console.error('Chunked upload failed:', error);
-                    setChunkedUploadResult(null);
-                    setChunkedUploadProgress(0);
-                    setChunkedUploadStatus('uploading');
-                    setChunkedUploadStatusMessage('');
+                    resetChunkedUploadState();
                     setPastedImage(null);
                     setIsVideo(false);
                     toast({
@@ -373,9 +379,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                 // Increment version to invalidate any in-flight chunked uploads
                 uploadVersionRef.current += 1;
                 // Clear any previous chunked upload result when selecting a new small file
-                setChunkedUploadResult(null);
-                setChunkedUploadProgress(0);
-                setIsChunkedUploading(false);
+                resetChunkedUploadState();
                 
                 // Create video element for thumbnail generation
                 const video = document.createElement('video');
