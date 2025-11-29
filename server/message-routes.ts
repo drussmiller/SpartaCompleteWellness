@@ -565,6 +565,119 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
       return res.status(403).json({ message: "You can only delete your own messages" });
     }
 
+    // Delete associated media files if they exist
+    if (existingMessage.imageUrl) {
+      try {
+        const { Client } = await import("@replit/object-storage");
+        const client = new Client();
+        
+        // Handle HLS videos
+        if (existingMessage.imageUrl.includes('/api/hls/')) {
+          console.log(`[MESSAGE HLS DELETE] Starting HLS deletion for imageUrl: ${existingMessage.imageUrl}`);
+          
+          // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
+          const match = existingMessage.imageUrl.match(/\/api\/hls\/([^\/]+)\//);
+          console.log(`[MESSAGE HLS DELETE] Regex match result: ${match ? match[1] : 'NO MATCH'}`);
+          
+          if (match && match[1]) {
+            const baseFilename = match[1];
+            
+            // Delete all files in the HLS directory
+            const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+            console.log(`[MESSAGE HLS DELETE] Using prefix: ${hlsPrefix}`);
+            
+            try {
+              // List all files with the HLS prefix
+              console.log(`[MESSAGE HLS DELETE] Calling client.list() with prefix...`);
+              const listResult = await client.list({ prefix: hlsPrefix });
+              console.log(`[MESSAGE HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
+              
+              // Extract the file array from the result
+              const files = listResult.value || [];
+              console.log(`[MESSAGE HLS DELETE] Found ${files.length} files to delete`);
+              
+              // Delete all files in the HLS directory
+              let deletedCount = 0;
+              for (const fileItem of files) {
+                const fileKey = fileItem.name;
+                console.log(`[MESSAGE HLS DELETE] Attempting to delete: ${fileKey}`);
+                try {
+                  await client.delete(fileKey);
+                  deletedCount++;
+                  console.log(`[MESSAGE HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                } catch (deleteError) {
+                  console.error(`[MESSAGE HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                }
+              }
+              
+              console.log(`[MESSAGE HLS DELETE] Deletion complete: ${deletedCount}/${files.length} files deleted`);
+            } catch (hlsError) {
+              console.error(`[MESSAGE HLS DELETE] Error during HLS cleanup:`, hlsError);
+              // Continue with message deletion even if HLS cleanup fails
+            }
+          } else {
+            console.log(`[MESSAGE HLS DELETE] Could not extract baseFilename from URL: ${existingMessage.imageUrl}`);
+          }
+        }
+        // Handle regular media files
+        else {
+          // Extract storage key from media URL
+          let storageKey = null;
+          
+          // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
+          const objectStorageMatch = existingMessage.imageUrl.match(/storageKey=([^&]+)/);
+          if (objectStorageMatch && objectStorageMatch[1]) {
+            storageKey = decodeURIComponent(objectStorageMatch[1]);
+          }
+          
+          // Format: /api/serve-file?filename=shared/uploads/filename.ext
+          const serveFileMatch = existingMessage.imageUrl.match(/filename=([^&]+)/);
+          if (serveFileMatch && serveFileMatch[1]) {
+            storageKey = decodeURIComponent(serveFileMatch[1]);
+          }
+          
+          if (storageKey) {
+            logger.info(`[MESSAGE DELETE] Deleting media file: ${storageKey}`);
+            try {
+              await client.delete(storageKey);
+              logger.info(`[MESSAGE DELETE] Successfully deleted media file for message ${messageId}`);
+            } catch (mediaError) {
+              logger.error(`[MESSAGE DELETE] Error deleting media file:`, mediaError);
+            }
+          }
+        }
+      } catch (error) {
+        logger.error(`[MESSAGE DELETE] Error cleaning up media files:`, error);
+      }
+    }
+
+    // Delete associated poster/thumbnail if it exists
+    if (existingMessage.posterUrl) {
+      try {
+        const { Client } = await import("@replit/object-storage");
+        const client = new Client();
+        
+        let posterStorageKey = null;
+        
+        const serveFileMatch = existingMessage.posterUrl.match(/filename=([^&]+)/);
+        if (serveFileMatch && serveFileMatch[1]) {
+          posterStorageKey = decodeURIComponent(serveFileMatch[1]);
+        }
+        
+        if (posterStorageKey) {
+          logger.info(`[MESSAGE DELETE] Deleting poster: ${posterStorageKey}`);
+          try {
+            await client.delete(posterStorageKey);
+            logger.info(`[MESSAGE DELETE] Successfully deleted poster for message ${messageId}`);
+          } catch (posterError) {
+            logger.error(`[MESSAGE DELETE] Error deleting poster:`, posterError);
+          }
+        }
+      } catch (error) {
+        logger.error(`[MESSAGE DELETE] Error cleaning up poster:`, error);
+      }
+    }
+
     // Delete the message
     await db
       .delete(messages)
