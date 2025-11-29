@@ -636,14 +636,33 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
             storageKey = decodeURIComponent(serveFileMatch[1]);
           }
           
+          // Handle plain storage key paths (e.g., "shared/uploads/filename.ext")
+          if (!storageKey && existingMessage.imageUrl.startsWith('shared/uploads/')) {
+            storageKey = existingMessage.imageUrl;
+          }
+          
           if (storageKey) {
-            logger.info(`[MESSAGE DELETE] Deleting media file: ${storageKey}`);
+            console.log(`[MESSAGE DELETE] Deleting media file: ${storageKey}`);
             try {
               await client.delete(storageKey);
-              logger.info(`[MESSAGE DELETE] Successfully deleted media file for message ${messageId}`);
+              console.log(`[MESSAGE DELETE] ✅ Successfully deleted media file for message ${messageId}`);
+              
+              // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
+              if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
+                const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
+                console.log(`[MESSAGE DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
+                try {
+                  await client.delete(thumbnailKey);
+                  console.log(`[MESSAGE DELETE] ✅ Successfully deleted video thumbnail`);
+                } catch (thumbError) {
+                  console.log(`[MESSAGE DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
+                }
+              }
             } catch (mediaError) {
-              logger.error(`[MESSAGE DELETE] Error deleting media file:`, mediaError);
+              console.error(`[MESSAGE DELETE] ❌ Error deleting media file:`, mediaError);
             }
+          } else {
+            console.log(`[MESSAGE DELETE] Could not extract storage key from imageUrl: ${existingMessage.imageUrl}`);
           }
         }
       } catch (error) {

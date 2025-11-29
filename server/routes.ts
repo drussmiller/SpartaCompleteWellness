@@ -1017,14 +1017,33 @@ export const registerRoutes = async (
               storageKey = decodeURIComponent(serveFileMatch[1]);
             }
             
+            // Handle plain storage key paths (e.g., "shared/uploads/filename.ext")
+            if (!storageKey && comment.mediaUrl.startsWith('shared/uploads/')) {
+              storageKey = comment.mediaUrl;
+            }
+            
             if (storageKey) {
-              logger.info(`[COMMENT DELETE] Deleting media file: ${storageKey}`);
+              console.log(`[COMMENT DELETE] Deleting media file: ${storageKey}`);
               try {
                 await client.delete(storageKey);
-                logger.info(`[COMMENT DELETE] Successfully deleted media file for comment ${commentId}`);
+                console.log(`[COMMENT DELETE] ✅ Successfully deleted media file for comment ${commentId}`);
+                
+                // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
+                if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
+                  const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
+                  console.log(`[COMMENT DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
+                  try {
+                    await client.delete(thumbnailKey);
+                    console.log(`[COMMENT DELETE] ✅ Successfully deleted video thumbnail`);
+                  } catch (thumbError) {
+                    console.log(`[COMMENT DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
+                  }
+                }
               } catch (mediaError) {
-                logger.error(`[COMMENT DELETE] Error deleting media file:`, mediaError);
+                console.error(`[COMMENT DELETE] ❌ Error deleting media file:`, mediaError);
               }
+            } else {
+              console.log(`[COMMENT DELETE] Could not extract storage key from mediaUrl: ${comment.mediaUrl}`);
             }
           }
         } catch (error) {
@@ -2659,8 +2678,7 @@ export const registerRoutes = async (
             }
           } 
           // Handle regular media files (images and non-HLS videos)
-          else if (post.mediaUrl.includes('/api/object-storage/direct-download?storageKey=') || 
-                   post.mediaUrl.includes('/api/serve-file?filename=')) {
+          else {
             // Extract the storage key from the URL
             let storageKey = null;
             
@@ -2676,15 +2694,34 @@ export const registerRoutes = async (
               storageKey = decodeURIComponent(serveFileMatch[1]);
             }
             
+            // Handle plain storage key paths (e.g., "shared/uploads/filename.ext")
+            if (!storageKey && post.mediaUrl.startsWith('shared/uploads/')) {
+              storageKey = post.mediaUrl;
+            }
+            
             if (storageKey) {
-              logger.info(`[POST DELETE] Deleting media file: ${storageKey}`);
+              console.log(`[POST DELETE] Deleting media file: ${storageKey}`);
               try {
                 await client.delete(storageKey);
-                logger.info(`[POST DELETE] Successfully deleted media file for post ${postId}`);
+                console.log(`[POST DELETE] ✅ Successfully deleted media file for post ${postId}`);
+                
+                // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
+                if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
+                  const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
+                  console.log(`[POST DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
+                  try {
+                    await client.delete(thumbnailKey);
+                    console.log(`[POST DELETE] ✅ Successfully deleted video thumbnail`);
+                  } catch (thumbError) {
+                    console.log(`[POST DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
+                  }
+                }
               } catch (mediaError) {
-                logger.error(`[POST DELETE] Error deleting media file:`, mediaError);
+                console.error(`[POST DELETE] ❌ Error deleting media file:`, mediaError);
                 // Continue with post deletion even if media cleanup fails
               }
+            } else {
+              console.log(`[POST DELETE] Could not extract storage key from mediaUrl: ${post.mediaUrl}`);
             }
           }
         } catch (error) {
