@@ -297,7 +297,12 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             <div className="flex flex-col items-center">
               <Loader2 className="h-5 w-5 animate-spin" />
               {videoUpload.state.isUploading && videoUpload.state.uploadProgress > 0 && (
-                <span className="text-[10px] text-muted-foreground">{videoUpload.state.uploadProgress}%</span>
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] text-muted-foreground">{Math.round(videoUpload.state.uploadProgress)}%</span>
+                  {videoUpload.state.uploadStatusMessage && (
+                    <span className="text-[9px] text-muted-foreground/80">{videoUpload.state.uploadStatusMessage}</span>
+                  )}
+                </div>
               )}
             </div>
           ) : (

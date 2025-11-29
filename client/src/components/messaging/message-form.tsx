@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Image, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { shouldUseChunkedUpload, uploadFileInChunks, type ChunkedUploadResult } from "@/lib/chunked-upload";
+import { shouldUseChunkedUpload, uploadFileInChunks, type ChunkedUploadResult, type UploadStatus } from "@/lib/chunked-upload";
 
 export interface ChunkedUploadInfo {
   mediaUrl: string;
@@ -39,6 +39,8 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const [isVideo, setIsVideo] = useState<boolean>(false); // Add state to track if the current file is a video
   const [isChunkedUploading, setIsChunkedUploading] = useState(false);
   const [chunkedUploadProgress, setChunkedUploadProgress] = useState(0);
+  const [chunkedUploadStatus, setChunkedUploadStatus] = useState<UploadStatus>('uploading');
+  const [chunkedUploadStatusMessage, setChunkedUploadStatusMessage] = useState('');
   const [chunkedUploadResult, setChunkedUploadResult] = useState<ChunkedUploadInfo | null>(null);
   
   // Version token to prevent stale chunked upload promises from overwriting current selection
@@ -311,10 +313,12 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                 });
 
                 uploadFileInChunks(file, {
-                  onProgress: (progress) => {
+                  onProgress: (info) => {
                     // Only update progress if this upload is still the current one
                     if (uploadVersionRef.current === currentUploadVersion) {
-                      setChunkedUploadProgress(progress);
+                      setChunkedUploadProgress(info.progress);
+                      setChunkedUploadStatus(info.status);
+                      setChunkedUploadStatusMessage(info.statusMessage);
                     }
                   },
                   finalizePayload: { postType: 'message' },
@@ -451,6 +455,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             <div className="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center">
               <Loader2 className="h-6 w-6 text-white animate-spin mb-1" />
               <span className="text-white text-xs font-medium">{Math.round(chunkedUploadProgress)}%</span>
+              {chunkedUploadStatusMessage && (
+                <span className="text-white/80 text-[10px] mt-1">{chunkedUploadStatusMessage}</span>
+              )}
             </div>
           )}
           <Button
