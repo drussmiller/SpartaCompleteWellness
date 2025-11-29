@@ -926,7 +926,7 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid comment ID" });
       }
 
-      // Get the comment first to check ownership
+      // Get the comment first to check ownership and media
       const [comment] = await db
         .select()
         .from(posts)
@@ -944,6 +944,68 @@ export const registerRoutes = async (
       // Check if user is authorized to delete this comment
       if (comment.userId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to delete this comment" });
+      }
+
+      // Delete associated media files if they exist
+      if (comment.mediaUrl) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          // Extract storage key from media URL
+          let storageKey = null;
+          
+          // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
+          const objectStorageMatch = comment.mediaUrl.match(/storageKey=([^&]+)/);
+          if (objectStorageMatch && objectStorageMatch[1]) {
+            storageKey = decodeURIComponent(objectStorageMatch[1]);
+          }
+          
+          // Format: /api/serve-file?filename=shared/uploads/filename.ext
+          const serveFileMatch = comment.mediaUrl.match(/filename=([^&]+)/);
+          if (serveFileMatch && serveFileMatch[1]) {
+            storageKey = decodeURIComponent(serveFileMatch[1]);
+          }
+          
+          if (storageKey) {
+            logger.info(`[COMMENT DELETE] Deleting media file: ${storageKey}`);
+            try {
+              await client.delete(storageKey);
+              logger.info(`[COMMENT DELETE] Successfully deleted media file for comment ${commentId}`);
+            } catch (mediaError) {
+              logger.error(`[COMMENT DELETE] Error deleting media file:`, mediaError);
+            }
+          }
+        } catch (error) {
+          logger.error(`[COMMENT DELETE] Error cleaning up media files:`, error);
+        }
+      }
+
+      // Delete associated thumbnail if it exists
+      if (comment.thumbnailUrl) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          let thumbnailStorageKey = null;
+          
+          const serveFileMatch = comment.thumbnailUrl.match(/filename=([^&]+)/);
+          if (serveFileMatch && serveFileMatch[1]) {
+            thumbnailStorageKey = decodeURIComponent(serveFileMatch[1]);
+          }
+          
+          if (thumbnailStorageKey) {
+            logger.info(`[COMMENT DELETE] Deleting thumbnail: ${thumbnailStorageKey}`);
+            try {
+              await client.delete(thumbnailStorageKey);
+              logger.info(`[COMMENT DELETE] Successfully deleted thumbnail for comment ${commentId}`);
+            } catch (thumbError) {
+              logger.error(`[COMMENT DELETE] Error deleting thumbnail:`, thumbError);
+            }
+          }
+        } catch (error) {
+          logger.error(`[COMMENT DELETE] Error cleaning up thumbnail:`, error);
+        }
       }
 
       // Delete the comment
@@ -2486,55 +2548,87 @@ export const registerRoutes = async (
         return res.status(403).json({ message: "Not authorized to delete this post" });
       }
 
-      // Delete associated HLS files if this is an HLS video
-      if (post.mediaUrl && post.mediaUrl.includes('/api/hls/')) {
+      // Delete associated media files
+      if (post.mediaUrl) {
         try {
-          // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
-          const match = post.mediaUrl.match(/\/api\/hls\/([^\/]+)\//);
-          if (match && match[1]) {
-            const baseFilename = match[1];
-            const { spartaObjectStorage } = await import("./sparta-object-storage-final");
-            const { Client } = await import("@replit/object-storage");
-            const client = new Client();
-            
-            // Delete all files in the HLS directory
-            const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
-            logger.info(`[POST DELETE] Deleting HLS files with prefix: ${hlsPrefix}`);
-            
-            try {
-              // List and delete all files with this prefix
-              const filesToDelete: string[] = [];
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          // Handle HLS videos
+          if (post.mediaUrl.includes('/api/hls/')) {
+            // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
+            const match = post.mediaUrl.match(/\/api\/hls\/([^\/]+)\//);
+            if (match && match[1]) {
+              const baseFilename = match[1];
               
-              // Try to delete common HLS files (playlist + segments)
-              const potentialFiles = [
-                `${hlsPrefix}${baseFilename}.m3u8`,
-                `${hlsPrefix}playlist.m3u8`, // Alternative naming
-              ];
+              // Delete all files in the HLS directory
+              const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+              logger.info(`[POST DELETE] Deleting HLS files with prefix: ${hlsPrefix}`);
               
-              // Add potential segment files (0-99)
-              for (let i = 0; i < 100; i++) {
-                potentialFiles.push(`${hlsPrefix}${baseFilename}-${i}.ts`);
-              }
-              
-              // Attempt to delete each file
-              for (const file of potentialFiles) {
-                try {
-                  await client.delete(file);
-                  filesToDelete.push(file);
-                } catch (e) {
-                  // File doesn't exist, ignore
+              try {
+                // List and delete all files with this prefix
+                const filesToDelete: string[] = [];
+                
+                // Try to delete common HLS files (playlist + segments)
+                const potentialFiles = [
+                  `${hlsPrefix}${baseFilename}.m3u8`,
+                  `${hlsPrefix}playlist.m3u8`, // Alternative naming
+                ];
+                
+                // Add potential segment files (0-99)
+                for (let i = 0; i < 100; i++) {
+                  potentialFiles.push(`${hlsPrefix}${baseFilename}-${i}.ts`);
                 }
+                
+                // Attempt to delete each file
+                for (const file of potentialFiles) {
+                  try {
+                    await client.delete(file);
+                    filesToDelete.push(file);
+                  } catch (e) {
+                    // File doesn't exist, ignore
+                  }
+                }
+                
+                logger.info(`[POST DELETE] Deleted ${filesToDelete.length} HLS files for post ${postId}`);
+              } catch (hlsError) {
+                logger.error(`[POST DELETE] Error deleting HLS files:`, hlsError);
+                // Continue with post deletion even if HLS cleanup fails
               }
-              
-              logger.info(`[POST DELETE] Deleted ${filesToDelete.length} HLS files for post ${postId}`);
-            } catch (hlsError) {
-              logger.error(`[POST DELETE] Error deleting HLS files:`, hlsError);
-              // Continue with post deletion even if HLS cleanup fails
+            }
+          } 
+          // Handle regular media files (images and non-HLS videos)
+          else if (post.mediaUrl.includes('/api/object-storage/direct-download?storageKey=') || 
+                   post.mediaUrl.includes('/api/serve-file?filename=')) {
+            // Extract the storage key from the URL
+            let storageKey = null;
+            
+            // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
+            const objectStorageMatch = post.mediaUrl.match(/storageKey=([^&]+)/);
+            if (objectStorageMatch && objectStorageMatch[1]) {
+              storageKey = decodeURIComponent(objectStorageMatch[1]);
+            }
+            
+            // Format: /api/serve-file?filename=shared/uploads/filename.ext
+            const serveFileMatch = post.mediaUrl.match(/filename=([^&]+)/);
+            if (serveFileMatch && serveFileMatch[1]) {
+              storageKey = decodeURIComponent(serveFileMatch[1]);
+            }
+            
+            if (storageKey) {
+              logger.info(`[POST DELETE] Deleting media file: ${storageKey}`);
+              try {
+                await client.delete(storageKey);
+                logger.info(`[POST DELETE] Successfully deleted media file for post ${postId}`);
+              } catch (mediaError) {
+                logger.error(`[POST DELETE] Error deleting media file:`, mediaError);
+                // Continue with post deletion even if media cleanup fails
+              }
             }
           }
         } catch (error) {
-          logger.error(`[POST DELETE] Error cleaning up HLS files:`, error);
-          // Continue with post deletion even if HLS cleanup fails
+          logger.error(`[POST DELETE] Error cleaning up media files:`, error);
+          // Continue with post deletion even if media cleanup fails
         }
       }
 
@@ -2545,14 +2639,25 @@ export const registerRoutes = async (
           const client = new Client();
           
           // Extract the storage path from the thumbnail URL
-          // Thumbnail URLs are like "/api/thumbnails/shared/uploads/thumbnails/filename.jpg"
+          let thumbnailStorageKey = null;
+          
+          // Format: /api/thumbnails/shared/uploads/thumbnails/filename.jpg
           const thumbnailMatch = post.thumbnailUrl.match(/\/api\/thumbnails\/(.+)/);
           if (thumbnailMatch && thumbnailMatch[1]) {
-            const thumbnailPath = thumbnailMatch[1];
-            logger.info(`[POST DELETE] Deleting thumbnail: ${thumbnailPath}`);
+            thumbnailStorageKey = thumbnailMatch[1];
+          }
+          
+          // Format: /api/serve-file?filename=shared/uploads/filename.jpg
+          const serveFileMatch = post.thumbnailUrl.match(/filename=([^&]+)/);
+          if (serveFileMatch && serveFileMatch[1]) {
+            thumbnailStorageKey = decodeURIComponent(serveFileMatch[1]);
+          }
+          
+          if (thumbnailStorageKey) {
+            logger.info(`[POST DELETE] Deleting thumbnail: ${thumbnailStorageKey}`);
             
             try {
-              await client.delete(thumbnailPath);
+              await client.delete(thumbnailStorageKey);
               logger.info(`[POST DELETE] Successfully deleted thumbnail for post ${postId}`);
             } catch (thumbError) {
               logger.error(`[POST DELETE] Error deleting thumbnail:`, thumbError);
