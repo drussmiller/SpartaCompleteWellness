@@ -53,6 +53,8 @@ export function CreatePostDialog({
   const [selectedMediaType, setSelectedMediaType] = useState<"image" | "video" | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [postScope, setPostScope] = useState<"everyone" | "organization" | "group" | "team" | "my_team">("my_team");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusMessage, setUploadStatusMessage] = useState('');
 
   // Fetch organizations for admin users
   const { data: organizations = [] } = useQuery({
@@ -298,6 +300,8 @@ export function CreatePostDialog({
                 chunkedUploadResult = await uploadFileInChunks(videoFile, {
                   onProgress: (info) => {
                     console.log(`Upload progress: ${info.progress}% - ${info.statusMessage}`);
+                    setUploadProgress(info.progress);
+                    setUploadStatusMessage(info.statusMessage);
                   },
                   finalizePayload: {
                     postType: data.type === 'introductory_video' ? 'introductory_video' : 
@@ -374,6 +378,9 @@ export function CreatePostDialog({
             }
           } catch (error) {
             console.error("Error processing media:", error);
+            // Reset upload progress on media processing error
+            setUploadProgress(0);
+            setUploadStatusMessage('');
             throw new Error("Failed to process media file");
           }
         }
@@ -535,6 +542,8 @@ export function CreatePostDialog({
       setSelectedMediaType(null);
       setSelectedExistingVideo(null);
       setPostScope("my_team");
+      setUploadProgress(0);
+      setUploadStatusMessage('');
 
       // Clear any file inputs
       if (videoInputRef.current) {
@@ -592,6 +601,9 @@ export function CreatePostDialog({
       if (context?.previousPosts) {
         queryClient.setQueryData(["/api/posts", "team-posts"], context.previousPosts);
       }
+      // Reset upload progress state so user can retry
+      setUploadProgress(0);
+      setUploadStatusMessage('');
       console.error("Create post mutation error:", error);
       toast({
         title: "Error Creating Post",
@@ -1238,12 +1250,22 @@ export function CreatePostDialog({
                 form="create-post-form"
                 variant="default"
                 className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
-                disabled={createPostMutation.isPending || (form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
+                disabled={createPostMutation.isPending || uploadProgress > 0 || (form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
               >
-                {createPostMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {(createPostMutation.isPending || uploadProgress > 0) && (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {uploadProgress > 0 && (
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs">{Math.round(uploadProgress)}%</span>
+                        {uploadStatusMessage && uploadStatusMessage.trim() && (
+                          <span className="text-[10px] opacity-90">{uploadStatusMessage}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
-                Post
+                {!createPostMutation.isPending && uploadProgress === 0 && "Post"}
               </Button>
             </div>
           </form>

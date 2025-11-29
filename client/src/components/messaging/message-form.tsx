@@ -347,6 +347,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                     console.error('Chunked upload failed:', error);
                     setIsChunkedUploading(false);
                     setChunkedUploadResult(null);
+                    setChunkedUploadProgress(0);
+                    setChunkedUploadStatus('uploading');
+                    setChunkedUploadStatusMessage('');
                     setPastedImage(null);
                     setIsVideo(false);
                     toast({
@@ -455,7 +458,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             <div className="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center">
               <Loader2 className="h-6 w-6 text-white animate-spin mb-1" />
               <span className="text-white text-xs font-medium">{Math.round(chunkedUploadProgress)}%</span>
-              {chunkedUploadStatusMessage && (
+              {chunkedUploadStatusMessage && chunkedUploadStatusMessage.trim() && (
                 <span className="text-white/80 text-[10px] mt-1">{chunkedUploadStatusMessage}</span>
               )}
             </div>
