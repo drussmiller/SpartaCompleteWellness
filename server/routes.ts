@@ -952,28 +952,79 @@ export const registerRoutes = async (
           const { Client } = await import("@replit/object-storage");
           const client = new Client();
           
-          // Extract storage key from media URL
-          let storageKey = null;
-          
-          // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
-          const objectStorageMatch = comment.mediaUrl.match(/storageKey=([^&]+)/);
-          if (objectStorageMatch && objectStorageMatch[1]) {
-            storageKey = decodeURIComponent(objectStorageMatch[1]);
+          // Handle HLS videos
+          if (comment.mediaUrl.includes('/api/hls/')) {
+            console.log(`[COMMENT HLS DELETE] Starting HLS deletion for mediaUrl: ${comment.mediaUrl}`);
+            
+            // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
+            const match = comment.mediaUrl.match(/\/api\/hls\/([^\/]+)\//);
+            console.log(`[COMMENT HLS DELETE] Regex match result: ${match ? match[1] : 'NO MATCH'}`);
+            
+            if (match && match[1]) {
+              const baseFilename = match[1];
+              
+              // Delete all files in the HLS directory
+              const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+              console.log(`[COMMENT HLS DELETE] Using prefix: ${hlsPrefix}`);
+              
+              try {
+                // List all files with the HLS prefix
+                console.log(`[COMMENT HLS DELETE] Calling client.list() with prefix...`);
+                const listResult = await client.list({ prefix: hlsPrefix });
+                console.log(`[COMMENT HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
+                
+                // Extract the file array from the result
+                const files = listResult.value || [];
+                console.log(`[COMMENT HLS DELETE] Found ${files.length} files to delete`);
+                
+                // Delete all files in the HLS directory
+                let deletedCount = 0;
+                for (const fileItem of files) {
+                  const fileKey = fileItem.name;
+                  console.log(`[COMMENT HLS DELETE] Attempting to delete: ${fileKey}`);
+                  try {
+                    await client.delete(fileKey);
+                    deletedCount++;
+                    console.log(`[COMMENT HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                  } catch (deleteError) {
+                    console.error(`[COMMENT HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                  }
+                }
+                
+                console.log(`[COMMENT HLS DELETE] Deletion complete: ${deletedCount}/${files.length} files deleted`);
+              } catch (hlsError) {
+                console.error(`[COMMENT HLS DELETE] Error during HLS cleanup:`, hlsError);
+                // Continue with comment deletion even if HLS cleanup fails
+              }
+            } else {
+              console.log(`[COMMENT HLS DELETE] Could not extract baseFilename from URL: ${comment.mediaUrl}`);
+            }
           }
-          
-          // Format: /api/serve-file?filename=shared/uploads/filename.ext
-          const serveFileMatch = comment.mediaUrl.match(/filename=([^&]+)/);
-          if (serveFileMatch && serveFileMatch[1]) {
-            storageKey = decodeURIComponent(serveFileMatch[1]);
-          }
-          
-          if (storageKey) {
-            logger.info(`[COMMENT DELETE] Deleting media file: ${storageKey}`);
-            try {
-              await client.delete(storageKey);
-              logger.info(`[COMMENT DELETE] Successfully deleted media file for comment ${commentId}`);
-            } catch (mediaError) {
-              logger.error(`[COMMENT DELETE] Error deleting media file:`, mediaError);
+          // Handle regular media files
+          else {
+            // Extract storage key from media URL
+            let storageKey = null;
+            
+            // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
+            const objectStorageMatch = comment.mediaUrl.match(/storageKey=([^&]+)/);
+            if (objectStorageMatch && objectStorageMatch[1]) {
+              storageKey = decodeURIComponent(objectStorageMatch[1]);
+            }
+            
+            // Format: /api/serve-file?filename=shared/uploads/filename.ext
+            const serveFileMatch = comment.mediaUrl.match(/filename=([^&]+)/);
+            if (serveFileMatch && serveFileMatch[1]) {
+              storageKey = decodeURIComponent(serveFileMatch[1]);
+            }
+            
+            if (storageKey) {
+              logger.info(`[COMMENT DELETE] Deleting media file: ${storageKey}`);
+              try {
+                await client.delete(storageKey);
+                logger.info(`[COMMENT DELETE] Successfully deleted media file for comment ${commentId}`);
+              } catch (mediaError) {
+                logger.error(`[COMMENT DELETE] Error deleting media file:`, mediaError);
+              }
             }
           }
         } catch (error) {
