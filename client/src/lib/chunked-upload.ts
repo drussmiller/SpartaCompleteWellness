@@ -12,10 +12,18 @@ export interface ChunkedUploadResult {
   isVideo: boolean;
 }
 
+export type UploadStatus = 'uploading' | 'processing' | 'complete';
+
+export interface UploadProgressInfo {
+  progress: number;
+  status: UploadStatus;
+  statusMessage: string;
+}
+
 export interface ChunkedUploadOptions {
   chunkSize?: number;
   sizeThreshold?: number;
-  onProgress?: (progress: number) => void;
+  onProgress?: (info: UploadProgressInfo) => void;
   onChunkComplete?: (chunkIndex: number, totalChunks: number) => void;
   onAbort?: () => void;
   maxRetries?: number;
@@ -164,20 +172,36 @@ export async function uploadFileInChunks(
       
       const { progress } = await chunkResponse.json();
       
+      // Cap upload progress at 90% to reserve 90-100% for processing
+      const cappedProgress = Math.min(90, progress);
+      
       if (onProgress) {
-        onProgress(progress);
+        onProgress({
+          progress: cappedProgress,
+          status: 'uploading',
+          statusMessage: `Uploading... ${chunkIndex + 1}/${totalChunks} chunks`
+        });
       }
       
       if (onChunkComplete) {
         onChunkComplete(chunkIndex, totalChunks);
       }
       
-      console.log(`[Chunked Upload] Chunk ${chunkIndex + 1}/${totalChunks} complete - ${progress}%`);
+      console.log(`[Chunked Upload] Chunk ${chunkIndex + 1}/${totalChunks} complete - ${cappedProgress}%`);
     }
     
     // Step 3: Finalize upload
     checkAbort();
-    console.log('[Chunked Upload] All chunks uploaded, finalizing...');
+    console.log('[Chunked Upload] All chunks uploaded, processing video...');
+    
+    // Show processing state
+    if (onProgress) {
+      onProgress({
+        progress: 90,
+        status: 'processing',
+        statusMessage: 'Processing video...'
+      });
+    }
     
     const finalizeResponse = await retryWithBackoff(
       async () => {
@@ -203,6 +227,15 @@ export async function uploadFileInChunks(
     
     const result = await finalizeResponse.json();
     console.log('[Chunked Upload] Upload complete!', result);
+    
+    // Show completion
+    if (onProgress) {
+      onProgress({
+        progress: 100,
+        status: 'complete',
+        statusMessage: 'Complete!'
+      });
+    }
     
     return result;
   } catch (error) {

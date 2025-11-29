@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { shouldUseChunkedUpload, uploadFileInChunks } from '@/lib/chunked-upload';
+import { shouldUseChunkedUpload, uploadFileInChunks, UploadStatus } from '@/lib/chunked-upload';
 
 export interface VideoUploadResult {
   mediaUrl: string;
@@ -14,6 +14,8 @@ export interface VideoUploadState {
   thumbnail: string | null;
   isUploading: boolean;
   uploadProgress: number;
+  uploadStatus: UploadStatus;
+  uploadStatusMessage: string;
   uploadResult: VideoUploadResult | null;
   error: string | null;
 }
@@ -41,6 +43,8 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}) {
     thumbnail: null,
     isUploading: false,
     uploadProgress: 0,
+    uploadStatus: 'uploading',
+    uploadStatusMessage: '',
     uploadResult: null,
     error: null,
   });
@@ -155,9 +159,14 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}) {
         console.log(`File ${state.file.size} bytes exceeds threshold, using chunked upload`);
         
         const result = await uploadFileInChunks(state.file, {
-          onProgress: (progress) => {
-            setState(prev => ({ ...prev, uploadProgress: progress }));
-            if (onProgress) onProgress(progress);
+          onProgress: (info) => {
+            setState(prev => ({ 
+              ...prev, 
+              uploadProgress: info.progress,
+              uploadStatus: info.status,
+              uploadStatusMessage: info.statusMessage
+            }));
+            if (onProgress) onProgress(info.progress);
           },
           finalizePayload: {
             postType: postType
@@ -212,6 +221,8 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}) {
       thumbnail: null,
       isUploading: false,
       uploadProgress: 0,
+      uploadStatus: 'uploading',
+      uploadStatusMessage: '',
       uploadResult: null,
       error: null,
     });
