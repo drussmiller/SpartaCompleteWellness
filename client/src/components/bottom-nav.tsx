@@ -25,7 +25,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
 
   // Android-specific: Always add bottom padding to keep buttons in safe zone
   // Using calc() ensures padding is always present, even immediately after wake/resume
-  const androidPadding = 'calc(env(safe-area-inset-bottom, 0px) + 40px)';
+  const androidPadding = 'calc(env(safe-area-inset-bottom, 0px) + 28px)';
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
