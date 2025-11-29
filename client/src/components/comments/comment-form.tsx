@@ -149,8 +149,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     >
       {(selectedFile || videoUpload.state.file) && (
         <div className="mb-2">
-          <div className="relative inline-flex items-start gap-2">
-            <div className="relative">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               {selectedFile?.type.startsWith('image/') ? (
                 <img 
                   src={URL.createObjectURL(selectedFile)} 
@@ -169,11 +169,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
                 </span>
               )}
               {videoUpload.state.isUploading && (
-                <div className="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center">
-                  <Loader2 className="h-6 w-6 text-white animate-spin mb-1" />
-                  <span className="text-white text-xs font-medium">{Math.round(videoUpload.state.uploadProgress)}%</span>
+                <div className="flex flex-col items-center gap-1">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-xs font-medium">{Math.round(videoUpload.state.uploadProgress)}%</span>
                   {videoUpload.state.uploadStatusMessage && videoUpload.state.uploadStatusMessage.trim() && (
-                    <span className="text-white/80 text-[10px] mt-1">{videoUpload.state.uploadStatusMessage}</span>
+                    <span className="text-[10px] text-muted-foreground text-center max-w-[100px]">{videoUpload.state.uploadStatusMessage}</span>
                   )}
                 </div>
               )}

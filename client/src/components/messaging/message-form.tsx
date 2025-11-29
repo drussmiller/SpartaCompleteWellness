@@ -169,6 +169,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
         return;
       }
 
+      // Use a local variable to capture chunked upload result
+      let uploadResult = chunkedUploadResult;
+
       // If there's a pending large video, upload it now before submitting
       if (pendingLargeVideo && !chunkedUploadResult) {
         console.log('Starting chunked upload for pending large video on send:', pendingLargeVideo.name);
@@ -192,12 +195,15 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
           });
 
           if (uploadVersionRef.current === currentUploadVersion) {
-            setChunkedUploadResult({
+            // Capture result in local variable immediately
+            uploadResult = {
               mediaUrl: result.mediaUrl,
               thumbnailUrl: result.thumbnailUrl,
               filename: result.filename,
               isVideo: result.isVideo,
-            });
+            };
+            // Also update state for UI
+            setChunkedUploadResult(uploadResult);
             setIsChunkedUploading(false);
             setPendingLargeVideo(null);
           }
@@ -219,8 +225,8 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       const isVideoBySelectedFile = selectedFile?.type.startsWith('video/') || false;
       // Check for video file in the global window object (set earlier when capturing video preview)
       const hasStoredVideoFile = !!(window as any)._SPARTA_ORIGINAL_VIDEO_FILE;
-      // Check for chunked upload result
-      const hasChunkedUpload = !!chunkedUploadResult;
+      // Check for chunked upload result (use local variable!)
+      const hasChunkedUpload = !!uploadResult;
 
       // Pass the appropriate isVideo flag
       const finalIsVideo = isVideo || isVideoBySelectedFile || hasStoredVideoFile || hasChunkedUpload;
@@ -234,11 +240,11 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       console.log("Submitting message with isVideo:", finalIsVideo, 
                  "hasStoredVideo:", hasStoredVideoFile,
                  "hasChunkedUpload:", hasChunkedUpload,
-                 "chunkedUploadResult:", chunkedUploadResult,
+                 "chunkedUploadResult:", uploadResult,
                  "originalVideoSize:", (window as any)._SPARTA_ORIGINAL_VIDEO_FILE?.size || 'N/A');
 
-      // Pass chunked upload result if available
-      await onSubmit(content, pastedImage, finalIsVideo, chunkedUploadResult || undefined);
+      // Pass chunked upload result if available (use local variable!)
+      await onSubmit(content, pastedImage, finalIsVideo, uploadResult || undefined);
 
       // Reset state
       setContent('');
@@ -320,9 +326,6 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               if (shouldUseChunkedUpload(file)) {
                 console.log('Large video detected, will upload on send:', file.name, file.size);
                 
-                // Store the file for later upload when user clicks send
-                setPendingLargeVideo(file);
-                
                 // Increment version to invalidate any previous in-flight uploads
                 uploadVersionRef.current += 1;
                 
@@ -332,6 +335,9 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
                   (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
                 }
                 resetChunkedUploadState();
+                
+                // Store the file for later upload when user clicks send (AFTER reset)
+                setPendingLargeVideo(file);
                 
                 // Generate thumbnail for preview (don't upload yet)
                 const video = document.createElement('video');
