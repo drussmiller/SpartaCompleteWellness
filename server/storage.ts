@@ -370,77 +370,12 @@ export const storage = {
     try {
       logger.info(`Starting deletion of post ${id}`);
       
-      // First, get the post to check if it has media that needs to be deleted
-      const postToDelete = await db
-        .select({
-          id: posts.id,
-          mediaUrl: posts.mediaUrl,
-          is_video: posts.is_video
-        })
-        .from(posts)
-        .where(eq(posts.id, id))
-        .limit(1);
-      
-      logger.debug(`Post data for deletion:`, postToDelete[0]);
+      // NOTE: Media file cleanup is now handled in routes.ts BEFORE calling this function
+      // This ensures proper handling of HLS videos, thumbnails, and regular media files
       
       // Delete the post record from the database
       await db.delete(posts).where(eq(posts.id, id));
-      logger.info(`Deleted post ${id} from database`);
-      
-      // If the post had media, delete the media files from Object Storage
-      if (postToDelete.length > 0 && postToDelete[0].mediaUrl) {
-        const mediaUrl = postToDelete[0].mediaUrl;
-        const isVideo = postToDelete[0].is_video;
-        
-        logger.info(`Deleting media files for post ${id}, mediaUrl: ${mediaUrl}, isVideo: ${isVideo}`);
-        
-        try {
-          // Import the SpartaObjectStorage utility
-          const { spartaStorage } = await import('./sparta-object-storage');
-          
-          // Extract clean filename from mediaUrl
-          let filename = '';
-          if (mediaUrl.includes('filename=')) {
-            // Handle serve-file URLs like /api/serve-file?filename=...
-            const urlParams = new URLSearchParams(mediaUrl.split('?')[1]);
-            filename = urlParams.get('filename') || '';
-          } else {
-            // Handle direct paths
-            filename = mediaUrl.split('/').pop() || '';
-          }
-          
-          logger.debug(`Extracted filename: ${filename}`);
-          
-          if (filename) {
-            // Build the actual Object Storage path
-            const filePath = `shared/uploads/${filename}`;
-            
-            // Delete the main media file
-            try {
-              await spartaStorage.deleteFile(filePath);
-              logger.info(`Deleted main media file: ${filePath}`);
-            } catch (err) {
-              logger.warn(`Could not delete main media file ${filePath}: ${err}`);
-            }
-            
-            // Delete the thumbnail only for videos (images don't have thumbnails)
-            if (isVideo) {
-              const baseName = filename.substring(0, filename.lastIndexOf('.'));
-              const thumbnailPath = `shared/uploads/${baseName}.jpg`;
-              
-              try {
-                await spartaStorage.deleteFile(thumbnailPath);
-                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete video thumbnail ${thumbnailPath}: ${err}`);
-              }
-            }
-          }
-        } catch (mediaError) {
-          // Log but don't throw - we want to continue even if media deletion fails
-          logger.error(`Error deleting media for post ${id}: ${mediaError}`);
-        }
-      }
+      logger.info(`Deleted post ${id} from database`)
       
       logger.info(`Successfully completed deletion of post ${id}`);
     } catch (error) {
