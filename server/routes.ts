@@ -2512,6 +2512,7 @@ export const registerRoutes = async (
   // Delete a post
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
+      console.log(`\n========== DELETE POST REQUEST ==========`);
       res.set({
         "Cache-Control": "no-store",
         Pragma: "no-cache",
@@ -2524,6 +2525,7 @@ export const registerRoutes = async (
       }
 
       const postId = parseInt(req.params.id);
+      console.log(`[DELETE] Post ID: ${postId}`);
       if (isNaN(postId)) {
         return res.status(400).json({ message: "Invalid post ID" });
       }
@@ -2540,6 +2542,8 @@ export const registerRoutes = async (
         .where(eq(posts.id, postId))
         .limit(1);
 
+      console.log(`[DELETE] Post data:`, JSON.stringify(post, null, 2));
+
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
@@ -2549,6 +2553,7 @@ export const registerRoutes = async (
       }
 
       // Delete associated media files
+      console.log(`[DELETE] Checking media URL: ${post.mediaUrl}`);
       if (post.mediaUrl) {
         try {
           const { Client } = await import("@replit/object-storage");
