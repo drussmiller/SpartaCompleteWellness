@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent, useMemo } from "react";
+import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Image, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { shouldUseChunkedUpload, uploadFileInChunks, type ChunkedUploadResult, type UploadStatus } from "@/lib/chunked-upload";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 export interface ChunkedUploadInfo {
   mediaUrl: string;
@@ -61,16 +60,6 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  
-  // Detect Android device
-  const isAndroid = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.includes('android');
-  }, []);
-  
-  // Detect keyboard visibility
-  const keyboardHeight = useKeyboardAdjustment();
 
   // This function handles setting up refs for the textarea
   const setRefs = (element: HTMLTextAreaElement | null) => {
@@ -542,7 +531,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            className={`resize-none bg-gray-100 rounded-md pt-2 px-4 border border-gray-300 ${isAndroid && keyboardHeight === 0 ? 'pb-[12px]' : 'pb-2'}`}
+            className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
             rows={1}
             style={{ height: 'auto', minHeight: '38px', maxHeight: '200px' }}
             id="message-textarea"

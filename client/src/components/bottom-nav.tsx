@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -15,17 +15,22 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  
+  // State to track if we've woken from sleep/switched apps (needs more padding)
+  const [hasWoken, setHasWoken] = useState(false);
 
-  // Detect Android device - apply constant padding for Android to keep buttons in safe zone
+  // Detect Android device - apply padding for Android to keep buttons in safe zone
   const isAndroid = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const userAgent = navigator.userAgent.toLowerCase();
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Always add bottom padding to keep buttons in safe zone
-  // Using calc() ensures padding is always present, even immediately after wake/resume
-  const androidPadding = 'calc(env(safe-area-inset-bottom, 0px) + 28px)';
+  // Android-specific: Add bottom padding to keep buttons in safe zone
+  // Initial load needs no extra padding, wake/switch needs 40px
+  const androidPadding = hasWoken 
+    ? 'max(env(safe-area-inset-bottom), 40px)'
+    : 'max(env(safe-area-inset-bottom), 0px)';
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
@@ -49,20 +54,25 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     enabled: !!user
   });
 
-  // Refresh notification count when page becomes visible or window gains focus
+  // Refresh notification count and force re-render when page becomes visible or window gains focus
+  // This ensures Android padding is properly applied after waking from sleep/screen saver
   useEffect(() => {
     if (!user) return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Bottom nav: Page became visible, refreshing notifications');
+        console.log('Bottom nav: Page became visible, applying wake padding');
         refetchNotificationCount();
+        // Apply wake padding (32px)
+        setHasWoken(true);
       }
     };
 
     const handleFocus = () => {
-      console.log('Bottom nav: Window gained focus, refreshing notifications');
+      console.log('Bottom nav: Window gained focus, applying wake padding');
       refetchNotificationCount();
+      // Apply wake padding (32px)
+      setHasWoken(true);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);

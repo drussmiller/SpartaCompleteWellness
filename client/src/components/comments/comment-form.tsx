@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent, useMemo } from "react";
+import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useVideoUpload, VideoUploadResult } from "@/hooks/use-video-upload";
-import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 interface CommentFormProps {
   onSubmit: (content: string, file?: File, chunkedUploadData?: VideoUploadResult) => Promise<void>; 
@@ -44,16 +43,6 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const textareaRef = inputRef || internalRef;
-  
-  // Detect Android device
-  const isAndroid = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.includes('android');
-  }, []);
-  
-  // Detect keyboard visibility
-  const keyboardHeight = useKeyboardAdjustment();
 
   const setRefs = (element: HTMLTextAreaElement | null) => {
     (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element;
@@ -291,7 +280,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             readOnly={false}
             disabled={false}
             tabIndex={0}
-            className={`resize-none bg-gray-100 rounded-md pt-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all ${isAndroid && keyboardHeight === 0 ? 'pb-[12px]' : 'pb-2'}`}
+            className="resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all"
             rows={1}
             style={{ 
               height: '38px', 
