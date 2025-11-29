@@ -42,6 +42,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const [chunkedUploadStatus, setChunkedUploadStatus] = useState<UploadStatus>('uploading');
   const [chunkedUploadStatusMessage, setChunkedUploadStatusMessage] = useState('');
   const [chunkedUploadResult, setChunkedUploadResult] = useState<ChunkedUploadInfo | null>(null);
+  const [pendingLargeVideo, setPendingLargeVideo] = useState<File | null>(null); // Store large video file for deferred upload
   
   // Centralized reset helper for chunked upload state
   const resetChunkedUploadState = () => {
@@ -50,6 +51,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     setChunkedUploadStatusMessage('');
     setChunkedUploadResult(null);
     setIsChunkedUploading(false);
+    setPendingLargeVideo(null);
   };
   
   // Version token to prevent stale chunked upload promises from overwriting current selection
@@ -167,6 +169,52 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
         return;
       }
 
+      // If there's a pending large video, upload it now before submitting
+      if (pendingLargeVideo && !chunkedUploadResult) {
+        console.log('Starting chunked upload for pending large video on send:', pendingLargeVideo.name);
+        
+        uploadVersionRef.current += 1;
+        const currentUploadVersion = uploadVersionRef.current;
+        
+        setIsChunkedUploading(true);
+        setChunkedUploadProgress(0);
+
+        try {
+          const result = await uploadFileInChunks(pendingLargeVideo, {
+            onProgress: (info) => {
+              if (uploadVersionRef.current === currentUploadVersion) {
+                setChunkedUploadProgress(info.progress);
+                setChunkedUploadStatus(info.status);
+                setChunkedUploadStatusMessage(info.statusMessage);
+              }
+            },
+            finalizePayload: { postType: 'message' },
+          });
+
+          if (uploadVersionRef.current === currentUploadVersion) {
+            setChunkedUploadResult({
+              mediaUrl: result.mediaUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              filename: result.filename,
+              isVideo: result.isVideo,
+            });
+            setIsChunkedUploading(false);
+            setPendingLargeVideo(null);
+          }
+        } catch (error) {
+          console.error('Chunked upload failed during submit:', error);
+          resetChunkedUploadState();
+          setPastedImage(null);
+          setIsVideo(false);
+          toast({
+            title: "Upload failed",
+            description: "Failed to upload video. Please try again.",
+            variant: "destructive",
+          });
+          return; // Don't proceed with message submission
+        }
+      }
+
       // Determine if this is a video file
       const isVideoBySelectedFile = selectedFile?.type.startsWith('video/') || false;
       // Check for video file in the global window object (set earlier when capturing video preview)
@@ -270,9 +318,22 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 
               // Check if this is a large video that needs chunked upload
               if (shouldUseChunkedUpload(file)) {
-                console.log('Large video detected, using chunked upload:', file.name, file.size);
+                console.log('Large video detected, will upload on send:', file.name, file.size);
                 
-                // Generate thumbnail first for preview
+                // Store the file for later upload when user clicks send
+                setPendingLargeVideo(file);
+                
+                // Increment version to invalidate any previous in-flight uploads
+                uploadVersionRef.current += 1;
+                
+                // Clear any previous stored video file and chunked upload results
+                if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
+                  console.log('Clearing stored video file for large video');
+                  (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
+                }
+                resetChunkedUploadState();
+                
+                // Generate thumbnail for preview (don't upload yet)
                 const video = document.createElement('video');
                 video.src = url;
                 video.preload = 'metadata';
@@ -302,77 +363,10 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 
                 video.load();
 
-                // Start chunked upload immediately for large videos
-                // Increment version to invalidate any previous in-flight uploads
-                uploadVersionRef.current += 1;
-                const currentUploadVersion = uploadVersionRef.current;
-                
-                // Clear any previous stored video file since chunked upload doesn't use it
-                if ((window as any)._SPARTA_ORIGINAL_VIDEO_FILE) {
-                  console.log('Clearing stored video file for chunked upload');
-                  (window as any)._SPARTA_ORIGINAL_VIDEO_FILE = null;
-                }
-                
-                setIsChunkedUploading(true);
-                setChunkedUploadProgress(0);
-
+                // Show info toast that video will be uploaded on send
                 toast({
-                  description: `Uploading large video (${(file.size / (1024 * 1024)).toFixed(1)}MB)...`,
+                  description: `Video selected (${(file.size / (1024 * 1024)).toFixed(1)}MB). Will upload when you send.`,
                   duration: 3000,
-                });
-
-                uploadFileInChunks(file, {
-                  onProgress: (info) => {
-                    // Only update progress if this upload is still the current one
-                    if (uploadVersionRef.current === currentUploadVersion) {
-                      setChunkedUploadProgress(info.progress);
-                      setChunkedUploadStatus(info.status);
-                      setChunkedUploadStatusMessage(info.statusMessage);
-                    }
-                  },
-                  finalizePayload: { postType: 'message' },
-                })
-                .then((result) => {
-                  // Only apply result if this upload is still the current one
-                  // This prevents stale uploads from overwriting new file selections
-                  if (uploadVersionRef.current === currentUploadVersion) {
-                    console.log('Chunked upload complete for message video:', result);
-                    setChunkedUploadResult({
-                      mediaUrl: result.mediaUrl,
-                      thumbnailUrl: result.thumbnailUrl,
-                      filename: result.filename,
-                      isVideo: result.isVideo,
-                    });
-                    setIsChunkedUploading(false);
-                    toast({
-                      description: "Video ready to send!",
-                      duration: 2000,
-                    });
-                  } else {
-                    console.log('Ignoring stale chunked upload result (version mismatch)');
-                  }
-                })
-                .catch((error) => {
-                  // Only handle error if this upload is still the current one
-                  if (uploadVersionRef.current === currentUploadVersion) {
-                    console.error('Chunked upload failed:', error);
-                    resetChunkedUploadState();
-                    setPastedImage(null);
-                    setIsVideo(false);
-                    toast({
-                      title: "Upload failed",
-                      description: "Failed to upload video. Please try again.",
-                      variant: "destructive",
-                    });
-                  } else {
-                    console.log('Ignoring stale chunked upload error (version mismatch)');
-                  }
-                })
-                .finally(() => {
-                  // Always reset isChunkedUploading flag to allow retry
-                  if (uploadVersionRef.current === currentUploadVersion) {
-                    setIsChunkedUploading(false);
-                  }
                 });
               } else {
                 // For smaller videos, use the original approach
