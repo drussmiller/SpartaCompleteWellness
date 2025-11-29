@@ -223,7 +223,7 @@ export default function PrayerRequestsPage() {
         {/* Main content layout */}
         <div className="w-full">
           <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : 'w-full'}`}>
-            <main className="p-4 pt-32">
+            <main className="p-4 pt-32 pb-24">
               {prayerRequests?.length === 0 && (
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
