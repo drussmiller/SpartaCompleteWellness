@@ -375,7 +375,7 @@ export const storage = {
       
       // Delete the post record from the database
       await db.delete(posts).where(eq(posts.id, id));
-      logger.info(`Deleted post ${id} from database`)
+      logger.info(`Deleted post ${id} from database`);
       
       logger.info(`Successfully completed deletion of post ${id}`);
     } catch (error) {

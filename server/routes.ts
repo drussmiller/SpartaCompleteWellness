@@ -2556,37 +2556,46 @@ export const registerRoutes = async (
           
           // Handle HLS videos
           if (post.mediaUrl.includes('/api/hls/')) {
+            logger.info(`[POST DELETE HLS] Starting HLS deletion for mediaUrl: ${post.mediaUrl}`);
+            
             // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
             const match = post.mediaUrl.match(/\/api\/hls\/([^\/]+)\//);
+            logger.info(`[POST DELETE HLS] Regex match result: ${match ? match[1] : 'NO MATCH'}`);
+            
             if (match && match[1]) {
               const baseFilename = match[1];
               
               // Delete all files in the HLS directory
               const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
-              logger.info(`[POST DELETE] Deleting HLS files with prefix: ${hlsPrefix}`);
+              logger.info(`[POST DELETE HLS] Using prefix: ${hlsPrefix}`);
               
               try {
                 // List all files with the HLS prefix
+                logger.info(`[POST DELETE HLS] Calling client.list() with prefix...`);
                 const listResult = await client.list({ prefix: hlsPrefix });
-                logger.info(`[POST DELETE] Found ${listResult.length} HLS files to delete`);
+                logger.info(`[POST DELETE HLS] List returned ${listResult.length} files`);
+                logger.info(`[POST DELETE HLS] Files found:`, JSON.stringify(listResult, null, 2));
                 
                 // Delete all files in the HLS directory
                 let deletedCount = 0;
                 for (const fileKey of listResult) {
+                  logger.info(`[POST DELETE HLS] Attempting to delete: ${fileKey}`);
                   try {
                     await client.delete(fileKey);
                     deletedCount++;
-                    logger.info(`[POST DELETE] Deleted HLS file: ${fileKey}`);
+                    logger.info(`[POST DELETE HLS] ✅ Successfully deleted: ${fileKey}`);
                   } catch (deleteError) {
-                    logger.error(`[POST DELETE] Error deleting HLS file ${fileKey}:`, deleteError);
+                    logger.error(`[POST DELETE HLS] ❌ Error deleting ${fileKey}:`, deleteError);
                   }
                 }
                 
-                logger.info(`[POST DELETE] Successfully deleted ${deletedCount}/${listResult.length} HLS files for post ${postId}`);
+                logger.info(`[POST DELETE HLS] Deletion complete: ${deletedCount}/${listResult.length} files deleted`);
               } catch (hlsError) {
-                logger.error(`[POST DELETE] Error deleting HLS files:`, hlsError);
+                logger.error(`[POST DELETE HLS] Error during HLS cleanup:`, hlsError);
                 // Continue with post deletion even if HLS cleanup fails
               }
+            } else {
+              logger.warn(`[POST DELETE HLS] Could not extract baseFilename from URL: ${post.mediaUrl}`);
             }
           } 
           // Handle regular media files (images and non-HLS videos)
