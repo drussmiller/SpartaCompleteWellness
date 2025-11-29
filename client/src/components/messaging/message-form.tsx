@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
+import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent, useMemo } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Image, X } from "lucide-react";
@@ -60,6 +60,13 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   // This function handles setting up refs for the textarea
   const setRefs = (element: HTMLTextAreaElement | null) => {
@@ -531,7 +538,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300"
+            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300 ${isAndroid ? 'pb-[12px]' : ''}`}
             rows={1}
             style={{ height: 'auto', minHeight: '38px', maxHeight: '200px' }}
             id="message-textarea"
