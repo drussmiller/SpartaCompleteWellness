@@ -150,23 +150,34 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       {(selectedFile || videoUpload.state.file) && (
         <div className="mb-2">
           <div className="relative inline-flex items-start gap-2">
-            {selectedFile?.type.startsWith('image/') ? (
-              <img 
-                src={URL.createObjectURL(selectedFile)} 
-                alt="Selected image" 
-                className="max-h-24 max-w-full rounded-lg object-cover"
-              />
-            ) : (videoUpload.state.file || selectedFile?.type.startsWith('video/')) ? (
-              <img 
-                src={videoUpload.state.thumbnail || ''} 
-                alt="Video Thumbnail" 
-                className="max-h-24 max-w-full rounded-lg object-cover"
-              />
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                {selectedFile?.name}
-              </span>
-            )}
+            <div className="relative">
+              {selectedFile?.type.startsWith('image/') ? (
+                <img 
+                  src={URL.createObjectURL(selectedFile)} 
+                  alt="Selected image" 
+                  className="max-h-24 max-w-full rounded-lg object-cover"
+                />
+              ) : (videoUpload.state.file || selectedFile?.type.startsWith('video/')) ? (
+                <img 
+                  src={videoUpload.state.thumbnail || ''} 
+                  alt="Video Thumbnail" 
+                  className="max-h-24 max-w-full rounded-lg object-cover"
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {selectedFile?.name}
+                </span>
+              )}
+              {videoUpload.state.isUploading && (
+                <div className="absolute inset-0 bg-black/50 rounded-lg flex flex-col items-center justify-center">
+                  <Loader2 className="h-6 w-6 text-white animate-spin mb-1" />
+                  <span className="text-white text-xs font-medium">{Math.round(videoUpload.state.uploadProgress)}%</span>
+                  {videoUpload.state.uploadStatusMessage && videoUpload.state.uploadStatusMessage.trim() && (
+                    <span className="text-white/80 text-[10px] mt-1">{videoUpload.state.uploadStatusMessage}</span>
+                  )}
+                </div>
+              )}
+            </div>
             <Button
               variant="destructive"
               size="icon"
@@ -297,17 +308,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           className="ml-2"
         >
           {isSubmitting || videoUpload.state.isUploading ? (
-            <div className="flex flex-col items-center gap-0.5">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              {videoUpload.state.isUploading && (
-                <>
-                  <span className="text-[10px] text-muted-foreground">{Math.round(videoUpload.state.uploadProgress)}%</span>
-                  {videoUpload.state.uploadStatusMessage && videoUpload.state.uploadStatusMessage.trim() && (
-                    <span className="text-[9px] text-muted-foreground/80 max-w-[60px] text-center leading-tight">{videoUpload.state.uploadStatusMessage}</span>
-                  )}
-                </>
-              )}
-            </div>
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-primary">
               <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
