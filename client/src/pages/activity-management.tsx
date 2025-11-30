@@ -536,7 +536,7 @@ export default function ActivityManagementPage() {
                               });
 
                               if (!updateRes.ok) {
-                                const errorData = await res.json();
+                                const errorData = await updateRes.json();
                                 throw new Error(errorData.message || `Failed to update Bible verse for absolute day ${absoluteDay}`);
                               }
 
@@ -556,7 +556,7 @@ export default function ActivityManagementPage() {
 
                               const activityRes = await apiRequest("POST", "/api/activities", activityData);
                               if (!activityRes.ok) {
-                                const errorData = await res.json();
+                                const errorData = await activityRes.json();
                                 throw new Error(errorData.message || `Failed to save Bible verse activity for absolute day ${absoluteDay}`);
                               }
 
@@ -644,7 +644,7 @@ export default function ActivityManagementPage() {
                           const uploadRes = await apiRequest("POST", "/api/activities/upload-doc", formData);
 
                           if (!uploadRes.ok) {
-                            const errorData = await res.json();
+                            const errorData = await uploadRes.json();
                             throw new Error(errorData.message || `Failed to upload ${file.name}`);
                           }
 
@@ -715,7 +715,7 @@ export default function ActivityManagementPage() {
                           // Create or update the activity
                           const activityRes = await apiRequest("POST", "/api/activities", activityData);
                           if (!activityRes.ok) {
-                            const errorData = await res.json();
+                            const errorData = await activityRes.json();
                             throw new Error(errorData.message || `Failed to save activity for ${file.name} Week ${weekNum}`);
                           }
 
