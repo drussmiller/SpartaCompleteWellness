@@ -1859,7 +1859,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <SelectTrigger>
                                         <SelectValue placeholder="Select organization" />
                                       </SelectTrigger>
-                                      <SelectContent className="z-[9999]">
+                                      <SelectContent>
                                         {sortedOrganizations?.map((org) => (
                                           <SelectItem
                                             key={org.id}
@@ -2428,7 +2428,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         <SelectTrigger>
                                           <SelectValue placeholder="Select a group" />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999]">
+                                        <SelectContent>
                                           {!sortedGroups || sortedGroups.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-muted-foreground">
                                               No groups available
