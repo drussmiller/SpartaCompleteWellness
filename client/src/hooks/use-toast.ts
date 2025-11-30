@@ -6,7 +6,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -140,6 +140,19 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
+  // Check if confirmation messages are enabled
+  const confirmationMessagesEnabled = localStorage.getItem('confirmationMessagesEnabled');
+  
+  // If disabled and this is not an error/destructive toast, don't show it
+  if (confirmationMessagesEnabled === 'false' && props.variant !== 'destructive') {
+    // Still return a valid object but don't actually show the toast
+    return {
+      id: genId(),
+      dismiss: () => {},
+      update: () => {},
+    };
+  }
+  
   const id = genId()
 
   const update = (props: ToasterToast) =>

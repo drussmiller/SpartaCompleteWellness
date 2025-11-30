@@ -13,33 +13,20 @@ import path from "path";
 const execAsync = promisify(exec);
 
 const app = express();
+const server = createServer(app);
 
-// Define initial port and server vars
-let port: number = 5000;
+// Use environment PORT for deployment compatibility
+const port = parseInt(process.env.PORT || "5000", 10);
 
-// Declare scheduleDailyScoreCheck function
+// Declare scheduleDailyScoreCheck function and interval
 let scheduleDailyScoreCheck: () => void;
+let notificationCheckInterval: NodeJS.Timeout | null = null;
+let isCheckingNotifications = false;
 
-// Increase timeouts and add keep-alive
-const serverTimeout = 14400000; // 4 hours
+// Basic connection settings for deployment compatibility
 app.use((req, res, next) => {
-  // Set keep-alive header with increased timeout
+  // Set basic keep-alive header
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Keep-Alive', 'timeout=14400');
-
-  // Increase socket timeout and add connection handling
-  if (req.socket) {
-    req.socket.setKeepAlive(true, 60000); // Keep-alive probe every 60 seconds
-    req.socket.setTimeout(serverTimeout);
-    req.socket.setNoDelay(true); // Disable Nagle's algorithm
-  }
-
-  // Set generous timeouts
-  req.setTimeout(serverTimeout);
-
-  res.setTimeout(serverTimeout, () => {
-    res.status(408).send('Request timeout');
-  });
   next();
 });
 
@@ -49,7 +36,61 @@ app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 // Body parser middleware already defined above
 
-// Setup auth first (includes session middleware)
+// Add immediate health check endpoint before any heavy operations
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Verify database connection BEFORE setting up auth
+async function verifyDatabase() {
+  console.log("Verifying database connection...");
+  try {
+    // Test database connection
+    await db.execute(sql`SELECT 1`);
+    console.log("Database connection verified successfully.");
+    console.log("Note: Schema is managed by Drizzle Kit. Run 'npm run db:push' to sync schema changes.");
+  } catch (error) {
+    console.error("Error connecting to database:", error);
+    throw error;
+  }
+}
+
+// Bootstrap admin user if it doesn't exist
+async function bootstrapAdmin() {
+  try {
+    const { users } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const { hashPassword } = await import("./auth");
+    
+    const existingAdmin = await db.select().from(users).where(eq(users.username, 'admin')).limit(1);
+    
+    if (existingAdmin.length === 0) {
+      console.log("No admin user found. Creating default admin...");
+      const hashedPassword = await hashPassword('admin123');
+      await db.insert(users).values({
+        username: 'admin',
+        email: 'admin@example.com',
+        password: hashedPassword,
+        teamId: 1,
+        preferredName: 'Admin',
+        isAdmin: true,
+        status: 1,
+      });
+      console.log("Default admin user created (username: admin, password: admin123)");
+      console.log("IMPORTANT: Change the admin password immediately after first login!");
+    } else {
+      console.log("Admin user already exists.");
+    }
+  } catch (error) {
+    console.log("Admin bootstrap skipped (tables may not exist yet). Run 'npm run db:push' to create schema.");
+  }
+}
+
+// Wait for database verification before continuing
+await verifyDatabase();
+await bootstrapAdmin();
+
+// Setup auth after migrations complete (includes session middleware)
 setupAuth(app);
 
 // Add request logging middleware
@@ -65,9 +106,11 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    if (path.includes('/api/posts/comments/') || 
-        path.includes('/api/posts/counts') || 
-        req.path === '/api/posts') {
+    // Skip logging for noisy endpoints and HEAD requests
+    if (path.includes('/api/posts/comments/') ||
+        path.includes('/api/posts/counts') ||
+        req.path === '/api/posts' ||
+        req.method === 'HEAD') {
       return;
     }
 
@@ -86,11 +129,201 @@ app.use((req, res, next) => {
   next();
 });
 
-// Define the scheduleDailyScoreCheck function (disabled automatic scheduling to prevent server overload)
+// Define the scheduleDailyScoreCheck function with proper safeguards
 scheduleDailyScoreCheck = () => {
-  logger.info('Daily score check scheduling is disabled to prevent server overload');
-  logger.info('Use the admin panel or API endpoints to manually trigger daily score checks');
+  // Clear any existing interval
+  if (notificationCheckInterval) {
+    clearInterval(notificationCheckInterval);
+    notificationCheckInterval = null;
+  }
+
+  logger.info('Starting automated notification scheduling');
+  logger.info('Checking every hour to send once-daily reminders to users at their selected time');
+
+  // Function to check and send notifications
+  const checkNotifications = async () => {
+    // Prevent concurrent checks
+    if (isCheckingNotifications) {
+      logger.debug('Notification check already in progress, skipping');
+      return;
+    }
+
+    try {
+      isCheckingNotifications = true;
+      
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+
+      logger.info(`Running hourly notification check at ${currentHour}:${String(currentMinute).padStart(2, '0')}`);
+
+      // Make internal request to check-daily-scores endpoint
+      const response = await fetch(`http://localhost:${port}/api/check-daily-scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentHour,
+          currentMinute,
+        }),
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      });
+
+      if (!response.ok) {
+        logger.error(`Daily score check failed: ${response.status} ${response.statusText}`);
+      }
+
+    } catch (error) {
+      // Log errors but don't crash the server
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('Daily score check timed out after 30 seconds');
+      } else {
+        logger.error('Error in scheduled notification check:', error);
+      }
+    } finally {
+      isCheckingNotifications = false;
+    }
+  };
+
+  // Function to check for and send missed notifications on startup
+  const checkForMissedNotifications = async () => {
+    try {
+      logger.info('[CATCH-UP] Checking for missed notifications since last check...');
+      
+      // Get the last check time from database
+      const lastCheckRecord = await db
+        .select()
+        .from(await import('@shared/schema').then(m => m.systemState))
+        .where(sql`key = 'last_notification_check'`)
+        .limit(1);
+      
+      if (!lastCheckRecord || lastCheckRecord.length === 0) {
+        logger.info('[CATCH-UP] No previous check time found - this is first run');
+        return;
+      }
+      
+      const lastCheckTime = new Date(lastCheckRecord[0].value!);
+      const now = new Date();
+      const hoursSinceLastCheck = (now.getTime() - lastCheckTime.getTime()) / (1000 * 60 * 60);
+      
+      logger.info(`[CATCH-UP] Last check was at ${lastCheckTime.toISOString()}`);
+      logger.info(`[CATCH-UP] Time elapsed: ${hoursSinceLastCheck.toFixed(2)} hours`);
+      
+      // If less than 55 minutes, no catch-up needed
+      if (hoursSinceLastCheck < (55 / 60)) {
+        logger.info('[CATCH-UP] Less than 55 minutes since last check, no catch-up needed');
+        return;
+      }
+      
+      // Calculate which hourly windows were missed
+      const missedHours = [];
+      const lastCheckHour = new Date(lastCheckTime);
+      lastCheckHour.setMinutes(0, 0, 0);
+      lastCheckHour.setHours(lastCheckHour.getHours() + 1); // Start from next hour after last check
+      
+      const currentHour = new Date(now);
+      currentHour.setMinutes(0, 0, 0);
+      
+      let checkHour = new Date(lastCheckHour);
+      while (checkHour < currentHour) {
+        missedHours.push({
+          hour: checkHour.getUTCHours(),
+          minute: 0,
+          timestamp: new Date(checkHour)
+        });
+        checkHour = new Date(checkHour.getTime() + 3600000); // Add 1 hour
+      }
+      
+      if (missedHours.length === 0) {
+        logger.info('[CATCH-UP] No missed hourly windows found');
+        return;
+      }
+      
+      logger.info(`[CATCH-UP] Found ${missedHours.length} missed hourly windows`);
+      
+      // Send notifications for each missed hour
+      for (const missed of missedHours) {
+        try {
+          logger.info(`[CATCH-UP] Checking missed hour: ${missed.hour}:00 UTC`);
+          
+          const response = await fetch(`http://localhost:${port}/api/check-daily-scores`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              currentHour: missed.hour,
+              currentMinute: missed.minute,
+            }),
+            signal: AbortSignal.timeout(30000),
+          });
+          
+          if (!response.ok) {
+            logger.error(`[CATCH-UP] Failed to check missed hour ${missed.hour}:00`);
+          } else {
+            logger.info(`[CATCH-UP] Successfully processed missed hour ${missed.hour}:00`);
+          }
+          
+          // Small delay between checks to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          logger.error(`[CATCH-UP] Error processing missed hour ${missed.hour}:00:`, error);
+        }
+      }
+      
+      logger.info('[CATCH-UP] Finished processing missed notifications');
+    } catch (error) {
+      logger.error('[CATCH-UP] Error checking for missed notifications:', error);
+    }
+  };
+
+  // Check for missed notifications on startup (don't await - run in background)
+  checkForMissedNotifications().catch(err => {
+    logger.error('[CATCH-UP] Failed to check for missed notifications:', err);
+  });
+
+  // Calculate time until next hour (at :00 minutes)
+  const now = new Date();
+  const minutesUntilNextHour = 60 - now.getMinutes();
+  const secondsUntilNextHour = 60 - now.getSeconds();
+  const msUntilNextHour = (minutesUntilNextHour - 1) * 60000 + secondsUntilNextHour * 1000;
+  
+  logger.info(`Current time: ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`);
+  logger.info(`Scheduling first check in ${Math.round(msUntilNextHour / 1000)} seconds (at next :00 mark)`);
+  
+  // Run first check at the next hour
+  setTimeout(() => {
+    console.log(`[NOTIFICATION SCHEDULER] First hourly check at ${new Date().toISOString()}`);
+    checkNotifications();
+    
+    // Then run every hour on the hour
+    notificationCheckInterval = setInterval(() => {
+      console.log(`[NOTIFICATION SCHEDULER] Hourly check triggered at ${new Date().toISOString()}`);
+      checkNotifications();
+    }, 3600000);
+  }, msUntilNextHour);
+  
+  console.log('[NOTIFICATION SCHEDULER] Interval set successfully - will check every hour on the hour');
+  logger.info('Daily notification scheduler started successfully');
 };
+
+// Clean up interval on server shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, cleaning up notification scheduler');
+  if (notificationCheckInterval) {
+    clearInterval(notificationCheckInterval);
+    notificationCheckInterval = null;
+  }
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, cleaning up notification scheduler');
+  if (notificationCheckInterval) {
+    clearInterval(notificationCheckInterval);
+    notificationCheckInterval = null;
+  }
+});
 
 // Ensure API requests respond with JSON
 app.use('/api', (req, res, next) => {
@@ -98,246 +331,95 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Remove the placeholder route since the real endpoint is in routes.ts
-// We'll directly call the endpoint in routes.ts
-
-
-(async () => {
-  try {
-    console.log("[Startup] Beginning server initialization...");
-    console.log("[Debug] Environment variables:", {
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL: process.env.DATABASE_URL ? '***configured***' : 'missing',
-      REPLIT_OBJECT_STORAGE_TOKEN: process.env.REPLIT_OBJECT_STORAGE_TOKEN ? '***configured***' : 'missing',
-      ENABLE_CONSOLE_LOGGING: process.env.ENABLE_CONSOLE_LOGGING
-    });
-    const startTime = Date.now();
-
-    // Verify database connection
-    console.log("[Startup] Verifying database connection...");
+// Start server immediately for fast deployment detection
+console.log(`[Server Startup] Starting server on port ${port}...`);
+server.listen(port, "0.0.0.0", () => {
+  log(`[Server Startup] Server listening on port ${port}`);
+  console.log("[Startup] Server ready and accepting connections!");
+  
+  // Initialize all heavy operations after server is listening
+  setImmediate(async () => {
     try {
-      const testQuery = await db.execute(sql`SELECT 1`);
-      console.log("[Startup] Database connection verified", Date.now() - startTime, "ms");
-      console.log("[Debug] Database test query result:", testQuery);
-    } catch (error) {
-      console.error("[Startup] Database connection failed:", error);
-      throw error;
-    }
-
-    // Register API routes before Vite middleware
-    console.log("[Startup] Registering routes...");
-    const server = await registerRoutes(app);
-    console.log("[Startup] Routes registered", Date.now() - startTime, "ms");
-
-    // Global API error handler
-    app.use('/api', (err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('[API Error]:', err);
-      res.status(err.status || 500).json({
-        message: err.message || "Internal Server Error"
-      });
-    });
-
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('Express error handler:', err);
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
-    });
-
-
-    // Setup route for shared files from object storage
-    console.log("[Startup] Setting up shared files path handler for cross-environment compatibility");
-    app.use('/shared/uploads', async (req, res, next) => {
-      try {
-        const filePath = req.path;
-        console.log(`Processing shared file request: ${filePath}`);
-
-        // Import required modules
-        const { Client } = require('@replit/object-storage');
-        const fs = require('fs');
-
-        // Check if Replit Object Storage is available
-        if (!process.env.REPLIT_DB_ID) {
-          console.log(`Object Storage not available, redirecting to local path`);
-          return res.redirect(`/uploads${filePath}`);
-        }
-
-        // Initialize Object Storage client
-        const objectStorage = new Client();
-        console.log(`Object Storage client initialized`);
-
-        // Define all possible key formats to try
-        const keysToCheck = [
-          `shared/uploads${filePath}`,
-          `uploads${filePath}`,
-          `shared${filePath}`,
-          filePath.startsWith('/') ? filePath.substring(1) : filePath
-        ];
-
-        // Try to find the file with any of the keys
-        console.log(`Attempting to download file using the following keys: ${JSON.stringify(keysToCheck)}`);
-        let fileBuffer = null;
-        let usedKey = null;
-
-        // Try each key directly with downloadAsBytes without checking existence first
-        for (const key of keysToCheck) {
-          try {
-            console.log(`Trying to download ${key} directly...`);
-            const result = await objectStorage.downloadAsBytes(key);
-            console.log(`[serve-file] Object Storage result:`, {
-              type: typeof result,
-              hasOk: result && typeof result === 'object' && 'ok' in result,
-              hasValue: result && typeof result === 'object' && 'value' in result,
-              ok: result && typeof result === 'object' && 'ok' in result ? result.ok : undefined
-            });
-
-            // Handle the Object Storage response format
-            let fileBuffer: Buffer;
-
-            if (Buffer.isBuffer(result)) {
-              fileBuffer = result;
-            } else if (result && typeof result === 'object') {
-              // Handle the actual Replit Object Storage response format
-              // Check for 'value' property which contains the actual file data
-              if ('value' in result && result.value) {
-                if (Buffer.isBuffer(result.value)) {
-                  fileBuffer = result.value;
-                } else if (typeof result.value === 'string') {
-                  fileBuffer = Buffer.from(result.value, 'base64');
-                } else if (Array.isArray(result.value)) {
-                  // Handle array of bytes
-                  fileBuffer = Buffer.from(result.value);
-                } else {
-                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
-                  continue; // Try next key
-                }
-              } else if ('ok' in result && result.ok === true && result.value) {
-                // Legacy format check
-                if (Buffer.isBuffer(result.value)) {
-                  fileBuffer = result.value;
-                } else if (typeof result.value === 'string') {
-                  fileBuffer = Buffer.from(result.value, 'base64');
-                } else if (Array.isArray(result.value)) {
-                  fileBuffer = Buffer.from(result.value);
-                } else {
-                  console.error(`[serve-file] Unexpected value type from Object Storage for ${usedKey}:`, typeof result.value);
-                  continue; // Try next key
-                }
-              } else {
-                console.log(`[serve-file] File not found in Object Storage for ${usedKey}:`, result);
-                continue; // Try next key
-              }
-            } else {
-              console.error(`[serve-file] Invalid response format from Object Storage for ${usedKey}:`, typeof result);
-              continue; // Try next key
-            }
-
-            // If we found and downloaded a file, serve it
-            if (fileBuffer && fileBuffer.length > 0) {
-              // Determine content type based on file extension
-              const fileExtension = path.extname(filePath).toLowerCase();
-              let contentType = 'application/octet-stream'; // default
-
-              if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
-                contentType = 'image/jpeg';
-              } else if (fileExtension === '.png') {
-                contentType = 'image/png';
-              } else if (fileExtension === '.gif') {
-                contentType = 'image/gif';
-              } else if (fileExtension === '.mp4') {
-                contentType = 'video/mp4';
-              } else if (fileExtension === '.mov') {
-                contentType = 'video/quicktime';
-              } else if (fileExtension === '.svg') {
-                contentType = 'image/svg+xml';
-              } else if (fileExtension === '.webp') {
-                contentType = 'image/webp';
-              }
-
-              console.log(`SUCCESS: Serving file ${usedKey} from Object Storage (size: ${fileBuffer.length} bytes, type: ${contentType})`);
-
-              // Set headers and send the file
-              res.setHeader('Content-Type', contentType);
-              res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
-              return res.send(fileBuffer);
-            }
-          } catch (error) {
-            console.error(`[serve-file] FAILED to download ${key}:`, error.message);
-            console.error(`[serve-file] Error details:`, error);
-            // Continue to next key
-          }
-        }
-
-        // No longer check filesystem as requested - Object Storage only
-        // Return a proper 404 response
-        console.error(`[serve-file] FILE NOT FOUND: ${filePath} not found in Object Storage and no filesystem fallback as configured`);
-        console.error(`[serve-file] Attempted keys:`, keysToCheck);
-        return res.status(404).json({
-          success: false,
-          message: 'File not found in Object Storage',
-          path: filePath
+      console.log("[Post-Startup] Beginning initialization...");
+      
+      // Register API routes after server is listening
+      await registerRoutes(app);
+      
+      // Notification scheduling is handled by Replit Scheduled Deployment
+      // running scripts/check-notifications.ts every hour. This approach works
+      // reliably in production even when the main app scales down to zero.
+      // See: https://docs.replit.com/cloud-services/deployments/scheduled-deployments
+      
+      // Global API error handlers
+      app.use('/api', (err: any, _req: Request, res: Response, _next: NextFunction) => {
+        console.error('[API Error]:', err);
+        res.status(err.status || 500).json({
+          message: err.message || "Internal Server Error"
         });
+      });
 
-      } catch (error) {
-        console.error('Error serving shared file:', error);
-        next();
+      app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+        console.error('Express error handler:', err);
+        const status = err.status || err.statusCode || 500;
+        const message = err.message || "Internal Server Error";
+        res.status(status).json({ message });
+      });
+
+      // Setup static file serving based on environment
+      if (app.get("env") === "development") {
+        console.log("[Post-Startup] Setting up Vite...");
+        await setupVite(app, server);
+      } else {
+        serveStatic(app);
       }
-    });
+      
+      // Setup simplified shared files handler (lazy loaded)
+      app.use('/shared/uploads', async (req, res, next) => {
+        try {
+          const filename = path.basename(req.path.split('?')[0]);
+          const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+          
+          const isThumbnail = req.query.thumbnail === "true";
+          let storageKey = isThumbnail && !filename.includes("thumbnail") 
+            ? `shared/uploads/thumbnails/${filename}`
+            : `shared/uploads/${filename}`;
 
-    // Replace static file serving with an Object Storage middleware
-    // This ensures we never serve files from the filesystem directly
-    console.log("[Startup] Setting up Object Storage-only uploads handler");
-    app.use('/uploads', (req, res) => {
-      // Return 404 with JSON response and redirect to Object Storage
-      const filePath = req.path;
-      console.log(`[Object Storage Only] Redirecting filesystem request to Object Storage: ${filePath}`);
+          const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
+          
+          if (fileBuffer && fileBuffer.length > 0) {
+            const ext = path.extname(req.path).toLowerCase();
+            const contentTypes: Record<string, string> = {
+              '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+              '.gif': 'image/gif', '.mp4': 'video/mp4', '.mov': 'video/quicktime',
+              '.svg': 'image/svg+xml', '.webp': 'image/webp'
+            };
+            
+            res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.send(fileBuffer);
+          } else {
+            return res.status(404).json({ error: "File not found" });
+          }
+        } catch (error) {
+          console.error('Error serving shared file:', error);
+          next(error);
+        }
+      });
 
-      // Create the appropriate Object Storage URL
-      const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${filePath}`;
+      // Setup simplified uploads redirect
+      app.use('/uploads', (req, res) => {
+        const objectStorageUrl = `/api/object-storage/direct-download?key=uploads${req.path}`;
+        return res.redirect(302, objectStorageUrl);
+      });
 
-      // Send a 302 redirect to the Object Storage endpoint
-      return res.redirect(302, objectStorageUrl);
-    });
+      console.log("[Post-Startup] Initialization complete");
+      
+      // Notification scheduler is now handled by Replit Scheduled Deployment
+      // logger.info("[Post-Startup] Starting daily notification scheduler...");
+      // scheduleDailyScoreCheck();
 
-    // Setup Vite or static files AFTER API routes
-    if (app.get("env") === "development") {
-      console.log("[Startup] Setting up Vite...");
-      await setupVite(app, server);
-      console.log("[Startup] Vite setup complete", Date.now() - startTime, "ms");
-    } else {
-      serveStatic(app);
+    } catch (error) {
+      console.error("[Post-Startup] Initialization error (non-critical):", error);
     }
-
-    await runMigrations();
-
-    // Simple server startup on port 5000
-    port = 5000;
-    console.log(`[Server Startup] Starting server on port ${port}...`);
-    server.listen(port, "0.0.0.0", () => {
-      log(`[Server Startup] Server listening on port ${port}`);
-    });
-
-  } catch (error) {
-    console.error("[Server Fatal] Failed to start server:", error);
-    process.exit(1);
-  }
-})();
-
-async function runMigrations() {
-  console.log("Running database migrations...");
-  try {
-    const { runMigrations: executeMigrations } = await import("./db/migrations");
-    await executeMigrations();
-    console.log("Migrations complete.");
-  } catch (error) {
-    console.error("Error running migrations:", error);
-    throw error;
-  }
-}
-// API endpoint for user authentication
-app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-    res.json(req.user);
   });
+});

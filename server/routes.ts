@@ -8,6 +8,7 @@ import {
   eq,
   and,
   desc,
+  asc,
   sql,
   gte,
   lte,
@@ -31,6 +32,7 @@ import {
   reactions,
   achievementTypes,
   userAchievements,
+  workoutTypes,
   insertTeamSchema,
   insertGroupSchema,
   insertOrganizationSchema,
@@ -42,23 +44,36 @@ import {
   insertUserSchema,
   insertAchievementTypeSchema,
   insertUserAchievementSchema,
+  insertWorkoutTypeSchema,
   messages,
   insertMessageSchema,
+  systemState,
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
 import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
 import bcrypt from "bcryptjs";
+import sharp from "sharp";
+import { z } from "zod";
 import { requestLogger } from "./middleware/request-logger";
 import { errorHandler } from "./middleware/error-handler";
 import { logger } from "./logger";
 import { WebSocketServer, WebSocket } from "ws";
-import { objectStorageRouter } from "./object-storage-routes";
+import fs from "fs";
+import path from "path";
+// Object Storage routes removed - not needed
 import { messageRouter } from "./message-routes";
 import { userRoleRouter } from "./user-role-route";
+import { groupAdminRouter } from "./group-admin-routes";
+import { inviteCodeRouter } from "./invite-code-routes";
+import { emailVerificationRouter } from "./email-verification-routes";
+import { spartaStorage } from "./sparta-object-storage";
+import { spartaObjectStorage } from "./sparta-object-storage-final";
+import { smsService } from "./sms-service";
+import { uploadSessionManager } from "./upload-sessions";
 
-// Configure multer for memory storage (no local files)
+// Configure multer for memory storage (Object Storage only)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -81,6 +96,7 @@ const upload = multer({
 export const registerRoutes = async (
   app: express.Application,
 ): Promise<HttpServer> => {
+  console.log("=== REGISTER ROUTES CALLED ===");
   const router = express.Router();
 
   // Add request logging middleware
@@ -261,6 +277,32 @@ export const registerRoutes = async (
     }
   });
 
+  // Check if user has any posts (used for intro video requirement)
+  router.get("/api/posts/has-any-posts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userPosts = await db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            isNull(posts.parentId) // Don't count comment posts
+          )
+        )
+        .limit(1);
+
+      res.json({ hasAnyPosts: userPosts.length > 0 });
+    } catch (error) {
+      logger.error("Error checking user posts:", error);
+      res.status(500).json({
+        message: "Failed to check user posts",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add JSON content type header for all API routes
   router.use("/api", (req, res, next) => {
     res.setHeader("Content-Type", "application/json");
@@ -304,7 +346,7 @@ export const registerRoutes = async (
     // Count active WebSocket connections
     let totalConnections = 0;
     let activeUsers = 0;
-    const userConnectionCounts = [];
+    const userConnectionCounts: { userId: number; connections: number }[] = [];
 
     // Analyze the clients map
     clients.forEach((userClients, userId) => {
@@ -385,7 +427,14 @@ export const registerRoutes = async (
       }
 
       // Keep track of notifications sent
-      const notificationsSent = [];
+      type SentNotification = {
+        userId: number;
+        username: string;
+        notificationId: number;
+        preferredTime: string;
+        currentTime: string;
+      };
+      const notificationsSent: SentNotification[] = [];
 
       // Process in batches if needed for large user counts
       // Using Promise.all with a limited batch size prevents server overload
@@ -428,7 +477,19 @@ export const registerRoutes = async (
                   preferredMinute >= 50 &&
                   minute < (preferredMinute + 10) % 60);
 
-              if (isPreferredTimeWindow) {
+              // Only send if within time window, no notifications sent today, AND user is in a team
+              const existingNotifications = await db
+                .select()
+                .from(notifications)
+                .where(
+                  and(
+                    eq(notifications.userId, user.id),
+                    eq(notifications.type, "reminder"), // Check for reminder type
+                    gte(notifications.createdAt, new Date(new Date().setHours(0, 0, 0, 0))), // Check if sent today
+                  ),
+                );
+
+              if (isPreferredTimeWindow && existingNotifications.length === 0 && user.teamId) {
                 // Create a test notification with proper schema references
                 const notification = {
                   userId: user.id,
@@ -475,9 +536,17 @@ export const registerRoutes = async (
                   );
                 }
               } else {
-                logger.info(
-                  `User ${user.id}'s preferred time ${preferredHour}:${preferredMinute} doesn't match test time ${hour}:${minute}`,
-                );
+                if (!isPreferredTimeWindow) {
+                  logger.info(
+                    `User ${user.id}'s preferred time ${preferredHour}:${preferredMinute} doesn't match test time ${hour}:${minute}`,
+                  );
+                } else if (existingNotifications.length > 0) {
+                  logger.info(
+                    `User ${user.id} already received a reminder today.`
+                  );
+                } else if (!user.teamId) {
+                  logger.info(`User ${user.id} is not in a team, skipping reminder.`);
+                }
               }
             } catch (userError) {
               logger.error(
@@ -513,8 +582,6 @@ export const registerRoutes = async (
   router.get("/api/protected", authenticate, (req, res) => {
     res.json({ message: "This is a protected endpoint", user: req.user?.id });
   });
-
-  // This is a deleted route definition that will be added later in the correct order
 
   // Get comments for a post
   router.get("/api/posts/comments/:postId", authenticate, async (req, res) => {
@@ -586,7 +653,11 @@ export const registerRoutes = async (
         // Check if we have FormData or regular JSON body
         let content,
           parentId,
-          depth = 0;
+          depth = 0,
+          chunkedUploadMediaUrl = null,
+          chunkedUploadThumbnailUrl = null,
+          chunkedUploadFilename = null,
+          chunkedUploadIsVideo = false;
 
         if (req.body.data) {
           // FormData request - parse the JSON data
@@ -600,11 +671,30 @@ export const registerRoutes = async (
               .status(400)
               .json({ message: "Invalid JSON data in FormData" });
           }
+          
+          // Check for chunked upload data in FormData fields
+          chunkedUploadMediaUrl = req.body.chunkedUploadMediaUrl || null;
+          chunkedUploadThumbnailUrl = req.body.chunkedUploadThumbnailUrl || null;
+          chunkedUploadFilename = req.body.chunkedUploadFilename || null;
+          chunkedUploadIsVideo = req.body.chunkedUploadIsVideo === 'true' || req.body.is_video === 'true';
         } else {
           // Regular JSON request
           content = req.body.content;
           parentId = req.body.parentId;
           depth = req.body.depth || 0;
+          
+          // Check for chunked upload data
+          chunkedUploadMediaUrl = req.body.chunkedUploadMediaUrl;
+          chunkedUploadThumbnailUrl = req.body.chunkedUploadThumbnailUrl;
+          chunkedUploadFilename = req.body.chunkedUploadFilename;
+          chunkedUploadIsVideo = req.body.chunkedUploadIsVideo || false;
+          
+          console.log("📦 [Comment JSON] Chunked upload data:", {
+            mediaUrl: chunkedUploadMediaUrl,
+            thumbnailUrl: chunkedUploadThumbnailUrl,
+            filename: chunkedUploadFilename,
+            isVideo: chunkedUploadIsVideo
+          });
         }
 
         logger.info("Creating comment with data:", {
@@ -613,12 +703,23 @@ export const registerRoutes = async (
           contentLength: content ? content.length : 0,
           depth,
           hasFile: !!req.file,
+          chunkedUploadMediaUrl,
+          chunkedUploadThumbnailUrl,
+          chunkedUploadIsVideo
         });
 
-        if (!content || !parentId) {
-          // Set JSON content type on error
+        // Validate: must have either content or media (file or chunked upload)
+        const hasMedia = !!req.file || !!chunkedUploadMediaUrl;
+        const hasContent = content && content.trim().length > 0;
+        
+        if (!hasContent && !hasMedia) {
           res.set("Content-Type", "application/json");
-          return res.status(400).json({ message: "Missing required fields" });
+          return res.status(400).json({ message: "Comment must have either text content or media" });
+        }
+        
+        if (!parentId) {
+          res.set("Content-Type", "application/json");
+          return res.status(400).json({ message: "Parent post ID is required" });
         }
 
         // Make sure parentId is a valid number
@@ -631,10 +732,23 @@ export const registerRoutes = async (
 
         // Process media file if present
         let commentMediaUrl = null;
-        if (req.file) {
+        let commentThumbnailUrl = null;
+        let commentIsVideo = false;
+        
+        // Priority: chunked upload > regular file upload
+        if (chunkedUploadMediaUrl) {
+          commentMediaUrl = chunkedUploadMediaUrl;
+          commentThumbnailUrl = chunkedUploadThumbnailUrl;
+          commentIsVideo = chunkedUploadIsVideo;
+          console.log(`Using chunked upload media URL for comment:`, { 
+            url: commentMediaUrl, 
+            thumbnailUrl: commentThumbnailUrl,
+            isVideo: commentIsVideo 
+          });
+        } else if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaStorage } = await import("./sparta-object-storage");
+            const { spartaStorage: spartaObjectStorage } = await import("./sparta-object-storage");
 
             // Determine if this is a video file
             const originalFilename = req.file.originalname.toLowerCase();
@@ -645,13 +759,15 @@ export const registerRoutes = async (
               originalFilename.endsWith(".webm") ||
               originalFilename.endsWith(".avi") ||
               originalFilename.endsWith(".mkv");
+            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
 
-            const isVideo = isVideoMimetype || isVideoExtension;
+            // Combined video detection
+            commentIsVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
 
             console.log(`Processing comment media file:`, {
               originalFilename: req.file.originalname,
               mimetype: req.file.mimetype,
-              isVideo: isVideo,
+              isVideo: commentIsVideo,
               fileSize: req.file.size,
             });
 
@@ -675,16 +791,21 @@ export const registerRoutes = async (
               cleanFilename = `comment-media.${ext}`;
             }
 
-            const fileInfo = await spartaStorage.storeFile(
+            const fileInfo = await spartaObjectStorage.storeFile(
               req.file.buffer,
               cleanFilename,
               req.file.mimetype,
-              isVideo,
+              commentIsVideo,
             );
 
             // Store just the storage key for the database, not the full URL
             commentMediaUrl = `shared/uploads/${fileInfo.filename}`;
-            console.log(`Stored comment media file:`, { url: commentMediaUrl });
+            commentThumbnailUrl = fileInfo.thumbnailUrl || null;
+            console.log(`Stored comment media file:`, { 
+              url: commentMediaUrl, 
+              thumbnailUrl: commentThumbnailUrl,
+              isVideo: commentIsVideo 
+            });
           } catch (error) {
             logger.error("Error processing comment media file:", error);
             // Continue with comment creation even if media processing fails
@@ -699,6 +820,8 @@ export const registerRoutes = async (
           type: "comment", // Explicitly set type for comments
           points: 0, // Comments have 0 points
           mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
+          thumbnailUrl: commentThumbnailUrl, // Add thumbnail URL for videos
+          is_video: commentIsVideo // Add the is_video flag
         });
 
         // Return the created comment with author information
@@ -732,6 +855,243 @@ export const registerRoutes = async (
       }
     },
   );
+
+  // Edit a comment
+  router.patch("/api/posts/comments/:commentId", authenticate, async (req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const commentId = parseInt(req.params.commentId);
+      if (isNaN(commentId)) {
+        return res.status(400).json({ message: "Invalid comment ID" });
+      }
+
+      const { content } = req.body;
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: "Content cannot be empty" });
+      }
+
+      // Get the comment to check ownership
+      const [comment] = await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.id, commentId),
+            eq(posts.type, 'comment')
+          )
+        );
+
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      if (comment.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to edit this comment" });
+      }
+
+      // Update the comment
+      const [updatedComment] = await db
+        .update(posts)
+        .set({ content: content.trim() })
+        .where(eq(posts.id, commentId))
+        .returning();
+
+      res.json(updatedComment);
+    } catch (error) {
+      logger.error("Error editing comment:", error);
+      res.status(500).json({
+        message: "Failed to edit comment",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Delete a comment
+  router.delete("/api/posts/comments/:commentId", authenticate, async (req, res) => {
+    try {
+      // Set content type early to prevent browser confusion
+      res.setHeader('Content-Type', 'application/json');
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const commentId = parseInt(req.params.commentId);
+      if (isNaN(commentId)) {
+        return res.status(400).json({ message: "Invalid comment ID" });
+      }
+
+      // Get the comment first to check ownership and media
+      const [comment] = await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.id, commentId),
+            eq(posts.type, 'comment')
+          )
+        );
+
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check if user is authorized to delete this comment
+      if (comment.userId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this comment" });
+      }
+
+      // Delete associated media files if they exist
+      if (comment.mediaUrl) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          // Handle HLS videos
+          if (comment.mediaUrl.includes('/api/hls/')) {
+            console.log(`[COMMENT HLS DELETE] Starting HLS deletion for mediaUrl: ${comment.mediaUrl}`);
+            
+            // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
+            const match = comment.mediaUrl.match(/\/api\/hls\/([^\/]+)\//);
+            console.log(`[COMMENT HLS DELETE] Regex match result: ${match ? match[1] : 'NO MATCH'}`);
+            
+            if (match && match[1]) {
+              const baseFilename = match[1];
+              
+              // Delete all files in the HLS directory
+              const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+              console.log(`[COMMENT HLS DELETE] Using prefix: ${hlsPrefix}`);
+              
+              try {
+                // List all files with the HLS prefix
+                console.log(`[COMMENT HLS DELETE] Calling client.list() with prefix...`);
+                const listResult = await client.list({ prefix: hlsPrefix });
+                console.log(`[COMMENT HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
+                
+                // Extract the file array from the result
+                const files = listResult.value || [];
+                console.log(`[COMMENT HLS DELETE] Found ${files.length} files to delete`);
+                
+                // Delete all files in the HLS directory
+                let deletedCount = 0;
+                for (const fileItem of files) {
+                  const fileKey = fileItem.name;
+                  console.log(`[COMMENT HLS DELETE] Attempting to delete: ${fileKey}`);
+                  try {
+                    await client.delete(fileKey);
+                    deletedCount++;
+                    console.log(`[COMMENT HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                  } catch (deleteError) {
+                    console.error(`[COMMENT HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                  }
+                }
+                
+                console.log(`[COMMENT HLS DELETE] Deletion complete: ${deletedCount}/${files.length} files deleted`);
+              } catch (hlsError) {
+                console.error(`[COMMENT HLS DELETE] Error during HLS cleanup:`, hlsError);
+                // Continue with comment deletion even if HLS cleanup fails
+              }
+            } else {
+              console.log(`[COMMENT HLS DELETE] Could not extract baseFilename from URL: ${comment.mediaUrl}`);
+            }
+          }
+          // Handle regular media files
+          else {
+            // Extract storage key from media URL
+            let storageKey = null;
+            
+            // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
+            const objectStorageMatch = comment.mediaUrl.match(/storageKey=([^&]+)/);
+            if (objectStorageMatch && objectStorageMatch[1]) {
+              storageKey = decodeURIComponent(objectStorageMatch[1]);
+            }
+            
+            // Format: /api/serve-file?filename=shared/uploads/filename.ext
+            const serveFileMatch = comment.mediaUrl.match(/filename=([^&]+)/);
+            if (serveFileMatch && serveFileMatch[1]) {
+              storageKey = decodeURIComponent(serveFileMatch[1]);
+            }
+            
+            // Handle plain storage key paths (e.g., "shared/uploads/filename.ext")
+            if (!storageKey && comment.mediaUrl.startsWith('shared/uploads/')) {
+              storageKey = comment.mediaUrl;
+            }
+            
+            if (storageKey) {
+              console.log(`[COMMENT DELETE] Deleting media file: ${storageKey}`);
+              try {
+                await client.delete(storageKey);
+                console.log(`[COMMENT DELETE] ✅ Successfully deleted media file for comment ${commentId}`);
+                
+                // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
+                if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
+                  const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
+                  console.log(`[COMMENT DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
+                  try {
+                    await client.delete(thumbnailKey);
+                    console.log(`[COMMENT DELETE] ✅ Successfully deleted video thumbnail`);
+                  } catch (thumbError) {
+                    console.log(`[COMMENT DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
+                  }
+                }
+              } catch (mediaError) {
+                console.error(`[COMMENT DELETE] ❌ Error deleting media file:`, mediaError);
+              }
+            } else {
+              console.log(`[COMMENT DELETE] Could not extract storage key from mediaUrl: ${comment.mediaUrl}`);
+            }
+          }
+        } catch (error) {
+          logger.error(`[COMMENT DELETE] Error cleaning up media files:`, error);
+        }
+      }
+
+      // Delete associated thumbnail if it exists
+      if (comment.thumbnailUrl) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          let thumbnailStorageKey = null;
+          
+          const serveFileMatch = comment.thumbnailUrl.match(/filename=([^&]+)/);
+          if (serveFileMatch && serveFileMatch[1]) {
+            thumbnailStorageKey = decodeURIComponent(serveFileMatch[1]);
+          }
+          
+          if (thumbnailStorageKey) {
+            logger.info(`[COMMENT DELETE] Deleting thumbnail: ${thumbnailStorageKey}`);
+            try {
+              await client.delete(thumbnailStorageKey);
+              logger.info(`[COMMENT DELETE] Successfully deleted thumbnail for comment ${commentId}`);
+            } catch (thumbError) {
+              logger.error(`[COMMENT DELETE] Error deleting thumbnail:`, thumbError);
+            }
+          }
+        } catch (error) {
+          logger.error(`[COMMENT DELETE] Error cleaning up thumbnail:`, error);
+        }
+      }
+
+      // Delete the comment
+      await db
+        .delete(posts)
+        .where(eq(posts.id, commentId));
+
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      logger.error("Error deleting comment:", error);
+      res.status(500).json({
+        message: "Failed to delete comment",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
 
   // Debug endpoint for posts - unprotected for testing
   router.get("/api/debug/posts", async (req, res) => {
@@ -795,6 +1155,7 @@ export const registerRoutes = async (
             username: users.username,
             email: users.email,
             imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
             isAdmin: users.isAdmin,
           },
         })
@@ -816,7 +1177,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Endpoint to get aggregated weekly data
+  // Get aggregated weekly data
   router.get(
     "/api/debug/posts/weekly-stats",
     authenticate,
@@ -987,6 +1348,27 @@ export const registerRoutes = async (
     },
   );
 
+  // Prayer requests unread count endpoint
+  router.get("/api/prayer-requests/unread", authenticate, async (req, res) => {
+    try {
+      res.setHeader("Content-Type", "application/json");
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // For now, return 0 - prayer request tracking can be enhanced later
+      logger.info(`Found 0 unread messages for user ${req.user.id}`);
+      res.json({ unreadCount: 0 });
+    } catch (error) {
+      logger.error("Error fetching prayer requests unread count:", error);
+      res.status(500).json({
+        message: "Failed to fetch unread prayer requests count",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Main GET endpoint for fetching posts
   router.get("/api/posts", authenticate, async (req, res) => {
     try {
@@ -1014,34 +1396,97 @@ export const registerRoutes = async (
       const postType = req.query.type as string;
       const excludeType = req.query.exclude as string;
       const teamOnly = req.query.teamOnly === "true";
+      const teamlessIntroOnly = req.query.teamlessIntroOnly === "true";
+
+      // Admin/Group Admin filter: show only introductory videos from team-less users
+      if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin)) {
+        logger.info(`[TEAMLESS INTRO FILTER] Admin/Group Admin ${req.user.id} fetching intro videos from team-less users`);
+
+        // Get all users without teams
+        // Note: Since team-less users don't have teams, they can't be scoped to an organization
+        // All admins/group admins can see all team-less users' introductory videos
+        const teamlessUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(isNull(users.teamId));
+
+        const teamlessUserIds = teamlessUsers.map(u => u.id);
+
+        if (teamlessUserIds.length === 0) {
+          logger.info(`[TEAMLESS INTRO FILTER] No team-less users found in scope`);
+          return res.json([]);
+        }
+
+        // Build query for introductory videos from team-less users
+        const introVideos = await db
+          .select({
+            post: posts,
+            author: {
+              id: users.id,
+              username: users.username,
+              teamId: users.teamId,
+            },
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              isNull(posts.parentId),
+              eq(posts.type, 'introductory_video'),
+              inArray(posts.userId, teamlessUserIds)
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+        const formattedPosts = introVideos.map(({ post, author }) => ({
+          ...post,
+          author,
+        }));
+
+        logger.info(`[TEAMLESS INTRO FILTER] Returning ${formattedPosts.length} introductory videos from ${teamlessUserIds.length} team-less users`);
+        return res.json(formattedPosts);
+      }
 
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
 
       // Add team-only filter if specified
+      // This includes posts from team members AND posts targeted to this team via scope
       if (teamOnly) {
         if (!req.user.teamId) {
-          // If user has no team, return empty array
-          logger.info(`User ${req.user.id} has no team, returning empty posts array for team-only query`);
-          return res.json([]);
-        }
-        
-        // Get all users in the same team
-        const teamMemberIds = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.teamId, req.user.teamId));
+          // If user has no team, show only their own introductory_video posts
+          logger.info(`User ${req.user.id} has no team, showing only their introductory_video posts`);
+          conditions.push(
+            and(
+              eq(posts.userId, req.user.id),
+              eq(posts.type, 'introductory_video')
+            )
+          );
+        } else {
+          // Get all users in the same team
+          const teamMemberIds = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.teamId, req.user.teamId));
 
-        const memberIds = teamMemberIds.map(member => member.id);
-        
-        if (memberIds.length === 0) {
-          logger.info(`No team members found for team ${req.user.teamId}, returning empty posts array`);
-          return res.json([]);
-        }
+          const memberIds = teamMemberIds.map(member => member.id);
 
-        // Filter posts to only show posts from team members
-        conditions.push(inArray(posts.userId, memberIds));
-        logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members: ${memberIds.join(', ')}`);
+          // Filter posts to show:
+          // 1. Posts from team members (my_team scope), OR
+          // 2. Posts targeted to this team (team scope with target_team_id matching)
+          conditions.push(
+            or(
+              inArray(posts.userId, memberIds),
+              and(
+                eq(posts.postScope, 'team'),
+                eq(posts.targetTeamId, req.user.teamId)
+              )
+            )
+          );
+          logger.info(`Filtering posts for team ${req.user.teamId} with ${memberIds.length} members PLUS team-targeted posts`);
+        }
       }
 
       // Special handling for prayer posts - filter by group instead of team
@@ -1122,6 +1567,114 @@ export const registerRoutes = async (
         conditions.push(ne(posts.type, excludeType));
       }
 
+      // Add scope-based filtering
+      // Users should only see posts where:
+      // 1. post_scope is 'everyone', OR
+      // 2. post_scope is 'my_team' and they're in the author's team, OR
+      // 3. post_scope is 'team' and they're in the target team, OR
+      // 4. post_scope is 'group' and they're in a team within the target group, OR
+      // 5. post_scope is 'organization' and they're in a group within the target organization
+
+      if (req.user.teamId) {
+        // Get user's team info to check group and organization
+        const [userTeam] = await db
+          .select({
+            groupId: teams.groupId
+          })
+          .from(teams)
+          .where(eq(teams.id, req.user.teamId));
+
+        const userGroupId = userTeam?.groupId;
+
+        let userOrganizationId = null;
+        if (userGroupId) {
+          const [userGroup] = await db
+            .select({
+              organizationId: groups.organizationId
+            })
+            .from(groups)
+            .where(eq(groups.id, userGroupId));
+
+          userOrganizationId = userGroup?.organizationId;
+        }
+
+        // Get all user IDs in the same team (for my_team scope filtering)
+        const teamMemberIds = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.teamId, req.user.teamId));
+
+        const memberIds = teamMemberIds.map(member => member.id);
+
+        // Build scope filter conditions
+        const scopeConditions = [
+          // Everyone posts - visible to all
+          eq(posts.postScope, 'everyone'),
+          // My team posts - user must be in the same team as the author
+          and(
+            eq(posts.postScope, 'my_team'),
+            inArray(posts.userId, memberIds)
+          ),
+          // Team posts - user must be in the target team
+          and(
+            eq(posts.postScope, 'team'),
+            eq(posts.targetTeamId, req.user.teamId)
+          ),
+        ];
+
+        // Group posts - user's team must be in the target group
+        if (userGroupId) {
+          scopeConditions.push(
+            and(
+              eq(posts.postScope, 'group'),
+              eq(posts.targetGroupId, userGroupId)
+            )
+          );
+        }
+
+        // Organization posts - user's group must be in the target organization
+        if (userOrganizationId) {
+          scopeConditions.push(
+            and(
+              eq(posts.postScope, 'organization'),
+              eq(posts.targetOrganizationId, userOrganizationId)
+            )
+          );
+        }
+
+        // Add the scope filter to conditions
+        if (scopeConditions.length > 0) {
+          conditions.push(or(...scopeConditions));
+        }
+
+        logger.info(`[SCOPE FILTER] User ${req.user.id} (team ${req.user.teamId}) - Scope conditions count: ${scopeConditions.length}`);
+      } else {
+        // User has no team - show 'everyone' posts OR their own posts (e.g., introductory videos)
+        conditions.push(
+          or(
+            eq(posts.postScope, 'everyone'),
+            eq(posts.userId, req.user.id)
+          )
+        );
+        logger.info(`[SCOPE FILTER] User ${req.user.id} has no team - showing 'everyone' posts and own posts`);
+      }
+
+      // Filter introductory videos for non-admin users
+      // Non-admins can only see:
+      // - Their own introductory videos (any scope)
+      // - Introductory videos with scope='my_team' (handled by existing scope logic)
+      // They CANNOT see other users' introductory videos with scope='everyone' (team-less users)
+      if (!req.user.isAdmin) {
+        conditions.push(
+          or(
+            ne(posts.type, 'introductory_video'),
+            eq(posts.userId, req.user.id),
+            ne(posts.postScope, 'everyone')
+          )
+        );
+        logger.info(`[INTRODUCTORY VIDEO FILTER] Non-admin user ${req.user.id} - filtering out other users' team-less introductory videos`);
+      }
+
       // Join with users table to get author info
       const query = db
         .select({
@@ -1129,16 +1682,24 @@ export const registerRoutes = async (
           content: posts.content,
           type: posts.type,
           mediaUrl: posts.mediaUrl,
+          thumbnailUrl: posts.thumbnailUrl,
+          is_video: posts.is_video,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
           userId: posts.userId,
+          postScope: posts.postScope,
+          targetOrganizationId: posts.targetOrganizationId,
+          targetGroupId: posts.targetGroupId,
+          targetTeamId: posts.targetTeamId,
           author: {
             id: users.id,
             username: users.username,
             email: users.email,
             imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
             isAdmin: users.isAdmin,
+            teamId: users.teamId,
           },
         })
         .from(posts)
@@ -1156,6 +1717,16 @@ export const registerRoutes = async (
       logger.info(
         `Fetched ${result.length} posts with filters: userId=${userId}, startDate=${startDate}, endDate=${endDate}, type=${postType}, teamOnly=${teamOnly}`,
       );
+      
+      // DEBUG: Log ALL posts data to verify thumbnailUrl is being returned
+      logger.info(`[DEBUG] Returning ${result.length} posts. First post keys:`, result.length > 0 ? Object.keys(result[0]) : 'no posts');
+      const post824 = result.find((p: any) => p.id === 824);
+      if (post824) {
+        logger.info(`[DEBUG] Found post 824: mediaUrl=${post824.mediaUrl}, thumbnailUrl=${post824.thumbnailUrl}`);
+      } else {
+        logger.info(`[DEBUG] Post 824 NOT found in query results!`);
+      }
+      
       res.json(result);
     } catch (error) {
       logger.error("Error fetching posts:", error);
@@ -1166,7 +1737,640 @@ export const registerRoutes = async (
     }
   });
 
-  // Get single post by ID - this must be placed after any more specific routes like /api/posts/comments
+  // Chunked upload endpoints for large files (to bypass 413 proxy limit)
+  
+  // Initialize a chunked upload session
+  router.post("/api/uploads/sessions", authenticate, express.json(), async (req, res) => {
+    try {
+      const { filename, mimeType, totalSize, chunkSize } = req.body;
+      
+      if (!filename || !mimeType || !totalSize) {
+        return res.status(400).json({ message: "Missing required fields: filename, mimeType, totalSize" });
+      }
+      
+      const session = uploadSessionManager.createSession(
+        req.user.id,
+        filename,
+        mimeType,
+        totalSize,
+        chunkSize
+      );
+      
+      res.json({
+        sessionId: session.id,
+        chunkSize: session.chunkSize,
+        expiresAt: session.expiresAt,
+      });
+    } catch (error) {
+      logger.error("Error creating upload session:", error);
+      res.status(500).json({ message: "Failed to create upload session" });
+    }
+  });
+  
+  // Upload a chunk
+  router.patch("/api/uploads/sessions/:sessionId/chunk", authenticate, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const chunkIndex = parseInt(req.query.chunkIndex as string);
+      
+      if (isNaN(chunkIndex)) {
+        return res.status(400).json({ message: "Invalid chunk index" });
+      }
+      
+      const session = uploadSessionManager.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found or expired" });
+      }
+      
+      if (session.userId !== req.user.id) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Read raw chunk data from request body
+      const chunks: Buffer[] = [];
+      req.on('data', chunk => chunks.push(chunk));
+      req.on('end', async () => {
+        try {
+          const chunkData = Buffer.concat(chunks);
+          uploadSessionManager.appendChunk(sessionId, chunkIndex, chunkData);
+          
+          const progress = uploadSessionManager.getSessionProgress(sessionId);
+          res.json({
+            success: true,
+            progress: progress?.progress || 0,
+            uploadedBytes: progress?.uploadedBytes || 0,
+            totalSize: progress?.totalSize || 0,
+          });
+        } catch (error) {
+          logger.error("Error appending chunk:", error);
+          res.status(500).json({ message: error instanceof Error ? error.message : "Failed to append chunk" });
+        }
+      });
+    } catch (error) {
+      logger.error("Error uploading chunk:", error);
+      res.status(500).json({ message: "Failed to upload chunk" });
+    }
+  });
+  
+  // Finalize upload and get the file buffer
+  router.post("/api/uploads/sessions/:sessionId/finalize", authenticate, express.json(), async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { postType } = req.body;
+      
+      console.log(`📤 [Finalize Upload] Starting for session ${sessionId}, postType: ${postType}`);
+      
+      const session = uploadSessionManager.getSession(sessionId);
+      if (!session) {
+        console.error(`❌ [Finalize Upload] Session not found: ${sessionId}`);
+        return res.status(404).json({ message: "Session not found or expired" });
+      }
+      
+      if (session.userId !== req.user.id) {
+        console.error(`❌ [Finalize Upload] Unauthorized access to session ${sessionId}`);
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      console.log(`📤 [Finalize Upload] Session found, finalizing ${session.totalSize} bytes...`);
+      
+      // Finalize and get complete file
+      const fileBuffer = uploadSessionManager.finalizeSession(sessionId);
+      
+      console.log(`✅ [Finalize Upload] File buffer ready: ${fileBuffer.length} bytes`);
+      
+      // Determine if this is a video
+      const isVideo = session.mimeType.startsWith('video/');
+      
+      console.log(`📤 [Finalize Upload] Storing file in Object Storage, isVideo: ${isVideo}`);
+      
+      // Store file using SpartaObjectStorageFinal (includes MOV->MP4 conversion)
+      const fileInfo = await spartaObjectStorage.storeFile(
+        fileBuffer,
+        session.filename,
+        session.mimeType,
+        isVideo
+      );
+      
+      console.log(`✅ [Finalize Upload] File stored successfully:`, {
+        mediaUrl: fileInfo.url,
+        thumbnailUrl: fileInfo.thumbnailUrl,
+        filename: fileInfo.filename,
+        isVideo
+      });
+      
+      // Clean up session
+      uploadSessionManager.deleteSession(sessionId);
+      
+      // Return file info for use in post creation
+      res.json({
+        success: true,
+        mediaUrl: fileInfo.url,
+        thumbnailUrl: fileInfo.thumbnailUrl,
+        filename: fileInfo.filename,
+        isVideo,
+      });
+    } catch (error) {
+      console.error("❌ [Finalize Upload] Error:", error);
+      logger.error("Error finalizing upload:", error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to finalize upload" 
+      });
+    }
+  });
+
+  // POST endpoint for creating posts
+  router.post("/api/posts", authenticate, upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'thumbnail_alt', maxCount: 1 },
+    { name: 'thumbnail_jpg', maxCount: 1 }
+  ]), async (req, res) => {
+    // Set content type early to prevent browser confusion
+    res.set({
+      'Cache-Control': 'no-store',
+      'Pragma': 'no-cache',
+      'Content-Type': 'application/json',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    // Initialize isVideo variable to be used throughout the route handler
+    let isVideo = false;
+
+    // Extract the main file from upload.fields() - it could be in 'image' or 'thumbnail' field
+    const uploadedFile = (req.files as any)?.image?.[0] || (req.files as any)?.thumbnail?.[0] || null;
+
+    console.log("POST /api/posts - Request received", {
+      hasFile: !!uploadedFile,
+      fileDetails: uploadedFile ? {
+        fieldname: uploadedFile.fieldname,
+        originalname: uploadedFile.originalname,
+        mimetype: uploadedFile.mimetype,
+        path: uploadedFile.path,
+        destination: uploadedFile.destination,
+        size: uploadedFile.size
+      } : 'No file uploaded',
+      contentType: req.headers['content-type'],
+      bodyKeys: Object.keys(req.body),
+      filesKeys: req.files ? Object.keys(req.files) : []
+    });
+
+    // Check if this is a memory verse post based on the parsed data
+    let isMemoryVersePost = false;
+    if (req.body.data) {
+      try {
+        const parsedData = JSON.parse(req.body.data);
+        isMemoryVersePost = parsedData.type === 'memory_verse';
+        if (isMemoryVersePost) {
+          console.log("Memory verse post detected:", {
+            originalname: uploadedFile?.originalname || 'No file',
+            mimetype: uploadedFile?.mimetype || 'No mimetype',
+            fileSize: uploadedFile?.size || 0,
+            path: uploadedFile?.path || 'No path'
+          });
+        }
+      } catch (e) {
+        // Ignore parsing errors here, it will be handled later
+      }
+    }
+
+    // Memory storage: files are in buffer, not on disk
+    if (uploadedFile && uploadedFile.buffer) {
+      console.log("File buffer received:", {
+        size: uploadedFile.buffer.length,
+        mimetype: uploadedFile.mimetype,
+        originalname: uploadedFile.originalname
+      });
+    }
+
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      let postData = req.body;
+      if (typeof postData.data === 'string') {
+        try {
+          postData = JSON.parse(postData.data);
+          console.log("Successfully parsed post data:", { postType: postData.type });
+        } catch (parseError) {
+          console.error("Error parsing post data:", parseError);
+          logger.error("Error parsing post data:", parseError);
+          return res.status(400).json({ message: "Invalid post data format" });
+        }
+      }
+
+      // Calculate points based on post type
+      let points = 0;
+      const type = postData.type?.toLowerCase();
+      switch (type) {
+        case 'food':
+          points = 3; // 3 points per meal
+          break;
+        case 'workout':
+          points = 3; // 3 points per workout
+          break;
+        case 'scripture':
+          points = 3; // 3 points per scripture
+          break;
+        case 'memory_verse':
+          points = 10; // 10 points for memory verse
+          break;
+        case 'prayer':
+          points = 0; // 0 points for prayer requests
+          break;
+        case 'miscellaneous':
+        default:
+          points = 0;
+      }
+
+      // Log point assignment for verification
+      console.log('Assigning points:', { type, points });
+
+      // Log point calculation for verification
+      logger.info('Post points calculation:', {
+        type: postData.type,
+        assignedPoints: points
+      });
+
+      // For comments, handle separately
+      if (postData.type === "comment") {
+        if (!postData.parentId) {
+          logger.error("Missing parentId for comment");
+          return res.status(400).json({ message: "Parent post ID is required for comments" });
+        }
+
+        // Comments should have 0 points
+        const commentPoints = 0;
+
+        // Log the points assignment for comments
+        console.log('Assigning points for comment:', { type: 'comment', points: commentPoints });
+
+        // Process media file if present for comments too
+        let commentMediaUrl = null;
+        let commentThumbnailUrl = null;
+        let commentIsVideo = false;
+        
+        // Check if chunked upload was used (for large videos with HLS conversion)
+        // Note: For comments, the data comes directly in req.body from FormData, not in postData
+        if (req.body.chunkedUploadMediaUrl) {
+          console.log("✅ Using chunked upload result for comment:", {
+            mediaUrl: req.body.chunkedUploadMediaUrl,
+            thumbnailUrl: req.body.chunkedUploadThumbnailUrl,
+            isVideo: req.body.chunkedUploadIsVideo
+          });
+          commentMediaUrl = req.body.chunkedUploadMediaUrl;
+          commentThumbnailUrl = req.body.chunkedUploadThumbnailUrl || null;
+          commentIsVideo = req.body.chunkedUploadIsVideo === 'true' || req.body.chunkedUploadIsVideo === true;
+        }
+        // Check if we have a file upload with the comment (for small files)
+        else if (uploadedFile && uploadedFile.buffer) {
+          try {
+            // Use SpartaObjectStorage for file handling
+            const { spartaStorage } = await import('./sparta-object-storage');
+
+            // With memory storage, work directly with the buffer
+            logger.info(`Processing comment file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
+
+            const originalFilename = uploadedFile.originalname.toLowerCase();
+
+            // Check if this is a video upload based on multiple indicators
+            const isVideoMimetype = uploadedFile.mimetype.startsWith('video/');
+            const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                   originalFilename.endsWith('.mp4') ||
+                                   originalFilename.endsWith('.webm') ||
+                                   originalFilename.endsWith('.avi') ||
+                                   originalFilename.endsWith('.mkv');
+            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
+
+
+            // Combined video detection - for miscellaneous posts, only trust the explicit markers
+            commentIsVideo = isVideoMimetype || hasVideoContentType || isVideoExtension;
+
+
+            console.log("Processing comment media file:", {
+              originalFilename: uploadedFile.originalname,
+              mimetype: uploadedFile.mimetype,
+              isVideo: commentIsVideo,
+              fileSize: uploadedFile.size
+            });
+
+            logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${commentIsVideo}, size: ${uploadedFile.size}`);
+
+            const fileInfo = await spartaStorage.storeFile(
+              uploadedFile.buffer,
+              uploadedFile.originalname,
+              uploadedFile.mimetype,
+              commentIsVideo,
+            );
+
+            commentMediaUrl = fileInfo.url;
+            console.log(`Stored comment media file:`, { url: commentMediaUrl, isVideo: commentIsVideo });
+          } catch (error) {
+            logger.error("Error processing comment media file:", error);
+            // Continue with comment creation even if media processing fails
+          }
+        }
+
+        console.log(`Creating comment with is_video: ${commentIsVideo}`, {
+          userId: req.user.id,
+          mediaUrl: commentMediaUrl,
+          thumbnailUrl: commentThumbnailUrl,
+          is_video: commentIsVideo,
+          parentId: postData.parentId
+        });
+
+        const post = await storage.createComment({
+          userId: req.user.id,
+          content: postData.content ? postData.content.trim() : '',
+          parentId: postData.parentId,
+          depth: postData.depth || 0,
+          points: commentPoints, // Always set to 0 points for comments
+          mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
+          thumbnailUrl: commentThumbnailUrl, // Add thumbnail URL for videos
+          is_video: commentIsVideo // Add the is_video flag
+        });
+        
+        console.log(`Comment created with ID ${post.id}, is_video: ${post.is_video}`);
+        return res.status(201).json(post);
+      }
+
+      // Handle regular post creation
+      let mediaUrl = null;
+      let posterUrl = null;
+      let mediaProcessed = false;
+      
+      // Check if we used chunked upload (for large files)
+      if (postData.chunkedUploadMediaUrl) {
+        console.log("✅ Using chunked upload result for post creation:", {
+          mediaUrl: postData.chunkedUploadMediaUrl,
+          thumbnailUrl: postData.chunkedUploadThumbnailUrl,
+          filename: postData.chunkedUploadFilename,
+          isVideo: postData.chunkedUploadIsVideo
+        });
+        mediaUrl = postData.chunkedUploadMediaUrl;
+        posterUrl = postData.chunkedUploadThumbnailUrl;
+        isVideo = postData.chunkedUploadIsVideo || false;
+        mediaProcessed = true;
+      }
+      // Check if we're using an existing memory verse video
+      else if (postData.type === 'memory_verse' && req.body.existing_video_id) {
+        try {
+          const existingVideoId = parseInt(req.body.existing_video_id);
+
+          // Get the existing post to find its media URL
+          const [existingPost] = await db
+            .select({
+              mediaUrl: posts.mediaUrl
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.id, existingVideoId),
+                eq(posts.userId, req.user.id),
+                eq(posts.type, 'memory_verse')
+              )
+            );
+
+          if (existingPost && existingPost.mediaUrl) {
+            mediaUrl = existingPost.mediaUrl;
+            logger.info(`Re-using existing memory verse video from post ${existingVideoId}`, { mediaUrl });
+          } else {
+            logger.error(`Could not find existing memory verse video with ID ${existingVideoId}`);
+            return res.status(404).json({ message: "The selected memory verse video could not be found" });
+          }
+        } catch (error) {
+          logger.error("Error processing existing video reference:", error);
+          return res.status(500).json({ message: "Error processing the selected memory verse video" });
+        }
+      }
+      // Scripture posts shouldn't have images/videos
+      // Miscellaneous posts may or may not have images/videos
+      else if (postData.type === 'scripture') {
+        logger.info('Scripture post created with no media');
+        mediaUrl = null;
+      } else if (uploadedFile && uploadedFile.buffer) {
+        try {
+          // Use SpartaObjectStorage for file handling
+          const { spartaStorage } = await import('./sparta-object-storage');
+
+          // With memory storage, we work directly with the buffer
+          logger.info(`Processing file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
+
+          // Proceed with buffer-based processing
+            // Handle video files differently - check both mimetype and file extension
+            const originalFilename = uploadedFile.originalname.toLowerCase();
+
+            // Simplified detection for memory verse posts - rely only on the post type
+            const isMemoryVersePost = postData.type === 'memory_verse';
+            const isIntroductoryVideoPost = postData.type === 'introductory_video';
+
+            // Handle specialized types
+            const isMiscellaneousPost = postData.type === 'miscellaneous';
+            const isPrayerPost = postData.type === 'prayer';
+
+            console.log("Post type detection:", {
+              isMemoryVersePost,
+              isIntroductoryVideoPost,
+              isMiscellaneousPost,
+              isPrayerPost,
+              originalName: uploadedFile.originalname
+            });
+
+            // Check if this is a video upload based on multiple indicators
+            const isVideoMimetype = uploadedFile.mimetype.startsWith('video/');
+            const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                   originalFilename.endsWith('.mp4') ||
+                                   originalFilename.endsWith('.webm') ||
+                                   originalFilename.endsWith('.avi') ||
+                                   originalFilename.endsWith('.mkv');
+            const hasVideoContentType = req.body.video_content_type?.startsWith('video/');
+
+            // For miscellaneous and prayer posts, check if explicitly marked as video from client
+            const isMiscellaneousVideo = (isMiscellaneousPost || isPrayerPost) && 
+                                       (req.body.is_video === "true" || 
+                                        req.body.selected_media_type === "video" ||
+                                        (uploadedFile && (isVideoMimetype || isVideoExtension)));
+
+            // Combined video detection
+            // - memory_verse and introductory_video are always videos
+            // - miscellaneous/prayer posts only if explicitly marked
+            // - other posts based on mimetype/extension
+            const isVideo = isMemoryVersePost || 
+                          isIntroductoryVideoPost ||
+                          ((isMiscellaneousPost || isPrayerPost) ? isMiscellaneousVideo : 
+                           (isVideoMimetype || hasVideoContentType || isVideoExtension));
+
+            console.log("Video detection:", {
+              isVideo,
+              isMiscellaneousVideo,
+              isMiscellaneousPost,
+              postType: postData.type,
+              isVideoMimetype,
+              isVideoExtension,
+              hasVideoContentType,
+              mimetype: uploadedFile.mimetype,
+              originalFilename: uploadedFile.originalname,
+              selectedMediaType: req.body.selected_media_type,
+              isVideoFlag: req.body.is_video
+            });
+
+            // We no longer need to create a separate file with prefix here.
+            // SpartaObjectStorage will handle proper file placement based on post type.
+            // This removes the creation of a redundant third file.
+            console.log("Skipping redundant file creation - SpartaObjectStorage will handle file organization");
+
+            console.log(`Processing media file:`, {
+              originalFilename: uploadedFile.originalname,
+              mimetype: uploadedFile.mimetype,
+              isVideo: isVideo,
+              isMemoryVerse: isMemoryVersePost,
+              fileSize: uploadedFile.size,
+              path: uploadedFile.path,
+              postType: postData.type || 'unknown'
+            });
+
+            logger.info(`Processing media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}, size: ${uploadedFile.size}`);
+
+            // Store the file using SpartaObjectStorage (used for both images and videos)
+            // For memory verse posts, if mimetype doesn't specify video, force it to video/mp4
+            let effectiveMimeType = uploadedFile.mimetype;
+
+            // If it's a memory verse post but mimetype doesn't indicate a video, override it
+            if (isMemoryVersePost && !effectiveMimeType.startsWith('video/')) {
+              effectiveMimeType = 'video/mp4'; // Default to mp4 for compatibility
+            }
+
+            // Also handle miscellaneous post videos that might have wrong mime type
+            if (isMiscellaneousPost && isVideo && !effectiveMimeType.startsWith('video/')) {
+              console.log("Correcting miscellaneous video mime type from", effectiveMimeType, "to video/mp4");
+              effectiveMimeType = 'video/mp4';
+            }
+
+            console.log("Using effective mime type for storage:", {
+              original: uploadedFile.mimetype,
+              effective: effectiveMimeType,
+              isMemoryVerse: isMemoryVersePost,
+              isMiscellaneous: isMiscellaneousPost,
+              isVideo: isVideo,
+              wasOverridden: effectiveMimeType !== uploadedFile.mimetype,
+              fileSize: uploadedFile.size,
+              formDataKeys: Object.keys(req.body || {})
+            });
+
+            const fileInfo = await spartaStorage.storeFile(
+              uploadedFile.buffer,
+              uploadedFile.originalname,
+              effectiveMimeType, // Use potentially corrected mimetype
+              isVideo // Pass flag for video handling
+            );
+
+            mediaUrl = fileInfo.url;
+            mediaProcessed = true;
+
+            if (isVideo) {
+              logger.info(`Video file stored successfully using SpartaObjectStorage`);
+              logger.info(`Video URL: ${mediaUrl}`);
+            } else {
+              logger.info(`Image file stored successfully using SpartaObjectStorage`);
+              logger.info(`Image URL: ${mediaUrl}`);
+              if (fileInfo.thumbnailUrl) {
+                logger.info(`Thumbnail URL: ${fileInfo.thumbnailUrl}`);
+              }
+            }
+        } catch (fileErr) {
+          logger.error('Error processing uploaded file:', fileErr);
+
+          // Detailed error handling based on post type
+          if (postData.type === 'memory_verse') {
+            logger.error(`Memory verse video upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
+
+            // For memory verse, video is required, so return an error response
+            return res.status(400).json({ 
+              message: "Failed to process memory verse video. Please try again with a different video file.",
+              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing video'
+            });
+          } else if (postData.type === 'food' || postData.type === 'workout') {
+            logger.error(`${postData.type} image upload failed: ${fileErr instanceof Error ? fileErr.message : 'Unknown error'}`);
+
+            // For food and workout posts, images are required
+            return res.status(400).json({ 
+              message: `Failed to process ${postData.type} image. Please try again with a different image.`,
+              details: fileErr instanceof Error ? fileErr.message : 'Unknown error processing image'
+            });
+          } else {
+            // For other post types, we can continue without media
+            mediaUrl = null;
+            logger.info(`Error with uploaded file for post type: ${postData.type} - continuing without media`);
+          }
+        }
+      } else if (postData.type && postData.type !== 'scripture' && postData.type !== 'miscellaneous') {
+        // For miscellaneous posts, media is optional
+        // For scripture posts, no media
+        // Memory verse posts REQUIRE a video
+        if (postData.type === 'memory_verse') {
+          logger.error(`Memory verse post requires a video but none was uploaded`);
+          return res.status(400).json({ message: "Memory verse posts require a video file." });
+        }
+        // For other posts, we previously would use fallbacks, but now we leave them blank
+        mediaUrl = null;
+        logger.info(`No media uploaded for ${postData.type} post`);
+      }
+
+      // Enforce scope for introductory videos
+      let postScope = postData.postScope || 'my_team';
+      if (postData.type === 'introductory_video') {
+        // Team-less users: scope is 'everyone' (visible only to admins + self due to GET filter)
+        // Users with team: scope is 'my_team' (visible to team)
+        postScope = req.user.teamId ? 'my_team' : 'everyone';
+        logger.info(`[INTRODUCTORY VIDEO SCOPE] Setting scope to '${postScope}' for user ${req.user.id} (teamId: ${req.user.teamId})`);
+      }
+
+      const post = await db
+        .insert(posts)
+        .values({
+          userId: req.user.id,
+          type: postData.type,
+          content: postData.content?.trim() || '',
+          mediaUrl: mediaUrl,
+          thumbnailUrl: posterUrl || null, // Save thumbnail URL for videos
+          is_video: isVideo || false, // Set is_video flag based on our detection logic
+          points: points,
+          postScope: postScope,
+          targetOrganizationId: postData.targetOrganizationId || null,
+          targetGroupId: postData.targetGroupId || null,
+          targetTeamId: postData.targetTeamId || null,
+          createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
+        })
+        .returning()
+        .then(posts => posts[0]);
+
+      // Log the created post for verification
+      logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
+
+      // Check for achievements based on post type
+      try {
+        await checkForAchievements(req.user.id, post.type);
+      } catch (achievementError) {
+        logger.error("Error checking achievements:", achievementError);
+        // Non-fatal error, continue without blocking post creation
+      }
+
+      res.status(201).json(post);
+    } catch (error) {
+      logger.error("Error in post creation:", error);
+
+      // Ensure content type is still set on error
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to create post",
+        error: error instanceof Error ? error.stack : "Unknown error"
+      });
+    }
+  });
+
   router.get("/api/posts/:id", authenticate, async (req, res) => {
     try {
       // Force JSON content type header immediately to prevent any potential HTML response
@@ -1191,6 +2395,8 @@ export const registerRoutes = async (
           content: posts.content,
           type: posts.type,
           mediaUrl: posts.mediaUrl,
+          thumbnailUrl: posts.thumbnailUrl,
+          is_video: posts.is_video,
           createdAt: posts.createdAt,
           parentId: posts.parentId,
           points: posts.points,
@@ -1200,6 +2406,7 @@ export const registerRoutes = async (
             username: users.username,
             email: users.email,
             imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
             isAdmin: users.isAdmin,
           },
         })
@@ -1372,6 +2579,208 @@ export const registerRoutes = async (
     },
   );
 
+  // Delete a post
+  router.delete("/api/posts/:id", authenticate, async (req, res) => {
+    try {
+      console.log(`\n========== DELETE POST REQUEST ==========`);
+      res.set({
+        "Cache-Control": "no-store",
+        Pragma: "no-cache",
+        "Content-Type": "application/json",
+        "X-Content-Type-Options": "nosniff",
+      });
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const postId = parseInt(req.params.id);
+      console.log(`[DELETE] Post ID: ${postId}`);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      // Check if user owns the post or is admin
+      const [post] = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          mediaUrl: posts.mediaUrl,
+          thumbnailUrl: posts.thumbnailUrl,
+        })
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      console.log(`[DELETE] Post data:`, JSON.stringify(post, null, 2));
+
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (post.userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+
+      // Delete associated media files
+      console.log(`[DELETE] Checking media URL: ${post.mediaUrl}`);
+      if (post.mediaUrl) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          // Handle HLS videos
+          if (post.mediaUrl.includes('/api/hls/')) {
+            console.log(`[HLS DELETE] Starting HLS deletion for mediaUrl: ${post.mediaUrl}`);
+            
+            // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
+            const match = post.mediaUrl.match(/\/api\/hls\/([^\/]+)\//);
+            console.log(`[HLS DELETE] Regex match result: ${match ? match[1] : 'NO MATCH'}`);
+            
+            if (match && match[1]) {
+              const baseFilename = match[1];
+              
+              // Delete all files in the HLS directory
+              const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+              console.log(`[HLS DELETE] Using prefix: ${hlsPrefix}`);
+              
+              try {
+                // List all files with the HLS prefix
+                console.log(`[HLS DELETE] Calling client.list() with prefix...`);
+                const listResult = await client.list({ prefix: hlsPrefix });
+                console.log(`[HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
+                
+                // Extract the file array from the result
+                const files = listResult.value || [];
+                console.log(`[HLS DELETE] Found ${files.length} files to delete`);
+                
+                // Delete all files in the HLS directory
+                let deletedCount = 0;
+                for (const fileItem of files) {
+                  const fileKey = fileItem.name;
+                  console.log(`[HLS DELETE] Attempting to delete: ${fileKey}`);
+                  try {
+                    await client.delete(fileKey);
+                    deletedCount++;
+                    console.log(`[HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                  } catch (deleteError) {
+                    console.error(`[HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                  }
+                }
+                
+                console.log(`[HLS DELETE] Deletion complete: ${deletedCount}/${files.length} files deleted`);
+              } catch (hlsError) {
+                console.error(`[HLS DELETE] Error during HLS cleanup:`, hlsError);
+                // Continue with post deletion even if HLS cleanup fails
+              }
+            } else {
+              console.log(`[HLS DELETE] Could not extract baseFilename from URL: ${post.mediaUrl}`);
+            }
+          } 
+          // Handle regular media files (images and non-HLS videos)
+          else {
+            // Extract the storage key from the URL
+            let storageKey = null;
+            
+            // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
+            const objectStorageMatch = post.mediaUrl.match(/storageKey=([^&]+)/);
+            if (objectStorageMatch && objectStorageMatch[1]) {
+              storageKey = decodeURIComponent(objectStorageMatch[1]);
+            }
+            
+            // Format: /api/serve-file?filename=shared/uploads/filename.ext
+            const serveFileMatch = post.mediaUrl.match(/filename=([^&]+)/);
+            if (serveFileMatch && serveFileMatch[1]) {
+              storageKey = decodeURIComponent(serveFileMatch[1]);
+            }
+            
+            // Handle plain storage key paths (e.g., "shared/uploads/filename.ext")
+            if (!storageKey && post.mediaUrl.startsWith('shared/uploads/')) {
+              storageKey = post.mediaUrl;
+            }
+            
+            if (storageKey) {
+              console.log(`[POST DELETE] Deleting media file: ${storageKey}`);
+              try {
+                await client.delete(storageKey);
+                console.log(`[POST DELETE] ✅ Successfully deleted media file for post ${postId}`);
+                
+                // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
+                if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
+                  const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
+                  console.log(`[POST DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
+                  try {
+                    await client.delete(thumbnailKey);
+                    console.log(`[POST DELETE] ✅ Successfully deleted video thumbnail`);
+                  } catch (thumbError) {
+                    console.log(`[POST DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
+                  }
+                }
+              } catch (mediaError) {
+                console.error(`[POST DELETE] ❌ Error deleting media file:`, mediaError);
+                // Continue with post deletion even if media cleanup fails
+              }
+            } else {
+              console.log(`[POST DELETE] Could not extract storage key from mediaUrl: ${post.mediaUrl}`);
+            }
+          }
+        } catch (error) {
+          logger.error(`[POST DELETE] Error cleaning up media files:`, error);
+          // Continue with post deletion even if media cleanup fails
+        }
+      }
+
+      // Delete associated thumbnail if it exists
+      if (post.thumbnailUrl) {
+        try {
+          const { Client } = await import("@replit/object-storage");
+          const client = new Client();
+          
+          // Extract the storage path from the thumbnail URL
+          let thumbnailStorageKey = null;
+          
+          // Format: /api/thumbnails/shared/uploads/thumbnails/filename.jpg
+          const thumbnailMatch = post.thumbnailUrl.match(/\/api\/thumbnails\/(.+)/);
+          if (thumbnailMatch && thumbnailMatch[1]) {
+            thumbnailStorageKey = thumbnailMatch[1];
+          }
+          
+          // Format: /api/serve-file?filename=shared/uploads/filename.jpg
+          const serveFileMatch = post.thumbnailUrl.match(/filename=([^&]+)/);
+          if (serveFileMatch && serveFileMatch[1]) {
+            thumbnailStorageKey = decodeURIComponent(serveFileMatch[1]);
+          }
+          
+          if (thumbnailStorageKey) {
+            logger.info(`[POST DELETE] Deleting thumbnail: ${thumbnailStorageKey}`);
+            
+            try {
+              await client.delete(thumbnailStorageKey);
+              logger.info(`[POST DELETE] Successfully deleted thumbnail for post ${postId}`);
+            } catch (thumbError) {
+              logger.error(`[POST DELETE] Error deleting thumbnail:`, thumbError);
+              // Continue with post deletion even if thumbnail cleanup fails
+            }
+          }
+        } catch (error) {
+          logger.error(`[POST DELETE] Error cleaning up thumbnail:`, error);
+          // Continue with post deletion even if thumbnail cleanup fails
+        }
+      }
+
+      await storage.deletePost(postId);
+
+      return res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      logger.error("Error deleting post:", error);
+      res.set("Content-Type", "application/json");
+      return res.status(500).json({
+        message: "Failed to delete post",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Teams endpoints
   router.get("/api/teams", authenticate, async (req, res) => {
     try {
@@ -1380,6 +2789,43 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error("Error fetching teams:", error);
       res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
+  // Check if a team is in a competitive group
+  router.get("/api/teams/:teamId/competitive", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Get the team's group
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Get the group to check if it's competitive
+      const [group] = await db
+        .select()
+        .from(groups)
+        .where(eq(groups.id, team.groupId))
+        .limit(1);
+
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      res.json({ competitive: group.competitive || false });
+    } catch (error) {
+      logger.error("Error checking team competitive status:", error);
+      res.status(500).json({ message: "Failed to check competitive status" });
     }
   });
 
@@ -1412,6 +2858,48 @@ export const registerRoutes = async (
     }
   });
 
+  // Get team deletion info (counts of what will be deleted)
+  router.get("/api/teams/:id/delete-info", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Count users in this team
+      const teamUsers = await db.select().from(users).where(eq(users.teamId, teamId));
+      const userIds = teamUsers.map(u => u.id);
+
+      let postCount = 0;
+      let mediaCount = 0;
+
+      if (userIds.length > 0) {
+        // Count posts by these users
+        const userPosts = await db.select().from(posts).where(inArray(posts.userId, userIds));
+        postCount = userPosts.length;
+
+        // Count media files (posts with imageUrl or videoUrl)
+        mediaCount = userPosts.filter(p => p.imageUrl || p.videoUrl).length;
+      }
+
+      res.json({
+        userCount: teamUsers.length,
+        postCount,
+        mediaCount,
+      });
+    } catch (error) {
+      logger.error(`Error getting team delete info ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to get team delete info",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add team deletion endpoint
   router.delete("/api/teams/:id", authenticate, async (req, res) => {
     try {
@@ -1426,46 +2914,82 @@ export const registerRoutes = async (
 
       logger.info(`Deleting team ${teamId} by user ${req.user.id}`);
 
-      // Delete the team from the database
-      await db.delete(teams).where(eq(teams.id, teamId));
+      // Use database transaction for atomic deletion with cascade
+      await db.transaction(async (tx) => {
+        // Get all users in this team
+        const teamUsers = await tx.select().from(users).where(eq(users.teamId, teamId));
+        const userIds = teamUsers.map(u => u.id);
 
-      // Return success response
+        if (userIds.length > 0) {
+          // Get all posts with media to delete files from Object Storage
+          const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
+          const mediaUrls = userPosts
+            .filter(p => p.mediaUrl)
+            .map(p => p.mediaUrl as string);
+
+          // Delete media files from Object Storage
+          for (const mediaUrl of mediaUrls) {
+            try {
+              await spartaStorage.deleteFile(mediaUrl);
+              logger.info(`Deleted media file: ${mediaUrl}`);
+            } catch (err) {
+              logger.error(`Failed to delete media file ${mediaUrl}:`, err);
+            }
+          }
+
+          // Get all messages sent or received by these users
+          const userMessages = await tx.select().from(messages).where(
+            or(
+              inArray(messages.senderId, userIds),
+              inArray(messages.recipientId, userIds)
+            )
+          );
+          const messageMediaUrls = userMessages
+            .filter(m => m.imageUrl)
+            .map(m => m.imageUrl as string);
+
+          // Delete message media files from Object Storage
+          for (const mediaUrl of messageMediaUrls) {
+            try {
+              await spartaStorage.deleteFile(mediaUrl);
+              logger.info(`Deleted message media file: ${mediaUrl}`);
+            } catch (err) {
+              logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
+            }
+          }
+
+          // Delete messages
+          await tx.delete(messages).where(
+            or(
+              inArray(messages.senderId, userIds),
+              inArray(messages.recipientId, userIds)
+            )
+          );
+          logger.info(`Deleted messages for ${userIds.length} users in team ${teamId}`);
+
+          // Delete reactions
+          await tx.delete(reactions).where(inArray(reactions.userId, userIds));
+          logger.info(`Deleted reactions for ${userIds.length} users in team ${teamId}`);
+
+          // Delete all posts by these users
+          await tx.delete(posts).where(inArray(posts.userId, userIds));
+          logger.info(`Deleted posts for ${userIds.length} users in team ${teamId}`);
+
+          // Delete all users in this team
+          await tx.delete(users).where(inArray(users.id, userIds));
+          logger.info(`Deleted ${userIds.length} users in team ${teamId}`);
+        }
+
+        // Finally delete the team
+        await tx.delete(teams).where(eq(teams.id, teamId));
+      });
+
+      logger.info(`Team ${teamId} deleted successfully by user ${req.user.id}`);
       res.status(200).json({ message: "Team deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting team ${req.params.id}:`, error);
       res.status(500).json({
         message: "Failed to delete team",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Update team endpoint  
-  router.patch("/api/teams/:id", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const teamId = parseInt(req.params.id);
-      if (isNaN(teamId)) {
-        return res.status(400).json({ message: "Invalid team ID" });
-      }
-
-      logger.info(`Updating team ${teamId} with data:`, req.body);
-
-      // Validate the data using a partial team schema
-      const updateData = req.body;
-      
-      // Update the team in the database
-      const updatedTeam = await storage.updateTeam(teamId, updateData);
-
-      logger.info(`Team ${teamId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedTeam);
-    } catch (error) {
-      logger.error(`Error updating team ${req.params.id}:`, error);
-      res.status(500).json({
-        message: "Failed to update team",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -1508,6 +3032,67 @@ export const registerRoutes = async (
     }
   });
 
+  // Get organization deletion info (counts of what will be deleted)
+  router.get("/api/organizations/:id/delete-info", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const organizationId = parseInt(req.params.id);
+      if (isNaN(organizationId)) {
+        return res.status(400).json({ message: "Invalid organization ID" });
+      }
+
+      // Get all groups in this organization
+      const orgGroups = await storage.getGroupsByOrganization(organizationId);
+      const groupIds = orgGroups.map(g => g.id);
+
+      let teamCount = 0;
+      let userCount = 0;
+      let postCount = 0;
+      let mediaCount = 0;
+
+      if (groupIds.length > 0) {
+        // Get all teams in these groups
+        const teamsInGroups = await db.select().from(teams).where(inArray(teams.groupId, groupIds));
+        teamCount = teamsInGroups.length;
+        const teamIds = teamsInGroups.map(t => t.id);
+
+        if (teamIds.length > 0) {
+          // Get all users in these teams
+          const usersInTeams = await db.select().from(users).where(inArray(users.teamId, teamIds));
+          userCount = usersInTeams.length;
+          const userIds = usersInTeams.map(u => u.id);
+
+          if (userIds.length > 0) {
+            // Count posts by these users
+            const userPosts = await db.select().from(posts).where(inArray(posts.userId, userIds));
+            postCount = userPosts.length;
+
+            // Count media files
+            mediaCount = userPosts.filter(p => p.imageUrl || p.videoUrl).length;
+          }
+        }
+      }
+
+      res.json({
+        groupCount: orgGroups.length,
+        teamCount,
+        userCount,
+        postCount,
+        mediaCount,
+      });
+    } catch (error) {
+      logger.error(`Error getting organization delete info ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to get organization delete info",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Delete organization endpoint
   router.delete("/api/organizations/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1519,8 +3104,99 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid organization ID" });
       }
 
-      await storage.deleteOrganization(organizationId);
-      logger.info(`Deleted organization ${organizationId} by user ${req.user.id}`);
+      logger.info(`Deleting organization ${organizationId} by user ${req.user.id}`);
+
+      // Use database transaction for atomic deletion with cascade
+      await db.transaction(async (tx) => {
+        // Get all groups in this organization
+        const orgGroups = await storage.getGroupsByOrganization(organizationId);
+        const groupIds = orgGroups.map(g => g.id);
+
+        if (groupIds.length > 0) {
+          // Get all teams in these groups
+          const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
+          const teamIds = teamsInGroups.map(t => t.id);
+
+          if (teamIds.length > 0) {
+            // Get all users in these teams
+            const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+            const userIds = usersInTeams.map(u => u.id);
+
+            if (userIds.length > 0) {
+              // Get all posts with media to delete files from Object Storage
+              const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
+              const mediaUrls = userPosts
+                .filter(p => p.mediaUrl)
+                .map(p => p.mediaUrl as string);
+
+              // Delete media files from Object Storage
+              for (const mediaUrl of mediaUrls) {
+                try {
+                  await spartaStorage.deleteFile(mediaUrl);
+                  logger.info(`Deleted media file: ${mediaUrl}`);
+                } catch (err) {
+                  logger.error(`Failed to delete media file ${mediaUrl}:`, err);
+                }
+              }
+
+              // Get all messages sent or received by these users
+              const userMessages = await tx.select().from(messages).where(
+                or(
+                  inArray(messages.senderId, userIds),
+                  inArray(messages.recipientId, userIds)
+                )
+              );
+              const messageMediaUrls = userMessages
+                .filter(m => m.imageUrl)
+                .map(m => m.imageUrl as string);
+
+              // Delete message media files from Object Storage
+              for (const mediaUrl of messageMediaUrls) {
+                try {
+                  await spartaStorage.deleteFile(mediaUrl);
+                  logger.info(`Deleted message media file: ${mediaUrl}`);
+                } catch (err) {
+                  logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
+                }
+              }
+
+              // Delete messages
+              await tx.delete(messages).where(
+                or(
+                  inArray(messages.senderId, userIds),
+                  inArray(messages.recipientId, userIds)
+                )
+              );
+              logger.info(`Deleted messages for ${userIds.length} users in organization ${organizationId}`);
+
+              // Delete reactions
+              await tx.delete(reactions).where(inArray(reactions.userId, userIds));
+              logger.info(`Deleted reactions for ${userIds.length} users in organization ${organizationId}`);
+
+              // Delete all posts by these users
+              await tx.delete(posts).where(inArray(posts.userId, userIds));
+              logger.info(`Deleted posts for ${userIds.length} users in organization ${organizationId}`);
+
+              // Delete all users in these teams
+              await tx.delete(users).where(inArray(users.id, userIds));
+              logger.info(`Deleted ${userIds.length} users for organization ${organizationId}`);
+            }
+
+            // Delete all teams in these groups
+            await tx.delete(teams).where(inArray(teams.id, teamIds));
+            logger.info(`Deleted ${teamIds.length} teams for organization ${organizationId}`);
+          }
+
+          // Delete all groups in this organization
+          await tx.delete(groups).where(inArray(groups.id, groupIds));
+          logger.info(`Deleted ${groupIds.length} groups for organization ${organizationId}`);
+        }
+
+        // Finally delete the organization
+        await tx.delete(organizations).where(eq(organizations.id, organizationId));
+      });
+
+      logger.info(`Organization ${organizationId} deleted successfully by user ${req.user.id}`);
       res.status(200).json({ message: "Organization deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting organization ${req.params.id}:`, error);
@@ -1531,7 +3207,7 @@ export const registerRoutes = async (
     }
   });
 
-  // Update organization endpoint  
+  // Update organization endpoint
   router.patch("/api/organizations/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1543,13 +3219,77 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid organization ID" });
       }
 
+      // Validate status field if present
+      if (req.body.status !== undefined) {
+        const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
+        const statusValidation = statusSchema.safeParse({ status: req.body.status });
+        if (!statusValidation.success) {
+          return res.status(400).json({ message: "Status must be 0 or 1" });
+        }
+      }
+
       logger.info(`Updating organization ${organizationId} with data:`, req.body);
 
-      // Update the organization in the database
-      const updatedOrganization = await storage.updateOrganization(organizationId, req.body);
+      // Use database transaction for atomic updates
+      const result = await db.transaction(async (tx) => {
+        // Update the organization using transaction
+        const [updatedOrganization] = await tx
+          .update(organizations)
+          .set(req.body)
+          .where(eq(organizations.id, organizationId))
+          .returning();
+
+        let groupsUpdated = 0;
+        let teamsUpdated = 0;
+        let usersUpdated = 0;
+
+        // If organization status is being set to inactive (0), cascade to all groups, teams, and users
+        if (req.body.status === 0) {
+          logger.info(`Organization ${organizationId} set to inactive, cascading status updates...`);
+
+          // Get all groups in this organization
+          const orgGroups = await storage.getGroupsByOrganization(organizationId);
+          const groupIds = orgGroups.map(g => g.id);
+
+          if (groupIds.length > 0) {
+            // Update all groups in this organization to inactive
+            await tx.update(groups).set({ status: 0 }).where(inArray(groups.id, groupIds));
+            groupsUpdated = groupIds.length;
+            logger.log(`Set ${groupIds.length} groups to inactive for organization ${organizationId}`);
+
+            // Get all teams in these groups
+            const teamsInGroups = await tx.select().from(teams).where(inArray(teams.groupId, groupIds));
+            const teamIds = teamsInGroups.map(t => t.id);
+
+            if (teamIds.length > 0) {
+              // Update all teams in these groups to inactive
+              await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+              teamsUpdated = teamIds.length;
+              logger.info(`Set ${teamIds.length} teams to inactive for organization ${organizationId}`);
+
+              // Get all users in these teams and update them to inactive
+              const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+              const userIds = usersInTeams.map(u => u.id);
+
+              if (userIds.length > 0) {
+                await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+                usersUpdated = userIds.length;
+                logger.info(`Set ${userIds.length} users to inactive for organization ${organizationId}`);
+              }
+            }
+          }
+        }
+
+        return { 
+          ...updatedOrganization, 
+          groupsUpdated, 
+          teamsUpdated, 
+          usersUpdated 
+        };
+      });
 
       logger.info(`Organization ${organizationId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedOrganization);
+      res.status(200).json(result);
     } catch (error) {
       logger.error(`Error updating organization ${req.params.id}:`, error);
       res.status(500).json({
@@ -1563,7 +3303,7 @@ export const registerRoutes = async (
   router.get("/api/groups", authenticate, async (req, res) => {
     try {
       const { organizationId } = req.query;
-      
+
       if (organizationId) {
         const groups = await storage.getGroupsByOrganization(parseInt(organizationId as string));
         res.json(groups);
@@ -1603,6 +3343,57 @@ export const registerRoutes = async (
     }
   });
 
+  // Get group deletion info (counts of what will be deleted)
+  router.get("/api/groups/:id/delete-info", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      // Get all teams in this group
+      const groupTeams = await db.select().from(teams).where(eq(teams.groupId, groupId));
+      const teamIds = groupTeams.map(t => t.id);
+
+      let userCount = 0;
+      let postCount = 0;
+      let mediaCount = 0;
+
+      if (teamIds.length > 0) {
+        // Get all users in these teams
+        const teamUsers = await db.select().from(users).where(inArray(users.teamId, teamIds));
+        userCount = teamUsers.length;
+        const userIds = teamUsers.map(u => u.id);
+
+        if (userIds.length > 0) {
+          // Count posts by these users
+          const userPosts = await db.select().from(posts).where(inArray(posts.userId, userIds));
+          postCount = userPosts.length;
+
+          // Count media files
+          mediaCount = userPosts.filter(p => p.imageUrl || p.videoUrl).length;
+        }
+      }
+
+      res.json({
+        teamCount: groupTeams.length,
+        userCount,
+        postCount,
+        mediaCount,
+      });
+    } catch (error) {
+      logger.error(`Error getting group delete info ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to get group delete info",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   router.delete("/api/groups/:id", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
@@ -1614,8 +3405,89 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      await storage.deleteGroup(groupId);
-      logger.info(`Deleted group ${groupId} by user ${req.user.id}`);
+      logger.info(`Deleting group ${groupId} by user ${req.user.id}`);
+
+      // Use database transaction for atomic deletion with cascade
+      await db.transaction(async (tx) => {
+        // Get all teams in this group
+        const groupTeams = await tx.select().from(teams).where(eq(teams.groupId, groupId));
+        const teamIds = groupTeams.map(t => t.id);
+
+        if (teamIds.length > 0) {
+          // Get all users in these teams
+          const teamUsers = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+          const userIds = teamUsers.map(u => u.id);
+
+          if (userIds.length > 0) {
+            // Get all posts with media to delete files from Object Storage
+            const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
+            const mediaUrls = userPosts
+              .filter(p => p.mediaUrl)
+              .map(p => p.mediaUrl as string);
+
+            // Delete media files from Object Storage
+            for (const mediaUrl of mediaUrls) {
+              try {
+                await spartaStorage.deleteFile(mediaUrl);
+                logger.info(`Deleted media file: ${mediaUrl}`);
+              } catch (err) {
+                logger.error(`Failed to delete media file ${mediaUrl}:`, err);
+              }
+            }
+
+            // Get all messages sent or received by these users
+            const userMessages = await tx.select().from(messages).where(
+              or(
+                inArray(messages.senderId, userIds),
+                inArray(messages.recipientId, userIds)
+              )
+            );
+            const messageMediaUrls = userMessages
+              .filter(m => m.imageUrl)
+              .map(m => m.imageUrl as string);
+
+            // Delete message media files from Object Storage
+            for (const mediaUrl of messageMediaUrls) {
+              try {
+                await spartaStorage.deleteFile(mediaUrl);
+                logger.info(`Deleted message media file: ${mediaUrl}`);
+              } catch (err) {
+                logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
+              }
+            }
+
+            // Delete messages
+            await tx.delete(messages).where(
+              or(
+                inArray(messages.senderId, userIds),
+                inArray(messages.recipientId, userIds)
+              )
+            );
+            logger.info(`Deleted messages for ${userIds.length} users in group ${groupId}`);
+
+            // Delete reactions
+            await tx.delete(reactions).where(inArray(reactions.userId, userIds));
+            logger.info(`Deleted reactions for ${userIds.length} users in group ${groupId}`);
+
+            // Delete all posts by these users
+            await tx.delete(posts).where(inArray(posts.userId, userIds));
+            logger.info(`Deleted posts for ${userIds.length} users in group ${groupId}`);
+
+            // Delete all users in these teams
+            await tx.delete(users).where(inArray(users.id, userIds));
+            logger.info(`Deleted ${userIds.length} users in group ${groupId}`);
+          }
+
+          // Delete all teams in this group
+          await tx.delete(teams).where(inArray(teams.id, teamIds));
+          logger.info(`Deleted ${teamIds.length} teams in group ${groupId}`);
+        }
+
+        // Finally delete the group
+        await tx.delete(groups).where(eq(groups.id, groupId));
+      });
+
+      logger.info(`Group ${groupId} deleted successfully by user ${req.user.id}`);
       res.status(200).json({ message: "Group deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting group ${req.params.id}:`, error);
@@ -1626,25 +3498,135 @@ export const registerRoutes = async (
     }
   });
 
-  // Update group endpoint  
+  // Update group endpoint
   router.patch("/api/groups/:id", authenticate, async (req, res) => {
     try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      logger.info(`Updating group ${groupId} with data:`, req.body);
+      // Check authorization
+      const isFullAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
 
-      // Update the group in the database
-      const updatedGroup = await storage.updateGroup(groupId, req.body);
+      logger.info(`Group update attempt by user ${req.user?.id}:`, {
+        groupId,
+        isFullAdmin,
+        isGroupAdmin: req.user?.isGroupAdmin,
+        adminGroupId: req.user?.adminGroupId,
+        isGroupAdminForThisGroup,
+        requestBody: req.body
+      });
+
+      if (!isFullAdmin && !isGroupAdminForThisGroup) {
+        logger.warn(`Authorization failed for user ${req.user?.id} on group ${groupId}`);
+
+        // Set content type before any response
+        res.setHeader("Content-Type", "application/json");
+
+        // Provide helpful error message for Group Admins
+        if (req.user?.isGroupAdmin && req.user?.adminGroupId) {
+          // Get the group name they are authorized for
+          const [authorizedGroup] = await db
+            .select({ name: groups.name })
+            .from(groups)
+            .where(eq(groups.id, req.user.adminGroupId))
+            .limit(1);
+
+          const groupName = authorizedGroup?.name || `Group ${req.user.adminGroupId}`;
+          return res.status(403).json({
+            message: `Not authorized to make changes to this group. You are Group Admin for ${groupName} only.`
+          });
+        }
+
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Validate status field if present (only Full Admins can change status)
+      if (req.body.status !== undefined) {
+        if (!isFullAdmin) {
+          return res.status(403).json({ message: "Only Full Admins can change group status" });
+        }
+        const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
+        const statusValidation = statusSchema.safeParse({ status: req.body.status });
+        if (!statusValidation.success) {
+          return res.status(400).json({ message: "Status must be 0 or 1" });
+        }
+      }
+
+      // Group Admins can only update certain fields (not organizationId or status)
+      let updateData: any = {};
+      if (isGroupAdminForThisGroup && !isFullAdmin) {
+        // Group admins can only update name, description, competitive status, and program start date
+        const { name, description, competitive, programStartDate } = req.body;
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        if (competitive !== undefined) updateData.competitive = competitive;
+        if (programStartDate !== undefined) updateData.programStartDate = programStartDate ? new Date(programStartDate) : null;
+
+        logger.info(`Group Admin filtered update data for group ${groupId}:`, updateData);
+      } else {
+        // Full admins can update everything
+        updateData = { ...req.body };
+        // Convert programStartDate to Date object if present
+        if (updateData.programStartDate !== undefined) {
+          updateData.programStartDate = updateData.programStartDate ? new Date(updateData.programStartDate) : null;
+        }
+      }
+
+      // Ensure we have something to update
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      // Use database transaction for atomic updates
+      const result = await db.transaction(async (tx) => {
+        // Update the group using transaction
+        const [updatedGroup] = await tx
+          .update(groups)
+          .set(updateData)
+          .where(eq(groups.id, groupId))
+          .returning();
+
+        let teamsUpdated = 0;
+        let usersUpdated = 0;
+
+        // If group status is being set to inactive (0), cascade to all teams and users
+        if (req.body.status === 0) {
+          logger.info(`Group ${groupId} set to inactive, cascading status updates...`);
+
+          // Get all teams in this group
+          const teamsInGroup = await tx.select().from(teams).where(eq(teams.groupId, groupId));
+          const teamIds = teamsInGroup.map(t => t.id);
+
+          if (teamIds.length > 0) {
+            // Update all teams in this group to inactive
+            await tx.update(teams).set({ status: 0 }).where(inArray(teams.id, teamIds));
+            teamsUpdated = teamIds.length;
+            logger.info(`Set ${teamIds.length} teams to inactive for group ${groupId}`);
+
+            // Get all users in these teams and update them to inactive
+            const usersInTeams = await tx.select().from(users).where(inArray(users.teamId, teamIds));
+            const userIds = usersInTeams.map(u => u.id);
+
+            if (userIds.length > 0) {
+              await tx.update(users).set({ status: 0 }).where(inArray(users.id, userIds));
+              usersUpdated = userIds.length;
+              logger.info(`Set ${userIds.length} users to inactive for group ${groupId}`);
+            }
+          }
+        }
+
+        return { 
+          ...updatedGroup, 
+          teamsUpdated, 
+          usersUpdated 
+        };
+      });
 
       logger.info(`Group ${groupId} updated successfully by user ${req.user.id}`);
-      res.status(200).json(updatedGroup);
+      res.status(200).json(result);
     } catch (error) {
       logger.error(`Error updating group ${req.params.id}:`, error);
       res.status(500).json({
@@ -1654,19 +3636,271 @@ export const registerRoutes = async (
     }
   });
 
+  // Invite Code endpoints
+  // Generate invite code for Group Admin
+  router.post("/api/invite-codes/group-admin/:groupId", authenticate, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      // Check if user is admin or group admin for this group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+
+      if (!isAdmin && !isGroupAdminForThisGroup) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `GA-${groupId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      // Update the group with the new invite code
+      const [updatedGroup] = await db
+        .update(groups)
+        .set({ groupAdminInviteCode: code })
+        .where(eq(groups.id, groupId))
+        .returning();
+
+      if (!updatedGroup) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      res.status(201).json({ code, type: "group_admin" });
+    } catch (error) {
+      logger.error("Error creating group admin invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Generate invite code for Group Member
+  router.post("/api/invite-codes/group-member/:groupId", authenticate, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      // Check if user is admin or group admin for this group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+
+      if (!isAdmin && !isGroupAdminForThisGroup) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `GM-${groupId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      // Update the group with the new invite code
+      const [updatedGroup] = await db
+        .update(groups)
+        .set({ groupMemberInviteCode: code })
+        .where(eq(groups.id, groupId))
+        .returning();
+
+      if (!updatedGroup) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      res.status(201).json({ code, type: "group_member" });
+    } catch (error) {
+      logger.error("Error creating group member invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Generate invite code for Team Lead
+  router.post("/api/invite-codes/team-admin/:teamId", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Get team to check group ownership
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Check if user is admin or group admin for this team's group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+
+      if (!isAdmin && !isGroupAdminForThisTeam) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `TA-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      // Update the team with the new invite code
+      const [updatedTeam] = await db
+        .update(teams)
+        .set({ teamAdminInviteCode: code })
+        .where(eq(teams.id, teamId))
+        .returning();
+
+      if (!updatedTeam) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      res.status(201).json({ code, type: "team_admin" });
+    } catch (error) {
+      logger.error("Error creating team admin invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // Generate invite code for Team Member
+  router.post("/api/invite-codes/team-member/:teamId", authenticate, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      // Get team to check group ownership
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Check if user is admin or group admin for this team's group
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+
+      if (!isAdmin && !isGroupAdminForThisTeam) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Generate unique code
+      const code = `TM-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      // Update the team with the new invite code
+      const [updatedTeam] = await db
+        .update(teams)
+        .set({ teamMemberInviteCode: code })
+        .where(eq(teams.id, teamId))
+        .returning();
+
+      if (!updatedTeam) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      res.status(201).json({ code, type: "team_member" });
+    } catch (error) {
+      logger.error("Error creating team member invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  // GET invite code routes for groups and teams moved to invite-code-routes.ts to avoid duplication
+  // Redeem/use an invite code - MOVED to invite-code-routes.ts to avoid duplication
+
+  // Workout Types endpoints
+  router.get("/api/workout-types", authenticate, async (req, res) => {
+    try {
+      const workoutTypes = await storage.getWorkoutTypes();
+      res.json(workoutTypes);
+    } catch (error) {
+      logger.error("Error fetching workout types:", error);
+      res.status(500).json({ message: "Failed to fetch workout types" });
+    }
+  });
+
+  router.post("/api/workout-types", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const parsedData = insertWorkoutTypeSchema.safeParse(req.body);
+      if (!parsedData.success) {
+        return res.status(400).json({
+          message: "Invalid workout type data",
+          errors: parsedData.error.errors,
+        });
+      }
+
+      const workoutType = await storage.createWorkoutType(parsedData.data);
+      logger.info(`Created workout type: ${workoutType.type} by user ${req.user.id}`);
+      res.status(201).json(workoutType);
+    } catch (error) {
+      logger.error("Error creating workout type:", error);
+      res.status(500).json({
+        message: "Failed to create workout type",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  router.delete("/api/workout-types/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const workoutTypeId = parseInt(req.params.id);
+      if (isNaN(workoutTypeId)) {
+        return res.status(400).json({ message: "Invalid workout type ID" });
+      }
+
+      await storage.deleteWorkoutType(workoutTypeId);
+      logger.info(`Deleted workout type ${workoutTypeId} by user ${req.user.id}`);
+      res.status(200).json({ message: "Workout type deleted successfully" });
+    } catch (error) {
+      logger.error(`Error deleting workout type ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to delete workout type",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  router.patch("/api/workout-types/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const workoutTypeId = parseInt(req.params.id);
+      if (isNaN(workoutTypeId)) {
+        return res.status(400).json({ message: "Invalid workout type ID" });
+      }
+
+      logger.info(`Updating workout type ${workoutTypeId} with data:`, req.body);
+
+      const updatedWorkoutType = await storage.updateWorkoutType(workoutTypeId, req.body);
+
+      logger.info(`Workout type ${workoutTypeId} updated successfully by user ${req.user.id}`);
+      res.status(200).json(updatedWorkoutType);
+    } catch (error) {
+      logger.error(`Error updating workout type ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to update workout type",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Activities endpoints
   router.get("/api/activities", authenticate, async (req, res) => {
     try {
-      const { week, day, weeks } = req.query;
+      const { week, day, weeks, activityTypeId } = req.query;
+
+      const activityTypeIdNumber = activityTypeId ? parseInt(activityTypeId as string) : undefined;
 
       // If weeks parameter is provided, fetch multiple weeks efficiently
       if (weeks) {
         const weekNumbers = (weeks as string)
           .split(",")
           .map((w) => parseInt(w.trim()));
-        const activities = await storage.getActivitiesForWeeks(weekNumbers);
+        const activities = await storage.getActivitiesForWeeks(weekNumbers, activityTypeIdNumber);
         logger.info(
-          `Retrieved activities for weeks: ${weekNumbers.join(", ")}`,
+          `Retrieved activities for weeks: ${weekNumbers.join(", ")}${activityTypeIdNumber ? ` with activity type: ${activityTypeIdNumber}` : ''}`,
         );
         res.json(activities);
         return;
@@ -1675,8 +3909,9 @@ export const registerRoutes = async (
       const activities = await storage.getActivities(
         week ? parseInt(week as string) : undefined,
         day ? parseInt(day as string) : undefined,
+        activityTypeIdNumber,
       );
-      logger.info("Retrieved activities:", JSON.stringify(activities, null, 2));
+      logger.info(`Retrieved activities${activityTypeIdNumber ? ` with activity type: ${activityTypeIdNumber}` : ''}`, { activitiesData: JSON.stringify(activities, null, 2) });
       res.json(activities);
     } catch (error) {
       logger.error("Error fetching activities:", error);
@@ -1691,8 +3926,8 @@ export const registerRoutes = async (
       }
 
       logger.info(
-        "Creating activity with data:",
-        JSON.stringify(req.body, null, 2),
+        "Creating/updating activity with data:",
+        { activityData: JSON.stringify(req.body, null, 2) },
       );
 
       const parsedData = insertActivitySchema.safeParse(req.body);
@@ -1706,25 +3941,130 @@ export const registerRoutes = async (
 
       logger.info(
         "Parsed activity data:",
-        JSON.stringify(parsedData.data, null, 2),
+        { parsedData: JSON.stringify(parsedData.data, null, 2) },
       );
 
       try {
-        const activity = await storage.createActivity(parsedData.data);
-        res.status(201).json(activity);
+        // Apply Bible verse conversion to the parsed data before saving to database
+        if (parsedData.data.contentFields && Array.isArray(parsedData.data.contentFields)) {
+          parsedData.data.contentFields = parsedData.data.contentFields.map(field => {
+            if (field.type === 'text' && field.content) {
+              // Match Bible verses with chapter:verse OR just chapter OR chapter ranges (e.g., "Acts 1", "Acts 1:1-5", or "Genesis 33-34")
+              // This regex now handles full chapters, specific verses, and chapter ranges
+              const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*\b/gi;
+
+              const originalContent = field.content;
+              field.content = field.content.replace(bibleVerseRegex, (match) => {
+                // Map book names to 3-letter abbreviations
+                const bookMap: { [key: string]: string } = {
+                  'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
+                  'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
+                  '1 Kings': '1KI', '2 Kings': '2KI', '1 Chronicles': '1CH', '2 Chronicles': '2CH',
+                  'Ezra': 'EZR', 'Nehemiah': 'NEH', 'Esther': 'EST', 'Job': 'JOB', 'Psalm': 'PSA', 'Psalms': 'PSA',
+                  'Proverbs': 'PRO', 'Ecclesiastes': 'ECC', 'Song of Songs': 'SNG', 'Isaiah': 'ISA',
+                  'Jeremiah': 'JER', 'Lamentations': 'LAM', 'Ezekiel': 'EZK', 'Daniel': 'DAN',
+                  'Hosea': 'HOS', 'Joel': 'JOL', 'Amos': 'AMO', 'Obadiah': 'OBA', 'Jonah': 'JON',
+                  'Micah': 'MIC', 'Nahum': 'NAM', 'Habakkuk': 'HAB', 'Zephaniah': 'ZEP', 'Haggai': 'HAG',
+                  'Zechariah': 'ZEC', 'Malachi': 'MAL', 'Matthew': 'MAT', 'Mark': 'MRK', 'Luke': 'LUK',
+                  'John': 'JHN', 'Acts': 'ACT', 'Romans': 'ROM', '1 Corinthians': '1CO', '2 Corinthians': '2CO',
+                  'Galatians': 'GAL', 'Galation': 'GAL', 'Ephesians': 'EPH', 'Philippians': 'PHP', 'Colossians': 'COL',
+                  '1 Thessalonians': '1TH', '2 Thessalonians': '2TH', '1 Timothy': '1TI', '2 Timothy': '2TI',
+                  'Titus': 'TIT', 'Philemon': 'PHM', 'Hebrews': 'HEB', 'James': 'JAS', '1 Peter': '1PE',
+                  '2 Peter': '2PE', '1 John': '1JN', '2 John': '2JN', '3 John': '3JN', 'Jude': 'JUD', 'Revelation': 'REV'
+                };
+
+                // Extract book name and reference (e.g., "John 5:1-18" -> book="John", ref="5:1-18")
+                // Also handles chapter ranges like "Genesis 33-34" and comma lists like "Psalms 29, 59, 89, 149"
+                const parts = match.match(/^(.+?)\s+(\d+.*)$/);
+                if (parts) {
+                  const bookName = parts[1].trim();
+                  const reference = parts[2].trim();
+                  const bookAbbr = bookMap[bookName] || bookName;
+
+                  // Check if this is a comma-separated chapter list (e.g., "30, 60, 90, 120")
+                  // The reference might be just numbers or include other text after
+                  const commaChaptersMatch = reference.match(/^(\d+(?:\s*,\s*\d+)+)(?:\s|$)/);
+                  if (commaChaptersMatch) {
+                    const chapters = commaChaptersMatch[1].split(',').map(ch => ch.trim());
+                    const links = chapters.map(chapter => {
+                      const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${chapter}</a>`;
+                    });
+
+                    // Get any remaining text after the comma list
+                    const remainingText = reference.substring(commaChaptersMatch[0].length).trim();
+                    const result = `${bookName} ${links.join(', ')}${remainingText ? ' ' + remainingText : ''}`;
+                    return result;
+                  }
+
+                  // Format: https://www.bible.com/bible/111/JHN.5.1-18.NIV or GEN.33-34.NIV
+                  // Replace colons with dots but preserve hyphens for chapter/verse ranges
+                  const formattedRef = reference.replace(/:/g, '.');
+                  const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
+                  return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+                }
+
+                return match;
+              });
+
+              // Don't process YouTube embeds in Bible verse content
+              // YouTube embeds are already properly formatted from the client
+
+              // Log if any Bible verses were converted
+              if (originalContent !== field.content) {
+                logger.info(`Bible verse conversion applied to activity Week ${parsedData.data.week}, Day ${parsedData.data.day}`);
+              }
+            }
+            return field;
+          });
+        }
+
+        // Check if an activity already exists for this week, day, AND activity type
+        const existingActivity = await db
+          .select()
+          .from(activities)
+          .where(
+            and(
+              eq(activities.week, parsedData.data.week),
+              eq(activities.day, parsedData.data.day),
+              eq(activities.activityTypeId, parsedData.data.activityTypeId)
+            )
+          )
+          .limit(1);
+
+        let activity;
+        if (existingActivity.length > 0) {
+          // Update existing activity
+          logger.info(`Updating existing activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
+          [activity] = await db
+            .update(activities)
+            .set(parsedData.data)
+            .where(eq(activities.id, existingActivity[0].id))
+            .returning();
+
+          res.status(200).json({
+            ...activity,
+            message: "Activity updated successfully"
+          });
+        } else {
+          // Create new activity
+          logger.info(`Creating new activity for Week ${parsedData.data.week}, Day ${parsedData.data.day}, Type ${parsedData.data.activityTypeId}`);
+          activity = await storage.createActivity(parsedData.data);
+          res.status(201).json(activity);
+        }
       } catch (dbError) {
         logger.error("Database error:", dbError);
         res.status(500).json({
-          message: "Failed to create activity in database",
+          message: "Failed to create/update activity in database",
           error: dbError instanceof Error ? dbError.message : "Unknown error",
         });
       }
     } catch (error) {
-      logger.error("Error creating activity:", error);
+      logger.error("Error creating/updating activity:", error);
       res.status(500).json({
         message:
-          error instanceof Error ? error.message : "Failed to create activity",
-        error: error instanceof Error ? error.stack : undefined,
+          error instanceof Error ? error.message : "Failed to create/update activity",
+        error: error instanceof Error ? error.stack : "Unknown error",
       });
     }
   });
@@ -1737,7 +4077,7 @@ export const registerRoutes = async (
 
       logger.info(
         "Updating activity with data:",
-        JSON.stringify(req.body, null, 2),
+        { updateData: JSON.stringify(req.body, null, 2) },
       );
 
       const parsedData = insertActivitySchema.safeParse(req.body);
@@ -1790,705 +4130,36 @@ export const registerRoutes = async (
     }
   });
 
-  router.get("/api/users", authenticate, async (req, res) => {
+  // Delete Week 2 Day 0 activity (one-time cleanup)
+  router.delete("/api/activities/week2-day0", authenticate, async (req, res) => {
     try {
       if (!req.user?.isAdmin) {
         return res.status(403).json({ message: "Not authorized" });
       }
-      const users = await storage.getAllUsers();
-      res.json(users);
-    } catch (error) {
-      logger.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
-    }
-  });
 
-  // Update the post creation endpoint to ensure correct point assignment
-  router.post(
-    "/api/posts",
-    authenticate,
-    upload.fields([
-      { name: "image", maxCount: 1 },
-      { name: "thumbnail", maxCount: 1 },
-      { name: "thumbnail_alt", maxCount: 1 },
-      { name: "thumbnail_jpg", maxCount: 1 },
-    ]),
-    async (req, res) => {
-      // Set content type early to prevent browser confusion
-      res.set({
-        "Cache-Control": "no-store",
-        Pragma: "no-cache",
-        "Content-Type": "application/json",
-        "X-Content-Type-Options": "nosniff",
-      });
-
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      try {
-        let postData = req.body;
-        if (typeof postData.data === "string") {
-          try {
-            postData = JSON.parse(postData.data);
-          } catch (parseError) {
-            logger.error("Error parsing post data:", parseError);
-            return res
-              .status(400)
-              .json({ message: "Invalid post data format" });
-          }
-        }
-
-        // Calculate points based on post type
-        let points = 0;
-        const type = postData.type?.toLowerCase();
-        switch (type) {
-          case "food":
-            points = 3; // 3 points per meal
-            break;
-          case "workout":
-            points = 3; // 3 points per workout
-            break;
-          case "scripture":
-            points = 3; // 3 points per scripture
-            break;
-          case "memory_verse":
-            points = 10; // 10 points for memory verse
-            break;
-          case "miscellaneous":
-          default:
-            points = 0;
-        }
-
-        // Log point assignment for verification
-        console.log("Assigning points:", { type, points });
-
-        // Log point calculation for verification
-        logger.info("Post points calculation:", {
-          type: postData.type,
-          assignedPoints: points,
-        });
-
-        // For comments, handle separately
-        if (postData.type === "comment") {
-          if (!postData.parentId) {
-            logger.error("Missing parentId for comment");
-            return res
-              .status(400)
-              .json({ message: "Parent post ID is required for comments" });
-          }
-
-          const post = await storage.createComment({
-            userId: req.user.id,
-            content: postData.content.trim(),
-            parentId: postData.parentId,
-            depth: postData.depth || 0,
-          });
-          return res.status(201).json(post);
-        }
-
-        // Handle regular post creation
-        let mediaUrl = null;
-        let mediaProcessed = false;
-        let isVideo = false;
-
-        // Scripture posts shouldn't have images/videos
-        // Miscellaneous posts may or may not have images/videos
-        if (postData.type === "scripture") {
-          logger.info("Scripture post created with no media");
-          mediaUrl = null;
-        } else if (
-          req.files &&
-          (req.files as any).image &&
-          (req.files as any).image[0]
-        ) {
-          try {
-            // Get the uploaded file from the files object
-            const uploadedFile = (req.files as any).image[0];
-
-            // Handle video files differently
-            isVideo = uploadedFile.mimetype.startsWith("video/");
-
-            logger.info(
-              `Processing media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${isVideo}`,
-            );
-
-            // Import the Object Storage utility
-            const { spartaObjectStorage } = await import(
-              "./sparta-object-storage-final"
-            );
-
-            // Store the file using Object Storage
-            const fileInfo = await spartaObjectStorage.storeFile(
-              uploadedFile.buffer,
-              uploadedFile.originalname,
-              uploadedFile.mimetype,
-              isVideo,
-            );
-
-            // Store the full Object Storage key for proper URL construction
-            mediaUrl = `shared/uploads/${fileInfo.filename}`;
-            mediaProcessed = true;
-
-            if (isVideo) {
-              logger.info(`Video file stored successfully: ${fileInfo}`);
-            } else {
-              logger.info(`Image file stored successfully: ${fileInfo}`);
-            }
-          } catch (fileErr) {
-            logger.error("Error processing uploaded file:", fileErr);
-            // Don't use any fallback image
-            mediaUrl = null;
-            logger.info(
-              `Error with uploaded file for post type: ${postData.type}`,
-            );
-          }
-        } else if (
-          postData.type &&
-          postData.type !== "scripture" &&
-          postData.type !== "miscellaneous"
-        ) {
-          // For miscellaneous posts, media is optional
-          // For scripture posts, no media
-          // For other posts, we previously would use fallbacks, but now we leave them blank
-          mediaUrl = null;
-          logger.info(`No media uploaded for ${postData.type} post`);
-        }
-
-        const post = await db
-          .insert(posts)
-          .values({
-            userId: req.user!.id,
-            type: postData.type,
-            content: postData.content?.trim() || "",
-            mediaUrl: mediaUrl,
-            is_video: isVideo,
-            points: points,
-            createdAt: postData.createdAt
-              ? new Date(postData.createdAt)
-              : new Date(),
-          })
-          .returning()
-          .then((posts) => posts[0]);
-
-        // Log the created post for verification
-        logger.info("Created post with points:", {
-          postId: post.id,
-          type: post.type,
-          points: post.points,
-        });
-
-        // Check for achievements based on post type
-        try {
-          await checkForAchievements(req.user.id, post.type);
-        } catch (achievementError) {
-          logger.error("Error checking achievements:", achievementError);
-          // Non-fatal error, continue without blocking post creation
-        }
-
-        res.status(201).json(post);
-      } catch (error) {
-        logger.error("Error in post creation:", error);
-
-        // Ensure content type is still set on error
-        res.set({
-          "Cache-Control": "no-store",
-          Pragma: "no-cache",
-          "Content-Type": "application/json",
-          "X-Content-Type-Options": "nosniff",
-        });
-
-        res.status(500).json({
-          message:
-            error instanceof Error ? error.message : "Failed to create post",
-          error: error instanceof Error ? error.stack : "Unknown error",
-        });
-      }
-    },
-  );
-
-  // Add this endpoint before the app.use(router) line
-  // This endpoint has been moved to line ~3116 to support achievement_notifications_enabled
-
-  router.delete("/api/posts/:id", authenticate, async (req, res) => {
-    try {
-      // Set content type early to prevent browser confusion
-      res.setHeader("Content-Type", "application/json");
-
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      // Get the post ID as a string to handle timestamp-based IDs
-      const postIdStr = req.params.id;
-
-      // Log the raw post ID for debugging
-      logger.info(`Raw post ID from request: ${postIdStr}`);
-
-      // Validate it's a valid number
-      if (!/^\d+$/.test(postIdStr)) {
-        return res.status(400).json({ message: "Invalid post ID format" });
-      }
-
-      // Convert to numeric ID for database operations
-      const postId = parseInt(postIdStr);
-
-      // Use Drizzle's built-in query methods which handle parameter binding correctly
-      logger.info(`Attempting to delete post ${postId} by user ${req.user.id}`);
-
-      // Get the post to check ownership
-      const [post] = await db.select().from(posts).where(eq(posts.id, postId));
-
-      if (!post) {
-        logger.info(`Post ${postId} not found during deletion attempt`);
-        return res.status(404).json({ message: "Post not found" });
-      }
-
-      // Check if user is admin or the post owner
-      if (!req.user.isAdmin && post.userId !== req.user.id) {
-        logger.info(
-          `User ${req.user.id} not authorized to delete post ${postId} owned by ${post.userId}`,
-        );
-        return res
-          .status(403)
-          .json({ message: "Not authorized to delete this post" });
-      }
-
-      // Delete associated media files if they exist
-      if (post.mediaUrl) {
-        try {
-          // Import the Object Storage utility
-          const { spartaObjectStorage } = await import(
-            "./sparta-object-storage-final"
-          );
-
-          logger.info(`Deleting file associated with post: ${post.mediaUrl}`);
-
-          // Extract filename from mediaUrl
-          let filename = "";
-          if (post.mediaUrl.includes("filename=")) {
-            // Handle serve-file URLs like /api/serve-file?filename=...
-            const urlParams = new URLSearchParams(post.mediaUrl.split("?")[1]);
-            filename = urlParams.get("filename") || "";
-          } else if (post.mediaUrl.includes("storageKey=")) {
-            // Handle Object Storage URLs like /api/object-storage/direct-download?storageKey=...
-            const urlParams = new URLSearchParams(post.mediaUrl.split("?")[1]);
-            const storageKey = urlParams.get("storageKey") || "";
-            filename = storageKey.split("/").pop() || "";
-          } else {
-            // Handle direct paths
-            filename = post.mediaUrl.split("/").pop() || "";
-          }
-
-          logger.info(`Extracted filename for deletion: ${filename}`);
-
-          if (filename) {
-            // Build the actual Object Storage path
-            const filePath = `shared/uploads/${filename}`;
-
-            // Delete the main media file
-            try {
-              await spartaObjectStorage.deleteFile(filePath);
-              logger.info(`Deleted main media file: ${filePath}`);
-            } catch (err) {
-              logger.warn(
-                `Could not delete main media file ${filePath}: ${err}`,
-              );
-            }
-          }
-        } catch (fileError) {
-          logger.error(
-            `Error deleting media file for post ${postId}:`,
-            fileError,
-          );
-          // Continue with post deletion even if file deletion fails
-        }
-      }
-
-      // Use a transaction to ensure all deletes succeed or none do
-      await db.transaction(async (tx) => {
-        try {
-          // First delete any reactions that reference this post
-          await tx.delete(reactions).where(eq(reactions.postId, postId));
-          logger.info(`Deleted reactions for post ${postId}`);
-
-          // Then delete any comments on the post
-          await tx.delete(posts).where(eq(posts.parentId, postId));
-          logger.info(`Deleted comments for post ${postId}`);
-
-          // Finally delete the post itself
-          await tx.delete(posts).where(eq(posts.id, postId));
-          logger.info(`Post ${postId} successfully deleted`);
-        } catch (txError) {
-          logger.error(
-            `Transaction error while deleting post ${postId}:`,
-            txError,
-          );
-          throw txError; // Re-throw to roll back the transaction
-        }
-      });
-
-      return res.status(200).json({
-        message: "Post deleted successfully",
-        id: postId,
-      });
-    } catch (error) {
-      logger.error("Error deleting post:", error);
-      return res.status(500).json({
-        message: "Failed to delete post",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Update user's preferred name
-  router.patch("/api/user/preferred-name", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { preferredName } = req.body;
-      console.log(`Updating preferred name for user ${req.user.id} to:`, preferredName);
-
-      // Update the user's preferred name
-      const [updatedUser] = await db
-        .update(users)
-        .set({ preferredName: preferredName || null })
-        .where(eq(users.id, req.user.id))
+      // Delete Week 2, Day 0 activities
+      const deleted = await db
+        .delete(activities)
+        .where(
+          and(
+            eq(activities.week, 2),
+            eq(activities.day, 0)
+          )
+        )
         .returning();
 
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      console.log("User preferred name updated successfully:", updatedUser.preferredName);
-      
-      res.json({
-        message: "Preferred name updated successfully",
-        preferredName: updatedUser.preferredName
-      });
+      logger.info(`Deleted ${deleted.length} Week 2 Day 0 activities`);
+      res.json({ message: "Week 2 Day 0 activities deleted", count: deleted.length });
     } catch (error) {
-      logger.error("Error updating preferred name:", error);
+      logger.error("Error deleting Week 2 Day 0:", error);
       res.status(500).json({
-        message: "Failed to update preferred name",
+        message: "Failed to delete activities",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
 
-  // Update daily score check endpoint
-  // Added a GET endpoint for testing as well as the main POST endpoint
-  router.get("/api/check-daily-scores", async (req, res) => {
-    try {
-      const userId = parseInt(req.query.userId as string);
-      const tzOffset = parseInt(req.query.tzOffset as string) || 0;
-
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "User ID is required" });
-      }
-
-      logger.info(
-        `Manual check daily scores for user ${userId} with timezone offset ${tzOffset}`,
-      );
-
-      // Forward to the post endpoint
-      // We're creating a fake request with the necessary properties
-      await checkDailyScores({ body: { userId, tzOffset } } as Request, res);
-    } catch (error) {
-      logger.error("Error in GET daily score check:", error);
-      res.status(500).json({
-        message: "Failed to check daily scores",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Add the actual POST endpoint for the daily scores check
-  router.post("/api/check-daily-scores", async (req, res) => {
-    try {
-      // This is the proper handler for incoming scheduled requests
-      await checkDailyScores(req, res);
-    } catch (error) {
-      logger.error("Error in POST daily score check:", error);
-      res.status(500).json({
-        message: "Failed to check daily scores",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Main function to check daily scores
-  const checkDailyScores = async (req: Request, res: Response) => {
-    try {
-      logger.info("Starting daily score check with request body:", req.body);
-
-      // Get current hour and minute from request body or use current time
-      const currentHour =
-        req.body?.currentHour !== undefined
-          ? parseInt(req.body.currentHour)
-          : new Date().getHours();
-
-      const currentMinute =
-        req.body?.currentMinute !== undefined
-          ? parseInt(req.body.currentMinute)
-          : new Date().getMinutes();
-
-      logger.info(
-        `Check daily scores at time: ${currentHour}:${currentMinute}`,
-      );
-
-      // Get all users using a more explicit query to avoid type issues
-      const allUsers = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          isAdmin: users.isAdmin,
-          teamId: users.teamId,
-          notificationTime: users.notificationTime,
-        })
-        .from(users);
-
-      logger.info(
-        `Found ${Array.isArray(allUsers) ? allUsers.length : 0} users to check`,
-      );
-
-      // Get yesterday's date with proper timezone handling
-      const now = new Date();
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
-
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const dayOfWeek = today.getDay();
-
-      logger.info(
-        `Checking points from ${yesterday.toISOString()} to ${today.toISOString()}`,
-      );
-
-      // Process each user
-      for (const user of allUsers) {
-        try {
-          logger.info(`Processing user ${user.id} (${user.username})`);
-
-          // Get user's posts from yesterday with detailed logging
-          const userPostsResult = await db
-            .select({
-              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
-              types: sql<string[]>`array_agg(distinct ${posts.type})`,
-              count: sql<number>`count(*)::integer`,
-            })
-            .from(posts)
-            .where(
-              and(
-                eq(posts.userId, user.id),
-                gte(posts.createdAt, yesterday),
-                lt(posts.createdAt, today),
-                isNull(posts.parentId), // Don't count comments
-              ),
-            );
-
-          const userPosts = userPostsResult[0];
-          const totalPoints = userPosts?.points || 0;
-          const postTypes = userPosts?.types || [];
-          const postCount = userPosts?.count || 0;
-
-          // Expected points vary by day:
-          // Monday-Friday: 15 points (9 food + 3 workout + 3 scripture)
-          // Saturday: 22 points (9 food + 3 scripture + 10 memory verse)
-          // Sunday: 3 points (just scripture)
-          const expectedPoints =
-            dayOfWeek === 6 ? 22 : dayOfWeek === 0 ? 3 : 15;
-
-          logger.info(`User ${user.id} (${user.username}) activity:`, {
-            totalPoints,
-            expectedPoints,
-            postTypes,
-            postCount,
-            dayOfWeek,
-            date: yesterday.toISOString(),
-          });
-
-          // If points are less than expected, send notification
-          if (totalPoints < expectedPoints) {
-            // Get a more detailed breakdown of what was posted yesterday
-            const postsByType = await db
-              .select({
-                type: posts.type,
-                count: sql<number>`count(*)::integer`,
-              })
-              .from(posts)
-              .where(
-                and(
-                  eq(posts.userId, user.id),
-                  gte(posts.createdAt, yesterday),
-                  lt(posts.createdAt, today),
-                  isNull(posts.parentId), // Don't count comments
-                ),
-              )
-              .groupBy(posts.type);
-
-            // Create maps to track what's posted
-            const counts: Record<string, number> = {
-              food: 0,
-              workout: 0,
-              scripture: 0,
-              memory_verse: 0,
-            };
-
-            // Fill in actual counts
-            postsByType.forEach((post) => {
-              if (post.type in counts) {
-                counts[post.type] = post.count;
-              }
-            });
-
-            // Determine what should have been posted yesterday
-            const missedItems = [];
-            const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Yesterday's day
-
-            // For food, we need 3 posts every day except Sunday
-            if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
-              missedItems.push(`${3 - counts.food} meals`);
-            }
-
-            // For workout, we need 1 per day, max 5 per week
-            if (yesterdayDayOfWeek !== 0 && counts.workout < 1) {
-              missedItems.push("your workout");
-            }
-
-            // For scripture, we need 1 every day
-            if (counts.scripture < 1) {
-              missedItems.push("your scripture reading");
-            }
-
-            // For memory verse, we need 1 on Saturday
-            if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
-              missedItems.push("your memory verse");
-            }
-
-            // Create the notification message
-            let message = "";
-            if (missedItems.length > 0) {
-              message = "Yesterday you missed posting ";
-
-              if (missedItems.length === 1) {
-                message += missedItems[0] + ".";
-              } else if (missedItems.length === 2) {
-                message += missedItems[0] + " and " + missedItems[1] + ".";
-              } else {
-                const lastItem = missedItems.pop();
-                message += missedItems.join(", ") + ", and " + lastItem + ".";
-              }
-            } else {
-              message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
-            }
-
-            // Check if a reminder notification has already been sent today
-            const startOfToday = new Date();
-            startOfToday.setHours(0, 0, 0, 0);
-
-            const existingNotifications = await db
-              .select()
-              .from(notifications)
-              .where(
-                and(
-                  eq(notifications.userId, user.id),
-                  eq(notifications.type, "reminder"),
-                  gte(notifications.createdAt, startOfToday),
-                ),
-              );
-
-            // Use passed in hour/minute or current time
-            // Parse user's notification time preference (HH:MM format)
-            const notificationTimeParts = user.notificationTime
-              ? user.notificationTime.split(":")
-              : ["9", "00"];
-            const preferredHour = parseInt(notificationTimeParts[0]);
-            const preferredMinute = parseInt(notificationTimeParts[1] || "0");
-
-            // Check if we're within a 10-minute window of the user's preferred time
-            const isPreferredTimeWindow =
-              (currentHour === preferredHour &&
-                currentMinute >= preferredMinute &&
-                currentMinute < preferredMinute + 10) ||
-              // Handle edge case where preferred time is near the end of an hour
-              (currentHour === preferredHour + 1 &&
-                preferredMinute >= 50 &&
-                currentMinute < (preferredMinute + 10) % 60);
-
-            logger.info(`Notification time check for user ${user.id}:`, {
-              userId: user.id,
-              currentTime: `${currentHour}:${currentMinute}`,
-              preferredTime: `${preferredHour}:${preferredMinute}`,
-              isPreferredTimeWindow,
-              existingNotificationsToday: existingNotifications.length,
-            });
-
-            // Only send if within time window and no notifications sent today
-            if (existingNotifications.length === 0 && isPreferredTimeWindow) {
-              const notification = {
-                userId: user.id,
-                title: "Daily Reminder",
-                message,
-                read: false,
-                createdAt: new Date(),
-                type: "reminder",
-                sound: "default", // Add sound property for mobile notifications
-              };
-
-              const [insertedNotification] = await db
-                .insert(notifications)
-                .values(notification)
-                .returning();
-
-              logger.info(`Created notification for user ${user.id}:`, {
-                notificationId: insertedNotification.id,
-                userId: user.id,
-                message: notification.message,
-              });
-
-              // Send via WebSocket if user is connected
-              const userClients = clients.get(user.id);
-              if (userClients && userClients.size > 0) {
-                const notificationData = {
-                  id: insertedNotification.id,
-                  title: notification.title,
-                  message: notification.message,
-                  sound: notification.sound,
-                  type: notification.type,
-                };
-
-                broadcastNotification(user.id, notificationData);
-              }
-            } else {
-              logger.info(
-                `Skipping notification for user ${user.id} - already sent today`,
-                {
-                  userId: user.id,
-                  existingNotifications: existingNotifications.length,
-                },
-              );
-            }
-          } else {
-            logger.info(
-              `No notification needed for user ${user.id}, met daily goal`,
-            );
-          }
-        } catch (userError) {
-          logger.error(`Error processing user ${user.id}:`, userError);
-          continue; // Continue with next user even if one fails
-        }
-      }
-
-      res.json({ message: "Daily score check completed" });
-    } catch (error) {
-      logger.error("Error in daily score check:", error);
-      res.status(500).json({
-        message: "Failed to check daily scores",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  // Add activity progress endpoint before the return httpServer statement
+  // Get current activity week and day
   router.get("/api/activities/current", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -2496,631 +4167,89 @@ export const registerRoutes = async (
       // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
 
-      // Helper function to convert UTC date to user's local time
-      const toUserLocalTime = (utcDate: Date): Date => {
-        const localDate = new Date(utcDate.getTime());
-        localDate.setMinutes(localDate.getMinutes() - tzOffset);
-        return localDate;
-      };
-
-      // Get user's team join date
+      // Get user with programStartDate
       const [user] = await db
         .select()
         .from(users)
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!user?.teamJoinedAt) {
-        return res.status(400).json({ message: "User has no team join date" });
-      }
-
-      // Get current time in user's timezone
-      const utcNow = new Date();
-      const userLocalNow = toUserLocalTime(utcNow);
-
-      // Calculate the first Monday after joining the team
-      const teamJoinLocalTime = toUserLocalTime(new Date(user.teamJoinedAt));
-      const teamJoinDate = new Date(teamJoinLocalTime);
-      teamJoinDate.setHours(0, 0, 0, 0);
-
-      // Find the first Monday after the team join date
-      const programStartDate = new Date(teamJoinDate);
-      const daysUntilMonday = (8 - programStartDate.getDay()) % 7; // Days until next Monday (0 if already Monday)
-      if (daysUntilMonday === 0 && programStartDate.getTime() === teamJoinDate.getTime()) {
-        // If they joined on a Monday, start the following Monday
-        programStartDate.setDate(programStartDate.getDate() + 7);
-      } else {
-        programStartDate.setDate(programStartDate.getDate() + daysUntilMonday);
-      }
-
-      // Get start of current day in user's timezone
-      const currentStartOfDay = new Date(userLocalNow);
-      currentStartOfDay.setHours(0, 0, 0, 0);
-
-      // Check if the program has started yet
-      const programHasStarted = currentStartOfDay.getTime() >= programStartDate.getTime();
-
-      if (!programHasStarted) {
-        // Program hasn't started yet
-        const daysToProgramStart = Math.ceil(
-          (programStartDate.getTime() - currentStartOfDay.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        console.log("Program Not Started:", {
-          timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
-          userLocalNow: userLocalNow.toLocaleString(),
-          teamJoinedAt: user.teamJoinedAt,
-          teamJoinLocalTime: teamJoinLocalTime.toLocaleString(),
-          programStartDate: programStartDate.toLocaleString(),
-          daysToProgramStart,
-          programHasStarted: false,
-        });
-
-        return res.json({
-          currentWeek: null,
-          currentDay: null,
-          daysSinceStart: null,
-          progressDays: null,
-          programHasStarted: false,
-          programStartDate: programStartDate.toISOString(),
-          daysToProgramStart,
-          debug: {
-            timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
-            localTime: userLocalNow.toLocaleString(),
-            teamJoinedLocal: teamJoinLocalTime.toLocaleString(),
-            programStartLocal: programStartDate.toLocaleString(),
-          },
-        });
-      }
-
-      // Calculate days since program started
-      const daysSinceProgramStart = Math.floor(
-        (currentStartOfDay.getTime() - programStartDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      // Calculate current week and day based on program progress
-      const weekNumber = Math.floor(daysSinceProgramStart / 7) + 1;
-      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const dayNumber = rawDay === 0 ? 7 : rawDay; // Convert to 1 = Monday, ..., 7 = Sunday
-
-      // Debug info
-      console.log("Program Started - Date Calculations:", {
-        timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
-        utcNow: utcNow.toISOString(),
-        userLocalNow: userLocalNow.toLocaleString(),
-        teamJoinedAt: user.teamJoinedAt,
-        teamJoinLocalTime: teamJoinLocalTime.toLocaleString(),
-        programStartDate: programStartDate.toLocaleString(),
-        daysSinceProgramStart,
-        weekNumber,
-        dayNumber,
-        programHasStarted: true,
-      });
-
-      res.json({
-        currentWeek: weekNumber,
-        currentDay: dayNumber,
-        daysSinceStart: daysSinceProgramStart,
-        progressDays: daysSinceProgramStart,
-        programHasStarted: true,
-        programStartDate: programStartDate.toISOString(),
-        debug: {
-          timezone: `UTC${tzOffset >= 0 ? "+" : ""}${-tzOffset / 60}`,
-          localTime: userLocalNow.toLocaleString(),
-          teamJoinedLocal: teamJoinLocalTime.toLocaleString(),
-          programStartLocal: programStartDate.toLocaleString(),
-        },
-      });
-    } catch (error) {
-      logger.error("Error calculating activity dates:", error);
-      res.status(500).json({
-        message: "Failed to calculate activity dates",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Measurements endpoints
-  router.post("/api/measurements", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      logger.info("Creating measurement with data:", req.body);
-
-      const parsedData = insertMeasurementSchema.safeParse({
-        ...req.body,
-        userId: req.user.id,
-        date: new Date(),
-      });
-
-      if (!parsedData.success) {
-        logger.error("Validation errors:", parsedData.error.errors);
-        return res.status(400).json({
-          message: "Invalid measurement data",
-          errors: parsedData.error.errors,
-        });
-      }
-
-      const measurement = await db
-        .insert(measurements)
-        .values(parsedData.data)
-        .returning();
-
-      res.status(201).json(measurement[0]);
-    } catch (error) {
-      logger.error("Error creating measurement:", error);
-      res.status(500).json({
-        message: "Failed to create measurement",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  router.get("/api/measurements", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const userId = req.query.userId
-        ? parseInt(req.query.userId as string)
-        : req.user.id;
-
-      if (req.user.id !== userId && !req.user.isAdmin) {
-        return res
-          .status(403)
-          .json({ message: "Not authorized to view these measurements" });
-      }
-
-      const userMeasurements = await db
-        .select()
-        .from(measurements)
-        .where(eq(measurements.userId, userId))
-        .orderBy(desc(measurements.date));
-
-      res.json(userMeasurements);
-    } catch (error) {
-      logger.error("Error fetching measurements:", error);
-      res.status(500).json({
-        message: "Failed to fetch measurements",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Add daily points endpoint with corrected calculation and improved logging
-  router.get("/api/points/daily", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      // Parse the date more carefully to handle timezone issues
-      let dateStr = (req.query.date as string) || new Date().toISOString();
-
-      // If the date doesn't include time, add a default time
-      if (dateStr.indexOf("T") === -1) {
-        dateStr = `${dateStr}T00:00:00.000Z`;
-      }
-
-      const date = new Date(dateStr);
-      const userId = parseInt(req.query.userId as string);
-
-      if (isNaN(userId)) {
-        logger.error(`Invalid userId: ${req.query.userId}`);
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      // Normalize to beginning of day in UTC to ensure consistent date handling
-      const startOfDay = new Date(date);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-
-      // Log request parameters for debugging
-      logger.info(
-        `Calculating points for user ${userId} on date ${date.toISOString()}`,
-        {
-          requestedDate: dateStr,
-          normalizedStartDate: startOfDay.toISOString(),
-          normalizedEndDate: endOfDay.toISOString(),
-        },
-      );
-
-      // Calculate total points for the day with detailed logging
-      const result = await db
-        .select({
-          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
-            isNull(posts.parentId), // Don't count comments in the total
-          ),
-        );
-
-      // Get post details for debugging
-      const postDetails = await db
-        .select({
-          id: posts.id,
-          type: posts.type,
-          points: posts.points,
-          createdAt: posts.createdAt,
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, startOfDay),
-            lt(posts.createdAt, endOfDay),
-            isNull(posts.parentId),
-          ),
-        );
-
-      const totalPoints = result[0]?.points || 0;
-
-      // Log the response details
-      logger.info(`Daily points for user ${userId}: ${totalPoints}`, {
-        date: date.toISOString(),
-        startOfDay: startOfDay.toISOString(),
-        endOfDay: endOfDay.toISOString(),
-        postCount: postDetails.length,
-        posts: JSON.stringify(postDetails),
-      });
-
-      // Ensure content type is set
-      res.setHeader("Content-Type", "application/json");
-      res.json({ points: totalPoints });
-    } catch (error) {
-      logger.error("Error calculating daily points:", error);
-      res.status(500).json({
-        message: "Failed to calculate daily points",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Add notifications count endpoint
-  router.get("/api/notifications/unread", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const unreadCount = await db
-        .select({ count: sql<number>`count(*)::integer` })
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            eq(notifications.read, false),
-          ),
-        );
-
-      res.json({ unreadCount: unreadCount[0].count });
-    } catch (error) {
-      logger.error("Error fetching unread notifications:", error);
-      res.status(500).json({
-        message: "Failed to fetch notification count",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Mark notifications as read
-  router.post("/api/notifications/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { notificationIds } = req.body;
-
-      if (!Array.isArray(notificationIds)) {
-        return res.status(400).json({ message: "Invalid notification IDs" });
-      }
-
-      await db
-        .update(notifications)
-        .set({ read: true })
-        .where(
-          and(
-            eq(notifications.userId, req.user.id),
-            sql`${notifications.id} = ANY(${notificationIds})`,
-          ),
-        );
-
-      res.json({ message: "Notifications marked as read" });
-    } catch (error) {
-      logger.error("Error marking notifications as read:", error);
-      res.status(500).json({
-        message: "Failed to mark notifications as read",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Get user notifications
-  router.get("/api/notifications", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const userNotifications = await db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.userId, req.user.id))
-        .orderBy(desc(notifications.createdAt));
-
-      res.json(userNotifications);
-    } catch (error) {
-      logger.error("Error fetching notifications:", error);
-      res.status(500).json({
-        message: "Failed to fetch notifications",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  router.patch("/api/users/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID format" });
-      }
-
-      // Validate teamId if present
-      if (req.body.teamId !== undefined && req.body.teamId !== null) {
-        if (typeof req.body.teamId !== "number") {
-          return res.status(400).json({ message: "Team ID must be a number" });
-        }
-        // Verify team exists
-        const [team] = await db
-          .select()
-          .from(teams)
-          .where(eq(teams.id, req.body.teamId))
-          .limit(1);
-
-        if (!team) {
-          return res.status(400).json({ message: "Team not found" });
-        }
-      }
-
-      // Prepare update data
-      const updateData = {
-        ...req.body,
-        teamJoinedAt: req.body.teamId ? new Date() : null,
-      };
-
-      // Update user
-      const [updatedUser] = await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
+      if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Return sanitized user data
-      res.setHeader("Content-Type", "application/json");
+      // Check if user has a program start date
+      if (!user.programStartDate) {
+        // If no program start date, use "next Monday" logic
+        // Get current date in user's timezone
+        const now = new Date();
+        const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
+
+        // Get current day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+        const currentDayOfWeek = userLocalNow.getDay();
+
+        // Calculate the "next Monday" (or today if today is Monday)
+        const daysUntilMonday = currentDayOfWeek === 0 ? 1 : currentDayOfWeek === 1 ? 0 : 8 - currentDayOfWeek;
+        const nextMonday = new Date(userLocalNow);
+        nextMonday.setDate(userLocalNow.getDate() + daysUntilMonday);
+        nextMonday.setHours(0, 0, 0, 0);
+
+        // Set to start of day in user's timezone
+        const userStartOfDay = new Date(userLocalNow);
+        userStartOfDay.setHours(0, 0, 0, 0);
+
+        // Program has started if today is Monday or later (nextMonday <= today)
+        const programHasStarted = nextMonday.getTime() <= userStartOfDay.getTime();
+
+        return res.json({
+          currentWeek: programHasStarted ? 1 : null,
+          currentDay: programHasStarted ? (userLocalNow.getDay() === 0 ? 7 : userLocalNow.getDay()) : null,
+          programHasStarted: programHasStarted,
+          daysSinceStart: programHasStarted ? 0 : -daysUntilMonday
+        });
+      }
+
+      // Get current date in user's timezone
+      const now = new Date();
+      const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
+
+      // Set to start of day in user's timezone
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+
+      // Program start date (from database) - ensure it's at start of day
+      const programStart = new Date(user.programStartDate);
+      programStart.setHours(0, 0, 0, 0);
+
+      // Calculate days since program start
+      const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+      const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+      // Calculate current week (1-based)
+      const currentWeek = Math.floor(daysSinceStart / 7) + 1;
+
+      // Calculate current day of week (1 = Monday, 7 = Sunday)
+      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const currentDay = rawDay === 0 ? 7 : rawDay;
+
+      // Check if program has started - true if daysSinceStart is 0 or positive
+      const programHasStarted = !!(user.programStartDate && daysSinceStart >= 0);
+
+      // Don't allow negative weeks/days
+      const week = Math.max(1, currentWeek);
+      const day = Math.max(1, currentDay);
+
       res.json({
-        id: updatedUser.id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        teamId: updatedUser.teamId,
-        isAdmin: updatedUser.isAdmin,
-        isTeamLead: updatedUser.isTeamLead,
-        imageUrl: updatedUser.imageUrl,
-        teamJoinedAt: updatedUser.teamJoinedAt,
+        currentWeek: week,
+        currentDay: day,
+        programStartDate: user.programStartDate,
+        daysSinceStart: Math.max(0, daysSinceStart),
+        programHasStarted: !!programHasStarted
       });
     } catch (error) {
-      logger.error("Error updating user:", error);
+      logger.error("Error getting current activity:", error);
       res.status(500).json({
-        message: "Failed to update user",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  router.post(
-    "/api/notifications/:notificationId/read",
-    authenticate,
-    async (req, res) => {
-      try {
-        if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-        const notificationId = parseInt(req.params.notificationId);
-        if (isNaN(notificationId)) {
-          return res.status(400).json({ message: "Invalid notification ID" });
-        }
-
-        // Set content type before sending response
-        res.setHeader("Content-Type", "application/json");
-
-        const [updatedNotification] = await db
-          .update(notifications)
-          .set({ read: true })
-          .where(
-            and(
-              eq(notifications.userId, req.user.id),
-              eq(notifications.id, notificationId),
-            ),
-          )
-          .returning();
-
-        if (!updatedNotification) {
-          return res.status(404).json({ message: "Notification not found" });
-        }
-
-        res.json({
-          message: "Notification marked as read",
-          notification: updatedNotification,
-        });
-      } catch (error) {
-        logger.error("Error marking notification as read:", error);
-        res.status(500).json({
-          message: "Failed to mark notification as read",
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    },
-  );
-
-  // Add messages endpoints before return statement
-  router.post(
-    "/api/messages",
-    authenticate,
-    upload.single("image"),
-    async (req, res) => {
-      try {
-        if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-        const { content, recipientId } = req.body;
-
-        // Validate recipient exists
-        const [recipient] = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, parseInt(recipientId)))
-          .limit(1);
-
-        if (!recipient) {
-          return res.status(404).json({ message: "Recipient not found" });
-        }
-
-        // Create message
-        const [message] = await db
-          .insert(messages)
-          .values({
-            senderId: req.user.id,
-            recipientId: parseInt(recipientId),
-            content: content || null,
-            imageUrl: null, // FIXED: Using message-routes.ts for Object Storage instead
-            isRead: false,
-          })
-          .returning();
-
-        // Create notification for recipient
-        await db.insert(notifications).values({
-          userId: parseInt(recipientId),
-          title: "New Message",
-          message: `You have a new message from ${req.user.username}`,
-          read: false,
-        });
-
-        res.status(201).json(message);
-      } catch (error) {
-        logger.error("Error creating message:", error);
-        res.status(500).json({
-          message: "Failed to create message",
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    },
-  );
-
-  // Get messages between users
-  router.get("/api/messages/:userId", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const otherUserId = parseInt(req.params.userId);
-      if (isNaN(otherUserId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
-
-      const userMessages = await db
-        .select({
-          id: messages.id,
-          content: messages.content,
-          imageUrl: messages.imageUrl,
-          createdAt: messages.createdAt,
-          isRead: messages.isRead,
-          sender: {
-            id: users.id,
-            username: users.username,
-            imageUrl: users.imageUrl,
-          },
-        })
-        .from(messages)
-        .innerJoin(users, eq(messages.senderId, users.id))
-        .where(
-          or(
-            and(
-              eq(messages.senderId, req.user.id),
-              eq(messages.recipientId, otherUserId),
-            ),
-            and(
-              eq(messages.senderId, otherUserId),
-              eq(messages.recipientId, req.user.id),
-            ),
-          ),
-        )
-        .orderBy(messages.createdAt);
-
-      res.json(userMessages);
-    } catch (error) {
-      logger.error("Error fetching messages:", error);
-      res.status(500).json({
-        message: "Failed to fetch messages",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Get unread messages count
-  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const [result] = await db
-        .select({
-          count: sql<number>`count(*)::integer`,
-        })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.recipientId, req.user.id),
-            eq(messages.isRead, false),
-          ),
-        );
-
-      res.json({ unreadCount: result.count });
-    } catch (error) {
-      logger.error("Error getting unread message count:", error);
-      res.status(500).json({
-        message: "Failed to get unread message count",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  // Mark messages as read
-  router.post("/api/messages/read", authenticate, async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-      const { senderId } = req.body;
-      if (!senderId) {
-        return res.status(400).json({ message: "Sender ID is required" });
-      }
-
-      await db
-        .update(messages)
-        .set({ isRead: true })
-        .where(
-          and(
-            eq(messages.recipientId, req.user.id),
-            eq(messages.senderId, parseInt(senderId)),
-            eq(messages.isRead, false),
-          ),
-        );
-
-      res.json({ message: "Messages marked as read" });
-    } catch (error) {
-      logger.error("Error marking messages as read:", error);
-      res.status(500).json({
-        message: "Failed to mark messages as read",
+        message: "Failed to get current activity",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -3211,7 +4340,7 @@ export const registerRoutes = async (
           `Attempting to download video from Object Storage: ${videoKey}`,
         );
 
-        const videoResult = await objectStorage.downloadAsBytes(videoKey);
+        const videoResult = await objectStorage.downloadFile(videoKey);
 
         // Handle Object Storage response format
         let videoBuffer: Buffer;
@@ -3361,6 +4490,271 @@ export const registerRoutes = async (
     }
   });
 
+  // Upload user profile image
+  router.post("/api/user/image", authenticate, upload.single("image"), async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      if (!req.file) return res.status(400).json({ message: "No image file provided" });
+
+      console.log("[PROFILE IMAGE] User", req.user.id, "uploading profile image");
+
+      // Process and compress the image
+      const processedImage = await sharp(req.file.buffer)
+        .resize(300, 300, {
+          fit: "cover",
+          position: "center",
+        })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      // Convert to base64 data URL
+      const imageUrl = `data:image/jpeg;base64,${processedImage.toString('base64')}`;
+
+      // Update user's imageUrl in database
+      const [updatedUser] = await db
+        .update(users)
+        .set({ imageUrl })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      console.log("[PROFILE IMAGE] Successfully saved profile image to database for user:", req.user.id);
+
+      res.json({
+        message: "Profile image uploaded successfully",
+        imageUrl: updatedUser.imageUrl,
+      });
+    } catch (error) {
+      console.error("[PROFILE IMAGE] Error uploading profile image:", error);
+      res.status(500).json({
+        message: "Failed to upload profile image",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Update user preferred name
+  router.patch("/api/user/preferred-name", authenticate, async (req, res) => {
+    try {
+      console.log("[ROUTE HIT] PATCH /api/user/preferred-name", req.body);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { preferredName } = req.body;
+      console.log("[UPDATING] preferredName for user", req.user.id, "to", preferredName);
+
+      // Update user's preferred name
+      const [updatedUser] = await db
+        .update(users)
+        .set({ preferredName })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      console.log("[UPDATE RESULT]", updatedUser);
+      logger.info(`User ${req.user.id} updated preferred name to ${preferredName}`);
+
+      res.json({
+        message: "Preferred name updated successfully",
+        preferredName: updatedUser.preferredName,
+      });
+    } catch (error) {
+      console.error("[ERROR] updating preferred name:", error);
+      logger.error("Error updating preferred name:", error);
+      res.status(500).json({
+        message: "Failed to update preferred name",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Update user email
+  router.patch("/api/user/email", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if email is already in use by another user
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.email, email), ne(users.id, req.user.id)))
+        .limit(1);
+
+      if (existingUser) {
+        return res.status(400).json({ message: "Email is already in use" });
+      }
+
+      // Update user's email
+      const [updatedUser] = await db
+        .update(users)
+        .set({ email })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      logger.info(`User ${req.user.id} updated email to ${email}`);
+
+      res.json({
+        message: "Email updated successfully",
+        email: updatedUser.email,
+      });
+    } catch (error) {
+      logger.error("Error updating email:", error);
+      res.status(500).json({
+        message: "Failed to update email",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Update user SMS settings
+  router.patch("/api/user/sms", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { phoneNumber, smsEnabled } = req.body;
+
+      const updateData: {
+        phoneNumber?: string;
+        smsEnabled?: boolean;
+      } = {};
+
+      if (phoneNumber !== undefined) {
+        updateData.phoneNumber = phoneNumber;
+      }
+
+      if (smsEnabled !== undefined) {
+        updateData.smsEnabled = smsEnabled;
+      }
+
+      // Update user's SMS settings
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      logger.info(`User ${req.user.id} updated SMS settings`);
+
+      res.json({
+        message: "SMS settings updated successfully",
+        phoneNumber: updatedUser.phoneNumber,
+        smsEnabled: updatedUser.smsEnabled,
+      });
+    } catch (error) {
+      logger.error("Error updating SMS settings:", error);
+      res.status(500).json({
+        message: "Failed to update SMS settings",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Test SMS via Twilio
+  router.post("/api/user/sms/test", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { phoneNumber } = req.body;
+
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+
+      logger.info(`Testing SMS for user ${req.user.id} with phone ${phoneNumber}`);
+
+      // Test SMS delivery via Twilio
+      const result = await smsService.testSMS(phoneNumber);
+
+      if (result.success) {
+        // Update user's phone number and enable SMS
+        await db
+          .update(users)
+          .set({
+            phoneNumber,
+            smsEnabled: true,
+          })
+          .where(eq(users.id, req.user.id));
+
+        logger.info(`SMS test successful for user ${req.user.id}`);
+
+        res.json({
+          success: true,
+          message: "SMS test sent successfully via Twilio!",
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.error || "Failed to send SMS",
+        });
+      }
+    } catch (error) {
+      logger.error("Error testing SMS:", error);
+      res.status(500).json({
+        message: "Failed to test SMS",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Send SMS to user
+  router.post("/api/user/sms/send", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { message } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      // Get user's SMS settings
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user.phoneNumber) {
+        return res.status(400).json({
+          message: "SMS not configured. Please test SMS first.",
+        });
+      }
+
+      if (!user.smsEnabled) {
+        return res.status(400).json({
+          message: "SMS notifications are disabled.",
+        });
+      }
+
+      // Send SMS
+      await smsService.sendSMSToUser(
+        user.phoneNumber,
+        message
+      );
+
+      logger.info(`SMS sent to user ${req.user.id}`);
+      res.json({
+        success: true,
+        message: "SMS sent successfully",
+      });
+    } catch (error) {
+      logger.error("Error sending SMS:", error);
+      res.status(500).json({
+        message: "Failed to send SMS",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   router.post(
     "/api/users/notification-schedule",
     authenticate,
@@ -3368,11 +4762,16 @@ export const registerRoutes = async (
       try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-        const { notificationTime, achievementNotificationsEnabled } = req.body;
+        const { notificationTime, achievementNotificationsEnabled, dailyNotificationsEnabled, confirmationMessagesEnabled, timezoneOffset, phoneNumber, smsEnabled } = req.body;
         // Define update data with proper typing
         const updateData: {
           notificationTime?: string;
           achievementNotificationsEnabled?: boolean;
+          dailyNotificationsEnabled?: boolean;
+          confirmationMessagesEnabled?: boolean;
+          timezoneOffset?: number;
+          phoneNumber?: string;
+          smsEnabled?: boolean;
         } = {};
 
         // Add notification time if provided
@@ -3386,10 +4785,72 @@ export const registerRoutes = async (
           updateData.notificationTime = notificationTime;
         }
 
+        // Add timezone offset if provided (in minutes)
+        if (timezoneOffset !== undefined) {
+          updateData.timezoneOffset = parseInt(timezoneOffset);
+          logger.info(`Updating timezone offset for user ${req.user.id} to ${timezoneOffset} minutes`);
+        }
+
         // Add achievement notifications enabled setting if provided
         if (achievementNotificationsEnabled !== undefined) {
           updateData.achievementNotificationsEnabled =
             achievementNotificationsEnabled;
+        }
+
+        // Add daily notifications enabled setting if provided
+        if (dailyNotificationsEnabled !== undefined) {
+          updateData.dailyNotificationsEnabled = dailyNotificationsEnabled;
+          logger.info(`Updating daily notifications for user ${req.user.id} to ${dailyNotificationsEnabled}`);
+        }
+
+        // Add confirmation messages enabled setting if provided
+        if (confirmationMessagesEnabled !== undefined) {
+          updateData.confirmationMessagesEnabled = confirmationMessagesEnabled;
+          logger.info(`Updating confirmation messages for user ${req.user.id} to ${confirmationMessagesEnabled}`);
+        }
+
+        // Add phone number if provided
+        if (phoneNumber !== undefined) {
+          const trimmedPhone = phoneNumber.trim();
+          updateData.phoneNumber = trimmedPhone || null;
+          logger.info(`Updating phone number for user ${req.user.id}`);
+
+          // If phone number is being cleared, also disable SMS
+          if (!trimmedPhone) {
+            updateData.smsEnabled = false;
+            logger.info(`Phone number cleared, disabling SMS for user ${req.user.id}`);
+          }
+        }
+
+        // Add SMS enabled setting if provided
+        if (smsEnabled !== undefined) {
+          // Validate that we have a phone number if enabling SMS
+          if (smsEnabled) {
+            const currentUser = await db
+              .select({ phoneNumber: users.phoneNumber })
+              .from(users)
+              .where(eq(users.id, req.user.id))
+              .limit(1);
+
+            const userPhone = phoneNumber !== undefined ? phoneNumber.trim() : currentUser[0]?.phoneNumber;
+
+            if (!userPhone) {
+              return res.status(400).json({ 
+                message: "Cannot enable SMS notifications without a valid phone number" 
+              });
+            }
+
+            // Basic validation: must be at least 10 digits
+            const digitsOnly = userPhone.replace(/\D/g, '');
+            if (digitsOnly.length < 10) {
+              return res.status(400).json({ 
+                message: "Invalid phone number. Please enter a valid phone number with at least 10 digits" 
+              });
+            }
+          }
+
+          updateData.smsEnabled = smsEnabled;
+          logger.info(`Updating SMS notifications for user ${req.user.id} to ${smsEnabled}`);
         }
 
         // Update user notification preferences
@@ -3410,11 +4871,303 @@ export const registerRoutes = async (
     },
   );
 
+  // Test SMS endpoint
+  router.post(
+    "/api/users/test-sms",
+    authenticate,
+    async (req, res) => {
+      try {
+        if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+        // Get user's current settings
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (!user.phoneNumber) {
+          return res.status(400).json({ message: "Phone number not set. Please enter your phone number first." });
+        }
+
+        if (!user.smsEnabled) {
+          return res.status(400).json({ message: "SMS notifications are disabled. Please enable SMS notifications first." });
+        }
+
+        // Send test SMS
+        await smsService.sendSMSToUser(
+          user.phoneNumber,
+          "This is a test message from your fitness tracker app. SMS notifications are working!"
+        );
+
+        logger.info(`Test SMS sent to user ${req.user.id}`);
+        res.json({
+          success: true,
+          message: "Test SMS sent successfully",
+        });
+      } catch (error) {
+        logger.error("Error sending test SMS:", error);
+        res.status(500).json({
+          message: error instanceof Error ? error.message : "Failed to send test SMS",
+        });
+      }
+    },
+  );
+
+  // Re-engage endpoint - allows users to restart from a previous week
+  router.post("/api/users/reengage", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { targetWeek } = req.body;
+
+      if (!targetWeek || targetWeek < 1) {
+        return res.status(400).json({ message: "Invalid target week" });
+      }
+
+      // Get user's current program start date
+      const [currentUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!currentUser || !currentUser.programStartDate) {
+        return res.status(400).json({ message: "User program not initialized" });
+      }
+
+      // Calculate today's day of the week (1=Monday, 7=Sunday)
+      const today = new Date();
+      const todayDayOfWeek = today.getDay();
+      // Convert JavaScript's 0=Sunday to our 1=Monday system
+      const currentDayNumber = todayDayOfWeek === 0 ? 7 : todayDayOfWeek;
+
+      // Calculate new program_start_date
+      // Target: Week W Day D should be today
+      // Days from program start to target position: (W-1)*7 + (D-1)
+      const daysFromStart = (targetWeek - 1) * 7 + (currentDayNumber - 1);
+
+      // new_start_date = today - daysFromStart
+      const newProgramStartDate = new Date(today);
+      newProgramStartDate.setDate(today.getDate() - daysFromStart);
+      // Set to midnight
+      newProgramStartDate.setHours(0, 0, 0, 0);
+
+      // Calculate the cutoff date for deleting posts
+      // This is the date that represents targetWeek, currentDayNumber
+      const cutoffDate = new Date(newProgramStartDate);
+      cutoffDate.setDate(newProgramStartDate.getDate() + daysFromStart);
+      cutoffDate.setHours(0, 0, 0, 0);
+
+      logger.info(`Re-engage: User ${req.user.id} restarting at Week ${targetWeek}`);
+      logger.info(`Today is day ${currentDayNumber} of the week`);
+      logger.info(`New program start date: ${newProgramStartDate.toISOString()}`);
+      logger.info(`Deleting posts from ${cutoffDate.toISOString()} onwards`);
+
+      // First, get all posts that will be deleted to clean up their media
+      const postsToDelete = await db
+        .select({
+          id: posts.id,
+          mediaUrl: posts.mediaUrl,
+          is_video: posts.is_video
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, cutoffDate)
+          )
+        );
+
+      logger.info(`Found ${postsToDelete.length} posts to delete for user ${req.user.id}`);
+
+      // Delete media files for each post before deleting the posts
+      if (postsToDelete.length > 0) {
+        const { spartaStorage } = await import('./sparta-object-storage');
+
+        for (const post of postsToDelete) {
+          if (post.mediaUrl) {
+            try {
+              // Extract filename from mediaUrl
+              let filename = '';
+              if (post.mediaUrl.includes('filename=')) {
+                const urlParams = new URLSearchParams(post.mediaUrl.split('?')[1]);
+                filename = urlParams.get('filename') || '';
+              } else {
+                filename = post.mediaUrl.split('/').pop() || '';
+              }
+
+              if (filename) {
+                const filePath = `shared/uploads/${filename}`;
+
+                // Delete main media file
+                try {
+                  await spartaStorage.deleteFile(filePath);
+                  logger.info(`Deleted media file: ${filePath} for post ${post.id}`);
+                } catch (err) {
+                  logger.error(`Could not delete media file ${filePath}: ${err}`);
+                }
+
+                // If it's a video, also delete the thumbnail
+                if (post.is_video) {
+                  const baseName = filename.substring(0, filename.lastIndexOf('.'));
+                  const thumbnailPath = `shared/uploads/${baseName}.jpg`;
+
+                  try {
+                    await spartaStorage.deleteFile(thumbnailPath);
+                    logger.info(`Deleted video thumbnail: ${thumbnailPath} for post ${post.id}`);
+                  } catch (err) {
+                    logger.error(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
+                  }
+                }
+              }
+            } catch (err) {
+              logger.error(`Error deleting media for post ${post.id}:`, err);
+            }
+          }
+        }
+      }
+
+      // Now delete the posts from the database
+      const deletedPosts = await db
+        .delete(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            gte(posts.createdAt, cutoffDate)
+          )
+        )
+        .returning();
+
+      logger.info(`Deleted ${deletedPosts.length} posts from database for user ${req.user.id}`);
+
+      // Update user's program_start_date
+      await db
+        .update(users)
+        .set({ programStartDate: newProgramStartDate })
+        .where(eq(users.id, req.user.id));
+
+      // Recalculate points for the user
+      const userPosts = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.userId, req.user.id));
+
+      const totalPoints = userPosts.reduce((sum, post) => sum + (post.points || 0), 0);
+
+      await db
+        .update(users)
+        .set({ points: totalPoints })
+        .where(eq(users.id, req.user.id));
+
+      logger.info(`Recalculated points for user ${req.user.id}: ${totalPoints}`);
+
+      res.json({
+        message: "Program successfully reset",
+        newProgramStartDate,
+        deletedPostsCount: deletedPosts.length,
+        newPoints: totalPoints,
+        currentWeek: targetWeek,
+        currentDay: currentDayNumber,
+      });
+    } catch (error) {
+      logger.error("Error in re-engage:", error);
+      res.status(500).json({
+        message: "Failed to re-engage program",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Add endpoint for measurements
+  router.get("/api/measurements", authenticate, async (req, res) => {
+    try {
+      console.log("[ROUTER.GET MEASUREMENTS] Route hit, user:", req.user?.id, "query:", req.query);
+      if (!req.user) {
+        console.log("[ROUTER.GET MEASUREMENTS] Unauthorized");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      console.log("[ROUTER.GET MEASUREMENTS] Fetching measurements for userId:", userId);
+
+      // Get all measurements for the user, ordered by date descending
+      const userMeasurements = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, userId))
+        .orderBy(desc(measurements.date));
+
+      console.log("[ROUTER.GET MEASUREMENTS] Found measurements:", userMeasurements.length, "records");
+      console.log("[ROUTER.GET MEASUREMENTS] Data:", JSON.stringify(userMeasurements));
+      res.json(userMeasurements);
+    } catch (error) {
+      console.error("[ROUTER.GET MEASUREMENTS] Error:", error);
+      logger.error("Error fetching measurements:", error);
+      res.status(500).json({
+        message: "Failed to fetch measurements",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Add measurements POST route directly on app to ensure it executes
+  app.post("/api/measurements", authenticate, async (req, res) => {
+    try {
+      console.log("[APP.POST MEASUREMENTS] Route hit, user:", req.user?.id, "body:", req.body);
+      if (!req.user) {
+        console.log("[APP.POST MEASUREMENTS] Unauthorized");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const parsed = insertMeasurementSchema.safeParse({
+        ...req.body,
+        userId: req.user.id,
+      });
+
+      console.log("[APP.POST MEASUREMENTS] Validation result:", parsed.success ? "SUCCESS" : "FAILED", parsed.success ? "" : parsed.error.errors);
+
+      if (!parsed.success) {
+        console.log("[APP.POST MEASUREMENTS] Validation failed:", parsed.error.errors);
+        return res.status(400).json({
+          message: "Invalid measurement data",
+          errors: parsed.error.errors,
+        });
+      }
+
+      // Always create a new measurement (historical log)
+      const [measurement] = await db
+        .insert(measurements)
+        .values(parsed.data)
+        .returning();
+
+      console.log("[APP.POST MEASUREMENTS] Created measurement:", measurement);
+      logger.info(`User ${req.user.id} created new measurement: weight=${parsed.data.weight}, waist=${parsed.data.waist}`);
+
+      console.log("[APP.POST MEASUREMENTS] Sending response:", measurement);
+      res.json(measurement);
+    } catch (error) {
+      console.error("[APP.POST MEASUREMENTS] Error:", error);
+      logger.error("Error adding/updating measurement:", error);
+      res.status(500).json({
+        message: "Failed to add/update measurement",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Register message routes first (with Object Storage implementation)
   app.use(messageRouter);
 
   // Register user role routes
   app.use(userRoleRouter);
+  app.use(groupAdminRouter);
+  app.use(inviteCodeRouter);
+  app.use(emailVerificationRouter);
 
   app.use(router);
 
@@ -3468,13 +5221,11 @@ export const registerRoutes = async (
         clearTimeout(pingTimeout);
       }
 
-      // Set a timeout to terminate the connection if no pong is received
+      // Set a much longer timeout to avoid premature disconnections
       pingTimeout = setTimeout(() => {
-        logger.warn(
-          `WebSocket connection timed out after no response for 30s, userId: ${userId || "unauthenticated"}`,
-        );
+        logger.warn(`WebSocket connection timed out after no response for 120s, userId: ${userId || 'unauthenticated'}`);
         ws.terminate();
-      }, 30000); // 30 seconds timeout
+      }, 120000); // 2 minutes timeout instead of 30 seconds
     };
 
     // Start the heartbeat immediately on connection
@@ -3557,7 +5308,7 @@ export const registerRoutes = async (
           logger.info(
             `WebSocket user ${userId} authenticated with ${userClients?.size || 0} total connections`,
           );
-          ws.send(JSON.stringify({ type: "auth_success", userId }));
+          ws.send(JSON.stringify({ type:"auth_success", userId }));
         }
 
         // Handle ping from client (different from our server-initiated ping)
@@ -3624,11 +5375,11 @@ export const registerRoutes = async (
     });
 
     // Handle connection errors
-    ws.on("error", (err) => {
-      logger.error(
-        `WebSocket error for user ${userId || "unauthenticated"}:`,
-        err instanceof Error ? err : new Error(String(err)),
-      );
+    ws.on('error', (err) => {
+      // Only log non-routine connection errors
+      if (!err.message.includes('ECONNRESET') && !err.message.includes('EPIPE')) {
+        logger.error(`WebSocket error for user ${userId || 'unauthenticated'}:`, err instanceof Error ? err : new Error(String(err)));
+      }
 
       // Clear the ping timeout
       if (pingTimeout) {
@@ -3636,15 +5387,7 @@ export const registerRoutes = async (
         pingTimeout = null;
       }
 
-      // On error, terminate the connection
-      try {
-        ws.terminate();
-      } catch (termErr) {
-        logger.error(
-          "Error terminating WebSocket connection:",
-          termErr instanceof Error ? termErr : new Error(String(termErr)),
-        );
-      }
+      // Don't force terminate on error - let natural close handling take care of cleanup
 
       // Make sure to clean up client map
       if (userId) {
@@ -3800,13 +5543,70 @@ export const registerRoutes = async (
   startHeartbeatMonitoring();
 
   // User stats endpoint for simplified My Stats section
+  router.get("/api/users", authenticate, async (req, res) => {
+    try {
+      // Disable ETag and caching completely to force fresh data
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.removeHeader('ETag');
+
+      // Debug logging for authorization
+      console.log('GET /api/users - User authorization check:', {
+        userId: req.user?.id,
+        isAdmin: req.user?.isAdmin,
+        isGroupAdmin: req.user?.isGroupAdmin,
+        isTeamLead: req.user?.isTeamLead,
+        teamId: req.user?.teamId
+      });
+
+      let users = await storage.getAllUsers();
+
+      // Filter users based on role
+      if (req.user.isAdmin) {
+        // Admins can see all users - no filtering needed
+      }
+      // Filter users for group admins - only show users in their group's teams
+      else if (req.user.isGroupAdmin && req.user.adminGroupId) {
+        // Get teams in the admin's group
+        const groupTeams = await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.groupId, req.user.adminGroupId));
+
+        const teamIds = groupTeams.map(team => team.id);
+
+        // Filter users to only those in the group's teams
+        users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
+      }
+      // Filter users for team leads - only show users in their team
+      else if (req.user.isTeamLead && req.user.teamId) {
+        users = users.filter(user => user.teamId === req.user.teamId);
+      }
+      // Filter users forregular users - only show users in their team (excluding themselves)
+      else if (req.user.teamId) {
+        users = users.filter(user => user.teamId === req.user.teamId && user.id !== req.user.id);
+      }
+      // If user has no team, return empty array
+      else {
+        users = [];
+      }
+
+      // Explicitly set status to 200 to prevent 304
+      res.status(200).json(users);
+    } catch (error) {
+      logger.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   router.get("/api/user/stats", authenticate, async (req, res, next) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
       const userId = req.user.id;
 
-      // Get timezone offset in minutes directly from the client
+      // Get timezone offset from query params (in minutes)
       const tzOffset = parseInt(req.query.tzOffset as string) || 0;
 
       logger.info(
@@ -4044,6 +5844,353 @@ export const registerRoutes = async (
     },
   );
 
+  // Get all notifications for current user
+  router.get("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt));
+
+      res.json(userNotifications);
+    } catch (error) {
+      logger.error("Error fetching notifications:", error);
+      res.status(500).json({
+        message: "Failed to fetch notifications",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get unread notification count
+  router.get("/api/notifications/unread", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const unreadCount = await db
+        .select({ count: sql<number>`count(*)::integer` })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.read, false),
+          ),
+        );
+
+      res.json({ unreadCount: unreadCount[0].count });
+    } catch (error) {
+      logger.error("Error fetching unread notifications:", error);
+      res.status(500).json({
+        message: "Failed to fetch notification count",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Mark notifications as read
+  router.post("/api/notifications/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { notificationIds } = req.body;
+
+      if (!Array.isArray(notificationIds)) {
+        return res.status(400).json({ message: "Invalid notification IDs" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            inArray(notifications.id, notificationIds),
+          ),
+        );
+
+      res.json({ message: "Notifications marked as read" });
+    } catch (error) {
+      logger.error("Error marking notifications as read:", error);
+      res.status(500).json({
+        message: "Failed to mark notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Mark a single notification as read
+  router.post("/api/notifications/:notificationId/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const notificationId = parseInt(req.params.notificationId);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "Invalid notification ID" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.id, notificationId),
+          ),
+        );
+
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      logger.error("Error marking notification as read:", error);
+      res.status(500).json({
+        message: "Failed to mark notification as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Mark all notifications as read
+  router.post("/api/notifications/read-all", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.userId, req.user.id));
+
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      logger.error("Error marking all notifications as read:", error);
+      res.status(500).json({
+        message: "Failed to mark all notifications as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // External cron endpoint for hourly notification checks
+  // This is called by an external service (e.g., cron-job.org) every hour
+  router.post("/api/check-notifications", express.json(), async (req, res) => {
+    try {
+      // Verify the API token from header
+      const providedToken = req.headers['x-job-token'];
+      const expectedToken = process.env.NOTIFICATION_CRON_SECRET;
+
+      if (!expectedToken) {
+        logger.error("[CRON] NOTIFICATION_CRON_SECRET not configured");
+        return res.status(500).json({ 
+          success: false, 
+          message: "Server configuration error" 
+        });
+      }
+
+      if (!providedToken || typeof providedToken !== 'string') {
+        logger.warn("[CRON] Missing or invalid token in request");
+        return res.status(401).json({ 
+          success: false, 
+          message: "Unauthorized" 
+        });
+      }
+
+      // Use timing-safe comparison to prevent timing attacks
+      const crypto = await import('crypto');
+      const providedBuffer = Buffer.from(providedToken);
+      const expectedBuffer = Buffer.from(expectedToken);
+
+      if (providedBuffer.length !== expectedBuffer.length || 
+          !crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
+        logger.warn("[CRON] Invalid token provided");
+        return res.status(401).json({ 
+          success: false, 
+          message: "Unauthorized" 
+        });
+      }
+
+      // Rate limiting: check if we ran in the last 50 minutes
+      const fiftyMinutesAgo = new Date(Date.now() - 50 * 60 * 1000);
+      const recentCheck = await db
+        .select()
+        .from(systemState)
+        .where(
+          and(
+            eq(systemState.key, 'last_notification_check'),
+            gte(systemState.updatedAt, fiftyMinutesAgo)
+          )
+        )
+        .limit(1);
+
+      if (recentCheck.length > 0) {
+        logger.info("[CRON] Skipping check - last run was less than 50 minutes ago");
+        return res.json({
+          success: true,
+          skipped: true,
+          message: "Check skipped - too soon since last run",
+          lastCheck: recentCheck[0].updatedAt
+        });
+      }
+
+      // Import and run the notification check
+      const { checkNotifications } = await import('./notification-check');
+      const result = await checkNotifications();
+
+      res.json({
+        success: true,
+        ...result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error("[CRON] Error in notification check endpoint:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get messages with a specific user
+  router.get("/api/messages/:userId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const otherUserId = parseInt(req.params.userId);
+      if (isNaN(otherUserId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const userMessages = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          imageUrl: messages.imageUrl,
+          createdAt: messages.createdAt,
+          isRead: messages.isRead,
+          sender: {
+            id: users.id,
+            username: users.username,
+            imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
+          },
+        })
+        .from(messages)
+        .innerJoin(users, eq(messages.senderId, users.id))
+        .where(
+          or(
+            and(
+              eq(messages.senderId, req.user.id),
+              eq(messages.recipientId, otherUserId),
+            ),
+            and(
+              eq(messages.senderId, otherUserId),
+              eq(messages.recipientId, req.user.id),
+            ),
+          ),
+        )
+        .orderBy(asc(messages.createdAt));
+
+      res.json(userMessages);
+    } catch (error) {
+      logger.error("Error fetching messages:", error);
+      res.status(500).json({
+        message: "Failed to fetch messages",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Get unread message count
+  router.get("/api/messages/unread/count", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const [result] = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+        })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            eq(messages.isRead, false),
+          ),
+        );
+
+      res.json({ unreadCount: result.count });
+    } catch (error) {
+      logger.error("Error getting unread message count:", error);
+      res.status(500).json({
+        message: "Failed to get unread message count",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Mark messages as read
+  router.post("/api/messages/read", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { messageIds } = req.body;
+
+      if (!Array.isArray(messageIds)) {
+        return res.status(400).json({ message: "Invalid message IDs" });
+      }
+
+      await db
+        .update(messages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(messages.recipientId, req.user.id),
+            inArray(messages.id, messageIds),
+          ),
+        );
+
+      res.json({ message: "Messages marked as read" });
+    } catch (error) {
+      logger.error("Error marking messages as read:", error);
+      res.status(500).json({
+        message: "Failed to mark messages as read",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Delete all notifications for a user
+  router.delete("/api/notifications", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Set content type before sending response
+      res.setHeader("Content-Type", "application/json");
+
+      // Delete all notifications for the user
+      const result = await db
+        .delete(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .returning();
+
+      logger.info(`Deleted ${result.length} notifications for user ${req.user.id}`);
+
+      res.json({
+        message: "All notifications deleted successfully",
+        count: result.length,
+      });
+    } catch (error) {
+      logger.error(
+        "Error deleting all notifications:",
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      res.status(500).json({
+        message: "Failed to delete all notifications",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Get weekly points for a user
   router.get("/api/points/weekly", authenticate, async (req, res) => {
     try {
@@ -4118,7 +6265,7 @@ export const registerRoutes = async (
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
 
-      // First get the user's team ID
+      // First get the user's team ID and group information
       const [currentUser] = await db
         .select()
         .from(users)
@@ -4129,12 +6276,28 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "User not assigned to a team" });
       }
 
+      // Get the user's team to find their group
+      const [currentTeam] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, currentUser.teamId))
+        .limit(1);
+
+      if (!currentTeam) {
+        return res.status(400).json({ message: "User's team not found" });
+      }
+
+      // Debug logging
+      console.log("Current user:", JSON.stringify(currentUser, null, 2));
+      console.log("Current team:", JSON.stringify(currentTeam, null, 2));
+
       // Get team members points
       const teamMembers = await db
         .select({
           id: users.id,
           username: users.username,
           imageUrl: users.imageUrl,
+          avatarColor: users.avatarColor,
           points: sql<number>`COALESCE((
             SELECT SUM(p.points)
             FROM posts p
@@ -4148,7 +6311,7 @@ export const registerRoutes = async (
         .where(eq(users.teamId, currentUser.teamId))
         .orderBy(sql`points DESC`);
 
-      // Get all teams average points
+      // Get team average points - only from the same group as the user's team
       const teamStats = await db.execute(sql`
           SELECT 
             t.id, 
@@ -4165,9 +6328,13 @@ export const registerRoutes = async (
             WHERE u.team_id IS NOT NULL
             GROUP BY u.id
           ) user_points ON user_points.team_id = t.id
+          WHERE t.group_id = ${currentTeam.groupId}
           GROUP BY t.id, t.name
           ORDER BY avg_points DESC
         `);
+
+      console.log("Filtering teams for group ID:", currentTeam.groupId);
+      console.log("Team stats query result:", JSON.stringify(teamStats.rows, null, 2));
 
       res.setHeader("Content-Type", "application/json");
       res.json({
@@ -4532,8 +6699,7 @@ export const registerRoutes = async (
           maxStreak = Math.max(maxStreak, currentStreak);
         } else {
           currentStreak = 1;
-        }
-      }
+        }      }
 
       // Award achievements based on streak length
       if (maxStreak >= 5 && !earnedTypes.has("workout-streak-5")) {
@@ -4723,10 +6889,231 @@ export const registerRoutes = async (
     }
   };
 
-  // Register Object Storage routes
-  app.use("/api/object-storage", objectStorageRouter);
+  // Object Storage routes removed - not needed
 
-  // Main file serving route that thumbnails expect
+  // File cache for video streaming to avoid re-downloading from Object Storage
+  const fileCache = new Map<string, { buffer: Buffer; timestamp: number; size: number }>();
+  const MAX_CACHE_SIZE = 200 * 1024 * 1024; // 200MB max cache
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  function getCachedFile(key: string): Buffer | null {
+    const cached = fileCache.get(key);
+    if (!cached) return null;
+    
+    // Check if cache entry expired
+    if (Date.now() - cached.timestamp > CACHE_TTL) {
+      fileCache.delete(key);
+      logger.info(`Cache expired for ${key}`);
+      return null;
+    }
+    
+    logger.info(`Cache hit for ${key}`);
+    return cached.buffer;
+  }
+
+  function setCachedFile(key: string, buffer: Buffer): void {
+    // Calculate current cache size
+    let currentSize = 0;
+    for (const entry of fileCache.values()) {
+      currentSize += entry.size;
+    }
+    
+    // Evict oldest entries if cache is full
+    while (currentSize + buffer.length > MAX_CACHE_SIZE && fileCache.size > 0) {
+      const oldestKey = fileCache.keys().next().value;
+      const oldestEntry = fileCache.get(oldestKey);
+      if (oldestEntry) {
+        currentSize -= oldestEntry.size;
+        fileCache.delete(oldestKey);
+        logger.info(`Evicted ${oldestKey} from cache (size: ${oldestEntry.size} bytes)`);
+      }
+    }
+    
+    // Only cache if file fits in cache
+    if (buffer.length <= MAX_CACHE_SIZE) {
+      fileCache.set(key, { buffer, timestamp: Date.now(), size: buffer.length });
+      logger.info(`Cached ${key} (size: ${buffer.length} bytes, total entries: ${fileCache.size})`);
+    } else {
+      logger.warn(`File ${key} too large to cache (${buffer.length} bytes)`);
+    }
+  }
+
+  // Migrate old large videos to HLS format
+  app.post("/api/migrate-videos-to-hls", async (req: AuthRequest, res: Response) => {
+    try {
+      // Only allow admin users
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      logger.info('[HLS Migration] Starting migration of large videos to HLS format');
+
+      // Find all posts with video URLs pointing to direct-download
+      const videoPosts = await db
+        .select({
+          id: posts.id,
+          mediaUrl: posts.mediaUrl,
+        })
+        .from(posts)
+        .where(
+          and(
+            isNotNull(posts.mediaUrl),
+            like(posts.mediaUrl, '%/api/object-storage/direct-download%')
+          )
+        );
+
+      logger.info(`[HLS Migration] Found ${videoPosts.length} posts with direct-download videos`);
+
+      const results = {
+        total: videoPosts.length,
+        converted: 0,
+        skipped: 0,
+        failed: 0,
+        errors: [] as string[],
+      };
+
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const { HLSConverter } = await import('./hls-converter');
+      const { hlsConverter } = await import('./hls-converter');
+      const fs = await import("fs");
+
+      for (const post of videoPosts) {
+        try {
+          // Extract storage key from URL
+          const urlParams = new URLSearchParams(post.mediaUrl!.split('?')[1]);
+          const storageKey = urlParams.get('storageKey');
+          
+          if (!storageKey) {
+            logger.warn(`[HLS Migration] Post ${post.id}: No storage key found in URL`);
+            results.skipped++;
+            continue;
+          }
+
+          // Download video to check size
+          const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
+          const fileSize = videoBuffer.length;
+
+          // Check if video needs HLS conversion
+          if (!HLSConverter.shouldConvertToHLS(fileSize)) {
+            logger.info(`[HLS Migration] Post ${post.id}: Video too small (${(fileSize / 1024 / 1024).toFixed(2)} MB), skipping`);
+            results.skipped++;
+            continue;
+          }
+
+          logger.info(`[HLS Migration] Post ${post.id}: Converting video (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+
+          // Extract filename
+          const filename = storageKey.split('/').pop() || '';
+          const baseFilename = filename.replace('.mp4', '');
+          const playlistKey = `shared/uploads/hls/${baseFilename}/playlist.m3u8`;
+
+          // Check if HLS version already exists
+          try {
+            await spartaObjectStorage.downloadFile(playlistKey);
+            logger.info(`[HLS Migration] Post ${post.id}: HLS version already exists`);
+            
+            // Update database URL even if HLS exists
+            const newMediaUrl = `/api/hls/${baseFilename}/playlist.m3u8`;
+            await db
+              .update(posts)
+              .set({ mediaUrl: newMediaUrl })
+              .where(eq(posts.id, post.id));
+            
+            results.converted++;
+            continue;
+          } catch {
+            // HLS doesn't exist, convert now
+          }
+
+          // Write video to temp file for conversion
+          const tempVideoPath = `/tmp/${filename}`;
+          fs.writeFileSync(tempVideoPath, videoBuffer);
+
+          try {
+            // Convert to HLS
+            await hlsConverter.convertToHLS(tempVideoPath, baseFilename);
+            
+            // Update database with new HLS URL
+            const newMediaUrl = `/api/hls/${baseFilename}/playlist.m3u8`;
+            await db
+              .update(posts)
+              .set({ mediaUrl: newMediaUrl })
+              .where(eq(posts.id, post.id));
+
+            logger.info(`[HLS Migration] Post ${post.id}: Successfully converted and updated URL`);
+            results.converted++;
+
+            // Clean up temp file
+            fs.unlinkSync(tempVideoPath);
+          } catch (conversionError) {
+            logger.error(`[HLS Migration] Post ${post.id}: Conversion failed:`, conversionError);
+            results.failed++;
+            results.errors.push(`Post ${post.id}: ${conversionError instanceof Error ? conversionError.message : 'Unknown error'}`);
+            
+            // Clean up temp file
+            if (fs.existsSync(tempVideoPath)) {
+              fs.unlinkSync(tempVideoPath);
+            }
+          }
+        } catch (error) {
+          logger.error(`[HLS Migration] Post ${post.id}: Error processing:`, error);
+          results.failed++;
+          results.errors.push(`Post ${post.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      logger.info(`[HLS Migration] Complete: ${results.converted} converted, ${results.skipped} skipped, ${results.failed} failed`);
+      return res.json(results);
+    } catch (error) {
+      logger.error("[HLS Migration] Migration failed:", error);
+      return res.status(500).json({ error: "Migration failed", message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Regenerate thumbnail for a video
+  app.post("/api/regenerate-thumbnail", async (req: AuthRequest, res: Response) => {
+    try {
+      const { videoFilename } = req.body;
+      
+      if (!videoFilename) {
+        return res.status(400).json({ error: "Video filename required" });
+      }
+
+      logger.info(`Regenerating thumbnail for: ${videoFilename}`);
+
+      // Import dependencies
+      const { createMovThumbnail } = await import("./mov-frame-extractor-new");
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const fs = await import("fs");
+      const path = await import("path");
+
+      // Download video from Object Storage
+      const storageKey = `shared/uploads/${videoFilename}`;
+      const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
+      
+      // Write to temp file
+      const tempVideoPath = `/tmp/${videoFilename}`;
+      fs.writeFileSync(tempVideoPath, videoBuffer);
+
+      // Generate thumbnail
+      const thumbnailFilename = await createMovThumbnail(tempVideoPath);
+
+      // Clean up temp file
+      fs.unlinkSync(tempVideoPath);
+
+      if (thumbnailFilename) {
+        logger.info(`Successfully regenerated thumbnail: ${thumbnailFilename}`);
+        return res.json({ success: true, thumbnailFilename });
+      } else {
+        return res.status(500).json({ error: "Thumbnail generation failed" });
+      }
+    } catch (error) {
+      logger.error("Error regenerating thumbnail:", error);
+      return res.status(500).json({ error: "Failed to regenerate thumbnail" });
+    }
+  });
+
+  // Main file serving route with HTTP range request support for video streaming
   app.get("/api/serve-file", async (req: Request, res: Response) => {
     try {
       const filename = req.query.filename as string;
@@ -4737,186 +7124,31 @@ export const registerRoutes = async (
           .json({ error: "Filename parameter is required" });
       }
 
-      console.log(`[serve-file] Request for filename: ${filename}`);
-      console.log(`[serve-file] Full request details:`, {
-        originalUrl: req.originalUrl,
-        query: req.query,
-        headers: {
-          referer: req.headers.referer,
-          userAgent: req.headers["user-agent"]?.substring(0, 50),
-        },
-      });
       logger.info(`Serving file: ${filename}`, { route: "/api/serve-file" });
 
-      // Use Object Storage client
-      const { Client } = await import("@replit/object-storage");
-      const objectStorage = new Client();
+      // Import the Object Storage utility
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
 
       // Check if this is a thumbnail request
       const isThumbnail = req.query.thumbnail === "true";
 
       // Construct the proper Object Storage key
-      let storageKey;
+      let storageKey: string;
       if (isThumbnail) {
-        storageKey = `shared/uploads/thumbnails/${filename}`;
+        storageKey = filename.includes("thumbnail")
+          ? `shared/uploads/${filename}`
+          : `shared/uploads/thumbnails/${filename}`;
       } else {
-        // For regular files, add the shared/uploads prefix if not already present
+        // For regular files, construct the key as it was stored
         storageKey = filename.startsWith("shared/")
           ? filename
           : `shared/uploads/${filename}`;
       }
 
-      // Download the file from Object Storage with proper error handling
-      console.log(
-        `[serve-file] Attempting to download from Object Storage key: ${storageKey}`,
-      );
-      console.log(
-        `[serve-file] isThumbnail: ${isThumbnail}, constructed storageKey: ${storageKey}`,
-      );
-      const result = await objectStorage.downloadAsBytes(storageKey);
-      console.log(`[serve-file] Object Storage result:`, {
-        type: typeof result,
-        hasOk: result && typeof result === "object" && "ok" in result,
-        hasValue: result && typeof result === "object" && "value" in result,
-        ok:
-          result && typeof result === "object" && "ok" in result
-            ? result.ok
-            : undefined,
-        valueType:
-          result && typeof result === "object" && "value" in result
-            ? typeof result.value
-            : undefined,
-        isBuffer: Buffer.isBuffer(result),
-        resultKeys:
-          result && typeof result === "object"
-            ? Object.keys(result)
-            : undefined,
-        valueIsArray:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value)
-            ? result.value.length
-            : undefined,
-        firstElementType:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value) &&
-          result.value.length > 0
-            ? typeof result.value[0]
-            : undefined,
-        firstElementIsBuffer:
-          result &&
-          typeof result === "object" &&
-          "value" in result &&
-          Array.isArray(result.value) &&
-          result.value.length > 0
-            ? Buffer.isBuffer(result.value[0])
-            : undefined,
-      });
-
-      // Handle the Object Storage response format - simplified and more robust
-      let fileBuffer: Buffer;
-
-      if (Buffer.isBuffer(result)) {
-        fileBuffer = result;
-        console.log(
-          `[serve-file] Direct Buffer response, size: ${fileBuffer.length} bytes`,
-        );
-      } else if (result && typeof result === "object") {
-        // Check for value property first (most common case)
-        if (result.value !== undefined) {
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-            console.log(
-              `[serve-file] Object with Buffer value, size: ${fileBuffer.length} bytes`,
-            );
-          } else if (Array.isArray(result.value)) {
-            // Handle array with one Buffer element (common Object Storage format)
-            if (result.value.length === 1 && Buffer.isBuffer(result.value[0])) {
-              fileBuffer = result.value[0];
-              console.log(
-                `[serve-file] Object with array containing Buffer, size: ${fileBuffer.length} bytes`,
-              );
-            } else {
-              // Convert entire array to Buffer
-              fileBuffer = Buffer.from(result.value);
-              console.log(
-                `[serve-file] Object with array value converted to Buffer, size: ${fileBuffer.length} bytes`,
-              );
-            }
-          } else if (typeof result.value === "string") {
-            fileBuffer = Buffer.from(result.value, "base64");
-            console.log(
-              `[serve-file] Object with string value converted from base64, size: ${fileBuffer.length} bytes`,
-            );
-          } else {
-            logger.error(
-              `Unexpected value type from Object Storage for ${storageKey}:`,
-              typeof result.value,
-            );
-            return res
-              .status(404)
-              .json({
-                error: "File not found",
-                message: `Invalid data format for ${storageKey}`,
-              });
-          }
-        } else if ("ok" in result) {
-          // Handle legacy ok/error format
-          if (result.ok === false || !result.value) {
-            console.log(
-              `[serve-file] Object Storage returned error for ${storageKey}:`,
-              result.error || "File not found",
-            );
-            return res
-              .status(404)
-              .json({
-                error: "File not found",
-                message: `Could not retrieve ${storageKey}`,
-              });
-          }
-
-          // If ok is true, try to extract the value
-          if (Buffer.isBuffer(result.value)) {
-            fileBuffer = result.value;
-          } else if (Array.isArray(result.value)) {
-            fileBuffer = Buffer.from(result.value);
-          } else {
-            fileBuffer = Buffer.from(result.value, "base64");
-          }
-          console.log(
-            `[serve-file] Legacy ok format, Buffer size: ${fileBuffer.length} bytes`,
-          );
-        } else {
-          logger.error(
-            `Unknown Object Storage response format for ${storageKey}:`,
-            Object.keys(result),
-          );
-          return res
-            .status(404)
-            .json({
-              error: "File not found",
-              message: `Could not retrieve ${storageKey}`,
-            });
-        }
-      } else {
-        logger.error(
-          `Invalid response format from Object Storage for ${storageKey}:`,
-          typeof result,
-        );
-        return res
-          .status(500)
-          .json({
-            error: "Failed to serve file",
-            message: "Invalid response from storage",
-          });
-      }
-
       // Set appropriate content type
       const ext = filename.toLowerCase().split(".").pop();
       let contentType = "application/octet-stream";
+      let isVideo = false;
 
       switch (ext) {
         case "jpg":
@@ -4937,38 +7169,1020 @@ export const registerRoutes = async (
           break;
         case "mp4":
           contentType = "video/mp4";
+          isVideo = true;
           break;
         case "mov":
           contentType = "video/quicktime";
+          isVideo = true;
           break;
         case "webm":
           contentType = "video/webm";
+          isVideo = true;
           break;
       }
 
+      // Set common headers
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
-      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader(
+        "Access-Control-Allow-Origin",
+        "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev",
+      );
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
       res.setHeader(
         "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept",
+        "Origin, X-Requested-With, Content-Type, Accept, Range",
       );
-      res.setHeader("Content-Length", fileBuffer.length);
+      res.setHeader("Accept-Ranges", "bytes");
 
-      logger.info(
-        `Successfully served file: ${storageKey}, size: ${fileBuffer.length} bytes`,
-      );
+      // Handle videos with disk-backed streaming cache
+      if (isVideo) {
+        let filePath: string;
+        
+        // Check if this is a .mov file that needs conversion
+        const isMovFile = ext === 'mov';
+        
+        if (isMovFile) {
+          // Use MOV conversion cache manager for .mov files
+          logger.info(`MOV file detected: ${storageKey}, converting to MP4`);
+          const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
+          
+          // Get converted MP4 file path (converts if needed)
+          filePath = await movConversionCacheManager.getConvertedMp4(storageKey);
+          
+          // Override content type to MP4 since we're serving a converted file
+          res.setHeader("Content-Type", "video/mp4");
+        } else {
+          // Use regular video cache manager for other video formats
+          const { videoCacheManager } = await import("./video-cache-manager");
+          
+          // Get file path from cache (downloads if needed)
+          filePath = await videoCacheManager.getVideoFile(storageKey);
+        }
+        
+        const stats = await import("fs").then(fs => fs.promises.stat(filePath));
+        const fileSize = stats.size;
+
+        const range = req.headers.range;
+        if (range) {
+          // Parse range header (e.g., "bytes=0-1023")
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+          const chunkSize = end - start + 1;
+
+          logger.info(`Streaming range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
+
+          // Stream from disk (no memory overhead)
+          const fs = await import("fs");
+          const stream = fs.createReadStream(filePath, { start, end });
+
+          // Send 206 Partial Content response
+          res.status(206);
+          res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+          res.setHeader("Content-Length", chunkSize);
+          
+          // Handle stream errors
+          stream.on('error', (error) => {
+            logger.error(`[VIDEO SERVE ERROR] Stream error for ${storageKey}:`, {
+              error: error.message,
+              stack: error.stack,
+              filePath,
+              start,
+              end,
+              fileSize,
+              endpoint: '/api/serve-file'
+            });
+            if (!res.headersSent) {
+              res.status(500).json({ 
+                error: 'Stream error',
+                message: error.message,
+                details: `Failed to stream ${storageKey} from ${filePath}`
+              });
+            }
+          });
+
+          stream.on('end', () => {
+            logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
+          });
+          
+          return stream.pipe(res);
+        } else {
+          // Send entire file from disk
+          logger.info(`Streaming entire video from disk: ${storageKey}, size: ${fileSize}`);
+          const fs = await import("fs");
+          const stream = fs.createReadStream(filePath);
+          
+          // Handle stream errors
+          stream.on('error', (error) => {
+            logger.error(`[VIDEO SERVE ERROR] Stream error for ${storageKey} (full file):`, {
+              error: error.message,
+              stack: error.stack,
+              filePath,
+              fileSize,
+              endpoint: '/api/serve-file'
+            });
+            if (!res.headersSent) {
+              res.status(500).json({ 
+                error: 'Stream error',
+                message: error.message,
+                details: `Failed to stream ${storageKey} from ${filePath}`
+              });
+            }
+          });
+
+          stream.on('end', () => {
+            logger.info(`Stream completed for ${storageKey}`);
+          });
+          
+          res.setHeader("Content-Length", fileSize);
+          return stream.pipe(res);
+        }
+      }
+
+      // For small files (images, thumbnails), use in-memory cache
+      let fileBuffer: Buffer | null = getCachedFile(storageKey);
+      
+      if (!fileBuffer) {
+        logger.info(`Downloading ${storageKey} from Object Storage (not in cache)`);
+        const result = await spartaObjectStorage.downloadFile(storageKey);
+        
+        // Handle the Object Storage response format
+        if (Buffer.isBuffer(result)) {
+          fileBuffer = result;
+        } else if (result && typeof result === "object" && "value" in result) {
+          if (Buffer.isBuffer(result.value)) {
+            fileBuffer = result.value;
+          } else if (Array.isArray(result.value)) {
+            fileBuffer = Buffer.from(result.value);
+          } else {
+            fileBuffer = Buffer.from(result.value, "base64");
+          }
+        } else {
+          throw new Error(`Unexpected Object Storage response format for ${storageKey}`);
+        }
+        
+        setCachedFile(storageKey, fileBuffer);
+      }
+
+      res.setHeader("Content-Length", fileBuffer.length);
+      logger.info(`Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
       return res.send(fileBuffer);
     } catch (error) {
-      console.error(`[serve-file] ERROR serving file:`, error);
       logger.error(`Error serving file: ${error}`, {
         route: "/api/serve-file",
       });
-      return res.status(500).json({
-        error: "Failed to serve file",
+      return res.status(404).json({
+        error: "File not found",
         message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Direct download route for files stored in Object Storage with Range support for video streaming
+  app.get("/api/object-storage/direct-download", async (req: Request, res: Response) => {
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[REQ START v4] New request ${requestId} - storageKey: ${req.query.storageKey}, range: ${req.headers.range}, method: ${req.method}`);
+    
+    try {
+      const storageKey = req.query.storageKey as string;
+
+      if (!storageKey) {
+        console.error(`[REQ ERROR v4] ${requestId}: Missing storageKey`);
+        return res.status(400).json({ error: "storageKey parameter is required" });
+      }
+
+      console.log(`[REQ v4] ${requestId}: Direct download: ${storageKey}, route: /api/object-storage/direct-download, range: ${req.headers.range}`);
+
+      // Import the Object Storage utility
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+
+      // Determine content type from file extension
+      const ext = storageKey.toLowerCase().split(".").pop();
+      let contentType = "application/octet-stream";
+      let isVideo = false;
+
+      switch (ext) {
+        case "jpg":
+        case "jpeg":
+          contentType = "image/jpeg";
+          break;
+        case "png":
+          contentType = "image/png";
+          break;
+        case "gif":
+          contentType = "image/gif";
+          break;
+        case "webp":
+          contentType = "image/webp";
+          break;
+        case "mp4":
+          contentType = "video/mp4";
+          isVideo = true;
+          break;
+        case "mov":
+          contentType = "video/quicktime";
+          isVideo = true;
+          break;
+        case "webm":
+          contentType = "video/webm";
+          isVideo = true;
+          break;
+      }
+
+      // Set common headers
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader("Access-Control-Allow-Origin", "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Range");
+      res.setHeader("Accept-Ranges", "bytes");
+
+      // Handle videos - use buffer slicing for production-compatible 206 range responses
+      if (isVideo) {
+        console.log(`[VIDEO v5] ${requestId}: Video detected: ${storageKey}, range: ${req.headers.range || 'none'}`);
+        
+        try {
+          // Download full video from Object Storage and cache it
+          const videoBuffer = await spartaObjectStorage.downloadFile(storageKey);
+          const fileSize = videoBuffer.length;
+          console.log(`[VIDEO v5] ${requestId}: Downloaded ${fileSize} bytes from Object Storage`);
+          
+          // Check if large video needs HLS conversion (on-demand for old videos)
+          const { HLSConverter } = await import('./hls-converter');
+          if (HLSConverter.shouldConvertToHLS(fileSize)) {
+            console.log(`[VIDEO v5] ${requestId}: Large video detected (${(fileSize / 1024 / 1024).toFixed(2)} MB), checking for HLS version`);
+            
+            // Extract filename from storageKey
+            const filename = storageKey.split('/').pop() || '';
+            const baseFilename = filename.replace('.mp4', '');
+            const playlistKey = `shared/uploads/hls/${baseFilename}/playlist.m3u8`;
+            
+            // Check if HLS playlist already exists
+            try {
+              await spartaObjectStorage.downloadFile(playlistKey);
+              console.log(`[VIDEO v5] ${requestId}: HLS version exists, redirecting to playlist`);
+              // Redirect to HLS playlist
+              return res.redirect(302, `/api/hls/${baseFilename}/playlist.m3u8`);
+            } catch (playlistError) {
+              // HLS doesn't exist, convert now
+              console.log(`[VIDEO v5] ${requestId}: HLS version not found, converting on-demand`);
+              
+              // Write video to temp file for conversion
+              const tempVideoPath = `/tmp/${filename}`;
+              fs.writeFileSync(tempVideoPath, videoBuffer);
+              
+              try {
+                const { hlsConverter } = await import('./hls-converter');
+                await hlsConverter.convertToHLS(tempVideoPath, baseFilename);
+                
+                console.log(`[VIDEO v5] ${requestId}: On-demand HLS conversion complete, redirecting to playlist`);
+                
+                // Clean up temp file
+                fs.unlinkSync(tempVideoPath);
+                
+                // Redirect to HLS playlist
+                return res.redirect(302, `/api/hls/${baseFilename}/playlist.m3u8`);
+              } catch (conversionError) {
+                console.error(`[VIDEO v5] ${requestId}: On-demand HLS conversion failed: ${conversionError}`);
+                // Clean up temp file
+                if (fs.existsSync(tempVideoPath)) {
+                  fs.unlinkSync(tempVideoPath);
+                }
+                // Fall through to regular video serving (will likely fail in production, but better than crashing)
+              }
+            }
+          }
+          
+          // Parse range header if present
+          const range = req.headers.range;
+          if (range) {
+            // Parse range header (e.g., "bytes=0-1", "bytes=1024-2048")
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            
+            // Validate range
+            if (start >= fileSize || end >= fileSize || start > end) {
+              console.error(`[VIDEO v5] ${requestId}: Invalid range ${range} for file size ${fileSize}`);
+              return res.status(416).setHeader("Content-Range", `bytes */${fileSize}`).end();
+            }
+            
+            const chunkSize = end - start + 1;
+            console.log(`[VIDEO v5] ${requestId}: Range request ${range} -> slice [${start}, ${end}] = ${chunkSize} bytes`);
+            
+            // Slice the buffer to get the requested range
+            const chunk = videoBuffer.slice(start, end + 1);
+            
+            // Send 206 Partial Content with the chunk
+            res.status(206);
+            res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader("Content-Length", chunkSize);
+            res.setHeader("Content-Type", contentType);
+            res.setHeader("Accept-Ranges", "bytes");
+            
+            console.log(`[VIDEO v5] ${requestId}: Sending 206 response: ${chunkSize} bytes (${start}-${end}/${fileSize})`);
+            res.end(chunk);
+            console.log(`[VIDEO v5] ${requestId}: 206 response completed`);
+            return;
+          } else {
+            // No range header - send full file as 200
+            console.log(`[VIDEO v5] ${requestId}: No range header, sending full file (${fileSize} bytes)`);
+            res.setHeader("Content-Length", fileSize);
+            res.setHeader("Content-Type", contentType);
+            res.setHeader("Accept-Ranges", "bytes");
+            res.end(videoBuffer);
+            console.log(`[VIDEO v5] ${requestId}: 200 response completed`);
+            return;
+          }
+        } catch (downloadError) {
+          console.error(`[VIDEO v5 ERROR] ${requestId}: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
+          if (!res.headersSent) {
+            return res.status(500).json({ 
+              error: 'Video download failed', 
+              message: downloadError instanceof Error ? downloadError.message : 'Unknown error'
+            });
+          }
+          return;
+        }
+        
+      }
+      
+      /* OLD STREAMING CODE - DISABLED due to production infrastructure issues
+        const isMovFile = ext === 'mov';
+        if (isMovFile) {
+          console.log(`[MOV PATH v4] ${requestId}: MOV file detected: ${storageKey}, converting to MP4`);
+          const { movConversionCacheManager } = await import("./mov-conversion-cache-manager");
+          
+          // Get converted MP4 file path (converts if needed)
+          const filePath = await movConversionCacheManager.getConvertedMp4(storageKey);
+          
+          // Override content type to MP4 since we're serving a converted file
+          res.setHeader("Content-Type", "video/mp4");
+          
+          const stats = await import("fs").then(fs => fs.promises.stat(filePath));
+          const fileSize = stats.size;
+
+          const range = req.headers.range;
+          if (range) {
+            // Parse range header (e.g., "bytes=0-1023")
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunkSize = end - start + 1;
+
+            logger.info(`Streaming MOV range ${start}-${end}/${fileSize} from disk: ${storageKey}`);
+
+            // Stream from disk (no memory overhead)
+            const fs = await import("fs");
+            const stream = fs.createReadStream(filePath, { start, end });
+
+            // Send 206 Partial Content response
+            res.status(206);
+            res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader("Content-Length", chunkSize);
+            
+            // Handle stream errors
+            stream.on('error', (error) => {
+              logger.error(`Stream error for ${storageKey}:`, error);
+              if (!res.headersSent) {
+                res.status(500).json({ error: 'Stream error' });
+              }
+            });
+
+            stream.on('end', () => {
+              logger.info(`Stream completed for ${storageKey}: bytes ${start}-${end}`);
+            });
+            
+            return stream.pipe(res);
+          } else {
+            // Send entire file from disk
+            logger.info(`Streaming entire MOV video from disk: ${storageKey}, size: ${fileSize}`);
+            const fs = await import("fs");
+            const stream = fs.createReadStream(filePath);
+            
+            // Handle stream errors
+            stream.on('error', (error) => {
+              logger.error(`Stream error for ${storageKey}:`, error);
+              if (!res.headersSent) {
+                res.status(500).json({ error: 'Stream error' });
+              }
+            });
+
+            stream.on('end', () => {
+              logger.info(`Stream completed for ${storageKey}`);
+            });
+            
+            res.setHeader("Content-Length", fileSize);
+            return stream.pipe(res);
+          }
+        } else {
+          // MP4/WEBM files - use cache manager with extended timeout for production
+          console.log(`[MP4 PATH v4] ${requestId}: MP4/WEBM file detected: ${storageKey}`);
+          console.log(`[VIDEO STREAM v4] ${requestId}: Starting MP4/WEBM video stream: ${storageKey}`);
+          const { videoCacheManager } = await import("./video-cache-manager");
+          
+          try {
+            // Get file path from cache (downloads if needed, with timeout handling)
+            console.log(`[VIDEO STREAM v4] ${requestId}: Getting video file from cache: ${storageKey}`);
+            const filePath = await videoCacheManager.getVideoFile(storageKey);
+            console.log(`[VIDEO STREAM v4] ${requestId}: Video file path obtained: ${filePath}`);
+            
+            const stats = await import("fs").then(fs => fs.promises.stat(filePath));
+            const fileSize = stats.size;
+            console.log(`[VIDEO STREAM v4] ${requestId}: File stats - size: ${fileSize}, path: ${filePath}`);
+
+            const range = req.headers.range;
+            if (range) {
+              // Parse range header (e.g., "bytes=0-1023")
+              const parts = range.replace(/bytes=/, "").split("-");
+              const start = parseInt(parts[0], 10);
+              const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+              const chunkSize = end - start + 1;
+
+              console.log(`[VIDEO STREAM v4] ${requestId}: Range request: ${start}-${end}/${fileSize} (${chunkSize} bytes)`);
+
+              // Stream from disk (no memory overhead)
+              const fs = await import("fs");
+              
+              try {
+                console.log(`[STREAM CREATE v4] ${requestId}: Creating read stream for ${filePath}, range ${start}-${end}`);
+                const stream = fs.createReadStream(filePath, { start, end });
+
+                // Send 206 Partial Content response
+                res.status(206);
+                res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+                res.setHeader("Content-Length", chunkSize);
+                
+                console.log(`[STREAM START v4] ${requestId}: Headers set (206), piping stream for range ${start}-${end}`);
+                
+                // Handle stream errors
+                stream.on('error', (error) => {
+                  console.error(`[STREAM ERROR v4] ${requestId}: Stream error for ${storageKey} - error: ${error.message}, stack: ${error.stack}, filePath: ${filePath}, start: ${start}, end: ${end}, fileSize: ${fileSize}, headersSent: ${res.headersSent}`);
+                  if (!res.headersSent) {
+                    res.status(500).json({ 
+                      error: 'Stream error', 
+                      message: error.message,
+                      details: `Failed to stream ${storageKey} from ${filePath}`
+                    });
+                  } else {
+                    console.error(`[STREAM ERROR v4] ${requestId}: Headers already sent, cannot send error response`);
+                  }
+                });
+
+                stream.on('end', () => {
+                  console.log(`[STREAM COMPLETE v4] ${requestId}: Stream completed for ${storageKey}: bytes ${start}-${end}`);
+                });
+
+                stream.on('close', () => {
+                  console.log(`[STREAM CLOSE v4] ${requestId}: Stream closed for ${storageKey}: bytes ${start}-${end}`);
+                });
+                
+                return stream.pipe(res);
+              } catch (streamError) {
+                console.error(`[STREAM CREATE ERROR v4] ${requestId}: Failed to create read stream - error: ${streamError instanceof Error ? streamError.message : String(streamError)}, stack: ${streamError instanceof Error ? streamError.stack : undefined}, filePath: ${filePath}, start: ${start}, end: ${end}, fileSize: ${fileSize}, storageKey: ${storageKey}`);
+                throw streamError;
+              }
+            } else {
+              // Send entire file from disk
+              logger.info(`[VIDEO STREAM] Streaming entire MP4 video: ${storageKey}, size: ${fileSize}`);
+              const fs = await import("fs");
+              
+              try {
+                const stream = fs.createReadStream(filePath);
+                
+                // Handle stream errors
+                stream.on('error', (error) => {
+                  logger.error(`[VIDEO STREAM ERROR] Stream error for ${storageKey}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    filePath,
+                    fileSize
+                  });
+                  if (!res.headersSent) {
+                    res.status(500).json({ 
+                      error: 'Stream error',
+                      message: error.message,
+                      details: `Failed to stream ${storageKey} from ${filePath}`
+                    });
+                  }
+                });
+
+                stream.on('end', () => {
+                  logger.info(`[VIDEO STREAM] Stream completed for ${storageKey}`);
+                });
+                
+                res.setHeader("Content-Length", fileSize);
+                logger.info(`[VIDEO STREAM] Headers set, starting full file stream`);
+                return stream.pipe(res);
+              } catch (streamError) {
+                logger.error(`[VIDEO STREAM ERROR] Failed to create read stream for full file:`, {
+                  error: streamError instanceof Error ? streamError.message : String(streamError),
+                  stack: streamError instanceof Error ? streamError.stack : undefined,
+                  filePath,
+                  fileSize,
+                  storageKey
+                });
+                throw streamError;
+              }
+            }
+          } catch (downloadError) {
+            // Detailed error logging for cache/download failures
+            console.error(`[VIDEO STREAM ERROR v4] ${requestId}: Cache operation failed for ${storageKey} - error: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}, stack: ${downloadError instanceof Error ? downloadError.stack : undefined}, errorType: ${downloadError instanceof Error ? downloadError.constructor.name : typeof downloadError}`);
+            
+            // If cache download fails (timeout in production), fall back to direct Object Storage streaming
+            // This won't support seeking but will at least play the video
+            console.log(`[VIDEO STREAM FALLBACK v4] ${requestId}: Direct streaming from Object Storage: ${storageKey}`);
+            const stream = spartaObjectStorage.downloadAsStream(storageKey);
+            
+            stream.on('error', (error: Error) => {
+              console.error(`[VIDEO STREAM ERROR v4] ${requestId}: Object Storage stream error for ${storageKey} - error: ${error.message}, stack: ${error.stack}`);
+              if (!res.headersSent) {
+                res.status(500).json({ 
+                  error: 'Stream error', 
+                  message: error.message,
+                  details: 'Failed to stream from Object Storage'
+                });
+              }
+            });
+
+            stream.on('end', () => {
+              console.log(`[VIDEO STREAM COMPLETE v4] ${requestId}: Object Storage stream completed for ${storageKey}`);
+            });
+            
+            return stream.pipe(res);
+          }
+        }
+      END OF OLD STREAMING CODE */
+
+      // For non-videos, download and send directly
+      const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
+      res.setHeader("Content-Length", fileBuffer.length);
+      console.log(`[FILE SERVED v4] ${requestId}: Served file: ${storageKey}, size: ${fileBuffer.length} bytes`);
+      return res.send(fileBuffer);
+    } catch (error) {
+      console.error(`[ENDPOINT ERROR v4] ${requestId}: Error in direct-download endpoint - route: /api/object-storage/direct-download, storageKey: ${req.query.storageKey}, range: ${req.headers.range}, error: ${error instanceof Error ? error.message : String(error)}, stack: ${error instanceof Error ? error.stack : undefined}, errorType: ${error instanceof Error ? error.constructor.name : typeof error}, headersSent: ${res.headersSent}`);
+      
+      if (res.headersSent) {
+        console.error(`[ENDPOINT ERROR v4] ${requestId}: Cannot send error response, headers already sent`);
+        return;
+      }
+      
+      return res.status(404).json({
+        error: "File not found",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // HLS playlist endpoint - serves .m3u8 playlist files for HLS streaming
+  app.get("/api/hls/:baseFilename/playlist.m3u8", async (req: Request, res: Response) => {
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[HLS PLAYLIST] ${requestId}: Request for ${req.params.baseFilename}`);
+    
+    try {
+      const { baseFilename } = req.params;
+      const playlistKey = `shared/uploads/hls/${baseFilename}/${baseFilename}.m3u8`;
+      
+      console.log(`[HLS PLAYLIST] ${requestId}: Fetching playlist: ${playlistKey}`);
+      
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      
+      try {
+        const playlistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
+        
+        res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        
+        console.log(`[HLS PLAYLIST] ${requestId}: Serving playlist (${playlistBuffer.length} bytes)`);
+        return res.send(playlistBuffer);
+      } catch (playlistError) {
+        // HLS playlist doesn't exist - try on-demand conversion
+        console.log(`[HLS PLAYLIST] ${requestId}: Playlist not found, attempting on-demand conversion`);
+        
+        // Try to find and convert the original video
+        const originalVideoKey = `shared/uploads/${baseFilename}.MOV`;
+        
+        try {
+          console.log(`[HLS PLAYLIST] ${requestId}: Fetching original video: ${originalVideoKey}`);
+          const videoBuffer = await spartaObjectStorage.downloadFile(originalVideoKey);
+          
+          // Write video to temp file for conversion
+          const tempVideoPath = `/tmp/${baseFilename}.MOV`;
+          fs.writeFileSync(tempVideoPath, videoBuffer);
+          
+          try {
+            console.log(`[HLS PLAYLIST] ${requestId}: Starting on-demand HLS conversion`);
+            const { hlsConverter } = await import('./hls-converter');
+            await hlsConverter.convertToHLS(tempVideoPath, baseFilename);
+            
+            console.log(`[HLS PLAYLIST] ${requestId}: On-demand conversion complete, fetching playlist`);
+            
+            // Clean up temp file
+            fs.unlinkSync(tempVideoPath);
+            
+            // Now fetch the newly created playlist
+            const newPlaylistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
+            
+            res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+            res.setHeader("Cache-Control", "public, max-age=3600");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            
+            console.log(`[HLS PLAYLIST] ${requestId}: Serving converted playlist (${newPlaylistBuffer.length} bytes)`);
+            return res.send(newPlaylistBuffer);
+          } catch (conversionError) {
+            console.error(`[HLS PLAYLIST] ${requestId}: On-demand conversion failed:`, conversionError);
+            // Clean up temp file
+            if (fs.existsSync(tempVideoPath)) {
+              fs.unlinkSync(tempVideoPath);
+            }
+            throw conversionError;
+          }
+        } catch (videoError) {
+          console.error(`[HLS PLAYLIST] ${requestId}: Original video not found or conversion failed:`, videoError);
+          throw playlistError; // Return the original error
+        }
+      }
+    } catch (error) {
+      console.error(`[HLS PLAYLIST ERROR] ${requestId}: ${error instanceof Error ? error.message : String(error)}`);
+      return res.status(404).json({
+        error: "Playlist not found",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // HLS segment endpoint - serves .ts segment files for HLS streaming
+  app.get("/api/hls/:baseFilename/:segmentFilename", async (req: Request, res: Response) => {
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[HLS SEGMENT] ${requestId}: Request for ${req.params.baseFilename}/${req.params.segmentFilename}`);
+    
+    try {
+      const { baseFilename, segmentFilename } = req.params;
+      
+      // Validate segment filename (must be .ts file)
+      if (!segmentFilename.endsWith('.ts')) {
+        return res.status(400).json({ error: "Invalid segment filename" });
+      }
+      
+      const segmentKey = `shared/uploads/hls/${baseFilename}/${segmentFilename}`;
+      
+      console.log(`[HLS SEGMENT] ${requestId}: Fetching segment: ${segmentKey}`);
+      
+      const { spartaObjectStorage } = await import("./sparta-object-storage-final");
+      const segmentBuffer = await spartaObjectStorage.downloadFile(segmentKey);
+      
+      res.setHeader("Content-Type", "video/mp2t");
+      res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year (segments never change)
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Content-Length", segmentBuffer.length);
+      
+      console.log(`[HLS SEGMENT] ${requestId}: Serving segment (${(segmentBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+      return res.send(segmentBuffer);
+    } catch (error) {
+      console.error(`[HLS SEGMENT ERROR] ${requestId}: ${error instanceof Error ? error.message : String(error)}`);
+      return res.status(404).json({
+        error: "Segment not found",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Add document upload endpoint for activities
+  router.post(
+    "/api/activities/upload-doc",
+    authenticate,
+    multer({ storage: multer.memoryStorage() }).single("document"),
+    async (req, res) => {
+      try {
+        // Set content type early to ensure JSON response
+        res.setHeader("Content-Type", "application/json");
+
+        logger.info('Document upload endpoint called', {
+          hasUser: !!req.user,
+          isAdmin: req.user?.isAdmin,
+          hasFile: !!req.file,
+          filename: req.file?.originalname
+        });
+
+        if (!req.user?.isAdmin) {
+          logger.warn('Upload denied - not admin');
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        if (!req.file) {
+          logger.error('No file in upload request');
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        // Validate file type
+        if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
+          logger.warn('Upload denied - invalid file type', { filename: req.file.originalname });
+          return res.status(400).json({ message: "Only .docx files are supported" });
+        }
+
+        // Use mammoth to convert Word document to HTML to preserve formatting
+        logger.info(`Processing document: ${req.file.originalname}, size: ${req.file.buffer.length} bytes`);
+
+        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
+
+        logger.info(`Document converted successfully, content length: ${result.value.length}`);
+
+        // Return content without converting Bible verses to links
+        res.json({ content: result.value });
+      } catch (error) {
+        logger.error("Error processing document:", {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          filename: req.file?.originalname
+        });
+
+        res.status(500).json({
+          message: "Failed to process document",
+          error: error instanceof Error ? error.message : "Unknown error",
+          details: error instanceof Error ? error.stack : undefined
+        });
+      }
+    }
+  );
+
+  // Update user role endpoint
+  logger.info("[SERVER INIT] Registering PATCH /api/users/:userId/role endpoint");
+  router.patch("/api/users/:userId/role", authenticate, async (req, res) => {
+    try {
+      logger.info(`[ROLE UPDATE] Endpoint hit - userId: ${req.params.userId}, requestUser: ${req.user?.id}, role: ${req.body.role}, value: ${req.body.value}`);
+
+      if (!req.user) {
+        logger.warn(`[ROLE UPDATE] No authenticated user`);
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        logger.warn(`[ROLE UPDATE] Invalid user ID: ${req.params.userId}`);
+        return res.status(400).json({ message: "Invalid user ID format" });
+      }
+
+      const { role, value } = req.body;
+      if (!role || typeof value !== 'boolean') {
+        logger.warn(`[ROLE UPDATE] Invalid role or value: role=${role}, value=${value}`);
+        return res.status(400).json({ message: "Invalid role or value" });
+      }
+
+      // Get the user being updated
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Authorization checks
+      if (req.user.isAdmin) {
+        // Admins can update any role
+      } else if (req.user.isGroupAdmin) {
+        // Group Admins can update roles for users in their group
+        if (targetUser.teamId) {
+          const [team] = await db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, targetUser.teamId))
+            .limit(1);
+
+          if (!team || team.groupId !== req.user.adminGroupId) {
+            return res.status(403).json({ message: "Not authorized" });
+          }
+        }
+      } else if (req.user.isTeamLead) {
+        // Team Leads can only update isTeamLead role for users in their own team
+        logger.info(`Team Lead authorization check: role=${role}, targetUserTeamId=${targetUser.teamId}, teamLeadTeamId=${req.user.teamId}`);
+        if (role !== 'isTeamLead') {
+          logger.warn(`Team Lead tried to update non-TeamLead role: ${role}`);
+          return res.status(403).json({ message: "Team Leads can only update Team Lead role" });
+        }
+        if (targetUser.teamId !== req.user.teamId) {
+          logger.warn(`Team Lead tried to update user in different team: targetTeam=${targetUser.teamId}, teamLeadTeam=${req.user.teamId}`);
+          return res.status(403).json({ message: "You can only update users in your team" });
+        }
+      } else {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Update the role
+      const [updatedUser] = await db
+        .update(users)
+        .set({ [role]: value })
+        .where(eq(users.id, userId))
+        .returning();
+
+      logger.info(`User ${userId} role ${role} updated to ${value} by user ${req.user.id}`);
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      logger.error(`Error updating user role:`, error);
+      res.status(500).json({
+        message: "Failed to update user role",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Update user endpoint
+  router.patch("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      logger.info(`[GENERAL USER UPDATE] Endpoint hit - path: ${req.path}, userId: ${req.params.userId}`);
+
+      if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
+        logger.warn(`[GENERAL USER UPDATE] Not authorized - user: ${req.user?.id}, isAdmin: ${req.user?.isAdmin}, isGroupAdmin: ${req.user?.isGroupAdmin}, isTeamLead: ${req.user?.isTeamLead}`);
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID format" });
+      }
+
+      // For Team Leads, check that they're updating a user in their own team
+      if (req.user?.isTeamLead && !req.user?.isAdmin && !req.user?.isGroupAdmin) {
+        const [targetUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (!targetUser) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (targetUser.teamId !== req.user.teamId) {
+          return res.status(403).json({ message: "You can only update users in your team" });
+        }
+      }
+
+      // Validate teamId if present
+      if (req.body.teamId !== undefined && req.body.teamId !== null) {
+        if (typeof req.body.teamId !== 'number') {
+          return res.status(400).json({ message: "Team ID must be a number" });
+        }
+        // Verify team exists
+        const [team] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, req.body.teamId))
+          .limit(1);
+
+        if (!team) {
+          return res.status(400).json({ message: "Team not found" });
+        }
+
+        // For Group Admins, verify the team is in their group
+        if (req.user?.isGroupAdmin && !req.user?.isAdmin) {
+          if (team.groupId !== req.user.adminGroupId) {
+            return res.status(403).json({ message: "You can only assign users to teams in your group" });
+          }
+        }
+
+        // Check if user is changing teams or not on any team
+        const [currentUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        // Only skip capacity check if user is already on this specific team
+        const needsCapacityCheck = !currentUser || currentUser.teamId !== req.body.teamId;
+
+        if (needsCapacityCheck) {
+          // Check if team has capacity
+          const currentMemberCount = await storage.getTeamMemberCount(req.body.teamId);
+
+          logger.info(`Team capacity check - Team ${req.body.teamId}: ${currentMemberCount}/${team.maxSize || 'unlimited'} members`);
+
+          if (team.maxSize && currentMemberCount >= team.maxSize) {
+            logger.warn(`Team ${req.body.teamId} is full, rejecting user assignment`);
+            return res.status(400).json({ 
+              message: `Cannot assign user to this team. Team is full (${currentMemberCount}/${team.maxSize} members).`
+            });
+          }
+        }
+      }
+
+      // Prepare update data - only update teamJoinedAt and programStartDate if team is being changed
+      const updateData: any = { ...req.body };
+
+      // Convert programStartDate string to Date object if provided
+      if (updateData.programStartDate && typeof updateData.programStartDate === 'string') {
+        updateData.programStartDate = new Date(updateData.programStartDate);
+      }
+
+      // If team is being changed, update join date
+      if (req.body.teamId !== undefined) {
+        if (req.body.teamId) {
+          const now = new Date();
+          updateData.teamJoinedAt = now;
+          // Only set programStartDate if explicitly provided in the request
+          // Otherwise, leave it unchanged (don't auto-set to now)
+        } else {
+          // If removing from team, clear join date but keep program start date
+          updateData.teamJoinedAt = null;
+        }
+      }
+
+      // Update user
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // If user was assigned to a team, update their introductory_video posts to 'my_team' scope
+      if (req.body.teamId && updatedUser.teamId) {
+        try {
+          const updatedPosts = await db
+            .update(posts)
+            .set({ postScope: 'my_team' })
+            .where(
+              and(
+                eq(posts.userId, userId),
+                eq(posts.type, 'introductory_video'),
+                eq(posts.postScope, 'everyone')
+              )
+            )
+            .returning();
+
+          if (updatedPosts.length > 0) {
+            logger.info(`[TEAM JOIN HOOK] Updated ${updatedPosts.length} introductory_video post(s) from user ${userId} to 'my_team' scope`);
+          }
+        } catch (scopeUpdateError) {
+          // Non-fatal error - log it but don't block the user update
+          logger.error(`[TEAM JOIN HOOK] Error updating introductory video scope for user ${userId}:`, scopeUpdateError);
+        }
+      }
+
+      logger.info(`User ${userId} updated successfully by admin ${req.user.id}`);
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      logger.error(`Error updating user ${req.params.userId}:`, error);
+      res.status(500).json({
+        message: "Failed to update user",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Delete user endpoint
+  router.delete("/api/users/:userId", authenticate, async (req, res) => {
+    try {
+      // Authorization: Admin only
+      if (!req.user?.isAdmin) {
+        logger.warn(`[USER DELETE] Unauthorized attempt by user ${req.user?.id} to delete user ${req.params.userId}`);
+        return res.status(403).json({ message: "Not authorized. Admin privileges required." });
+      }
+
+      // Validation: Parse and validate userId
+      const userId = Number.parseInt(req.params.userId, 10);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        logger.warn(`[USER DELETE] Invalid user ID format: ${req.params.userId}`);
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Check if user exists before attempting deletion
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!targetUser) {
+        logger.warn(`[USER DELETE] User ${userId} not found`);
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Delete the user and all associated data
+      logger.info(`[USER DELETE] Admin ${req.user.id} deleting user ${userId} (${targetUser.username})`);
+      await storage.deleteUser(userId);
+
+      logger.info(`[USER DELETE] Successfully deleted user ${userId} by admin ${req.user.id}`);
+      res.status(200).json({ 
+        message: "User deleted successfully",
+        userId: userId
+      });
+    } catch (error) {
+      logger.error(`[USER DELETE] Error deleting user ${req.params.userId}:`, error);
+      res.status(500).json({
+        message: "Failed to delete user",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });

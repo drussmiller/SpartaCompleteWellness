@@ -13,6 +13,27 @@ html, body {
   position: relative !important;
 }
 
+/* Fix for mobile keyboard pushing fixed elements */
+@supports (height: 100dvh) {
+  html, body {
+    min-height: 100dvh;
+  }
+}
+
+/* Prevent scroll when focusing input/textarea on mobile */
+input:focus,
+textarea:focus {
+  scroll-margin: 0 !important;
+}
+
+/* Prevent automatic scroll on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
 /* Aggressive prevention on all elements */
 *, *::before, *::after {
   overscroll-behavior-x: none !important;
@@ -45,7 +66,7 @@ main img {
   .post-card {
     padding: 0 2rem;
   }
-  
+
   /* Target the image container div specifically */
   .post-content > div,
   .post-card > div {
@@ -53,7 +74,7 @@ main img {
     margin: 0 auto !important;
     padding: 0 2rem !important;
   }
-  
+
   /* Force image width constraints on desktop */
   .post-content img,
   .post-card img,
@@ -72,7 +93,7 @@ main img {
   overflow: visible !important;
 }
 
-video {
+.post-card video {
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
@@ -83,6 +104,83 @@ video {
 div[data-post-id] .video-container {
   overflow: visible !important;
   margin-bottom: 0px !important;
+}
+
+/* YouTube video embed wrapper - consistent spacing */
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  margin: 1rem 0 !important;
+  overflow: visible;
+  clear: both;
+}
+
+.video-wrapper iframe {
+
+
+/* QR Scanner size constraints */
+#qr-reader {
+  max-width: 100% !important;
+}
+
+#qr-reader video {
+  max-width: 100% !important;
+  max-height: 300px !important;
+  object-fit: contain !important;
+}
+
+/* Hide all but the first video element in QR scanner */
+#qr-reader video:not(:first-of-type) {
+  display: none !important;
+}
+
+/* Hide the scanner region div that might be duplicating */
+#qr-reader__scan_region {
+  max-height: 300px !important;
+}
+
+#qr-reader__scan_region > div:not(:first-child) {
+  display: none !important;
+}
+
+#qr-reader__dashboard_section {
+  max-width: 100% !important;
+}
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Normalize ALL spacing in activity content - force uniformity */
+.rich-text-content *,
+.daily-content * {
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+/* Special handling for paragraphs */
+.rich-text-content p,
+.daily-content p {
+  margin: 0.75rem 0 !important;
+  line-height: 1.5;
+}
+
+/* Video wrappers get slightly more space */
+.rich-text-content .video-wrapper,
+.daily-content .video-wrapper {
+  margin: 1rem 0 !important;
+}
+
+/* First element has no top margin */
+.rich-text-content > *:first-child,
+.daily-content > *:first-child {
+  margin-top: 0 !important;
 }
 
 /* Hide scrollbar but maintain scroll functionality */
@@ -103,25 +201,20 @@ div[data-post-id] .video-container {
 
   html {
     height: 100%;
-    overflow: hidden;
   }
 
   body {
     @apply font-sans antialiased bg-gray-100 text-foreground;
     width: 100%;
-    height: 100%;
+    min-height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-    scroll-behavior: smooth;
+    overflow: hidden !important;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
-    scrollbar-width: none;
+    overscroll-behavior-y: contain;
   }
 
   body::-webkit-scrollbar {
@@ -135,21 +228,38 @@ div[data-post-id] .video-container {
     touch-action: pan-y pinch-zoom;
   }
 
-  .overflow-y-auto {
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-    overscroll-behavior-y: contain;
-    -webkit-momentum-scrolling: touch;
+  /* Dedicated scroll container for iOS momentum scrolling */
+  .scroll-container {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: auto !important;
+    scroll-behavior: auto;
   }
-  .overflow-y-auto {
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-    overscroll-behavior-y: contain;
-  }
+  
   html {
     height: 100%;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: auto;
+    overflow: hidden;
+    overscroll-behavior-y: contain;
   }
+
+  /* Activity Content Styles */
+.rich-text-content a {
+  word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  display: inline-block;
+  color: #1e90ff !important;
+  text-decoration: underline !important;
+  font-weight: 500 !important;
+}
+
+.rich-text-content a:hover {
+  color: #0066cc !important;
+  text-decoration: underline !important;
+}
+
+.rich-text-content p {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
 }

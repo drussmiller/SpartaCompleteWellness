@@ -1,156 +1,74 @@
 # Team Fitness Tracker - Replit Architecture Guide
 
 ## Overview
+The Team Fitness Tracker is a full-stack application enabling users to create posts, share media, track fitness activities, send messages, and manage team-based fitness goals. It leverages Replit for hosting, cloud-based file storage, and a PostgreSQL database. The project aims to provide a comprehensive fitness tracking and social platform for teams.
 
-This is a full-stack fitness tracking application built with modern web technologies. The application allows users to create posts, share media (images and videos), track fitness activities, send messages, and manage team-based fitness goals. The system is designed to run on Replit with cloud-based file storage and PostgreSQL database.
+## User Preferences
+Preferred communication style: Simple, everyday language.
+
+### UI/UX Preferences
+- **Close buttons**: Never add borders to close buttons in the media player (video-player.tsx, image-viewer.tsx) or Create Post dialog (create-post-dialog.tsx). These buttons should remain borderless.
 
 ## System Architecture
 
-The application follows a monorepo structure with clear separation between client, server, and shared components:
+The application uses a monorepo structure, separating client, server, and shared components.
 
-### Frontend Architecture
-- **Framework**: React with TypeScript
-- **Build Tool**: Vite for fast development and optimized builds
-- **UI Components**: Radix UI primitives with custom styling
-- **Styling**: Tailwind CSS with shadcn/ui components
-- **State Management**: React Query (@tanstack/react-query) for server state
-- **Routing**: Client-side routing for SPA functionality
+### Frontend
+- **Framework**: React with TypeScript.
+- **Build**: Vite.
+- **UI**: Radix UI primitives, Tailwind CSS, shadcn/ui.
+- **State Management**: React Query for server state.
+- **Routing**: Client-side routing.
 
-### Backend Architecture
-- **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js for HTTP server
-- **Authentication**: Passport.js with local strategy and session-based auth
-- **Database ORM**: Drizzle ORM for type-safe database operations
-- **Real-time**: WebSocket support for live notifications and updates
-- **File Processing**: Sharp for image manipulation, custom video thumbnail extraction
+### Backend
+- **Runtime**: Node.js with TypeScript.
+- **Framework**: Express.js.
+- **Authentication**: Passport.js (local strategy, session-based).
+- **ORM**: Drizzle ORM.
+- **Real-time**: WebSocket support.
+- **File Processing**: Sharp for image, custom for video.
 
-### Database Design
-- **Primary Database**: PostgreSQL (Neon serverless)
-- **ORM**: Drizzle with migrations support
-- **Schema Location**: `shared/schema.ts` for type sharing between client/server
-- **Connection Pooling**: Neon serverless with connection management
+### Database
+- **Type**: PostgreSQL (Neon serverless).
+- **ORM**: Drizzle with migrations.
+- **Schema**: `shared/schema.ts`.
 
-## Key Components
+### Key Features
+- **Authentication**: Session-based using Passport.js, scrypt for password hashing, protected routes, email verification with OTP codes (6-digit, 10-minute expiration).
+- **Email Service**: Gmail integration for transactional emails (verification codes, password resets), automatic fallback to console logging for development.
+- **Invite Codes**: Group-level invite codes (admin and member), team-level invite codes (admin and member), QR code support for easy onboarding. Both admin and member codes displayed in Admin Dashboard.
+- **User Blocking**: Admin-only feature to block users from logging in via `isBlocked` field. Blocked users cannot authenticate even if their status is active. Checkbox UI in Admin Dashboard under each user's Status section.
+- **File Storage**: Replit Object Storage for media (images, videos), automatic thumbnail generation, `shared/uploads/` path strategy.
+- **Media Processing**: Sharp for images, custom MOV extractor for video thumbnails, MIME type validation.
+- **Real-time**: WebSocket for notifications, presence tracking, automatic reconnection.
+- **Post Management**: Create text, image, or video posts; support for general, memory_verse, and workout tracking types; reaction system; post deletion with cascade cleanup.
+- **Messaging**: Private messaging, file attachments, image pasting, message history.
+- **Onboarding**: Introductory video onboarding for team-less users, restricting posts to video only until team assignment.
+- **Notifications**: Daily reminders for missed posts via external cron service (cron-job.org calls `/api/check-notifications` endpoint hourly), SMS notifications via Twilio (opt-in only), user-configurable daily and confirmation message toggles. Works reliably with Autoscale deployments. See `EXTERNAL_CRON_SETUP.md` for setup instructions.
+- **Mobile UI**: Dedicated scroll container architecture for iOS momentum scrolling, header/nav auto-hide on scroll, pull-to-refresh on Home page (80px threshold), scroll position restoration when returning from video player.
 
-### Authentication System
-- Session-based authentication using Passport.js
-- Password hashing with scrypt and salt
-- User session management with express-session
-- Protected routes and middleware for authentication
-
-### File Storage System
-- **Primary Storage**: Replit Object Storage for media files
-- **File Types**: Images (JPEG, PNG) and videos (MOV, MP4)
-- **Thumbnail Generation**: Automatic thumbnail creation for images and videos
-- **Path Strategy**: Uses `shared/uploads/` prefix for cross-environment compatibility
-- **Fallback**: Local file system as backup (disabled to save space)
-
-### Media Processing
-- **Image Processing**: Sharp library for resizing and thumbnail generation
-- **Video Processing**: Custom MOV frame extractor for video thumbnails
-- **File Validation**: MIME type checking and file extension validation
-- **Error Handling**: SVG placeholder generation for failed thumbnail extraction
-
-### Real-time Features
-- WebSocket integration for live notifications
-- Connection status monitoring
-- Automatic reconnection with exponential backoff
-- User presence and activity tracking
-
-### Post Management
-- Create posts with text, images, or videos
-- Post types: general, memory_verse, workout tracking
-- Media upload with automatic thumbnail generation
-- Reaction system (likes, comments)
-- Post deletion with cascade file cleanup
-
-### Messaging System
-- Private messaging between users
-- File attachment support in messages
-- Image paste functionality with proper MIME type handling
-- Message history and pagination
-
-## Data Flow
-
-### File Upload Process
-1. Client uploads file via multipart form data
-2. Server validates file type and size
-3. File stored in Replit Object Storage with unique filename
-4. Thumbnail generated (for images/videos) and stored separately
-5. Database record created with file reference
-6. Response sent to client with file URL
-
-### Authentication Flow
-1. User submits credentials via login form
-2. Passport.js validates against database
-3. Session created and stored
-4. Subsequent requests authenticated via session middleware
-5. Protected routes check authentication status
-
-### Post Creation Flow
-1. Client submits post data (text + optional media)
-2. Media files processed and stored in Object Storage
-3. Database transaction creates post record
-4. Thumbnails generated for media files
-5. WebSocket notification sent to relevant users
-6. Client receives confirmation and updates UI
+### Data Flow
+- **File Upload**: Client uploads, server validates, stores in Object Storage, generates thumbnail, records in DB, responds to client.
+- **Authentication**: User submits credentials, Passport.js validates, session created, subsequent requests authenticated via session.
+- **Post Creation**: Client submits post data, media processed/stored, DB transaction creates record, thumbnails generated, WebSocket notification sent.
 
 ## External Dependencies
 
-### Core Dependencies
-- **@neondatabase/serverless**: PostgreSQL database connection
-- **@replit/object-storage**: Cloud file storage
-- **drizzle-orm**: Database ORM and migrations
-- **passport**: Authentication framework
-- **sharp**: Image processing library
-- **@tanstack/react-query**: Client-side data fetching
+### Core
+- **@neondatabase/serverless**: PostgreSQL connection.
+- **@replit/object-storage**: Cloud file storage.
+- **drizzle-orm**: ORM.
+- **passport**: Authentication.
+- **sharp**: Image processing.
+- **@tanstack/react-query**: Client-side data fetching.
+- **twilio**: SMS notifications.
 
-### UI Dependencies
-- **@radix-ui/***: Accessible UI component primitives
-- **tailwindcss**: Utility-first CSS framework
-- **@tiptap/***: Rich text editor components
+### UI
+- **@radix-ui/***: UI component primitives.
+- **tailwindcss**: CSS framework.
+- **@tiptap/***: Rich text editor.
 
-### Development Dependencies
-- **vite**: Build tool and development server
-- **typescript**: Type checking and compilation
-- **tsx**: TypeScript execution for server
-
-## Deployment Strategy
-
-### Production Build
-- Client built with Vite to `dist/public/`
-- Server compiled with esbuild to `dist/index.js`
-- Single Node.js process serves both static files and API
-
-### Environment Configuration
-- Environment variables for database connection
-- Replit-specific configurations for Object Storage
-- Session secrets and authentication keys
-- Development vs production mode handling
-
-### Database Management
-- Drizzle migrations for schema changes
-- Connection pooling for performance
-- Error handling and reconnection logic
-
-### File Storage
-- Object Storage as primary storage solution
-- Environment-agnostic file paths with `shared/` prefix
-- Automatic cleanup of orphaned files
-- Thumbnail generation and caching
-
-## Changelog
-```
-Changelog:
-- July 03, 2025. Initial setup
-- July 03, 2025. Fixed broken image display issue - Object Storage was returning image data in array format that wasn't being handled correctly. Enhanced serve-file endpoint to properly extract Buffer data, added CORS headers, and implemented cache-busting for browser compatibility.
-- July 03, 2025. Fixed memory verse video thumbnail rendering in development environment - Added missing `ne` function import for API filtering, updated video display conditions to include memory verse posts alongside is_video flag, resolved React Query caching issues that prevented posts from appearing in dev environment while working correctly in deployment.
-- July 03, 2025. Fixed mobile video loading issue in comment pages - VideoPlayer was navigating to separate video player page that wasn't using createMediaUrl. Added createMediaUrl import to video player page for proper Object Storage URL formatting and updated video source handling for consistent mobile playback.
-- July 03, 2025. Fixed admin page "can't find variable Users" error - Added missing Users and FileText icon imports from lucide-react to resolve undefined variable errors in admin page components.
-- August 22, 2025. Fixed critical password change functionality - Added missing server endpoints /api/user/change-password for user password changes and /api/users/:userId/password for admin password resets. Created updateUser function in storage.ts to handle password updates. Both user profile password change and admin dashboard password reset now work properly with proper authentication and validation.
-```
-
-## User Preferences
-```
-Preferred communication style: Simple, everyday language.
-```
+### Development
+- **vite**: Build tool.
+- **typescript**: Type checking.
+- **tsx**: TypeScript execution.

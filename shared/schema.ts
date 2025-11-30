@@ -11,21 +11,33 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
   isTeamLead: boolean("is_team_lead").default(false),
+  isGroupAdmin: boolean("is_group_admin").default(false),
   teamId: integer("team_id"), // Users belong to teams
+  adminGroupId: integer("admin_group_id"), // Group they are admin of (if isGroupAdmin is true)
   points: integer("points").default(0),
   weight: integer("weight"),
   waist: integer("waist"),
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
   teamJoinedAt: timestamp("team_joined_at"), // When user joined their team
+  programStartDate: timestamp("program_start_date"), // First Monday on or after team join date
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
+  timezoneOffset: integer("timezone_offset"), // Timezone offset in minutes (e.g., -300 for Central Time)
+  dailyNotificationsEnabled: boolean("daily_notifications_enabled").default(true), // Whether daily reminder notifications are enabled
   achievementNotificationsEnabled: boolean("achievement_notifications_enabled").default(false),
+  confirmationMessagesEnabled: boolean("confirmation_messages_enabled").default(true), // Whether to show confirmation/success messages (toasts)
+  phoneNumber: text("phone_number"), // Phone number for SMS notifications
+  smsEnabled: boolean("sms_enabled").default(false), // Whether SMS notifications are enabled
   lastPrayerRequestView: timestamp("last_prayer_request_view"), // Track when user last viewed prayer requests
   waiverSigned: boolean("waiver_signed").default(false),
   waiverSignedAt: timestamp("waiver_signed_at"),
   waiverSignature: text("waiver_signature"),
+  preferredActivityTypeId: integer("preferred_activity_type_id").default(1), // Default to "Bands" workout type
+  status: integer("status").default(1), // 1 = active, 0 = inactive
+  isBlocked: boolean("is_blocked").default(false), // Block users from logging in (for abuse)
+  avatarColor: text("avatar_color"), // Color for avatar fallback background
 });
 
 // Organizations table (top level)
@@ -33,6 +45,7 @@ export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  status: integer("status").default(1), // 1 = active, 0 = inactive
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -42,6 +55,11 @@ export const groups = pgTable("groups", {
   name: text("name").notNull(),
   description: text("description"),
   organizationId: integer("organization_id").notNull(),
+  status: integer("status").default(1), // 1 = active, 0 = inactive
+  competitive: boolean("competitive").default(false), // Whether this group is competitive
+  groupAdminInviteCode: text("group_admin_invite_code").unique(),
+  groupMemberInviteCode: text("group_member_invite_code").unique(),
+  programStartDate: timestamp("program_start_date"), // Program start date for the group
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -51,6 +69,11 @@ export const teams = pgTable("teams", {
   name: text("name").notNull(),
   description: text("description"),
   groupId: integer("group_id").notNull(),
+  maxSize: integer("max_size").default(6), // Maximum number of people allowed in the team
+  status: integer("status").default(1), // 1 = active, 0 = inactive
+  teamAdminInviteCode: text("team_admin_invite_code").unique(),
+  teamMemberInviteCode: text("team_member_invite_code").unique(),
+  programStartDate: timestamp("program_start_date"), // Program start date for the team
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -58,39 +81,111 @@ export const teams = pgTable("teams", {
 export const insertOrganizationSchema = createInsertSchema(organizations).extend({
   name: z.string().min(1, "Organization name is required"),
   description: z.string().optional(),
+  status: z.number().min(0).max(1).default(1),
 });
 
 export const insertGroupSchema = createInsertSchema(groups).extend({
   name: z.string().min(1, "Group name is required"),
   description: z.string().optional(),
   organizationId: z.number().min(1, "Organization ID is required"),
+  status: z.number().min(0).max(1).default(1),
+  competitive: z.boolean().default(false),
+  programStartDate: z.date().optional(),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).extend({
   name: z.string().min(1, "Team name is required"),
   description: z.string().optional(),
   groupId: z.number().min(1, "Group ID is required"),
+  maxSize: z.number().min(1, "Team max size must be at least 1").default(6),
+  status: z.number().min(0).max(1).default(1),
+  programStartDate: z.date().optional(),
 });
+
+// Invite Codes table for QR code invites
+export const inviteCodes = pgTable("invite_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  type: text("type", { enum: ["group_admin", "team_admin", "team_member"] }).notNull(),
+  groupId: integer("group_id"),
+  teamId: integer("team_id"),
+  createdBy: integer("created_by").notNull(),
+  expiresAt: timestamp("expires_at"),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInviteCodeSchema = createInsertSchema(inviteCodes)
+  .omit({
+    id: true,
+    createdAt: true,
+    usedCount: true,
+  })
+  .extend({
+    code: z.string().min(6, "Invite code must be at least 6 characters"),
+    type: z.enum(["group_admin", "team_admin", "team_member"]),
+    groupId: z.number().optional(),
+    teamId: z.number().optional(),
+    createdBy: z.number(),
+    expiresAt: z.date().optional(),
+    maxUses: z.number().optional(),
+    isActive: z.boolean().default(true),
+  });
+
+// Email Verification Codes table for OTP verification
+export const verificationCodes = pgTable("verification_codes", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0),
+  verified: boolean("verified").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVerificationCodeSchema = createInsertSchema(verificationCodes)
+  .omit({
+    id: true,
+    createdAt: true,
+    attempts: true,
+    verified: true,
+  })
+  .extend({
+    email: z.string().email("Invalid email address"),
+    code: z.string().length(6, "Verification code must be 6 characters"),
+    expiresAt: z.date(),
+  });
 
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type Team = typeof teams.$inferSelect;
+export type InviteCode = typeof inviteCodes.$inferSelect;
+export type VerificationCode = typeof verificationCodes.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type InsertInviteCode = z.infer<typeof insertInviteCodeSchema>;
+export type InsertVerificationCode = z.infer<typeof insertVerificationCodeSchema>;
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer"] }).notNull(),
+  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video"] }).notNull(),
   content: text("content"),
   mediaUrl: text("image_url"), // Using the existing image_url column for both images and videos
+  thumbnailUrl: text("thumbnail_url"), // Thumbnail URL for videos (especially HLS videos)
   is_video: boolean("is_video").default(false), // Flag to explicitly mark video content
   points: integer("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   parentId: integer("parent_id"),
   depth: integer("depth").default(0),
+  postScope: text("post_scope", { enum: ["everyone", "organization", "group", "team", "my_team"] }).default("my_team"), // Scope of the post
+  targetOrganizationId: integer("target_organization_id"), // When postScope is "organization"
+  targetGroupId: integer("target_group_id"), // When postScope is "group"
+  targetTeamId: integer("target_team_id"), // When postScope is "team"
 });
 
 // Relationship for post replies/comments
@@ -136,6 +231,13 @@ export const videos = pgTable("videos", {
   teamId: integer("team_id"), // Videos belong to teams
 });
 
+// Workout types table
+export const workoutTypes = pgTable("workout_types", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   week: integer("week").notNull(),
@@ -144,6 +246,7 @@ export const activities = pgTable("activities", {
   isComplete: boolean("is_complete").default(false),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  activityTypeId: integer("activity_type_id").default(1), // Default to "Bands" workout type
 });
 
 export const workoutVideos = pgTable("workout_videos", {
@@ -179,6 +282,7 @@ export const messages = pgTable("messages", {
   recipientId: integer("recipient_id").notNull(),
   content: text("content"),
   imageUrl: text("image_url"),
+  posterUrl: text("poster_url"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   is_video: boolean("is_video").default(false),
@@ -209,6 +313,22 @@ export const userRelations = relations(users, ({ one }) => ({
   team: one(teams, {
     fields: [users.teamId],
     references: [teams.id],
+  }),
+  adminGroup: one(groups, {
+    fields: [users.adminGroupId],
+    references: [groups.id],
+  }),
+}));
+
+// Add relations for activities and workout types
+export const workoutTypeRelations = relations(workoutTypes, ({ many }) => ({
+  activities: many(activities),
+}));
+
+export const activityRelations = relations(activities, ({ one }) => ({
+  workoutType: one(workoutTypes, {
+    fields: [activities.activityTypeId],
+    references: [workoutTypes.id],
   }),
 }));
 
@@ -252,12 +372,16 @@ export const insertPostSchema = createInsertSchema(posts)
   .extend({
     content: z.string().nullable(),
     mediaUrl: z.string().nullable(), // Updated from imageUrl to mediaUrl
-    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer"]),
+    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),
     createdAt: z.string().optional(),
-    is_video: z.boolean().optional().default(false) // Flag for explicitly marking video content
+    is_video: z.boolean().optional().default(false), // Flag for explicitly marking video content
+    postScope: z.enum(["everyone", "organization", "group", "team", "my_team"]).default("my_team"),
+    targetOrganizationId: z.number().optional().nullable(),
+    targetGroupId: z.number().optional().nullable(),
+    targetTeamId: z.number().optional().nullable(),
   });
 
 export const insertUserSchema = createInsertSchema(users)
@@ -285,6 +409,15 @@ export const insertNotificationSchema = createInsertSchema(notifications)
     sound: z.string().optional()
   });
 export const insertVideoSchema = createInsertSchema(videos);
+export const insertWorkoutTypeSchema = createInsertSchema(workoutTypes)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    type: z.string().min(1, "Workout type is required"),
+  });
+
 export const insertActivitySchema = createInsertSchema(activities)
   .extend({
     contentFields: z.array(
@@ -294,7 +427,8 @@ export const insertActivitySchema = createInsertSchema(activities)
         content: z.string(),
         title: z.string()
       })
-    ).default([])
+    ).default([]),
+    activityTypeId: z.number().default(1),
   });
 
 export const insertWorkoutVideoSchema = createInsertSchema(workoutVideos);
@@ -314,6 +448,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Video = typeof videos.$inferSelect;
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type WorkoutType = typeof workoutTypes.$inferSelect;
+export type InsertWorkoutType = z.infer<typeof insertWorkoutTypeSchema>;
 export type Activity = typeof activities.$inferSelect & {
   contentFields: Array<{
     id: string;
@@ -390,3 +526,30 @@ export const insertUserAchievementSchema = createInsertSchema(userAchievements)
 
 export type InsertAchievementType = z.infer<typeof insertAchievementTypeSchema>;
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+
+// Upload Sessions table for chunked file uploads
+export const uploadSessions = pgTable("upload_sessions", {
+  id: text("id").primaryKey(), // UUID
+  userId: integer("user_id").notNull(),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  totalSize: integer("total_size").notNull(),
+  chunkSize: integer("chunk_size").notNull(),
+  nextChunkIndex: integer("next_chunk_index").default(0),
+  uploadedBytes: integer("uploaded_bytes").default(0),
+  tempFilePath: text("temp_file_path").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export type UploadSession = typeof uploadSessions.$inferSelect;
+
+// System state table to track notification scheduler state
+export const systemState = pgTable("system_state", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SystemState = typeof systemState.$inferSelect;

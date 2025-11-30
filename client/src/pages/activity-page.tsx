@@ -1,566 +1,615 @@
-import React, { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { BottomNav } from "@/components/bottom-nav";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Loader2, 
-  ChevronDown, 
-  ChevronUp,
-  CalendarDays,
-  BookText,
-  Target
-} from "lucide-react";
-import { 
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { YouTubePlayer, removeDuplicateVideos } from "@/components/ui/youtube-player";
+import React, { useState, useEffect } from 'react';
+import { useQuery } from "@tanstack/react-query";
 import { Activity } from "@shared/schema";
-import "@/components/ui/activity-content.css";
-import { DuplicateVideoDetector, FixWeek3WarmupVideo, FixWeek9WarmupVideo } from "@/components/ui/duplicate-video-detector";
-import "@/components/ui/fix-duplicate-video.css"; // Special CSS to handle duplicates
-
-// Define the interface for content fields
-interface ContentField {
-  id: string;
-  type: 'text' | 'video';
-  content: string;
-  title?: string;
-}
-
-// Function to extract YouTube video IDs from HTML content, but only for plain URLs
-// (not already embedded videos)
-function extractYouTubeIdFromContent(content: string): { id: string | null, url: string | null } {
-  if (!content) return { id: null, url: null };
-
-  // Check if content already has embedded YouTube iframes
-  const hasEmbeddedVideos = content.includes('<iframe src="https://www.youtube.com/embed/');
-
-  // If the content already has embedded videos, don't extract additional videos
-  if (hasEmbeddedVideos) {
-    return { id: null, url: null };
-  }
-
-  // More comprehensive regex to find YouTube URLs in various formats
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-
-  // Extract all matches and use the first valid one
-  const matches = content.match(youtubeRegex);
-  if (matches && matches[1]) {
-    console.log('Found YouTube URL in content:', matches[0]);
-    return { id: matches[1], url: matches[0] };
-  }
-
-  // Also look for bare YouTube IDs surrounded by non-URL text
-  // Check if there's any text that might be a YouTube ID but not part of a biblical reference or other text
-  const youtubeSpecificIdPattern = /\b([A-Za-z0-9_-]{11})\b/;
-  const bareMatches = content.match(youtubeSpecificIdPattern);
-
-  if (bareMatches && bareMatches[1]) {
-    const possibleId = bareMatches[1];
-    // Make sure it's not a biblical reference or other common text
-    const notYouTubeIdPatterns = /(Corinthians|Testament|Scripture|Genesis|Exodus|Matthew|Chapter)/i;
-
-    if (possibleId.length === 11 && !notYouTubeIdPatterns.test(possibleId) && /[0-9]/.test(possibleId)) {
-      console.log('Found possible YouTube ID in content:', possibleId);
-      return { id: possibleId, url: null };
-    }
-  }
-
-  return { id: null, url: null };
-}
-
-// Define progress interface
-interface ActivityProgress {
-  currentWeek: number;
-  currentDay: number;
-  daysSinceStart: number;
-  progressDays: number;
-  debug?: {
-    timezone: string;
-    localTime: string;
-  };
-}
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { AppLayout } from "@/components/app-layout";
+import { YouTubePlayer } from "@/components/ui/youtube-player";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ActivityPage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [selectedDay, setSelectedDay] = useState<number>(1);
+  
+  // Load collapsed panel states from localStorage with defaults
+  const [weekContentOpen, setWeekContentOpen] = useState(() => {
+    const saved = localStorage.getItem('activityPage_weekContentOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
+  const [weekDayContentOpen, setWeekDayContentOpen] = useState(() => {
+    const saved = localStorage.getItem('activityPage_weekDayContentOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
+  const [reengageOpen, setReengageOpen] = useState(() => {
+    const saved = localStorage.getItem('activityPage_reengageOpen');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
+  
+  const [reengageWeek, setReengageWeek] = useState<string>("");
 
-  // Get timezone offset for the current user (in minutes)
-  const tzOffset = new Date().getTimezoneOffset();
-
-  // Debug timezone information
+  // Persist weekContentOpen state to localStorage
   useEffect(() => {
-    console.log('Timezone:', {
-      name: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      offset: -tzOffset/60
-    });
-  }, [tzOffset]);
+    localStorage.setItem('activityPage_weekContentOpen', JSON.stringify(weekContentOpen));
+  }, [weekContentOpen]);
 
-  // Get current week and day from the server
-  const { data: currentProgress, isLoading: isProgressLoading } = useQuery<ActivityProgress>({
-    queryKey: ["/api/activities/current", { tzOffset }],
+  // Persist weekDayContentOpen state to localStorage
+  useEffect(() => {
+    localStorage.setItem('activityPage_weekDayContentOpen', JSON.stringify(weekDayContentOpen));
+  }, [weekDayContentOpen]);
+
+  // Persist reengageOpen state to localStorage
+  useEffect(() => {
+    localStorage.setItem('activityPage_reengageOpen', JSON.stringify(reengageOpen));
+  }, [reengageOpen]);
+
+  const { data: activityStatus } = useQuery({
+    queryKey: ["/api/activities/current"],
     queryFn: async () => {
-      const response = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+      const response = await fetch(`/api/activities/current?tzOffset=${new Date().getTimezoneOffset()}`);
+      if (!response.ok) throw new Error("Failed to fetch activity status");
+      return response.json();
+    },
+    enabled: !!user?.teamId,
+  });
+
+  // Check if user's team is in a competitive group
+  const { data: competitiveStatus } = useQuery({
+    queryKey: ["/api/teams", user?.teamId, "competitive"],
+    queryFn: async () => {
+      if (!user?.teamId) return { competitive: false };
+      const response = await fetch(`/api/teams/${user.teamId}/competitive`);
+      if (!response.ok) throw new Error("Failed to fetch competitive status");
+      return response.json();
+    },
+    enabled: !!user?.teamId,
+  });
+
+  // Get all activities including Bible verses (activityTypeId = 0)
+  const { data: allActivities, isLoading: activitiesLoading, error: activitiesError } = useQuery<Activity[]>({
+    queryKey: ["/api/activities"],
+    queryFn: async () => {
+      const response = await fetch(`/api/activities`);
+      if (!response.ok) throw new Error("Failed to fetch activities");
+      return response.json();
+    },
+    enabled: !!user?.teamId,
+  });
+
+  // Separate Bible verses from workout activities
+  const bibleVerses = React.useMemo(() => 
+    allActivities?.filter(activity => activity.activityTypeId === 0) || [], 
+    [allActivities]
+  );
+
+  const activities = React.useMemo(() => 
+    allActivities?.filter(activity => 
+      activity.activityTypeId === (user?.preferredActivityTypeId || 1)
+    ) || [], 
+    [allActivities, user?.preferredActivityTypeId]
+  );
+
+  // Set initial values based on current week/day
+  React.useEffect(() => {
+    if (activityStatus?.currentWeek && selectedWeek === 1) {
+      setSelectedWeek(activityStatus.currentWeek);
+    }
+    if (activityStatus?.currentDay && selectedDay === 1) {
+      setSelectedDay(activityStatus.currentDay);
+    }
+  }, [activityStatus]);
+
+  // Navigation functions for week content
+  const goToPreviousWeek = () => {
+    if (selectedWeek > 1) {
+      setSelectedWeek(selectedWeek - 1);
+    }
+  };
+
+  const goToNextWeek = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    // Don't allow going beyond current week
+    if (selectedWeek < currentWeek) {
+      setSelectedWeek(selectedWeek + 1);
+    }
+  };
+
+  // Navigation functions for daily content
+  const goToPreviousDay = () => {
+    if (selectedDay === 1) {
+      // Go to previous week's day 7
+      const prevWeek = selectedWeek - 1;
+      if (prevWeek >= 1) {
+        setSelectedWeek(prevWeek);
+        setSelectedDay(7);
+      }
+    } else {
+      setSelectedDay(selectedDay - 1);
+    }
+  };
+
+  const goToNextDay = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    const currentDay = activityStatus?.currentDay || 1;
+
+    // Don't allow going beyond current day
+    if (selectedWeek === currentWeek && selectedDay >= currentDay) {
+      return;
+    }
+
+    if (selectedDay === 7) {
+      // Go to next week's day 1
+      setSelectedWeek(selectedWeek + 1);
+      setSelectedDay(1);
+    } else {
+      setSelectedDay(selectedDay + 1);
+    }
+  };
+
+  // Check if we can navigate for week content
+  const canGoToPreviousWeek = selectedWeek > 1;
+  const canGoToNextWeek = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    return selectedWeek < currentWeek;
+  };
+
+  // Check if we can navigate for daily content
+  const canGoToPrevious = selectedWeek > 1 || selectedDay > 1;
+  const canGoToNext = () => {
+    const currentWeek = activityStatus?.currentWeek || 1;
+    const currentDay = activityStatus?.currentDay || 1;
+    return !(selectedWeek === currentWeek && selectedDay >= currentDay);
+  };
+
+  // Re-engage mutation
+  const reengageMutation = useMutation({
+    mutationFn: async (targetWeek: number) => {
+      const response = await apiRequest("POST", "/api/users/reengage", {
+        targetWeek,
+      });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to fetch current progress');
+        throw new Error(error.message || "Failed to re-engage");
       }
       return response.json();
     },
-    enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (currentProgress) {
-      setSelectedWeek(currentProgress.currentWeek);
-      setSelectedDay(currentProgress.currentDay);
-    }
-  }, [currentProgress]);
-
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [loadedWeeks, setLoadedWeeks] = useState<Set<number>>(new Set());
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  // Calculate initial weeks to load (current week + previous 4)
-  const getInitialWeeks = (currentWeek: number) => {
-    const weeks = [];
-    for (let i = Math.max(1, currentWeek - 4); i <= currentWeek; i++) {
-      weeks.push(i);
-    }
-    return weeks;
-  };
-
-  // Initial load of ONLY current week for fastest loading
-  const { isLoading: isActivitiesLoading } = useQuery<Activity[]>({
-    queryKey: ["/api/activities", "current", currentProgress?.currentWeek],
-    queryFn: async () => {
-      if (!currentProgress) return [];
-
-      // Load only the current week initially
-      const currentWeek = currentProgress.currentWeek;
-      const response = await fetch(`/api/activities?weeks=${currentWeek}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch activities');
-      }
-
-      const data = await response.json();
-      setActivities(data);
-      setLoadedWeeks(new Set([currentWeek]));
-
-      console.log(`Loaded current week: ${currentWeek}`);
-      return data;
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Program successfully reset. Your posts have been updated.",
+      });
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      setReengageWeek("");
+      setReengageOpen(false);
     },
-    enabled: !!currentProgress,
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
-  // Function to load additional weeks when needed
-  const loadWeek = async (week: number) => {
-    if (loadedWeeks.has(week) || isLoadingMore) return;
-
-    setIsLoadingMore(true);
-    try {
-      const response = await fetch(`/api/activities?weeks=${week}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch additional week');
-      }
-
-      const newActivities = await response.json();
-      setActivities(prev => [...prev, ...newActivities]);
-      setLoadedWeeks(prev => new Set([...prev, week]));
-
-      console.log(`Lazy loaded week: ${week}`);
-    } catch (error) {
-      console.error('Failed to load week:', error);
-    } finally {
-      setIsLoadingMore(false);
+  const handleReengage = () => {
+    if (!reengageWeek) {
+      toast({
+        title: "Error",
+        description: "Please select a week to restart from",
+        variant: "destructive",
+      });
+      return;
     }
+
+    const targetWeek = parseInt(reengageWeek);
+    if (targetWeek < 1 || targetWeek > (activityStatus?.currentWeek || 1)) {
+      toast({
+        title: "Error",
+        description: "Invalid week selection",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    reengageMutation.mutate(targetWeek);
   };
 
-  // Load week when user navigates to it
-  React.useEffect(() => {
-    if (selectedWeek && !loadedWeeks.has(selectedWeek)) {
-      loadWeek(selectedWeek);
-    }
-  }, [selectedWeek, loadedWeeks]);
-
-  // Get current activity for selected day
-  const currentActivity = activities?.find(
-    (a: Activity) => a.week === selectedWeek && a.day === selectedDay
-  );
-
-  // Get week activities - all activities for the selected week
-  const weekActivities = activities?.filter(
-    (a: Activity) => a.week === selectedWeek
-  );
-
-  // Find the first activity of the week to use as the week overview
-  const weekOverviewActivity = weekActivities?.[0];
-
-  // State for collapsible section
-  const [isWeekOverviewOpen, setIsWeekOverviewOpen] = useState(false);
-
-  const navigatePrevDay = async () => {
-    if (selectedDay > 1) {
-      setSelectedDay(selectedDay - 1);
-    } else if (selectedWeek > 1) {
-      const prevWeek = selectedWeek - 1;
-      
-      // Load the previous week if it's not already loaded
-      if (!loadedWeeks.has(prevWeek)) {
-        await loadWeek(prevWeek);
-      }
-      
-      setSelectedWeek(prevWeek);
-      const maxDay = 7;
-      setSelectedDay(maxDay);
-    }
-  };
-
-  const navigateNextDay = () => {
-    // Only allow navigating up to current calculated day
-    if (!currentProgress) return;
-
-    const isLastDayOfWeek = selectedDay >= 7;
-
-    if (!isLastDayOfWeek) {
-      setSelectedDay(selectedDay + 1);
-    } else if (selectedWeek < currentProgress.currentWeek) {
-      setSelectedWeek(selectedWeek + 1);
-      setSelectedDay(1);
-    }
-  };
-
-  if (isProgressLoading || isActivitiesLoading) {
+  if (activitiesLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading activities...</span>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p>Loading activities...</p>
+          </div>
+        </div>
+      </AppLayout>
     );
   }
 
-  return (
-    <div className="min-h-screen pb-20 lg:pb-0 pt-28">
-      {/* Add our duplicate video detection components */}
-      <DuplicateVideoDetector />
-      {selectedWeek === 3 && <FixWeek3WarmupVideo />}
-      {selectedWeek === 9 && <FixWeek9WarmupVideo />}
-
-      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
-        {/* This div is an empty spacer, which you can style as necessary */}
-      </div>
-      <header className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
-        <div className="p-4">
-          <h1 className="text-xl font-bold pl-0">Daily Activity</h1>
+  if (activitiesError) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Activities</h2>
+              <p className="text-gray-600">{activitiesError instanceof Error ? activitiesError.message : 'An error occurred'}</p>
+            </CardContent>
+          </Card>
         </div>
-      </header>
-      <main className="p-4 max-w-[1000px] mx-auto w-full space-y-4 md:px-44 md:pl-56">
-        {/* Loading status for current week */}
-        {!loadedWeeks.has(selectedWeek) && (
-          <div className="text-center p-4 bg-muted/50 rounded-md">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Loading Week {selectedWeek}...</p>
-          </div>
-        )}
+      </AppLayout>
+    );
+  }
 
-        {/* Week Content Collapsible Section */}
-        <Collapsible 
-          open={isWeekOverviewOpen} 
-          onOpenChange={setIsWeekOverviewOpen}
-          className="border rounded-md">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="flex w-full justify-between p-4">
-              <div className="flex items-center gap-2">
-                <BookText className="h-4 w-4" />
-                <span className="font-medium">Week {selectedWeek} Content</span>
-              </div>
-              {isWeekOverviewOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="p-4 bg-muted/20">
-            {weekOverviewActivity ? (
-              <div className="prose max-w-none">
-                {/* Process the content to eliminate duplicate videos in weekly content */}
-                {(() => {
-                  // Filter relevant content fields
-                  const relevantFields = weekOverviewActivity.contentFields?.filter((field: ContentField) => 
-                    // For week 0 entries or entries where day is 0, include them
-                    (field.title?.includes(`Week ${selectedWeek}`) || weekOverviewActivity.day === 0) && 
-                    !field.title?.includes('Day')
-                  );
+  // Find week content (day 0)
+  const weekContent = activities?.find(activity => 
+    activity.week === selectedWeek && activity.day === 0
+  );
 
-                  // Special handling for Week 3 warmup video
-                  if (selectedWeek === 3 && weekOverviewActivity.week === 3 && weekOverviewActivity.day === 0) {
-                    // Process each field to render only once
-                    return relevantFields.map((field: ContentField, index: number) => {
-                      // Clean embedded content of duplicate videos
-                      let processedContent = field.content;
+  // Find selected daily activity
+  const selectedActivity = activities?.find(activity => 
+    activity.week === selectedWeek && activity.day === selectedDay
+  );
 
-                      // Special fix for week 3 warmup video - comprehensive fix to remove duplicates
-                      if (processedContent && processedContent.includes('youtube.com/embed/JT49h1zSD6I')) {
-                        // First, extract all video iframes
-                        const iframeRegex = /<iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe>/g;
-                        const matches = processedContent.match(iframeRegex);
+  // Find Bible verse for the selected day based on absolute day number
+  // Calculate the absolute day: (week - 1) * 7 + day
+  const absoluteDay = (selectedWeek - 1) * 7 + selectedDay;
 
-                        if (matches && matches.length > 1) {
-                          // We have multiple videos with the same ID
-                          console.log(`Found ${matches.length} instances of Week 3 warmup video`);
+  // Find the Bible verse that matches this absolute day
+  // Bible verses are stored with their absolute day calculated as (week - 1) * 7 + day
+  const selectedBibleVerse = bibleVerses?.find(verse => {
+    const verseAbsoluteDay = (verse.week - 1) * 7 + verse.day;
+    return verseAbsoluteDay === absoluteDay;
+  });
 
-                          // Remove all video wrappers
-                          processedContent = processedContent.replace(
-                            /<div class="video-wrapper"><iframe[^>]*src="[^"]*JT49h1zSD6I[^"]*"[^>]*><\/iframe><\/div>/g,
-                            ''
-                          );
+  return (
+    <AppLayout>
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
+        <div className="max-w-2xl mx-auto p-4">
+          <h1 className="text-xl font-bold">Activity</h1>
+        </div>
+      </div>
 
-                          // Add back just one video after "WARM UP VIDEO" text
-                          if (processedContent.includes('WARM UP VIDEO')) {
-                            processedContent = processedContent.replace(
-                              'WARM UP VIDEO',
-                              `WARM UP VIDEO</p><div class="video-wrapper">${matches[0]}</div><p>`
-                            );
-                          } else {
-                            // If no "WARM UP VIDEO" text, just add at the beginning
-                            processedContent = `<div class="video-wrapper">${matches[0]}</div>${processedContent}`;
-                          }
-                        }
-                      }
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-8 pr-4 py-6 text-lg mt-[40px] md:mt-[100px]">
+        {/* Week Content Dropdown - Defaults to Closed */}
+        <Collapsible open={weekContentOpen} onOpenChange={setWeekContentOpen}>
+          <Card className="mb-6">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Week Content</CardTitle>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${weekContentOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToPreviousWeek}
+                    disabled={!canGoToPreviousWeek}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <h3 className="text-lg font-semibold">Week {selectedWeek}</h3>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToNextWeek}
+                    disabled={!canGoToNextWeek()}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
 
-                      // Create unique rendered element
-                      return (
-                        <div key={index} className="mb-4">
-                          {field.title && (
-                            <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
-                          )}
-                          {field.type === 'video' ? (
-                            <div className="mt-4 mb-4">
-                              <YouTubePlayer videoId={field.content} />
+                {/* Week Content Display */}
+                {weekContent ? (
+                  <div className="mt-4">
+                    <div className="space-y-4">
+                      {weekContent.contentFields?.map((item: any, index: number) => (
+                        <div key={index}>
+                          {item.type === 'text' && (
+                            <div>
+                              <div 
+                                className="rich-text-content daily-content"
+                                style={{
+                                  wordBreak: 'break-word',
+                                  overflowWrap: 'break-word'
+                                }}
+                                dangerouslySetInnerHTML={{ 
+                                  __html: (item.content || '')
+                                    .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
+                                }} 
+                              />
                             </div>
-                          ) : (
-                            <div 
-                              className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
-                              style={{ 
-                                wordWrap: 'break-word',
-                                overflowWrap: 'break-word'
-                              }}
-                              dangerouslySetInnerHTML={{ 
-                                __html: processedContent 
-                              }}
-                            />
+                          )}
+                          {item.type === 'video' && (
+                            <div>
+                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                              <YouTubePlayer videoId={item.content} />
+                            </div>
                           )}
                         </div>
-                      );
-                    });
-                  }
-
-                  // Standard rendering for other weeks
-                  return relevantFields.map((field: ContentField, index: number) => {
-                    // Process content for all weeks to prevent duplicate videos
-                    let processedContent = field.content;
-
-                    // General solution to prevent duplicate videos in any week's content
-                    if (processedContent && processedContent.includes('class="video-wrapper"')) {
-                      // Make sure we don't have duplicate video wrappers
-                      const uniqueVideos = new Set();
-                      // Extract all video IDs using a regex pattern
-                      const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
-                      let match;
-                      const videoIds = [];
-
-                      while ((match = videoRegex.exec(processedContent)) !== null) {
-                        videoIds.push(match[1]);
-                      }
-
-                      // For any duplicated videos, keep only the first instance
-                      videoIds.forEach(videoId => {
-                        if (uniqueVideos.has(videoId)) {
-                          // This is a duplicate - remove all instances after the first
-                          const videoPattern = new RegExp(
-                            `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
-                            'g'
-                          );
-                          let replacement = '';
-                          let found = false;
-
-                          // Replace the processedContent with each match replaced properly
-                          processedContent = processedContent.replace(videoPattern, (match) => {
-                            if (!found) {
-                              found = true;
-                              return match; // Keep the first instance
-                            }
-                            return ''; // Remove duplicates
-                          });
-                        } else {
-                          uniqueVideos.add(videoId);
-                        }
-                      });
-                    }
-
-                    return (
-                      <div key={index} className="mb-4">
-                        {field.title && (
-                          <h3 className="text-lg font-semibold mb-2">{field.title}</h3>
-                        )}
-                        {field.type === 'video' ? (
-                          <div className="mt-4 mb-4">
-                            <YouTubePlayer videoId={field.content} />
-                          </div>
-                        ) : (
-                          <div 
-                            className="rich-text-content prose-sm text-base overflow-hidden weekly-content" 
-                            style={{ 
-                              wordWrap: 'break-word',
-                              overflowWrap: 'break-word'
-                            }}
-                            dangerouslySetInnerHTML={{ 
-                              __html: processedContent 
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-                {weekOverviewActivity.contentFields?.filter((field: ContentField) => 
-                  (field.title?.includes(`Week ${selectedWeek}`) || 
-                   weekOverviewActivity.day === 0) && 
-                  !field.title?.includes('Day')).length === 0 && (
-                  <p className="text-muted-foreground text-center py-2">No week content available</p>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-600 mt-4">
+                    No week information available for Week {selectedWeek}.
+                  </p>
                 )}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-2">No week content available</p>
-            )}
-          </CollapsibleContent>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
         </Collapsible>
 
-        {/* Day Navigation */}
-        <div className="flex items-center justify-center gap-4 mt-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={navigatePrevDay}
-            disabled={selectedWeek === 1 && selectedDay === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="font-medium text-lg">
-            Week {selectedWeek} - Day {selectedDay}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={navigateNextDay}
-            disabled={
-              !currentProgress ||
-              (selectedWeek === currentProgress.currentWeek && 
-               selectedDay >= currentProgress.currentDay)
-            }
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Week and Day Content Dropdown - Defaults to Open */}
+        <Collapsible open={weekDayContentOpen} onOpenChange={setWeekDayContentOpen}>
+          <Card className="mb-6">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Week and Day Content</CardTitle>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${weekDayContentOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToPreviousDay}
+                    disabled={!canGoToPrevious}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <h3 className="text-lg font-semibold">Week {selectedWeek} - Day {selectedDay}</h3>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToNextDay}
+                    disabled={!canGoToNext()}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
 
-        {/* Daily Content Card */}
-        {currentActivity ? (
-          <Card>
-            <CardContent className="p-6">
-              <div className="prose max-w-none">
-                {currentActivity.contentFields?.map((field: ContentField, index: number) => {
-                  // Process daily content to remove duplicate videos
-                  let processedContent = field.content;
+                {/* Daily Activity Content Display */}
+                {selectedActivity || selectedBibleVerse ? (
+                  <div className="mt-4">
+                    <div className="space-y-6">
+                      {/* Display Bible verse first if it exists */}
+                      {selectedBibleVerse && (
+                        <div className="bible-verse-section">
+                          {selectedBibleVerse.contentFields?.map((item: any, index: number) => {
+                            if (item.type === 'text') {
+                              let content = item.content || '';
 
-                  // Only process content with embedded videos
-                  if (processedContent && processedContent.includes('class="video-wrapper"')) {
-                    // Make sure we don't have duplicate video wrappers
-                    const uniqueVideos = new Set();
-                    // Extract all video IDs using a regex pattern
-                    const videoRegex = /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g;
-                    let match;
-                    const videoIds = [];
+                              // Check if this content already has links from server-side processing
+                              const hasLinks = content.includes('<a href=');
 
-                    while ((match = videoRegex.exec(processedContent)) !== null) {
-                      videoIds.push(match[1]);
-                    }
+                              if (!hasLinks) {
+                                // Match Bible verses - prioritize comma-separated chapters, then ranges, then single chapters/verses
+                                const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+(?:\d+(?:\s*,\s*\d+)+|\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*)\b/gi;
 
-                    // Process each unique video ID
-                    videoIds.forEach(videoId => {
-                      if (uniqueVideos.has(videoId)) {
-                        // This is a duplicate - remove all instances after the first
-                        const videoPattern = new RegExp(
-                          `<p>(<em>)?.*?<div class="video-wrapper"><iframe.*?${videoId}.*?<\\/iframe><\\/div><\\/p>`, 
-                          'g'
-                        );
-                        let found = false;
+                                content = content.replace(bibleVerseRegex, (match) => {
+                                  const bookMap: { [key: string]: string } = {
+                                    'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
+                                    'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
+                                    '1 Kings': '1KI', '2 Kings': '2KI', '1 Chronicles': '1CH', '2 Chronicles': '2CH',
+                                    'Ezra': 'EZR', 'Nehemiah': 'NEH', 'Esther': 'EST', 'Job': 'JOB', 'Psalm': 'PSA', 'Psalms': 'PSA',
+                                    'Proverbs': 'PRO', 'Ecclesiastes': 'ECC', 'Song of Songs': 'SNG', 'Isaiah': 'ISA',
+                                    'Jeremiah': 'JER', 'Lamentations': 'LAM', 'Ezekiel': 'EZK', 'Daniel': 'DAN',
+                                    'Hosea': 'HOS', 'Joel': 'JOL', 'Amos': 'AMO', 'Obadiah': 'OBA', 'Jonah': 'JON',
+                                    'Micah': 'MIC', 'Nahum': 'NAM', 'Habakkuk': 'HAB', 'Zephaniah': 'ZEP', 'Haggai': 'HAG',
+                                    'Zechariah': 'ZEC', 'Malachi': 'MAL', 'Matthew': 'MAT', 'Mark': 'MRK', 'Luke': 'LUK',
+                                    'John': 'JHN', 'Acts': 'ACT', 'Romans': 'ROM', '1 Corinthians': '1CO', '2 Corinthians': '2CO',
+                                    'Galatians': 'GAL', 'Galation': 'GAL', 'Ephesians': 'EPH', 'Philippians': 'PHP', 'Colossians': 'COL',
+                                    '1 Thessalonians': '1TH', '2 Thessalonians': '2TH', '1 Timothy': '1TI', '2 Timothy': '2TI',
+                                    'Titus': 'TIT', 'Philemon': 'PHM', 'Hebrews': 'HEB', 'James': 'JAS', '1 Peter': '1PE',
+                                    '2 Peter': '2PE', '1 John': '1JN', '2 John': '2JN', '3 John': '3JN', 'Jude': 'JUD', 'Revelation': 'REV'
+                                  };
 
-                        // Replace content keeping only the first instance
-                        processedContent = processedContent.replace(videoPattern, (match) => {
-                          if (!found) {
-                            found = true;
-                            return match; // Keep the first instance
-                          }
-                          return ''; // Remove duplicates
-                        });
-                      } else {
-                        uniqueVideos.add(videoId);
-                      }
-                    });
-                  }
+                                  // Extract book name and reference
+                                  const parts = match.match(/^(.+?)\s+(\d+.*)$/);
+                                  if (parts) {
+                                    const bookName = parts[1].trim();
+                                    const reference = parts[2].trim();
+                                    const bookAbbr = bookMap[bookName] || bookName;
 
-                  return (
-                    <div key={index} className="mb-8">
-                      {field.title && field.title !== `Week ${selectedWeek} - Day ${selectedDay}` && (
-                        <h2 className="text-xl font-bold mb-4">{field.title}</h2>
-                      )}
-                      {field.type === 'video' ? (
-                        <div className="mt-4 mb-6">
-                          <YouTubePlayer videoId={field.content} />
+                                    // Check for comma-separated chapters: "30, 60, 90, 120"
+                                    if (reference.includes(',') && !reference.includes(':')) {
+                                      const chapters = reference.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
+
+                                      if (chapters.length > 1) {
+                                        const links = chapters.map(chapter => {
+                                          const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
+                                          return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
+                                        });
+                                        return `${bookName} ${links.join(', ')}`;
+                                      }
+                                    }
+
+                                    // Check for chapter range: "33-34"
+                                    const chapterRangeMatch = reference.match(/^(\d+)-(\d+)$/);
+                                    if (chapterRangeMatch) {
+                                      const chapter1 = chapterRangeMatch[1];
+                                      const chapter2 = chapterRangeMatch[2];
+                                      const url1 = `https://www.bible.com/bible/111/${bookAbbr}.${chapter1}.NIV`;
+                                      const url2 = `https://www.bible.com/bible/111/${bookAbbr}.${chapter2}.NIV`;
+                                      return `${bookName} <a href="${url1}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter1}</a>-<a href="${url2}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter2}</a>`;
+                                    }
+
+                                    // Single chapter or verse reference
+                                    const formattedRef = reference.replace(/:/g, '.');
+                                    const bibleUrl = `https://www.bible.com/bible/111/${bookAbbr}.${formattedRef}.NIV`;
+                                    return `<a href="${bibleUrl}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${match}</a>`;
+                                  }
+
+                                  return match;
+                                });
+                              }
+
+                              return (
+                                <div key={`bible-${index}`}>
+                                  <div 
+                                    className="rich-text-content daily-content prose prose-sm max-w-none"
+                                    style={{
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word'
+                                    }}
+                                    dangerouslySetInnerHTML={{ 
+                                      __html: content
+                                    }} 
+                                  />
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
                         </div>
-                      ) : (
-                        <>
-                          <div 
-                            className="rich-text-content prose-sm text-lg overflow-hidden daily-content" 
-                            style={{ 
-                              wordWrap: 'break-word',
-                              overflowWrap: 'break-word'
-                            }}
-                            dangerouslySetInnerHTML={{ 
-                              __html: processedContent 
-                            }}
-                          />
-                        </>
+                      )}
+
+                      {/* Display workout activity content below Bible verse */}
+                      {selectedActivity && (
+                        <div className="workout-activity-section">
+                          {selectedActivity.contentFields?.map((item: any, index: number) => (
+                            <div key={`activity-${index}`}>
+                              {item.type === 'text' && (
+                                <div>
+                                  <div 
+                                    className="rich-text-content daily-content prose prose-sm max-w-none"
+                                    style={{
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word'
+                                    }}
+                                    dangerouslySetInnerHTML={{ 
+                                      __html: (item.content || '')
+                                    }} 
+                                  />
+                                </div>
+                              )}
+                              {item.type === 'video' && (
+                                <div>
+                                  <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                                  <YouTubePlayer videoId={item.content} />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Show message if only Bible verse exists but no workout */}
+                      {selectedBibleVerse && !selectedActivity && (
+                        <div className="text-center text-gray-600 mt-4 p-4 bg-muted/30 rounded-lg">
+                          <p>
+                            No workout activity available for Week {selectedWeek}, Day {selectedDay}.
+                            <br />
+                            Check with your coach if you think this is an error.
+                          </p>
+                        </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
+                  </div>
+                ) : activityStatus?.programHasStarted === false ? (
+                  <div className="text-center mt-4">
+                    <h3 className="text-xl font-semibold mb-2">Program Starting Soon</h3>
+                    <p className="text-gray-600 mb-4">
+                      Your program will start on {activityStatus?.programStartDate ? 
+                        new Date(activityStatus.programStartDate).toLocaleDateString() : 'soon'
+                      }
+                    </p>
+                    {activityStatus?.daysToProgramStart && (
+                      <p className="text-sm text-gray-500">
+                        {activityStatus.daysToProgramStart} days until your program begins
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-600 mt-4">
+                    No activity available for Week {selectedWeek}, Day {selectedDay}.
+                    <br />
+                    Check with your coach if you think this is an error.
+                  </p>
+                )}
+              </CardContent>
+            </CollapsibleContent>
           </Card>
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              No activity found for this day
-            </CardContent>
-          </Card>
+        </Collapsible>
+
+        {/* Re-engage Section - Hidden for competitive groups */}
+        {!competitiveStatus?.competitive && (
+          <Collapsible open={reengageOpen} onOpenChange={setReengageOpen} className="mt-6">
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Re-engage</CardTitle>
+                    <ChevronDown
+                      className={`h-5 w-5 transition-transform ${
+                        reengageOpen ? "transform rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <p>Select a week to restart the program today.</p>
+                      <p>(Resetting the current week to a previous week will clear all posts and points for that Week/Day and after.)</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select Week</label>
+                      <Select value={reengageWeek} onValueChange={setReengageWeek}>
+                        <SelectTrigger data-testid="select-reengage-week">
+                          <SelectValue placeholder="Choose a week" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: activityStatus?.currentWeek || 1 }, (_, i) => i + 1).map((week) => (
+                            <SelectItem key={week} value={week.toString()}>
+                              Week {week}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      onClick={handleReengage} 
+                      disabled={reengageMutation.isPending || !reengageWeek}
+                      className="w-full"
+                      data-testid="button-reengage-reset"
+                    >
+                      {reengageMutation.isPending ? "Resetting..." : "Reset Program"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         )}
       </main>
-      <div className="md:hidden">
-        <BottomNav orientation="horizontal" />
-      </div>
-    </div>
+    </AppLayout>
   );
 }

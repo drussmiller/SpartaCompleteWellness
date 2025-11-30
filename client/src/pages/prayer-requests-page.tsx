@@ -14,6 +14,7 @@ import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
+import { useRestoreScroll } from "@/hooks/use-restore-scroll";
 
 export default function PrayerRequestsPage() {
   const isMobile = useIsMobile();
@@ -25,6 +26,9 @@ export default function PrayerRequestsPage() {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true);
   const lastScrollY = useRef(0);
+  
+  // Restore scroll position when returning from video player
+  useRestoreScroll();
 
   // Mark prayer requests as viewed when page loads
   useEffect(() => {
@@ -104,16 +108,36 @@ export default function PrayerRequestsPage() {
     }
   }, [user, refetchLimits]);
 
-  const { data: prayerRequests = [], isLoading, error } = useQuery({
-    queryKey: ["/api/posts/prayer-requests"],
+  const { data: prayerRequests = [], isLoading, error, refetch, isSuccess } = useQuery({
+    queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch prayer requests: ${response.status}`);
+      try {
+        console.log('Fetching prayer requests...');
+        const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
+        console.log('Prayer requests response status:', response.status);
+        
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}`;
+          try {
+            const errorText = await response.text();
+            if (errorText) errorMessage += `: ${errorText}`;
+          } catch {
+            // Ignore errors reading response body
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        console.log('Prayer requests fetched successfully:', data.length, 'posts');
+        return data;
+      } catch (err) {
+        console.error('Prayer requests fetch error:', err);
+        throw err;
       }
-      return response.json();
     },
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
     refetchOnWindowFocus: true,
     staleTime: 1000 * 60, // Consider data stale after 1 minute
   });
@@ -122,18 +146,31 @@ export default function PrayerRequestsPage() {
     navigate('/');
   };
 
-  if (error) {
+  // Only show error if loading failed and we have no data
+  if (error && !isLoading && prayerRequests.length === 0) {
+    console.error('Rendering error state:', error);
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center text-destructive">
-            <h2 className="text-xl font-bold mb-2">Error loading prayer requests</h2>
-            <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
+          <div className="text-center p-4 max-w-md mx-auto">
+            <h2 className="text-xl font-bold mb-2 text-destructive">Error loading prayer requests</h2>
+            <p className="text-muted-foreground mb-4">{error instanceof Error ? error.message : 'Unknown error occurred'}</p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => refetch()}>Try Again</Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>Reload Page</Button>
+            </div>
           </div>
         </div>
       </AppLayout>
     );
   }
+  
+  console.log('Prayer Requests Page State:', { 
+    isLoading, 
+    error: error ? error.message : null, 
+    isSuccess, 
+    prayerRequestsCount: prayerRequests?.length 
+  });
 
   return (
     <AppLayout isBottomNavVisible={isBottomNavVisible}>
@@ -151,7 +188,7 @@ export default function PrayerRequestsPage() {
                 <img
                   src="/sparta_circle_red.png"
                   alt="Sparta Complete Wellness Logo"
-                  className="w-48 h-auto mx-auto"
+                  className="w-36 h-auto mx-auto"
                   onError={(e) => {
                     console.error('Error loading logo:', e);
                     e.currentTarget.src = '/fallback-logo.png';
@@ -186,13 +223,15 @@ export default function PrayerRequestsPage() {
         {/* Main content layout */}
         <div className="w-full">
           <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : 'w-full'}`}>
-            <main className="p-4">
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
-                <p className="text-muted-foreground">
-                  Share your prayer requests and pray for others
-                </p>
-              </div>
+            <main className="p-4 pt-32 pb-24">
+              {prayerRequests?.length === 0 && (
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
+                  <p className="text-muted-foreground">
+                    Share your prayer requests and pray for others
+                  </p>
+                </div>
+              )}
 
                 <div className="space-y-2">
                   {prayerRequests?.length > 0 ? (

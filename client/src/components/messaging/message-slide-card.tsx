@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { MessageCircle, ChevronLeft } from "lucide-react";
+import { createPortal } from "react-dom";
+import { MessagesSquare, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -10,11 +10,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
-import { MessageForm } from "./message-form";
+import { MessageForm, type ChunkedUploadInfo } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
-import { Badge } from "@/components/ui/badge"; // Assuming Badge component is available
+import { Badge } from "@/components/ui/badge";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -45,6 +47,7 @@ interface Message {
   // Image URL variants
   imageUrl?: string;    // For compatibility with existing backend
   mediaUrl?: string | null;    // New field name used in other parts of the application
+  posterUrl?: string | null;   // Video thumbnail URL
 }
 
 export function MessageSlideCard() {
@@ -54,9 +57,47 @@ export function MessageSlideCard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
   const [isVideoFile, setIsVideoFile] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number>(window.innerHeight);
+  const [viewportTop, setViewportTop] = useState<number>(0);
+  const [contextMenu, setContextMenu] = useState<{ messageId: number; x: number; y: number } | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const keyboardHeight = useKeyboardAdjustment();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
+  const longPressTriggered = useRef<boolean>(false);
+  const isMobile = useIsMobile();
+
+  // Track viewport height and position changes for keyboard
+  useEffect(() => {
+    const updateViewport = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+        setViewportTop(window.visualViewport.offsetTop);
+      } else {
+        setViewportHeight(window.innerHeight);
+        setViewportTop(0);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateViewport);
+      window.visualViewport.addEventListener('scroll', updateViewport);
+    }
+    window.addEventListener('resize', updateViewport);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateViewport);
+        window.visualViewport.removeEventListener('scroll', updateViewport);
+      }
+      window.removeEventListener('resize', updateViewport);
+    };
+  }, []);
 
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
@@ -70,7 +111,7 @@ export function MessageSlideCard() {
   });
 
   // Query for team members
-  const { data: teamMembers = [], error: teamError } = useQuery<User[]>({
+  const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
     queryKey: ["/api/users", user?.teamId],
     queryFn: async () => {
       if (!user?.teamId) {
@@ -92,6 +133,15 @@ export function MessageSlideCard() {
 
         const users = await response.json();
 
+        // Debug log to verify avatarColor is in the data
+        if (users.length > 0) {
+          console.log('Frontend received user data:', {
+            id: users[0].id,
+            username: users[0].username,
+            avatarColor: users[0].avatarColor
+          });
+        }
+
         // Filter users to only show team members (excluding current user)
         const filteredUsers = users.filter((member: User) => {
           return member.teamId === user.teamId && member.id !== user.id;
@@ -106,7 +156,7 @@ export function MessageSlideCard() {
     },
     enabled: isOpen && !!user?.teamId,
     retry: 2,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Force fresh data every time
     gcTime: 10 * 60 * 1000 // 10 minutes
   });
 
@@ -325,7 +375,7 @@ export function MessageSlideCard() {
             // Attach the original video file directly
             formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE);
 
-            // Set the is_video flag explicitly 
+            // Set the is_video flag explicitly
             formData.append('is_video', 'true');
 
             // Add video extension for server processing
@@ -379,7 +429,7 @@ export function MessageSlideCard() {
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/by-sender"] });
 
-      // Clean up stored states
+      // Clean up states
       setMessageText("");
       setPastedImage(null);
       setIsVideoFile(false);
@@ -408,9 +458,198 @@ export function MessageSlideCard() {
     createMessageMutation.mutate();
   };
 
+  // Delete message mutation
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: number) => {
+      const response = await apiRequest("DELETE", `/api/messages/${messageId}`);
+      if (!response.ok) {
+        throw new Error("Failed to delete message");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        description: "Message deleted",
+      });
+      setContextMenu(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Edit message mutation
+  const editMessageMutation = useMutation({
+    mutationFn: async ({ messageId, content }: { messageId: number; content: string }) => {
+      const response = await apiRequest("PATCH", `/api/messages/${messageId}`, { content });
+      if (!response.ok) {
+        throw new Error("Failed to edit message");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        description: "Message updated",
+      });
+      setEditingMessageId(null);
+      setEditContent("");
+      setContextMenu(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to edit message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Long press handlers
+  const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent, messageId: number, content: string) => {
+    console.log('Long press start triggered for message:', messageId);
+    longPressTriggered.current = false;
+    const touch = 'touches' in e ? e.touches[0] : e;
+    longPressStartPos.current = { x: touch.clientX, y: touch.clientY };
+    
+    longPressTimer.current = setTimeout(() => {
+      console.log('Long press timer fired, showing context menu');
+      longPressTriggered.current = true;
+      setContextMenu({
+        messageId,
+        x: touch.clientX,
+        y: touch.clientY,
+      });
+    }, 500);
+  };
+
+  const handleLongPressMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!longPressStartPos.current) return;
+    
+    const touch = 'touches' in e ? e.touches[0] : e;
+    const dx = touch.clientX - longPressStartPos.current.x;
+    const dy = touch.clientY - longPressStartPos.current.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > 10 && longPressTimer.current) {
+      console.log('Movement detected, canceling long press');
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+      longPressTriggered.current = false;
+    }
+  };
+
+  const handleLongPressEnd = (e: React.TouchEvent | React.MouseEvent) => {
+    console.log('Long press end triggered, was triggered:', longPressTriggered.current);
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
+    // If long press was triggered, prevent any subsequent click events
+    if (longPressTriggered.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Reset after a short delay to allow the context menu to appear
+      setTimeout(() => {
+        longPressTriggered.current = false;
+      }, 100);
+    }
+    
+    longPressStartPos.current = null;
+  };
+
+  // Handle context menu actions
+  const handleEdit = (messageId: number, currentContent: string) => {
+    // Defensive check: verify ownership before allowing edit
+    const message = messages.find(m => m.id === messageId);
+    if (!message || message.sender.id !== user?.id) {
+      console.warn("Attempted to edit a message that doesn't belong to the user");
+      setContextMenu(null);
+      return;
+    }
+    
+    setEditingMessageId(messageId);
+    setEditContent(currentContent);
+    setContextMenu(null);
+  };
+
+  const handleDelete = (messageId: number) => {
+    // Defensive check: verify ownership before allowing delete
+    const message = messages.find(m => m.id === messageId);
+    if (!message || message.sender.id !== user?.id) {
+      console.warn("Attempted to delete a message that doesn't belong to the user");
+      setContextMenu(null);
+      return;
+    }
+    
+    deleteMessageMutation.mutate(messageId);
+  };
+
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content).then(() => {
+      toast({
+        description: "Message copied to clipboard",
+      });
+      setContextMenu(null);
+    }).catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to copy message",
+        variant: "destructive",
+      });
+    });
+  };
+
+  const handleSaveEdit = (messageId: number) => {
+    if (!editContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Message cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    editMessageMutation.mutate({ messageId, content: editContent });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditContent("");
+  };
+
   // Close messaging overlay when clicking outside and prevent body scroll
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      const target = event.target as HTMLElement;
+      
+      // Don't close if clicking inside the context menu
+      const contextMenuElement = document.querySelector('[data-context-menu="true"]');
+      if (contextMenuElement && contextMenuElement.contains(target)) {
+        return;
+      }
+      
+      // Don't close if there's a context menu open (click might be on its buttons)
+      if (contextMenu) {
+        return;
+      }
+      
+      // Don't close if clicking on a dialog (video player, etc.)
+      const dialogElement = target.closest('[role="dialog"]');
+      if (dialogElement) {
+        return;
+      }
+      
+      // Don't close if clicking on a dialog overlay/backdrop
+      if (target.hasAttribute('data-radix-dialog-overlay') || target.closest('[data-radix-dialog-overlay]')) {
+        return;
+      }
+      
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSelectedMember(null);
@@ -420,19 +659,77 @@ export function MessageSlideCard() {
     if (isOpen) {
       // Prevent body scrolling when message overlay is open
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside as any);
 
       return () => {
         // Restore body scrolling when overlay is closed
         document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
         document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside as any);
       };
     }
-  }, [isOpen]);
+  }, [isOpen, contextMenu]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      const target = event.target as HTMLElement;
+      // Don't close if clicking inside the context menu
+      const contextMenuElement = document.querySelector('[data-context-menu="true"]');
+      if (contextMenuElement && contextMenuElement.contains(target)) {
+        return;
+      }
+      if (contextMenu) {
+        setContextMenu(null);
+      }
+    }
+
+    if (contextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside as any);
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside as any);
+      };
+    }
+  }, [contextMenu]);
+
+  // Auto-scroll when editing a message
+  useEffect(() => {
+    if (editingMessageId && scrollAreaRef.current) {
+      // Wait for the edit box to render
+      setTimeout(() => {
+        const editingElement = document.querySelector(`[data-testid="message-bubble-${editingMessageId}"]`);
+        const messageFormElement = document.querySelector('[data-testid="message-form"]');
+        
+        if (editingElement && messageFormElement && scrollAreaRef.current) {
+          // Get the scroll viewport (the actual scrollable div inside ScrollArea)
+          const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+          
+          if (scrollViewport) {
+            // Calculate positions
+            const editingRect = editingElement.getBoundingClientRect();
+            const formRect = messageFormElement.getBoundingClientRect();
+            const viewportRect = scrollViewport.getBoundingClientRect();
+            
+            // Calculate how much to scroll so the bottom of edit box is at top of message form
+            const currentScrollTop = scrollViewport.scrollTop;
+            const editingBottom = editingRect.bottom - viewportRect.top + currentScrollTop;
+            const formTop = formRect.top - viewportRect.top + currentScrollTop;
+            const targetScrollTop = editingBottom - (viewportRect.height - formRect.height);
+            
+            // Scroll to the calculated position
+            scrollViewport.scrollTo({
+              top: targetScrollTop,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 100); // Small delay to ensure DOM is updated
+    }
+  }, [editingMessageId]);
 
   return (
     <>
@@ -446,7 +743,7 @@ export function MessageSlideCard() {
         disabled={!user?.teamId} // Disable button if user has no teamId
         style={!user?.teamId ? { opacity: 0.5, cursor: 'not-allowed' } : {}} // Visual indication
       >
-        <MessageCircle className="h-4 w-4 text-black font-extrabold" />
+        <MessagesSquare className="h-4 w-4 text-black font-extrabold" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
             {unreadCount}
@@ -454,27 +751,30 @@ export function MessageSlideCard() {
         )}
       </Button>
 
-      {/* Full screen slide-out panel */}
-      <div
+      {/* Full screen slide-out panel - rendered via Portal at document body level */}
+      {isOpen && createPortal(
+        <div
         ref={cardRef}
-        className={`fixed inset-0 bg-white transform transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        } pt-12 z-[100000] overflow-hidden`}
+        className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
         style={{
-          height: '100vh',
-          width: '100vw',
-          backgroundColor: '#ffffff',
-          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
-          touchAction: 'pan-y',
-          overscrollBehavior: 'contain'
+          top: `${viewportTop}px`,
+          height: `${viewportHeight}px`,
+          left: 0,
+          right: 0
         }}
-        onTouchStart={isOpen ? handleTouchStart : undefined}
-        onTouchMove={isOpen ? handleTouchMove : undefined}
-        onTouchEnd={isOpen ? handleTouchEnd : undefined}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
-        <Card className="h-full w-full rounded-none bg-white border-none shadow-none">
-          {/* Header */}
-          <div className="flex items-center p-4 border-b bg-white border-gray-200">
+        <Card
+          className={`w-full h-full rounded-none bg-white shadow-none flex flex-col ${!isMobile ? 'border-x border-gray-200' : 'border-none'}`}
+          style={{ overflow: 'hidden' }}
+        >
+          {/* Header - Fixed at top */}
+          <div 
+            className="flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 sticky top-0" 
+            style={{ paddingTop: '4rem' }}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -485,11 +785,11 @@ export function MessageSlideCard() {
                   setIsOpen(false);
                 }
               }}
-              className="mr-2 scale-125 bg-transparent hover:bg-gray-100"
+              className="mr-3 bg-transparent hover:bg-gray-100 flex-shrink-0"
             >
-              <ChevronLeft className="h-8 w-8 scale-125 text-black" />
+              <ChevronLeft className="text-black" style={{ width: '24px', height: '24px' }} />
             </Button>
-            <h2 className="text-lg font-semibold text-black">
+            <h2 className="text-2xl font-bold text-black flex-1">
               {selectedMember ? selectedMember.username : "Messages"}
             </h2>
           </div>
@@ -497,15 +797,14 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <ScrollArea
-              className="h-[calc(100vh-5rem)] bg-white"
-              style={{
-                touchAction: 'pan-y',
-                overscrollBehavior: 'contain'
-              }}
-            >
-              <div className="space-y-2 p-4 pb-16 bg-white">
-                {teamMembers.length === 0 ? (
+            <div className="flex-1 overflow-y-auto bg-white">
+              <div className="space-y-2 p-4 pb-32 bg-white">
+                {teamMembersLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 bg-white">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-2" />
+                    <p className="text-gray-500 text-sm">Loading team members...</p>
+                  </div>
+                ) : teamMembers.length === 0 ? (
                   <div className="text-center text-gray-500 py-8 bg-white">
                     No team members available
                   </div>
@@ -517,11 +816,11 @@ export function MessageSlideCard() {
                       onClick={() => setSelectedMember(member)}
                     >
                       <Avatar>
-                        <AvatarImage
-                          src={member.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${member.username}`}
-                          alt={member.username}
-                        />
-                        <AvatarFallback className="bg-gray-200 text-black">
+                        {member.imageUrl && <AvatarImage src={member.imageUrl} alt={member.username} />}
+                        <AvatarFallback
+                          style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                          className="text-white"
+                        >
                           {member.username[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -534,20 +833,19 @@ export function MessageSlideCard() {
                   ))
                 )}
               </div>
-            </ScrollArea>
+            </div>
           ) : (
             // Messages View
-            <div className="flex flex-col h-[calc(100vh-5rem)] bg-white">
+            <div className="flex flex-col flex-1 bg-white overflow-hidden">
               {/* Messages List */}
-              <ScrollArea
-                className="flex-1 bg-white"
+              <div
+                ref={scrollAreaRef}
+                className="flex-1 bg-white overflow-y-auto"
                 style={{
-                  paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))',
-                  touchAction: 'pan-y',
-                  overscrollBehavior: 'contain'
+                  paddingBottom: '16px'
                 }}
               >
-                <div className="space-y-4 mt-16 p-4 bg-white min-h-full">
+                <div className="space-y-4 p-4 bg-white pb-4">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -557,123 +855,207 @@ export function MessageSlideCard() {
                     >
                       {message.sender.id !== user?.id && (
                         <Avatar className="mr-2">
-                          <AvatarImage
-                            src={message.sender.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${message.sender.username}`}
-                            alt={message.sender.username || "Unknown User"}
-                          />
-                          <AvatarFallback>
+                          {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
+                          <AvatarFallback
+                            style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
+                            className="text-white"
+                          >
                             {message.sender.username?.[0].toUpperCase() || "?"}
                           </AvatarFallback>
                         </Avatar>
                       )}
                       <div
-                        className={`max-w-[70%] p-3 rounded-lg ${
+                        className={`max-w-[70%] ${(message.imageUrl || message.mediaUrl) ? 'min-w-[200px]' : ''} p-3 rounded-lg ${
                           message.sender.id === user?.id
                             ? "bg-[#8A2BE2] text-white ml-2"
                             : "bg-muted mr-2"
                         }`}
+                        style={{
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none'
+                        }}
+                        onTouchStart={message.sender.id === user?.id ? (e) => handleLongPressStart(e, message.id, message.content || '') : undefined}
+                        onTouchMove={message.sender.id === user?.id ? handleLongPressMove : undefined}
+                        onTouchEnd={message.sender.id === user?.id ? handleLongPressEnd : undefined}
+                        onMouseDown={message.sender.id === user?.id ? (e) => handleLongPressStart(e, message.id, message.content || '') : undefined}
+                        onMouseMove={message.sender.id === user?.id ? handleLongPressMove : undefined}
+                        onMouseUp={message.sender.id === user?.id ? handleLongPressEnd : undefined}
+                        onMouseLeave={message.sender.id === user?.id ? handleLongPressEnd : undefined}
+                        onContextMenu={message.sender.id === user?.id ? (e) => e.preventDefault() : undefined}
+                        data-testid={`message-bubble-${message.id}`}
                       >
-                        {message.content && (
-                          <p
-                            className="break-words"
-                            dangerouslySetInnerHTML={{
-                              __html: convertUrlsToLinks(message.content || '')
-                            }}
-                          />
-                        )}
+                        {editingMessageId === message.id ? (
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              className="w-full p-2 border rounded text-black resize-none"
+                              rows={3}
+                              autoFocus
+                              data-testid="edit-message-textarea"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                onClick={handleCancelEdit}
+                                className="text-xs bg-white text-gray-900 hover:bg-gray-100"
+                                data-testid="button-cancel-edit"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveEdit(message.id)}
+                                className="text-xs bg-green-600 hover:bg-green-700 text-white"
+                                disabled={editMessageMutation.isPending}
+                                data-testid="button-save-edit"
+                              >
+                                {editMessageMutation.isPending ? "Saving..." : "Save"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {message.content && (
+                              <p
+                                className="break-words"
+                                dangerouslySetInnerHTML={{
+                                  __html: convertUrlsToLinks(message.content || '')
+                                }}
+                                data-testid={`message-content-${message.id}`}
+                              />
+                            )}
 
-                        {(message.imageUrl || message.mediaUrl) &&
-                         (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
-                         (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
-                          message.is_video ? (
-                            <VideoPlayer
-                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                              className="max-w-full rounded mt-2"
-                              onError={(error) => console.error("Error loading message video:", message.imageUrl || message.mediaUrl, error)}
-                            />
-                          ) : (
-                            <img
-                              src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
-                              alt="Message image"
-                              className="max-w-full rounded mt-2"
-                              onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
-                              onError={(e) => {
-                                console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          )
+                            {(message.imageUrl || message.mediaUrl) &&
+                             (message.imageUrl !== '/uploads/undefined' && message.mediaUrl !== '/uploads/undefined') &&
+                             (message.imageUrl !== 'undefined' && message.mediaUrl !== 'undefined') && (
+                              (message.is_video || (message.imageUrl || message.mediaUrl || '').includes('.m3u8') || (message.imageUrl || message.mediaUrl || '').includes('/api/hls/')) ? (
+                                <div 
+                                  data-context-menu="true"
+                                  className="mt-2"
+                                >
+                                  <VideoPlayer
+                                    src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                    poster={message.posterUrl ? createMediaUrl(message.posterUrl) : undefined}
+                                    className="max-w-full rounded"
+                                    onError={() => console.error("Error loading message video:", message.imageUrl || message.mediaUrl)}
+                                  />
+                                </div>
+                              ) : (
+                                <img
+                                  src={createMediaUrl(message.imageUrl || message.mediaUrl || '')}
+                                  alt="Message image"
+                                  className="max-w-full rounded mt-2"
+                                  style={{ pointerEvents: 'none' }}
+                                  onLoad={() => console.log("Message image loaded successfully:", message.imageUrl || message.mediaUrl)}
+                                  onError={(e) => {
+                                    console.error("Error loading message image:", message.imageUrl || message.mediaUrl);
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              )
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
 
-              {/* Message Input */}
-              <div className="p-4 border-t bg-white border-gray-200 fixed bottom-0 left-0 right-0 z-[100000]" style={{ marginBottom: 'calc(5rem + env(safe-area-inset-bottom))', backgroundColor: '#ffffff' }}>
-                {/* Use the MessageForm component instead of the Input + Button */}
+              {/* Message Input - Fixed at bottom of container */}
+              <div
+                className={`px-4 pt-3 bg-white flex-shrink-0 ${keyboardHeight > 0 ? 'pb-5' : 'pb-8'}`}
+                style={{
+                  backgroundColor: '#ffffff',
+                  paddingBottom: `calc(${keyboardHeight > 0 ? '1.25rem' : '2rem'} + 0.25rem)`
+                }}
+                data-testid="message-form"
+              >
+                {/* MessageForm component now handles its own input and submission logic */}
                 <MessageForm
-                  onSubmit={async (content, imageData, isVideo = false) => {
-                    // Instead of setting state and then calling handleSendMessage separately,
-                    // which causes the first Enter to clear the field but not submit,
-                    // directly call createMessageMutation with the provided values
+                  onSubmit={async (content, imageData, isVideo = false, chunkedUploadResult?: ChunkedUploadInfo) => {
                     if (!content.trim() && !imageData) return;
                     if (!selectedMember) return;
 
                     try {
-                      const formData = new FormData();
+                      // Check if we have a chunked upload result (for large videos)
+                      if (chunkedUploadResult) {
+                        console.log('Using chunked upload result for message:', chunkedUploadResult);
+                        
+                        // For chunked uploads, use JSON payload instead of FormData
+                        const res = await fetch('/api/messages', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            content: content.trim() || null,
+                            recipientId: selectedMember.id,
+                            chunkedUploadMediaUrl: chunkedUploadResult.mediaUrl,
+                            chunkedUploadThumbnailUrl: chunkedUploadResult.thumbnailUrl,
+                            is_video: true,
+                          }),
+                          credentials: 'include'
+                        });
 
-                      // Add message content if present
-                      if (content.trim()) {
-                        formData.append('content', content.trim());
-                      }
-
-                      // Add image/video if present
-                      if (imageData) {
-                        // Check if we have a saved video file to use
-                        if ((isVideo || isVideoFile) && window._SPARTA_ORIGINAL_VIDEO_FILE) {
-                          // Use the original video file we saved
-                          console.log('MessageForm using original video file for upload with type:',
-                                     window._SPARTA_ORIGINAL_VIDEO_FILE.type);
-
-                          // Determine appropriate extension based on MIME type
-                          const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' :
-                                        window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
-
-                          // Attach the video with proper extension
-                          formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
-
-                          // Set is_video flag
-                          formData.append('is_video', 'true');
-                        } else {
-                          // Standard image handling
-                          const response = await fetch(imageData);
-                          const blob = await response.blob();
-
-                          formData.append('image', blob, 'pasted-image.png');
-                          formData.append('is_video', 'false');
+                        if (!res.ok) {
+                          throw new Error("Failed to send message");
                         }
+
+                        const data = await res.json();
+                        console.log('Message sent with chunked upload:', data);
+                      } else {
+                        // Standard FormData upload for small files
+                        const formData = new FormData();
+
+                        // Add message content if present
+                        if (content.trim()) {
+                          formData.append('content', content.trim());
+                        }
+
+                        // Add image/video if present
+                        if (imageData) {
+                          // Check if we have a saved video file to use
+                          if ((isVideo || isVideoFile) && window._SPARTA_ORIGINAL_VIDEO_FILE) {
+                            // Use the original video file we saved
+                            console.log('MessageForm using original video file for upload with type:',
+                                       window._SPARTA_ORIGINAL_VIDEO_FILE.type);
+
+                            // Determine appropriate extension based on MIME type
+                            const videoExt = window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('mp4') ? '.mp4' :
+                                          window._SPARTA_ORIGINAL_VIDEO_FILE.type.includes('quicktime') ? '.mov' : '.mp4';
+
+                            // Attach the video with proper extension
+                            formData.append('image', window._SPARTA_ORIGINAL_VIDEO_FILE, `video-message${videoExt}`);
+
+                            // Set is_video flag
+                            formData.append('is_video', 'true');
+                          } else {
+                            // Standard image handling
+                            const response = await fetch(imageData);
+                            const blob = await response.blob();
+
+                            formData.append('image', blob, 'pasted-image.png');
+                            formData.append('is_video', 'false');
+                          }
+                        }
+
+                        formData.append('recipientId', selectedMember.id.toString());
+
+                        // Submit the message via fetch directly instead of using the mutation
+                        const res = await fetch('/api/messages', {
+                          method: 'POST',
+                          body: formData,
+                          credentials: 'include'
+                        });
+
+                        if (!res.ok) {
+                          throw new Error("Failed to send message");
+                        }
+
+                        const data = await res.json();
                       }
-
-                      formData.append('recipientId', selectedMember.id.toString());
-
-                      // Update state variables with the content and image
-                      setMessageText(content);
-                      setPastedImage(imageData);
-
-                      // Submit the message via fetch directly instead of using the mutation
-                      const res = await fetch('/api/messages', {
-                        method: 'POST',
-                        body: formData,
-                        credentials: 'include'
-                      });
-
-                      if (!res.ok) {
-                        throw new Error("Failed to send message");
-                      }
-
-                      const data = await res.json();
 
                       // Clear the form on success
                       setMessageText("");
@@ -712,7 +1094,101 @@ export function MessageSlideCard() {
             </div>
           )}
         </Card>
-      </div>
+      </div>,
+        document.body
+      )}
+
+      {/* Context Menu - rendered via Portal */}
+      {contextMenu && (() => {
+        const message = messages.find(m => m.id === contextMenu.messageId);
+        console.log('Context menu rendering, message:', message);
+        // Defensive check: only show context menu for user's own messages
+        if (!message || message.sender.id !== user?.id) {
+          console.warn('Context menu hidden - message not owned by user');
+          return null;
+        }
+        
+        const handleEditClick = (e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Edit button clicked, message:', message);
+          if (message) handleEdit(contextMenu.messageId, message.content || '');
+        };
+        
+        const handleDeleteClick = (e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Delete button clicked');
+          handleDelete(contextMenu.messageId);
+        };
+        
+        const handleCopyClick = (e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Copy button clicked, content:', message?.content);
+          if (message?.content) handleCopy(message.content);
+          else setContextMenu(null);
+        };
+        
+        return createPortal(
+          <div
+            data-context-menu="true"
+            className="fixed z-[2147483648]"
+            style={{
+              left: `${Math.min(contextMenu.x, window.innerWidth - 150)}px`,
+              top: `${Math.min(contextMenu.y, window.innerHeight - 200)}px`,
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden min-w-[140px] border border-gray-200">
+              <div className="flex flex-col">
+                <button
+                  onClick={handleEditClick}
+                  onTouchEnd={handleEditClick}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left border-b border-gray-100"
+                  data-testid="button-edit-message"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                    <path d="m15 5 4 4"/>
+                  </svg>
+                  <span className="font-medium text-gray-900">Edit</span>
+                </button>
+                
+                <button
+                  onClick={handleDeleteClick}
+                  onTouchEnd={handleDeleteClick}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left border-b border-gray-100"
+                  data-testid="button-delete-message"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                  </svg>
+                  <span className="font-medium text-gray-900">Delete</span>
+                </button>
+                
+                <button
+                  onClick={handleCopyClick}
+                  onTouchEnd={handleCopyClick}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
+                  data-testid="button-copy-message"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                  </svg>
+                  <span className="font-medium text-gray-900">Copy</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </>
   );
 }

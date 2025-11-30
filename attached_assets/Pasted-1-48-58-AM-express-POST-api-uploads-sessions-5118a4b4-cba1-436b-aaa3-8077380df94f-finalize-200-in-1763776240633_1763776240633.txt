@@ -1,0 +1,127 @@
+1:48:58 AM [express] POST /api/uploads/sessions/5118a4b4-cba1-436b-aaa3-8077380df94f/finalize 200 in…
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+thumbnailUrl: 'shared/uploads/1763776134273-IMG_9481.jpg',
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+✅ Using chunked upload result for post creation: {
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+mediaUrl: '/api/object-storage/direct-download?storageKey=shared/uploads/1763776134273-IMG_9481.mp4',
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+}
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+bodyKeys: [ 'is_video', 'selected_media_type', 'data' ],
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+contentType: 'multipart/form-data; boundary=----WebKitFormBoundary3vj8Gp9z0UJxXWWD',
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+Successfully parsed post data: { postType: 'miscellaneous' }
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+isVideo: true
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+filesKeys: []
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+filename: '1763776134273-IMG_9481.mp4',
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+fileDetails: 'No file uploaded',
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+hasFile: false,
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+Assigning points: { type: 'miscellaneous', points: 0 }
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+}
+2025-11-21 19:48:58.43
+1cbd84a8
+User
+POST /api/posts - Request received {
+2025-11-21 19:48:59.47
+1cbd84a8
+User
+Attempting to download file from Object Storage: shared/uploads/1763776134273-IMG_9481.jpg
+2025-11-21 19:48:59.53
+1cbd84a8
+User
+Download result for shared/uploads/1763776134273-IMG_9481.jpg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 19:48:59.53
+1cbd84a8
+User
+Successfully downloaded shared/uploads/1763776134273-IMG_9481.jpg, size: 92463 bytes
+2025-11-21 19:48:59.56
+1cbd84a8
+User
+1:48:59 AM [express] GET /api/serve-file 200 in 88ms
+2025-11-21 19:48:59.58
+1cbd84a8
+User
+1:48:59 AM [express] GET /api/posts/49/reactions 200 in 89ms :: []
+2025-11-21 19:49:01.43
+1cbd84a8
+User
+1:49:01 AM [express] GET /api/object-storage/direct-download 206 in 35ms
+2025-11-21 19:49:01.56
+1cbd84a8
+User
+1:49:01 AM [express] GET /api/object-storage/direct-download 206 in 35ms
+2025-11-21 19:49:01.73
+1cbd84a8
+User
+1:49:01 AM [express] GET /api/object-storage/direct-download 206 in 33ms
+2025-11-21 19:49:04.19
+1cbd84a8
+User
+1:49:04 AM [express] GET /api/notifications/unread 304 in 65ms :: {"unreadCount":0}
+2025-11-21 19:49:17.80
+1cbd84a8
+User
+1:49:17 AM [express] GET /api/object-storage/direct-download 206 in 34ms
+2025-11-21 19:49:17.92
+1cbd84a8
+User
+1:49:17 AM [express] GET /api/object-storage/direct-download 206 in 35ms
+2025-11-21 19:49:18.07
+1cbd84a8
+User
+1:49:18 AM [express] GET /api/object-storage/direct-download 206 in 35ms
+2025-11-21 19:49:21.38
+1cbd84a8
+User
+Found 0 unread messages for user 1
+2025-11-21 19:49:21.41
+1cbd84a8
+User
+1:49:21 AM [express] GET /api/messages/unread/count 304 in 66ms :: {"unreadCount":0}
+2025-11-21 19:49:21.41
+1cbd84a8
+User
+1:49:21 AM [express] GET /api/messages/unread/count 304 in 66ms :: {"unreadCount":0}
+
+Collapse
+
+Wrap
+
+Colors

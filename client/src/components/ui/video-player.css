@@ -38,11 +38,9 @@ video {
   display: block;
 }
 
-/* Make sure controls remain visible  */
+/* Make sure controls are properly positioned without forcing visibility */
 video::-webkit-media-controls-panel {
   display: flex !important;
-  opacity: 1 !important;
-  visibility: visible !important;
   padding-bottom: 0 !important;
   position: relative;
   z-index: 10;
@@ -74,7 +72,7 @@ video::-webkit-media-controls {
 .video-thumbnail-container {
   aspect-ratio: 3/2; /* 600:400 ratio */
   width: 100%;
-  max-width: 600px;
+  max-width: 100%;
   height: auto;
 }
 

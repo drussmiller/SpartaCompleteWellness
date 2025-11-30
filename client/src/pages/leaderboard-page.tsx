@@ -17,6 +17,7 @@ type TeamMember = {
   id: number;
   username: string;
   imageUrl: string | null;
+  avatarColor: string | null;
   points: number;
 };
 
@@ -140,7 +141,12 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                         <div className="font-bold w-6 text-center">{index + 1}</div>
                         <Avatar>
                           <AvatarImage src={member.imageUrl || ""} />
-                          <AvatarFallback>{member.username.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback 
+                            style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                            className="text-white"
+                          >
+                            {member.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="font-medium">{member.username}</div>
                       </div>

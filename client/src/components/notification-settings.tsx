@@ -1,24 +1,23 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ChevronLeft,
-  WifiOff,
-  Wifi,
-  RefreshCw,
-  ImageIcon,
-  Film,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useNotifications } from "@/hooks/use-notifications";
 import { useAchievements } from "@/hooks/use-achievements";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface NotificationSettingsProps {
   onClose: () => void;
@@ -27,64 +26,126 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const {
-    connectionStatus,
-    reconnect,
-    fixMemoryVerseThumbnails,
-    fixAllThumbnails,
-  } = useNotifications();
   const { notificationsEnabled, setNotificationsEnabled } = useAchievements();
-  const [notificationTime, setNotificationTime] = useState("09:00");
-  const [isReconnecting, setIsReconnecting] = useState(false);
-  const [isFixingThumbnails, setIsFixingThumbnails] = useState(false);
+  const [hour, setHour] = useState("9");
+  const [period, setPeriod] = useState<"AM" | "PM">("AM");
+  const [dailyNotificationsEnabled, setDailyNotificationsEnabled] = useState(true);
+  const [confirmationMessagesEnabled, setConfirmationMessagesEnabled] = useState(true);
+  const [smsEnabled, setSmsEnabled] = useState(false);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: onClose
   });
 
-  // Handler for manual reconnection
-  const handleReconnect = useCallback(() => {
-    if (connectionStatus === "connecting") {
-      toast({
-        description: "Connection attempt already in progress...",
-      });
-      return;
+  // Suppress console warnings about dialog accessibility
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args) => {
+      if (
+        typeof args[0] === 'string' &&
+        (args[0].includes('DialogTitle') || args[0].includes('aria-describedby'))
+      ) {
+        return;
+      }
+      originalError.apply(console, args);
+    };
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
+
+  // Load user's saved notification time and daily notifications enabled setting
+  useEffect(() => {
+    if (user?.notificationTime) {
+      const [savedHour, savedMinute] = user.notificationTime.split(':');
+      const hourNum = parseInt(savedHour);
+
+      if (hourNum === 0) {
+        setHour("12");
+        setPeriod("AM");
+      } else if (hourNum < 12) {
+        setHour(hourNum.toString());
+        setPeriod("AM");
+      } else if (hourNum === 12) {
+        setHour("12");
+        setPeriod("PM");
+      } else {
+        setHour((hourNum - 12).toString());
+        setPeriod("PM");
+      }
     }
+    
+    // Load daily notifications enabled state
+    if (user?.dailyNotificationsEnabled !== undefined && user?.dailyNotificationsEnabled !== null) {
+      setDailyNotificationsEnabled(user.dailyNotificationsEnabled);
+    }
+    
+    // Load confirmation messages enabled state
+    if (user?.confirmationMessagesEnabled !== undefined && user?.confirmationMessagesEnabled !== null) {
+      setConfirmationMessagesEnabled(user.confirmationMessagesEnabled);
+      // Also set in localStorage so toast system can access it
+      localStorage.setItem('confirmationMessagesEnabled', user.confirmationMessagesEnabled.toString());
+    }
+    
+    // Load SMS settings
+    if (user?.smsEnabled !== undefined && user?.smsEnabled !== null) {
+      setSmsEnabled(user.smsEnabled);
+    }
+  }, [user?.notificationTime, user?.dailyNotificationsEnabled, user?.confirmationMessagesEnabled, user?.smsEnabled]);
 
-    setIsReconnecting(true);
-    toast({
-      description: "Attempting to reconnect to notification service...",
-    });
-
-    // Attempt reconnection
-    reconnect();
-
-    // Reset reconnecting state after delay
-    setTimeout(() => {
-      setIsReconnecting(false);
-    }, 2000);
-  }, [connectionStatus, reconnect, toast]);
+  // Convert hour + period to 24-hour format (always at :00 minutes)
+  const convertTo24Hour = (hour: string, period: "AM" | "PM"): string => {
+    let hourNum = parseInt(hour);
+    if (period === "PM" && hourNum !== 12) {
+      hourNum += 12;
+    } else if (period === "AM" && hourNum === 12) {
+      hourNum = 0;
+    }
+    return `${String(hourNum).padStart(2, '0')}:00`;
+  };
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async (time: string) => {
+    mutationFn: async (updates: {
+      notificationTime?: string;
+      dailyNotificationsEnabled?: boolean;
+      confirmationMessagesEnabled?: boolean;
+      smsEnabled?: boolean;
+    }) => {
+      // Get user's timezone offset in minutes
+      const timezoneOffset = new Date().getTimezoneOffset();
+
       const response = await apiRequest(
         "POST",
         "/api/users/notification-schedule",
         {
-          notificationTime: time,
+          notificationTime: updates.notificationTime,
+          timezoneOffset: -timezoneOffset, // Negate because getTimezoneOffset returns opposite sign
+          achievementNotificationsEnabled: notificationsEnabled,
+          dailyNotificationsEnabled: updates.dailyNotificationsEnabled !== undefined 
+            ? updates.dailyNotificationsEnabled 
+            : dailyNotificationsEnabled,
+          confirmationMessagesEnabled: updates.confirmationMessagesEnabled !== undefined
+            ? updates.confirmationMessagesEnabled
+            : confirmationMessagesEnabled,
+          smsEnabled: updates.smsEnabled !== undefined ? updates.smsEnabled : smsEnabled,
         },
       );
       if (!response.ok) {
-        throw new Error("Failed to update notification schedule");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update notification schedule");
       }
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        description: "Notification schedule updated successfully",
-      });
+      // Refresh user data to get updated settings
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      // Restore previous state if SMS toggle failed
+      if (variables.smsEnabled !== undefined && user?.smsEnabled !== undefined && user.smsEnabled !== null) {
+        setSmsEnabled(user.smsEnabled);
+      }
+      
       toast({
         title: "Error",
         description: error.message,
@@ -93,29 +154,63 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     },
   });
 
-  const handleSave = () => {
-    updateScheduleMutation.mutate(notificationTime);
+  // Auto-save when time changes
+  const handleTimeChange = (newHour: string, newPeriod: "AM" | "PM") => {
+    const time = convertTo24Hour(newHour, newPeriod);
+    updateScheduleMutation.mutate({ notificationTime: time });
+  };
+
+  // Auto-save when daily notifications toggle changes
+  const handleDailyNotificationsChange = (enabled: boolean) => {
+    setDailyNotificationsEnabled(enabled);
+    updateScheduleMutation.mutate({ dailyNotificationsEnabled: enabled });
+  };
+
+  // Auto-save when confirmation messages toggle changes
+  const handleConfirmationMessagesChange = (enabled: boolean) => {
+    setConfirmationMessagesEnabled(enabled);
+    updateScheduleMutation.mutate({ confirmationMessagesEnabled: enabled });
+    
+    // Store in localStorage so toast system can check it
+    localStorage.setItem('confirmationMessagesEnabled', enabled.toString());
+  };
+
+  // Auto-save when SMS toggle changes
+  const handleSmsEnabledChange = (enabled: boolean) => {
+    // Validate on client side before attempting to enable
+    if (enabled) {
+      if (!user?.phoneNumber) {
+        toast({
+          title: "Phone Number Required",
+          description: "Please add a phone number in your profile before enabling SMS notifications.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Basic validation: must be at least 10 digits
+      const digitsOnly = user.phoneNumber.replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Please update your phone number in your profile. It must have at least 10 digits.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Optimistically update UI
+    setSmsEnabled(enabled);
+    updateScheduleMutation.mutate({ smsEnabled: enabled });
   };
 
   const testNotificationTimeMutation = useMutation({
     mutationFn: async () => {
       try {
-        // Extract hour and minute from notification time
-        const [hour, minute] = notificationTime.split(":").map(Number);
-
-        // Validate time values
-        if (
-          isNaN(hour) ||
-          isNaN(minute) ||
-          hour < 0 ||
-          hour > 23 ||
-          minute < 0 ||
-          minute > 59
-        ) {
-          throw new Error(
-            "Invalid notification time. Please use the format HH:MM.",
-          );
-        }
+        // Convert to 24-hour format
+        const time24 = convertTo24Hour(hour, period);
+        const [hourNum, minute] = time24.split(":").map(Number);
 
         // Set timeout to prevent hanging requests
         const controller = new AbortController();
@@ -129,7 +224,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
         try {
           const response = await fetch(
-            `/api/test-notification?hour=${hour}&minute=${minute}`,
+            `/api/test-notification?hour=${hourNum}&minute=${minute}`,
             { signal: controller.signal },
           );
 
@@ -186,15 +281,16 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     },
     onSuccess: (data) => {
       console.log("Test notification response:", data);
+      const displayTime = `${hour}:00 ${period}`;
       if (data.totalNotifications > 0) {
         toast({
           title: "Notification Test Successful",
-          description: `Sent ${data.totalNotifications} test notification(s) for time ${notificationTime}`,
+          description: `Sent ${data.totalNotifications} test notification(s) for time ${displayTime}`,
         });
       } else {
         toast({
           title: "Test Complete",
-          description: `No notifications sent. Your notification time ${notificationTime} doesn't match the test time.`,
+          description: `No notifications sent. Your notification time ${displayTime} doesn't match the test time.`,
         });
       }
 
@@ -216,52 +312,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     retry: 0, // Don't retry - we'll handle errors directly
   });
 
-  // Generate the connection status badge
-  const renderConnectionStatus = () => {
-    switch (connectionStatus) {
-      case "connected":
-        return (
-          <Badge
-            variant="outline"
-            className="ml-auto flex items-center gap-1 bg-green-50 text-green-700 border-green-200 text-sm"
-          >
-            <Wifi className="h-3 w-3" />
-            <span>Connected</span>
-          </Badge>
-        );
-      case "connecting":
-        return (
-          <Badge
-            variant="outline"
-            className="ml-auto flex items-center gap-1 bg-yellow-50 text-yellow-700 border-yellow-200 text-sm"
-          >
-            <Wifi className="h-3 w-3" />
-            <span>Connecting...</span>
-          </Badge>
-        );
-      case "disconnected":
-        return (
-          <Badge
-            variant="outline"
-            className="ml-auto flex items-center gap-1 bg-red-50 text-red-700 border-red-200 text-sm"
-          >
-            <WifiOff className="h-3 w-3" />
-            <span>Offline</span>
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
 
   return (
-    <div 
+    <div
       className="flex flex-col h-full overflow-y-auto"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-20">
+      <div className="flex items-center p-4 pt-16 border-b shrink-0 bg-background sticky top-0 z-[60]">
         <Button
           variant="ghost"
           size="icon"
@@ -270,13 +329,83 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         >
           <ChevronLeft className="h-8 w-8 scale-125" />
         </Button>
-        <h2 className="text-lg font-semibold">Notification Settings</h2>
-        {renderConnectionStatus()}
+        <h2 className="text-lg font-semibold text-foreground">Notification Settings</h2>
       </div>
 
-      <div 
+      <div
         className="p-6 space-y-6 pb-24 overflow-y-auto"
       >
+        {/* Daily Notifications toggle */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Daily Reminders</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="daily-notifications"
+              className="text-lg text-muted-foreground"
+            >
+              Enable daily notifications
+            </Label>
+            <Switch
+              id="daily-notifications"
+              checked={dailyNotificationsEnabled}
+              onCheckedChange={handleDailyNotificationsChange}
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {dailyNotificationsEnabled
+              ? "Daily reminder notifications are enabled. You will receive notifications if you miss posts."
+              : "Daily reminder notifications are disabled. You won't receive any daily reminder notifications."}
+          </p>
+        </div>
+
+        {/* SMS Notifications section */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">SMS Notifications</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="sms-enabled"
+              className="text-lg text-muted-foreground"
+            >
+              Enable SMS notifications
+            </Label>
+            <Switch
+              id="sms-enabled"
+              checked={smsEnabled}
+              onCheckedChange={handleSmsEnabledChange}
+              disabled={!user?.phoneNumber}
+              data-testid="toggle-sms-enabled"
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {smsEnabled
+              ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
+              : "SMS notifications are disabled. Enable to receive text messages for daily reminders."}
+          </p>
+        </div>
+
+        {/* Confirmation Messages toggle */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Confirmation Messages</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="confirmation-messages"
+              className="text-lg text-muted-foreground"
+            >
+              Show success messages
+            </Label>
+            <Switch
+              id="confirmation-messages"
+              checked={confirmationMessagesEnabled}
+              onCheckedChange={handleConfirmationMessagesChange}
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {confirmationMessagesEnabled
+              ? "You will see confirmation messages when you complete actions (e.g., 'Message sent successfully')."
+              : "Confirmation messages are disabled. Actions will complete silently without pop-up messages."}
+          </p>
+        </div>
+
         {/* Achievement notification toggle */}
         <div className="space-y-2">
           <h3 className="text-lg font-medium">Achievement Notifications</h3>
@@ -301,18 +430,44 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notification-time" className="text-lg">
+          <Label className="text-lg">
             Daily Notification Time
           </Label>
-          <Input
-            id="notification-time"
-            type="time"
-            className="text-lg"
-            value={notificationTime}
-            onChange={(e) => setNotificationTime(e.target.value)}
-          />
+          <div className="flex gap-2 justify-center items-center">
+            <Select value={hour} onValueChange={(newHour) => {
+              setHour(newHour);
+              handleTimeChange(newHour, period);
+            }}>
+              <SelectTrigger className="w-20 text-lg">
+                <SelectValue placeholder="Hour" />
+              </SelectTrigger>
+              <SelectContent>
+                {[...Array(12)].map((_, i) => {
+                  const h = i + 1;
+                  return (
+                    <SelectItem key={h} value={h.toString()}>
+                      {h}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <Select value={period} onValueChange={(v) => {
+              const newPeriod = v as "AM" | "PM";
+              setPeriod(newPeriod);
+              handleTimeChange(hour, newPeriod);
+            }}>
+              <SelectTrigger className="w-24 text-lg">
+                <SelectValue placeholder="AM/PM" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AM">AM</SelectItem>
+                <SelectItem value="PM">PM</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <p className="text-sm text-muted-foreground">
-            You will receive notifications at this time:
+            Notifications will be sent on the hour (at {hour}:00 {period}):
           </p>
           <ul className="list-disc pl-6 space-y-2 text-base text-muted-foreground">
             <li>
@@ -329,313 +484,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             </li>
             <li>Sunday: If you haven't posted your memory verse on Saturday</li>
           </ul>
-        </div>
-
-        <div className="space-y-4">
-          <div className="border rounded-md p-4 bg-muted/30">
-            <h3 className="text-lg font-medium mb-2">
-              Real-time notifications
-            </h3>
-            <div className="flex items-center justify-between">
-              <p className="text-base text-muted-foreground">
-                {connectionStatus === "connected"
-                  ? "You'll receive real-time notifications when you're online."
-                  : "Connect to receive real-time notifications."}
-              </p>
-
-              {connectionStatus !== "connected" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-2"
-                  onClick={handleReconnect}
-                  disabled={isReconnecting || connectionStatus === "connecting"}
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 mr-1 ${isReconnecting || connectionStatus === "connecting" ? "animate-spin" : ""}`}
-                  />
-                  {connectionStatus === "connecting"
-                    ? "Connecting..."
-                    : "Reconnect"}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <Button
-            className="w-full"
-            onClick={handleSave}
-            disabled={updateScheduleMutation.isPending}
-          >
-            Save Settings
-          </Button>
-
-          {/* Debug button for testing notifications */}
-          <div className="mt-4 pt-4 border-t">
-            <h3 className="text-sm font-medium mb-2">Test Notifications</h3>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full"
-                size="sm"
-                onClick={() => {
-                  // Prevent starting a new test if one is already in progress
-                  if (testNotificationTimeMutation.isPending) {
-                    toast({
-                      title: "Test in progress",
-                      description:
-                        "Please wait for the current test to complete.",
-                    });
-                    return;
-                  }
-
-                  // Provide user feedback immediately
-                  toast({
-                    description: "Starting notification test...",
-                  });
-
-                  // Use a try-catch block to handle any synchronous errors
-                  try {
-                    // The mutation's async errors will be handled by the onError callback
-                    testNotificationTimeMutation.mutate(undefined, {
-                      // Add additional error handling here to ensure UI recovery
-                      onSettled: () => {
-                        // Force update notification list regardless of outcome
-                        setTimeout(() => {
-                          queryClient.invalidateQueries({
-                            queryKey: ["/api/notifications"],
-                          });
-                          queryClient.invalidateQueries({
-                            queryKey: ["/api/notifications/unread"],
-                          });
-                        }, 1000);
-                      },
-                    });
-                  } catch (error) {
-                    console.error("Error triggering test notification:", error);
-                    toast({
-                      title: "Error",
-                      description:
-                        "Failed to send test notification. Please try again.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-                disabled={testNotificationTimeMutation.isPending}
-              >
-                {testNotificationTimeMutation.isPending
-                  ? "Testing..."
-                  : `Test At My Scheduled Time (${notificationTime})`}
-              </Button>
-
-              {user?.isAdmin && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    size="sm"
-                    onClick={async () => {
-                      if (!user) return;
-
-                      try {
-                        // Get the browser's timezone offset in minutes
-                        const tzOffset = new Date().getTimezoneOffset();
-
-                        toast({
-                          title: "Testing notifications",
-                          description: "Sending a test notification request...",
-                        });
-
-                        // Track request start time for logging/debugging
-                        const requestStartTime = Date.now();
-                        console.log(
-                          `Starting daily score check at ${new Date().toISOString()}`,
-                        );
-
-                        // Set timeout to prevent hanging requests
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(
-                          () => controller.abort(),
-                          15000,
-                        ); // 15 second timeout
-
-                        try {
-                          const response = await fetch(
-                            `/api/check-daily-scores?userId=${user.id}&tzOffset=${tzOffset}`,
-                            { signal: controller.signal },
-                          );
-
-                          const requestDuration = Date.now() - requestStartTime;
-                          console.log(
-                            `Daily score check completed in ${requestDuration}ms`,
-                          );
-
-                          clearTimeout(timeoutId);
-
-                          if (!response.ok) {
-                            // Try to get detailed error information if available
-                            let errorMessage = `Failed to send test notification: ${response.status} ${response.statusText}`;
-                            try {
-                              const errorData = await response.json();
-                              errorMessage = errorData.message || errorMessage;
-                            } catch (parseError) {
-                              console.error(
-                                "Error parsing error response:",
-                                parseError,
-                              );
-                            }
-                            throw new Error(errorMessage);
-                          }
-
-                          const data = await response.json();
-
-                          toast({
-                            description: "Test notification sent successfully!",
-                          });
-
-                          console.log("Test notification response:", data);
-
-                          // Add a slight delay to prevent UI issues after notification test
-                          setTimeout(() => {
-                            // Refresh notifications to ensure we're showing the latest
-                            queryClient.invalidateQueries({
-                              queryKey: ["/api/notifications"],
-                            });
-                          }, 500);
-                        } catch (fetchError) {
-                          // Make sure to clear timeout if fetch fails
-                          clearTimeout(timeoutId);
-                          throw fetchError;
-                        }
-                      } catch (err) {
-                        // Handle different error types with customized messages
-                        if (err instanceof Error) {
-                          if (err.name === "AbortError") {
-                            console.error(
-                              "Daily score check request timed out after 15 seconds",
-                            );
-                            toast({
-                              title: "Request Timed Out",
-                              description:
-                                "The request took too long, but the notification might still be processing in the background.",
-                              variant: "destructive",
-                            });
-                            return;
-                          } else if (
-                            err.name === "TypeError" &&
-                            err.message.includes("Failed to fetch")
-                          ) {
-                            console.error(
-                              "Network error during daily score check:",
-                              err,
-                            );
-                            toast({
-                              title: "Network Error",
-                              description:
-                                "Please check your connection and try again.",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                        }
-
-                        console.error("Error sending test notification:", err);
-                        toast({
-                          title: "Error",
-                          description:
-                            err instanceof Error
-                              ? err.message
-                              : "Failed to send test notification",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                  >
-                    Admin: Test Daily Score Check
-                  </Button>
-
-                  {/* Admin section for thumbnail repairs */}
-                  <div className="mt-4 pt-4 border-t">
-                    <h3 className="text-sm font-medium mb-2">
-                      Thumbnail Repair Tools
-                    </h3>
-                    <div className="space-y-2">
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        size="sm"
-                        onClick={async () => {
-                          if (isFixingThumbnails) {
-                            toast({
-                              title: "Operation in progress",
-                              description:
-                                "A thumbnail repair is already running. Please wait for it to complete.",
-                            });
-                            return;
-                          }
-
-                          setIsFixingThumbnails(true);
-                          toast({
-                            description:
-                              "Starting memory verse thumbnail repair...",
-                          });
-
-                          try {
-                            await fixMemoryVerseThumbnails();
-                          } finally {
-                            setTimeout(() => {
-                              setIsFixingThumbnails(false);
-                            }, 2000);
-                          }
-                        }}
-                        disabled={isFixingThumbnails}
-                      >
-                        <Film className="h-4 w-4 mr-2" />
-                        {isFixingThumbnails
-                          ? "Repairing..."
-                          : "Repair Memory Verse Thumbnails"}
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        size="sm"
-                        onClick={async () => {
-                          if (isFixingThumbnails) {
-                            toast({
-                              title: "Operation in progress",
-                              description:
-                                "A thumbnail repair is already running. Please wait for it to complete.",
-                            });
-                            return;
-                          }
-
-                          setIsFixingThumbnails(true);
-                          toast({
-                            description: "Starting all thumbnails repair...",
-                          });
-
-                          try {
-                            await fixAllThumbnails();
-                          } finally {
-                            setTimeout(() => {
-                              setIsFixingThumbnails(false);
-                            }, 2000);
-                          }
-                        }}
-                        disabled={isFixingThumbnails}
-                      >
-                        <ImageIcon className="h-4 w-4 mr-2" />
-                        {isFixingThumbnails
-                          ? "Repairing..."
-                          : "Repair All Thumbnails"}
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,252 @@
+2025-11-21 22:38:59.89
+c461330d
+User
+originalname: 'IMG_9482.mov',
+2025-11-21 22:38:59.89
+c461330d
+User
+hasFile: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+size: 29976059,
+2025-11-21 22:38:59.89
+c461330d
+User
+destination: undefined,
+2025-11-21 22:38:59.89
+c461330d
+User
+POST /api/posts - Request received {
+2025-11-21 22:38:59.89
+c461330d
+User
+originalname: 'IMG_9482.mov'
+2025-11-21 22:38:59.89
+c461330d
+User
+fileDetails: {
+2025-11-21 22:38:59.89
+c461330d
+User
+size: 29976059
+2025-11-21 22:38:59.89
+c461330d
+User
+bodyKeys: [ 'is_video', 'selected_media_type', 'data' ],
+2025-11-21 22:38:59.89
+c461330d
+User
+filesKeys: [ 'image', 'thumbnail', 'thumbnail_alt', 'thumbnail_jpg' ]
+2025-11-21 22:38:59.89
+c461330d
+User
+}
+2025-11-21 22:38:59.89
+c461330d
+User
+mimetype: 'video/quicktime',
+2025-11-21 22:38:59.89
+c461330d
+User
+File buffer received: {
+2025-11-21 22:38:59.89
+c461330d
+User
+mimetype: 'video/quicktime',
+2025-11-21 22:38:59.89
+c461330d
+User
+path: undefined,
+2025-11-21 22:38:59.89
+c461330d
+User
+contentType: 'multipart/form-data; boundary=----WebKitFormBoundaryko4KABYUaISQUnCE',
+2025-11-21 22:38:59.89
+c461330d
+User
+}
+2025-11-21 22:38:59.89
+c461330d
+User
+fieldname: 'image',
+2025-11-21 22:38:59.89
+c461330d
+User
+Skipping redundant file creation - SpartaObjectStorage will handle file organization
+2025-11-21 22:38:59.89
+c461330d
+User
+isVideoMimetype: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+}
+2025-11-21 22:38:59.89
+c461330d
+User
+isPrayerPost: false,
+2025-11-21 22:38:59.89
+c461330d
+User
+}
+2025-11-21 22:38:59.89
+c461330d
+User
+isMemoryVerse: false,
+2025-11-21 22:38:59.89
+c461330d
+User
+effective: 'video/quicktime',
+2025-11-21 22:38:59.89
+c461330d
+User
+originalFilename: 'IMG_9482.mov',
+2025-11-21 22:38:59.89
+c461330d
+User
+}
+2025-11-21 22:38:59.89
+c461330d
+User
+isMiscellaneousPost: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+originalFilename: 'IMG_9482.mov',
+2025-11-21 22:38:59.89
+c461330d
+User
+Using effective mime type for storage: {
+2025-11-21 22:38:59.89
+c461330d
+User
+postType: 'miscellaneous'
+2025-11-21 22:38:59.89
+c461330d
+User
+originalName: 'IMG_9482.mov'
+2025-11-21 22:38:59.89
+c461330d
+User
+postType: 'miscellaneous',
+2025-11-21 22:38:59.89
+c461330d
+User
+Successfully parsed post data: { postType: 'miscellaneous' }
+2025-11-21 22:38:59.89
+c461330d
+User
+isMiscellaneous: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+original: 'video/quicktime',
+2025-11-21 22:38:59.89
+c461330d
+User
+mimetype: 'video/quicktime',
+2025-11-21 22:38:59.89
+c461330d
+User
+isMiscellaneousVideo: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+mimetype: 'video/quicktime',
+2025-11-21 22:38:59.89
+c461330d
+User
+Video detection: {
+2025-11-21 22:38:59.89
+c461330d
+User
+isMemoryVersePost: false,
+2025-11-21 22:38:59.89
+c461330d
+User
+fileSize: 29976059,
+2025-11-21 22:38:59.89
+c461330d
+User
+isMemoryVerse: false,
+2025-11-21 22:38:59.89
+c461330d
+User
+isVideo: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+isMiscellaneousPost: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+isVideoExtension: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+isVideo: true,
+2025-11-21 22:38:59.89
+c461330d
+User
+isVideoFlag: [ 'true', 'true' ]
+2025-11-21 22:38:59.89
+c461330d
+User
+Post type detection: {
+2025-11-21 22:38:59.89
+c461330d
+User
+Processing media file: {
+2025-11-21 22:38:59.89
+c461330d
+User
+isIntroductoryVideoPost: false,
+2025-11-21 22:38:59.89
+c461330d
+User
+path: undefined,
+2025-11-21 22:38:59.89
+c461330d
+User
+formDataKeys: [ 'is_video', 'selected_media_type', 'data' ]
+2025-11-21 22:38:59.89
+c461330d
+User
+selectedMediaType: [ 'video', 'video' ],
+2025-11-21 22:38:59.89
+c461330d
+User
+Assigning points: { type: 'miscellaneous', points: 0 }
+2025-11-21 22:38:59.89
+c461330d
+User
+}
+2025-11-21 22:39:01.60
+c461330d
+User
+[z071d1] Executing ffmpeg command: ffmpeg -ss 1 -i /home/runner/workspace/uploads/1763786339899-IMG_9482.mov -y -vframes 1 -vf scale=640:360:force_original_aspect_ratio=increase,crop=640:360 /home/runner/workspace/uploads/thumbnails/1763786339899-IMG_9482.jpg
+2025-11-21 22:39:01.91
+c461330d
+User
+[z071d1] Successfully created video thumbnail at /home/runner/workspace/uploads/thumbnails/1763786339899-IMG_9482.jpg
+2025-11-21 22:39:02.06
+c461330d
+User
+Successfully uploaded thumbnail 1763786339899-IMG_9482.jpg to Object Storage at shared/uploads/1763786339899-IMG_9482.jpg
+2025-11-21 22:39:02.06
+c461330d
+User
+Cleaned up local file: /home/runner/workspace/uploads/1763786339899-IMG_9482.mov
+2025-11-21 22:39:03.11
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1763786339899-IMG_9482.jpg
+2025-11-21 22:39:03.17
+c461330d
+User
+Successfully downloaded shared/uploads/1763786339899-IMG_9482.jpg, size: 21820 bytes
+2025-11-21 22:39:03.17
+c461330d
+User
+Download result for shared/uploads/1763786339899-IMG_9482.jpg: { type: 'object', hasOkProperty: true, isBuffer: false }

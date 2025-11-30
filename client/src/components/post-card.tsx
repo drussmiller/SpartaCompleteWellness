@@ -26,6 +26,7 @@ import { getThumbnailUrl, getFallbackImageUrl, checkImageExists } from "../lib/i
 import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
+import { ImageViewer } from "@/components/ui/image-viewer";
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -97,6 +98,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [triggerReload, setTriggerReload] = useState(0);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -106,13 +108,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const shouldShowAsVideo = useMemo(() => {
     if (post.type === 'memory_verse') return true;
 
+    // Check for the is_video flag for ANY post type (set during upload)
+    if (post.is_video) {
+      return true;
+    }
+
+    // Check for HLS playlist URLs (used for large videos)
+    if (post.mediaUrl && (post.mediaUrl.includes('.m3u8') || post.mediaUrl.includes('/api/hls/'))) {
+      return true;
+    }
+
     // For miscellaneous posts, check more aggressively for video markers
     if (post.type === 'miscellaneous' && post.mediaUrl) {
-      // Always check for the is_video flag (set during upload)
-      if (post.is_video) {
-        return true;
-      }
-
       // Fall back to URL pattern detection
       return isLikelyVideo(post.mediaUrl, post.content || undefined);
     }
@@ -150,6 +157,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
 
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+
+      // Invalidate post counts to update limits in Create Post dialog
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/counts"],
+        exact: false 
+      });
+
+      // Invalidate has-any-posts check to update dialog state
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/posts/has-any-posts"],
+        exact: false 
+      });
 
       // If this was a prayer post, also invalidate the prayer requests cache
       if (post.type === "prayer") {
@@ -201,9 +220,29 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   }, [post.mediaUrl]);
 
   const thumbnailUrl = useMemo(() => {
+    // Debug: log post object to see what fields we have
+    if (post.id === 825 || post.id === 824) {
+      console.log(`[DEBUG] Post ${post.id} data:`, JSON.stringify(post, null, 2));
+      console.log(`[DEBUG] Post ${post.id} Has thumbnailUrl?`, !!(post as any).thumbnailUrl);
+      console.log(`[DEBUG] Post ${post.id} Has thumbnail_url?`, !!(post as any).thumbnail_url);
+    }
+    
+    // Use database thumbnailUrl if available (for HLS videos and new uploads)
+    // Try both camelCase and snake_case since Drizzle mapping might vary
+    const dbThumbnail = (post as any).thumbnailUrl || (post as any).thumbnail_url;
+    if (dbThumbnail) {
+      console.log(`[DEBUG] Post ${post.id} using dbThumbnail:`, dbThumbnail);
+      return dbThumbnail;
+    }
+    
     if (!post.mediaUrl) return null;
     
-    // For video files, create thumbnail URL by replacing extension with .jpg
+    // Don't try to create thumbnails for HLS playlists
+    if (post.mediaUrl.includes('.m3u8') || post.mediaUrl.includes('/api/hls/')) {
+      return null;
+    }
+    
+    // For regular video files, create thumbnail URL by replacing extension with .jpg
     if (post.mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
       let filename = post.mediaUrl;
       
@@ -222,12 +261,13 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       
       // Replace video extension with .jpg
       const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
-      return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
+      // Add cache-busting using post ID to force reload of previously failed thumbnails
+      return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}&_cb=${post.id}`;
     }
 
-    // For non-video files, use the existing thumbnail logic
-    return createThumbnailUrl(post.mediaUrl);
-  }, [post.mediaUrl]);
+    // For non-video files, don't create a thumbnail
+    return null;
+  }, [post.mediaUrl, (post as any).thumbnailUrl, (post as any).thumbnail_url]);
 
     const { Play } = useMemo(() => {
         return {
@@ -256,7 +296,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="flex gap-2 items-center">
           <Avatar className="h-10 w-10 border">
             <AvatarImage src={post.author?.imageUrl || undefined} alt={post.author?.username || "User"} key={avatarKey} />
-            <AvatarFallback>
+            <AvatarFallback
+              style={{ backgroundColor: post.author?.avatarColor || '#6366F1' }}
+              className="text-white"
+            >
               {post.author?.username?.[0]?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
@@ -354,10 +397,10 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     postType: post.type
                   });
                 }}
-                onClick={(e) => {
-                  // No longer hiding images - let them display even if some fail to load
-                  console.log('Image load error, but not hiding container');
+                onClick={() => {
+                  setIsImageViewerOpen(true);
                 }}
+                data-testid={`img-post-${post.id}`}
               />
             )}
           </div>
@@ -368,6 +411,12 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground capitalize">{post.type.replace("_", " ")}</span>
+            {post.points !== null && post.points !== undefined && (
+              <>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs font-medium text-primary">{post.points} {post.points === 1 ? 'point' : 'points'}</span>
+              </>
+            )}
             <span className="text-xs text-muted-foreground">•</span>
             <div>
               <ReactionSummary postId={post.id} />
@@ -395,6 +444,15 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
         isOpen={isCommentsOpen}
         onClose={() => setIsCommentsOpen(false)}
       />
+
+      {!shouldShowAsVideo && imageUrl && (
+        <ImageViewer
+          src={imageUrl}
+          alt={`${post.type} post content`}
+          isOpen={isImageViewerOpen}
+          onClose={() => setIsImageViewerOpen(false)}
+        />
+      )}
     </div>
   );
 });

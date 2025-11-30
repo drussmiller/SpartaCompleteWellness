@@ -19,7 +19,8 @@ import { logger } from './logger';
  */
 export async function createMovThumbnail(sourceMovPath: string): Promise<string | null> {
   const videoFilename = path.basename(sourceMovPath);
-  const thumbnailFilename = videoFilename.replace(/\.mov$/i, '.jpg');
+  // Replace any video extension with .jpg (mov, mp4, avi, etc.)
+  const thumbnailFilename = videoFilename.replace(/\.(mov|mp4|avi|mkv|webm)$/i, '.jpg');
 
   logger.info(`Creating thumbnail for: ${videoFilename} -> ${thumbnailFilename}`);
 

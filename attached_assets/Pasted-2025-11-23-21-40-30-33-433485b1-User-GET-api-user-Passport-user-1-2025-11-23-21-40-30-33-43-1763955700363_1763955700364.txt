@@ -1,0 +1,128 @@
+2025-11-23 21:40:30.33
+433485b1
+User
+GET /api/user - Passport user: 1
+2025-11-23 21:40:30.33
+433485b1
+User
+GET /api/user - Session userId: undefined
+2025-11-23 21:40:30.33
+433485b1
+User
+GET /api/user - Session: ymnrpLtWgzg1qdJBCiTG7_4JIk4wYU_d
+2025-11-23 21:40:30.33
+433485b1
+User
+GET /api/user - Is Authenticated: true
+2025-11-23 21:40:30.33
+433485b1
+User
+User data being returned: {"id":1,"username":"admin","avatarColor":"#F43F5E"}
+2025-11-23 21:40:30.33
+433485b1
+User
+Authenticated user: 1
+2025-11-23 21:40:30.88
+433485b1
+User
+3:40:30 AM [express] GET /sparta_circle_red.png 200 in 266ms
+2025-11-23 21:40:31.11
+433485b1
+User
+3:40:31 AM [express] GET /api/prayer-requests/unread 304 in 293ms :: {"unreadCount":0}
+2025-11-23 21:40:31.16
+433485b1
+User
+Found 0 unread messages for user 1
+2025-11-23 21:40:31.22
+433485b1
+User
+3:40:31 AM [express] GET /api/prayer-requests/unread 304 in 272ms :: {"unreadCount":0}
+2025-11-23 21:40:31.32
+433485b1
+User
+3:40:31 AM [express] GET /api/notifications 304 in 543ms :: []
+2025-11-23 21:40:31.33
+433485b1
+User
+3:40:31 AM [express] GET /api/posts/has-any-posts 304 in 545ms :: {"hasAnyPosts":true}
+2025-11-23 21:40:31.41
+433485b1
+User
+3:40:31 AM [express] GET /api/messages/unread/count 304 in 535ms :: {"unreadCount":0}
+2025-11-23 21:40:31.47
+433485b1
+User
+3:40:31 AM [express] GET /api/users/me 304 in 502ms :: {"id":1,"username":"admin","preferredName":"a…
+2025-11-23 21:40:31.48
+433485b1
+User
+3:40:31 AM [express] GET /api/achievements/unviewed 304 in 501ms :: []
+2025-11-23 21:40:31.50
+433485b1
+User
+3:40:31 AM [express] GET /api/activities/current 304 in 501ms :: {"currentWeek":7,"currentDay":7,"pr…
+2025-11-23 21:40:31.51
+433485b1
+User
+3:40:31 AM [express] GET /api/notifications/unread 304 in 501ms :: {"unreadCount":0}
+2025-11-23 21:40:31.58
+433485b1
+User
+3:40:31 AM [express] GET /api/teams/1/competitive 304 in 725ms :: {"competitive":false}
+2025-11-23 21:40:32.02
+433485b1
+User
+Attempting to download file from Object Storage: shared/uploads/1763681606243-image.jpeg
+2025-11-23 21:40:32.04
+433485b1
+User
+Attempting to download file from Object Storage: shared/uploads/1763681550413-image.jpeg
+2025-11-23 21:40:32.05
+433485b1
+User
+Attempting to download file from Object Storage: shared/uploads/1763403658528-image.jpeg
+2025-11-23 21:40:32.08
+433485b1
+User
+Attempting to download file from Object Storage: shared/uploads/1762141243857-image.jpeg
+2025-11-23 21:40:32.19
+433485b1
+User
+Successfully downloaded shared/uploads/1763681550413-image.jpeg, size: 486532 bytes
+2025-11-23 21:40:32.19
+433485b1
+User
+Download result for shared/uploads/1763681550413-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-23 21:40:32.22
+433485b1
+User
+Successfully downloaded shared/uploads/1763681606243-image.jpeg, size: 556401 bytes
+2025-11-23 21:40:32.22
+433485b1
+User
+Download result for shared/uploads/1763681606243-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-23 21:40:32.24
+433485b1
+User
+Successfully downloaded shared/uploads/1762141243857-image.jpeg, size: 260036 bytes
+2025-11-23 21:40:32.24
+433485b1
+User
+Download result for shared/uploads/1762141243857-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-23 21:40:32.25
+433485b1
+User
+Successfully downloaded shared/uploads/1763403658528-image.jpeg, size: 135040 bytes
+2025-11-23 21:40:32.25
+433485b1
+User
+Download result for shared/uploads/1763403658528-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-23 21:40:32.73
+433485b1
+User
+3:40:32 AM [express] GET /api/serve-file 200 in 682ms
+2025-11-23 21:40:32.78
+433485b1
+User
+3:40:32 AM [express] GET /api/serve-file 200 in 763ms

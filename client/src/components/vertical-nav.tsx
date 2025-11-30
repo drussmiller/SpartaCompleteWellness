@@ -1,11 +1,11 @@
 import React from "react";
 import { Link as AnchorLink, useLocation } from "wouter";
-import { 
-  Home, 
-  Activity, 
-  Bell, 
+import {
+  Home,
+  Activity,
+  Bell,
   Menu,
-  Settings, 
+  Settings,
   HelpCircle,
   WifiOff,
   Heart
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
-import { 
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -39,11 +39,11 @@ export const VerticalNav = () => {
     { icon: Home, label: "Home", path: "/" },
     { icon: Activity, label: "Activity", path: "/activity" },
     { icon: HelpCircle, label: "Help", path: "/help" },
-    { 
-      icon: Bell, 
-      label: "Notifications", 
+    {
+      icon: Bell,
+      label: "Notifications",
       path: "/notifications",
-      status: connectionStatus !== "connected" ? "offline" : null 
+      status: connectionStatus !== "connected" ? "offline" : null
     },
 
 
@@ -53,8 +53,8 @@ export const VerticalNav = () => {
   return (
     <div className="h-screen w-20 fixed top-0 left-0 flex flex-col items-center bg-background border-r border-border pt-4 hidden md:flex z-[100]">
       {navItems.map((item) => {
-        const isDisabled = !user?.teamId && (item.path === "/activity" || item.path === "/notifications");
-        
+        const isDisabled = !user?.teamId && item.path === "/activity";
+
         return (
         <TooltipProvider key={item.path}>
           <Tooltip>
@@ -63,7 +63,7 @@ export const VerticalNav = () => {
                 href={isDisabled ? "#" : item.path}
                 className={cn(
                   "flex flex-col items-center justify-center w-16 h-16 mb-2 rounded-md relative",
-                  isDisabled 
+                  isDisabled
                     ? "opacity-50 cursor-not-allowed text-muted-foreground"
                     : location === item.path
                       ? "bg-primary/10 text-primary"

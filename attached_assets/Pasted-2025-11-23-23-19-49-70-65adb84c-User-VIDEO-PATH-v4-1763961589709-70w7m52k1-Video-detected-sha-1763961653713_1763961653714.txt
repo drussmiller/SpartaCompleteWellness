@@ -1,0 +1,81 @@
+2025-11-23 23:19:49.70
+65adb84c
+User
+[VIDEO PATH v4] 1763961589709-70w7m52k1: Video detected: shared/uploads/1763949420423-IMG_9507.mp4, ext: mp4, range: bytes=0-
+2025-11-23 23:19:49.70
+65adb84c
+User
+[MP4 PATH v4] 1763961589709-70w7m52k1: MP4/WEBM file detected: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:19:49.70
+65adb84c
+User
+[VIDEO STREAM v4] 1763961589709-70w7m52k1: Getting video file from cache: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:19:49.70
+65adb84c
+User
+[VIDEO STREAM v4] 1763961589709-70w7m52k1: Starting MP4/WEBM video stream: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:19:49.70
+65adb84c
+User
+[REQ START v4] New request 1763961589709-70w7m52k1 - storageKey: shared/uploads/1763949420423-IMG_9507.mp4, range: bytes=0-, method: GET
+2025-11-23 23:19:49.70
+65adb84c
+User
+[CACHE GET v4] Getting video file: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-23 23:19:49.70
+65adb84c
+User
+[REQ v4] 1763961589709-70w7m52k1: Direct download: shared/uploads/1763949420423-IMG_9507.mp4, route: /api/object-storage/direct-download, range: bytes=0-
+2025-11-23 23:19:49.71
+65adb84c
+User
+[CACHE RETURN v4] Returning cached file path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:19:49.71
+65adb84c
+User
+[CACHE HIT v4] shared/uploads/1763949420423-IMG_9507.mp4 (32.93MB) - Path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, Cache: 32.93/500MB (6.6%)
+2025-11-23 23:19:49.71
+65adb84c
+User
+[VIDEO STREAM v4] 1763961589709-70w7m52k1: Video file path obtained: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:19:49.71
+65adb84c
+User
+[VIDEO STREAM v4] 1763961589709-70w7m52k1: Range request: 0-34529526/34529527 (34529527 bytes)
+2025-11-23 23:19:49.71
+65adb84c
+User
+[STREAM CREATE v4] 1763961589709-70w7m52k1: Creating read stream for /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4, range 0-34529526
+2025-11-23 23:19:49.71
+65adb84c
+User
+[VIDEO STREAM v4] 1763961589709-70w7m52k1: File stats - size: 34529527, path: /tmp/video-cache/shared_uploads_1763949420423-IMG_9507.mp4
+2025-11-23 23:19:49.71
+65adb84c
+User
+[STREAM START v4] 1763961589709-70w7m52k1: Headers set (206), piping stream for range 0-34529526
+2025-11-23 23:19:49.83
+65adb84c
+User
+[STREAM COMPLETE v4] 1763961589709-70w7m52k1: Stream completed for shared/uploads/1763949420423-IMG_9507.mp4: bytes 0-34529526
+2025-11-23 23:19:49.83
+65adb84c
+User
+[STREAM CLOSE v4] 1763961589709-70w7m52k1: Stream closed for shared/uploads/1763949420423-IMG_9507.mp4: bytes 0-34529526
+2025-11-23 23:19:49.86
+65adb84c
+User
+5:19:49 AM [express] GET /api/object-storage/direct-download 206 in 157ms
+2025-11-23 23:19:59.94
+65adb84c
+User
+Found 0 unread messages for user 1
+2025-11-23 23:19:59.98
+65adb84c
+User
+5:19:59 AM [express] GET /api/messages/unread/count 304 in 68ms :: {"unreadCount":0}
+2025-11-23 23:19:59.98
+65adb84c
+User
+5:19:59 AM [express] GET /api/messages/unread/count 304 in 68ms :: {"unreadCount":0}
+202

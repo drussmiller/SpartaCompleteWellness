@@ -1328,6 +1328,41 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       const postType = req.query.type as string;
       const excludeType = req.query.exclude as string;
 
+      // Get current user's team, group, and organization info for scope filtering
+      const [currentUser] = await db
+        .select({
+          teamId: users.teamId
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      let userOrganizationId = null;
+      let userGroupId = null;
+
+      if (currentUser?.teamId) {
+        const [team] = await db
+          .select({
+            groupId: teams.groupId
+          })
+          .from(teams)
+          .where(eq(teams.id, currentUser.teamId));
+
+        if (team?.groupId) {
+          userGroupId = team.groupId;
+
+          const [group] = await db
+            .select({
+              organizationId: groups.organizationId
+            })
+            .from(groups)
+            .where(eq(groups.id, team.groupId));
+
+          if (group?.organizationId) {
+            userOrganizationId = group.organizationId;
+          }
+        }
+      }
+
       // Build the query conditions
       let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
 
@@ -1357,6 +1392,51 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       if (excludeType) {
         conditions.push(not(eq(posts.type, excludeType)));
       }
+
+      // Add scope filtering - only show posts the user should see
+      const scopeConditions = [
+        eq(posts.postScope, 'everyone'), // Everyone can see posts with 'everyone' scope
+      ];
+
+      if (userOrganizationId) {
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'organization'),
+            eq(posts.targetOrganizationId, userOrganizationId)
+          )
+        );
+      }
+
+      if (userGroupId) {
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'group'),
+            eq(posts.targetGroupId, userGroupId)
+          )
+        );
+      }
+
+      if (currentUser?.teamId) {
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'team'),
+            eq(posts.targetTeamId, currentUser.teamId)
+          )
+        );
+        
+        // For 'my_team' scope, show posts from users in the same team
+        scopeConditions.push(
+          and(
+            eq(posts.postScope, 'my_team'),
+            sql`${posts.userId} IN (SELECT id FROM users WHERE team_id = ${currentUser.teamId})`
+          )
+        );
+      } else {
+        // If user has no team, they can only see 'everyone' posts
+        // The my_team condition will naturally be excluded
+      }
+
+      conditions.push(or(...scopeConditions));
 
       // Join with users table to get author info
       const query = db
@@ -1942,8 +2022,14 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       let postData = req.body;
       if (typeof postData.data === 'string') {
         try {
-          console.log("Parsing JSON from postData.data", { raw: postData.data.substring(0, 100) + '...' });
+          const rawData = postData.data;
+          console.log("RAW JSON STRING (first 500 chars):", rawData.substring(0, 500));
           postData = JSON.parse(postData.data);
+          
+          console.log("AFTER JSON.PARSE - Full object keys:", Object.keys(postData));
+          console.log("AFTER JSON.PARSE - postScope value:", postData.postScope);
+          console.log("AFTER JSON.PARSE - targetTeamId value:", postData.targetTeamId);
+          
           console.log("Successfully parsed post data:", { postType: postData.type });
         } catch (parseError) {
           console.error("Error parsing post data:", parseError);
@@ -2000,88 +2086,68 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         
         // Process media file if present for comments too
         let commentMediaUrl = null;
+        let commentIsVideo = false;
         
-        // Check if we have a file upload with the comment
-        if (req.file) {
+        // Check if chunked upload was used (for large videos with HLS conversion)
+        if (req.body.chunkedUploadMediaUrl) {
+          console.log("✅ Using chunked upload result for comment:", {
+            mediaUrl: req.body.chunkedUploadMediaUrl,
+            thumbnailUrl: req.body.chunkedUploadThumbnailUrl,
+            isVideo: req.body.chunkedUploadIsVideo
+          });
+          commentMediaUrl = req.body.chunkedUploadMediaUrl;
+          commentIsVideo = req.body.chunkedUploadIsVideo === 'true' || req.body.chunkedUploadIsVideo === true;
+        }
+        // Check if we have a file upload with the comment (for small files)
+        else if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
             const { spartaStorage } = await import('./sparta-object-storage');
             
-            // Verify the file exists before proceeding
-            let filePath = req.file.path;
+            const originalFilename = req.file.originalname.toLowerCase();
             
-            // Verify the file exists at the path reported by multer
-            if (!fs.existsSync(filePath)) {
-              logger.warn(`Comment file not found at the reported path: ${filePath}, will search for it`);
-              
-              // Try to locate the file using alternative paths
-              const fileName = path.basename(filePath);
-              const possiblePaths = [
-                filePath,
-                path.join(process.cwd(), 'uploads', fileName),
-                path.join(process.cwd(), 'uploads', path.basename(req.file.originalname)),
-                path.join(path.dirname(filePath), path.basename(req.file.originalname)),
-                path.join('/tmp', fileName)
-              ];
-              
-              let foundPath = null;
-              for (const altPath of possiblePaths) {
-                logger.info(`Checking alternative path: ${altPath}`);
-                if (fs.existsSync(altPath)) {
-                  logger.info(`Found file at alternative path: ${altPath}`);
-                  foundPath = altPath;
-                  break;
-                }
-              }
-              
-              if (foundPath) {
-                filePath = foundPath;
-                logger.info(`Using alternative file path: ${filePath}`);
-              } else {
-                logger.error(`Could not find file at any alternative path for: ${filePath}`);
-              }
-            }
+            // Check if this is a video upload based on multiple indicators
+            const isVideoMimetype = req.file.mimetype.startsWith('video/');
+            const isVideoExtension = originalFilename.endsWith('.mov') || 
+                                   originalFilename.endsWith('.mp4') ||
+                                   originalFilename.endsWith('.webm') ||
+                                   originalFilename.endsWith('.avi') ||
+                                   originalFilename.endsWith('.mkv');
             
-            // Proceed if the file exists (either at original or alternative path)
-            if (fs.existsSync(filePath)) {
-              const originalFilename = req.file.originalname.toLowerCase();
-              
-              // Check if this is a video upload based on multiple indicators
-              const isVideoMimetype = req.file.mimetype.startsWith('video/');
-              const isVideoExtension = originalFilename.endsWith('.mov') || 
-                                     originalFilename.endsWith('.mp4') ||
-                                     originalFilename.endsWith('.webm') ||
-                                     originalFilename.endsWith('.avi') ||
-                                     originalFilename.endsWith('.mkv');
-              
-              // Final video determination
-              const isVideo = isVideoMimetype || isVideoExtension;
-              
-              // Store the file using SpartaObjectStorage
-              console.log(`Processing comment media file:`, {
-                originalFilename: req.file.originalname,
-                mimetype: req.file.mimetype,
-                isVideo: isVideo,
-                fileSize: req.file.size
-              });
-              
-              logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${isVideo}, size: ${req.file.size}`);
-              
-              const fileInfo = await spartaStorage.storeFileFromBuffer(
-                req.file.buffer,
-                req.file.originalname,
-                req.file.mimetype,
-                isVideo
-              );
-              
-              commentMediaUrl = fileInfo.url;
-              console.log(`Stored comment media file:`, { url: commentMediaUrl });
-            }
+            // Final video determination
+            commentIsVideo = isVideoMimetype || isVideoExtension;
+            
+            // Store the file using SpartaObjectStorage
+            console.log(`Processing comment media file:`, {
+              originalFilename: req.file.originalname,
+              mimetype: req.file.mimetype,
+              isVideo: commentIsVideo,
+              fileSize: req.file.size
+            });
+            
+            logger.info(`Processing comment media file: ${req.file.originalname}, type: ${req.file.mimetype}, isVideo: ${commentIsVideo}, size: ${req.file.size}`);
+            
+            const fileInfo = await spartaStorage.storeFileFromBuffer(
+              req.file.buffer,
+              req.file.originalname,
+              req.file.mimetype,
+              commentIsVideo
+            );
+            
+            commentMediaUrl = fileInfo.url;
+            console.log(`Stored comment media file:`, { url: commentMediaUrl, isVideo: commentIsVideo });
           } catch (error) {
             logger.error("Error processing comment media file:", error);
             // Continue with comment creation even if media processing fails
           }
         }
+        
+        console.log(`Creating comment with is_video: ${commentIsVideo}`, {
+          userId: req.user.id,
+          mediaUrl: commentMediaUrl,
+          is_video: commentIsVideo,
+          parentId: postData.parentId
+        });
         
         const post = await storage.createComment({
           userId: req.user.id,
@@ -2089,8 +2155,11 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           parentId: postData.parentId,
           depth: postData.depth || 0,
           points: commentPoints, // Always set to 0 points for comments
-          mediaUrl: commentMediaUrl // Add the media URL if a file was uploaded
+          mediaUrl: commentMediaUrl, // Add the media URL if a file was uploaded
+          is_video: commentIsVideo // Add the is_video flag
         });
+        
+        console.log(`Comment created with ID ${post.id}, is_video: ${post.is_video}`);
         return res.status(201).json(post);
       }
 
@@ -2384,6 +2453,86 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
         logger.info(`No media uploaded for ${postData.type} post`);
       }
 
+      // Extract and validate scope information
+      const postScope = postData.postScope || 'my_team';
+      const targetOrganizationId = postData.targetOrganizationId || null;
+      const targetGroupId = postData.targetGroupId || null;
+      const targetTeamId = postData.targetTeamId || null;
+
+      console.log('=================== SERVER RECEIVED DATA ===================');
+      console.log('Complete postData object:', JSON.stringify(postData, null, 2));
+      console.log('Extracted scope values:');
+      console.log('  postScope:', postScope);
+      console.log('  targetOrganizationId:', targetOrganizationId);
+      console.log('  targetGroupId:', targetGroupId);
+      console.log('  targetTeamId:', targetTeamId);
+      console.log('============================================================');
+
+      // Get user's details for permission validation
+      const [currentUser] = await db
+        .select({
+          isAdmin: users.isAdmin,
+          isGroupAdmin: users.isGroupAdmin,
+          adminGroupId: users.adminGroupId,
+          teamId: users.teamId
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      // Validate user has permission to post with the selected scope
+      if (postScope === 'everyone' && !currentUser.isAdmin) {
+        return res.status(403).json({ message: "Only admins can post to everyone" });
+      }
+      
+      if (postScope === 'organization') {
+        if (!currentUser.isAdmin) {
+          return res.status(403).json({ message: "Only admins can post to an organization" });
+        }
+        if (!targetOrganizationId) {
+          return res.status(400).json({ message: "Organization ID is required for organization scope" });
+        }
+      }
+      
+      if (postScope === 'group') {
+        if (!currentUser.isAdmin && !currentUser.isGroupAdmin) {
+          return res.status(403).json({ message: "Only admins and group admins can post to a group" });
+        }
+        if (!targetGroupId) {
+          return res.status(400).json({ message: "Group ID is required for group scope" });
+        }
+        // Group admins can only post to their own group
+        if (currentUser.isGroupAdmin && targetGroupId !== currentUser.adminGroupId) {
+          return res.status(403).json({ message: "Group admins can only post to their own group" });
+        }
+      }
+      
+      if (postScope === 'team') {
+        if (!currentUser.isAdmin && !currentUser.isGroupAdmin) {
+          return res.status(403).json({ message: "Only admins and group admins can post to a team" });
+        }
+        if (!targetTeamId) {
+          return res.status(400).json({ message: "Team ID is required for team scope" });
+        }
+        // Group admins can only post to teams in their group
+        if (currentUser.isGroupAdmin) {
+          const [team] = await db
+            .select({ groupId: teams.groupId })
+            .from(teams)
+            .where(eq(teams.id, targetTeamId));
+          
+          if (!team || team.groupId !== currentUser.adminGroupId) {
+            return res.status(403).json({ message: "Group admins can only post to teams in their group" });
+          }
+        }
+      }
+
+      console.log("🔴🔴🔴 DATABASE INSERT VALUES:");
+      console.log("  postScope:", postScope);
+      console.log("  targetOrganizationId:", targetOrganizationId);
+      console.log("  targetGroupId:", targetGroupId);
+      console.log("  targetTeamId:", targetTeamId);
+      console.log("  typeof targetTeamId:", typeof targetTeamId);
+
       const post = await db
         .insert(posts)
         .values({
@@ -2393,10 +2542,18 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           mediaUrl: mediaUrl,
           is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
+          postScope: postScope,
+          targetOrganizationId: targetOrganizationId,
+          targetGroupId: targetGroupId,
+          targetTeamId: targetTeamId,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
         .returning()
         .then(posts => posts[0]);
+      
+      console.log("🟢🟢🟢 CREATED POST:");
+      console.log("  post.postScope:", post.postScope);
+      console.log("  post.targetTeamId:", post.targetTeamId);
 
       // Log the created post for verification
       logger.info('Created post with points:', { postId: post.id, type: post.type, points: post.points });
@@ -2765,7 +2922,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           email: users.email,
           isAdmin: users.isAdmin,
           teamId: users.teamId,
-          notificationTime: users.notificationTime
+          notificationTime: users.notificationTime,
+          timezoneOffset: users.timezoneOffset
         })
         .from(users);
 
@@ -2916,52 +3074,52 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
                 )
               );
 
-            // Use passed in hour/minute or current time
-            // Parse user's notification time preference (HH:MM format)
-            const notificationTimeParts = user.notificationTime ? user.notificationTime.split(':') : ['9', '00'];
+            // Skip if user has no notification time preference set
+            if (!user.notificationTime) {
+              logger.info(`Skipping user ${user.id} - no notification time preference set`);
+              continue;
+            }
+
+            // Parse user's notification time preference (HH:MM format stored in user's local time)
+            const notificationTimeParts = user.notificationTime.split(':');
             const preferredHour = parseInt(notificationTimeParts[0]);
             const preferredMinute = parseInt(notificationTimeParts[1] || '0');
             
-            // Convert the server's current time to the user's local timezone
-            // For rmiller@gmail.com (CDT), this would convert 4:00 AM UTC to 9:00 AM CDT
-            // assuming a timezone offset of -300 minutes (-5 hours)
-            // This allows us to match the user's preferred notification time
+            // Convert server UTC time to user's local timezone
+            // timezoneOffset is stored in minutes (e.g., -300 for UTC-5/Central Time)
+            const userTimezoneOffsetMinutes = user.timezoneOffset || 0;
             
-            // This is a simplified implementation - in a perfect solution, we would store
-            // the user's timezone preference and convert properly with full timezone support
-            // For now, we'll use the correct offset for Central Daylight Time users
+            // Create a date object for current server time
+            const serverTime = new Date();
+            serverTime.setHours(currentHour, currentMinute, 0, 0);
             
-            // Default offset for Central Time: 5 hours = 300 minutes
-            // Note: Timezone offset for CDT is -5 hours from UTC, but the offset needs to be positive
-            // to add hours to the UTC time
-            const defaultTzOffsetMinutes = 300; // CDT is UTC-5, so we add 5 hours (300 mins) to get proper time 
+            // Convert to user's local time by applying their timezone offset
+            const userLocalTime = new Date(serverTime.getTime() + (userTimezoneOffsetMinutes * 60 * 1000));
+            const userLocalHour = userLocalTime.getUTCHours();
+            const userLocalMinute = userLocalTime.getUTCMinutes();
             
-            // Adjust currentHour based on timezone offset
-            let adjustedHour = currentHour + Math.floor(defaultTzOffsetMinutes / 60);
-            // Handle day overflow
-            adjustedHour = adjustedHour % 24;
+            // Compare in user's local timezone
+            const currentTimeInMinutes = userLocalHour * 60 + userLocalMinute;
+            const preferredTimeInMinutes = preferredHour * 60 + preferredMinute;
             
-            // Check if we're within a 10-minute window of the user's preferred time
-            const isPreferredTimeWindow = 
-              (adjustedHour === preferredHour && 
-                (currentMinute >= preferredMinute && currentMinute < preferredMinute + 10)) ||
-              // Handle edge case where preferred time is near the end of an hour
-              (adjustedHour === preferredHour + 1 && 
-                preferredMinute >= 50 && 
-                currentMinute < (preferredMinute + 10) % 60);
+            // Check if the preferred notification time has passed today in user's timezone
+            const hasTimePassed = currentTimeInMinutes >= preferredTimeInMinutes;
                 
             logger.info(`Notification time check for user ${user.id}:`, {
               userId: user.id,
               email: user.email,
-              serverTime: `${currentHour}:${currentMinute}`,
-              adjustedTime: `${adjustedHour}:${currentMinute}`, // Time adjusted for timezone
-              preferredTime: `${preferredHour}:${preferredMinute}`,
-              isPreferredTimeWindow,
-              existingNotificationsToday: existingNotifications.length
+              serverTimeUTC: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+              userLocalTime: `${userLocalHour}:${String(userLocalMinute).padStart(2, '0')}`,
+              preferredTime: `${preferredHour}:${String(preferredMinute).padStart(2, '0')}`,
+              timezoneOffset: userTimezoneOffsetMinutes,
+              hasTimePassed,
+              alreadySentToday: existingNotifications.length > 0
             });
             
-            // Only send if within time window and no notifications sent today
-            if (existingNotifications.length === 0 && isPreferredTimeWindow) {
+            // Only send if:
+            // 1. No notification sent today
+            // 2. Current time has passed the user's preferred notification time
+            if (existingNotifications.length === 0 && hasTimePassed) {
               const notification = {
                 userId: user.id,
                 title: "Daily Reminder",

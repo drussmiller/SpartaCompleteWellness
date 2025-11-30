@@ -1,18 +1,20 @@
-import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
+import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent, useMemo } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-
+import { useVideoUpload, VideoUploadResult } from "@/hooks/use-video-upload";
 
 interface CommentFormProps {
-  onSubmit: (content: string, file?: File) => Promise<void>; 
+  onSubmit: (content: string, file?: File, chunkedUploadData?: VideoUploadResult) => Promise<void>; 
   isSubmitting: boolean;
   placeholder?: string;
   defaultValue?: string;
   onCancel?: () => void;
   inputRef?: React.RefObject<HTMLTextAreaElement>;
+  disableAutoScroll?: boolean;
+  skipScrollReset?: boolean;
 }
 
 export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({ 
@@ -21,41 +23,58 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   placeholder = "Enter a comment",
   defaultValue = "",
   onCancel,
-  inputRef
+  inputRef,
+  disableAutoScroll = false,
+  skipScrollReset = false
 }: CommentFormProps, ref) => {
   const [content, setContent] = useState(defaultValue);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null); // Added state for video thumbnail
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient(); 
   const { toast } = useToast();
+  
+  // Use the video upload hook for handling video files
+  const videoUpload = useVideoUpload({
+    maxSizeMB: 100,
+    autoGenerateThumbnail: true,
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
+
+  const textareaRef = inputRef || internalRef;
+
   const setRefs = (element: HTMLTextAreaElement | null) => {
+    (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element;
+    if (inputRef) {
+      (inputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element;
+    }
     if (typeof ref === 'function') {
       ref(element);
     }
   };
 
-  const ensureTextareaFocus = () => {
-    const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-    if (textarea) {
-      textarea.focus();
-      console.log("Refocusing textarea");
-    }
-  };
-
   useEffect(() => {
-    setTimeout(() => {
-      const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus();
-        console.log("Focus in CommentForm component mount");
+    // Adjust height if there's default content
+    if (textareaRef.current && defaultValue) {
+      const textarea = textareaRef.current;
+      textarea.style.height = '38px';
+      const newHeight = Math.min(200, textarea.scrollHeight);
+      textarea.style.height = `${newHeight}px`;
+      if (textarea.scrollHeight > 200) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
       }
-    }, 200);
-  }, []);
+    }
+  }, [defaultValue]);
 
   useEffect(() => {
     if (content === '') {
@@ -64,10 +83,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   }, [content]);
 
   const resetTextarea = () => {
-    const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-    if (textarea) {
-      textarea.style.height = '38px';
-      const container = textarea.parentElement;
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '38px';
+      const container = textareaRef.current.parentElement;
       if (container) {
         container.style.marginTop = '0';
       }
@@ -76,23 +94,43 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   const handleSubmit = async () => {
     try {
-      if (!content.trim() && !selectedFile) return;
+      if (!content.trim() && !selectedFile && !videoUpload.state.file) return;
 
-      // Always pass both content and file (file can be undefined)
-      await onSubmit(content, selectedFile || undefined);
+      // Use video file from hook if available, otherwise use selectedFile
+      const fileToSubmit = videoUpload.state.file || selectedFile || undefined;
+      
+      let chunkedUploadResult: VideoUploadResult | undefined = undefined;
+      
+      // For video files, use the hook's uploadVideo method which handles chunked upload
+      if (videoUpload.state.file) {
+        console.log('Uploading video via useVideoUpload hook for comment');
+        const result = await videoUpload.uploadVideo('comment');
+        if (result) {
+          chunkedUploadResult = result;
+          console.log('Video upload completed via hook:', result);
+        }
+        // If result is null, it means the file was too small for chunked upload
+        // and will be uploaded directly via FormData
+      }
+      
+      // Pass chunked upload data if available, otherwise pass the file for small videos/images
+      await onSubmit(
+        content, 
+        chunkedUploadResult ? undefined : fileToSubmit, 
+        chunkedUploadResult
+      );
 
       setContent('');
       setSelectedFile(null);
-      setVideoThumbnail(null); // Clear thumbnail after submit
+      videoUpload.clear(); // Clear video upload state
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
 
       requestAnimationFrame(() => {
-        const textarea = document.getElementById('comment-textarea') as HTMLTextAreaElement;
-        if (textarea) {
-          textarea.style.height = '38px';
-          const containerElement = textarea.closest('.flex-1');
+        if (textareaRef.current) {
+          textareaRef.current.style.height = '38px';
+          const containerElement = textareaRef.current.closest('.flex-1');
           if (containerElement instanceof HTMLElement) {
             containerElement.style.height = '50px';
           }
@@ -100,47 +138,53 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
       });
     } catch (error) {
       console.error('Error submitting comment:', error);
+      // Clear upload state to allow retry
+      videoUpload.clear();
+      setSelectedFile(null);
     }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (content.trim() && !isSubmitting) {
-        handleSubmit();
-      }
-    }
+    // Allow Enter key to create new lines without submitting
+    // Users must click the send button to submit comments
   };
 
   return (
     <div 
       className="flex flex-col gap-1 w-full"
       ref={containerRef}
-      onClick={(e) => {
-        ensureTextareaFocus();
-        e.stopPropagation();
-      }}
     >
-      {selectedFile && (
+      {(selectedFile || videoUpload.state.file) && (
         <div className="mb-2">
-          <div className="relative inline-flex items-start gap-2">
-            {selectedFile.type.startsWith('image/') ? (
-              <img 
-                src={URL.createObjectURL(selectedFile)} 
-                alt="Selected image" 
-                className="max-h-24 max-w-full rounded-lg object-cover"
-              />
-            ) : selectedFile.type.startsWith('video/') ? (
-              <img 
-                src={videoThumbnail || ''} // Display thumbnail if available
-                alt="Video Thumbnail" 
-                className="max-h-24 max-w-full rounded-lg object-cover"
-              />
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                {selectedFile.name}
-              </span>
-            )}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {selectedFile?.type.startsWith('image/') ? (
+                <img 
+                  src={URL.createObjectURL(selectedFile)} 
+                  alt="Selected image" 
+                  className="max-h-24 max-w-full rounded-lg object-cover"
+                />
+              ) : (videoUpload.state.file || selectedFile?.type.startsWith('video/')) ? (
+                <img 
+                  src={videoUpload.state.thumbnail || ''} 
+                  alt="Video Thumbnail" 
+                  className="max-h-24 max-w-full rounded-lg object-cover"
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {selectedFile?.name}
+                </span>
+              )}
+              {videoUpload.state.isUploading && (
+                <div className="flex flex-col items-center gap-1">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-xs font-medium">{Math.round(videoUpload.state.uploadProgress)}%</span>
+                  {videoUpload.state.uploadStatusMessage && videoUpload.state.uploadStatusMessage.trim() && (
+                    <span className="text-[10px] text-muted-foreground text-center max-w-[100px]">{videoUpload.state.uploadStatusMessage}</span>
+                  )}
+                </div>
+              )}
+            </div>
             <Button
               variant="destructive"
               size="icon"
@@ -148,7 +192,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedFile(null);
-                setVideoThumbnail(null); // Clear thumbnail when removing file
+                videoUpload.clear();
                 if (fileInputRef.current) {
                   fileInputRef.current.value = '';
                 }
@@ -165,65 +209,24 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           ref={fileInputRef}
           accept="image/*,video/*"
           className="hidden"
-          onChange={(e) => {
+          onChange={async (e) => {
             const file = e.target.files?.[0];
             if (file) {
-              if (file.size > 100 * 1024 * 1024) { // 100MB limit
-                toast({
-                  title: "Error",
-                  description: "File is too large. Maximum size is 100MB.",
-                  variant: "destructive",
-                });
-                return;
-              }
-
-              setSelectedFile(file);
-
-              // Handle video files
+              // Handle video files with the useVideoUpload hook
               if (file.type.startsWith('video/')) {
-                const url = URL.createObjectURL(file);
-                const video = document.createElement('video');
-                video.src = url;
-                video.preload = 'metadata';
-                video.muted = true;
-                video.playsInline = true;
-                
-                // When the video loads, set the current time to the first frame
-                video.onloadedmetadata = () => {
-                  video.currentTime = 0.1;  // Set to a small value to ensure we get the first frame
-                };
-                
-                // When the video has seeked to the requested time, capture the frame
-                video.onseeked = () => {
-                  try {
-                    // Create canvas and draw video frame
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                      
-                      // Convert to data URL for thumbnail
-                      const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
-                      setVideoThumbnail(thumbnailUrl);
-                      console.log("Generated video thumbnail in comment form");
-                      
-                      // Show file details to user
-                      const videoDetails = `Video: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB)`;
-                      toast({
-                        description: videoDetails,
-                        duration: 2000,
-                      });
-                    }
-                  } catch (error) {
-                    console.error("Error generating thumbnail:", error);
-                  }
-                };
-                
-                // Start loading the video
-                video.load();
+                await videoUpload.selectFile(file);
               } else {
+                // Handle image files normally
+                if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                  toast({
+                    title: "Error",
+                    description: "File is too large. Maximum size is 100MB.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
+                setSelectedFile(file);
                 toast({
                   description: `Selected file: ${file.name}`,
                   duration: 2000,
@@ -252,18 +255,55 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             ref={setRefs} 
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onClick={(e) => {
+              console.log("Textarea clicked");
+              e.stopPropagation();
+            }}
+            onTouchStart={(e) => {
+              console.log("Textarea touchstart");
+              e.stopPropagation();
+            }}
+            onTouchEnd={(e) => {
+              console.log("Textarea touchend");
+              e.stopPropagation();
+            }}
+            onFocus={() => console.log("Textarea focused")}
+            onBlur={() => console.log("Textarea blurred")}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = '38px';
               const newHeight = Math.min(200, target.scrollHeight); 
               target.style.height = `${newHeight}px`;
+              
+              // Enable scrolling if content exceeds max height
+              if (target.scrollHeight > 200) {
+                target.style.overflowY = 'auto';
+              } else {
+                target.style.overflowY = 'hidden';
+              }
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="resize-none bg-gray-100 overflow-hidden rounded-full py-2 px-4"
+            readOnly={false}
+            disabled={false}
+            tabIndex={0}
+            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all ${isAndroid ? 'pb-[12px]' : ''}`}
             rows={1}
-            style={{ height: '38px', minHeight: '38px' }}
-            id="comment-textarea"
+            style={{ 
+              height: '38px', 
+              minHeight: '38px', 
+              maxHeight: '200px', 
+              overflowY: 'auto',
+              pointerEvents: 'auto',
+              WebkitUserSelect: 'text',
+              userSelect: 'text',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+            data-testid="comment-textarea"
+            autoComplete="off"
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            spellCheck={true}
           />
         </div>
         <Button
@@ -271,10 +311,10 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
           size="icon"
           variant="ghost"
           onClick={handleSubmit}
-          disabled={isSubmitting || !content.trim()}
+          disabled={isSubmitting || videoUpload.state.isUploading || (!content.trim() && !selectedFile && !videoUpload.state.file)}
           className="ml-2"
         >
-          {isSubmitting ? (
+          {isSubmitting || videoUpload.state.isUploading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-primary">

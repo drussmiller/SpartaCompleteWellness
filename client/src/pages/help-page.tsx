@@ -1,113 +1,83 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, Book, Dumbbell, Cross, Award } from "lucide-react";
+import { Home, Activity } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
-import { AchievementDemo } from "@/components/achievements/achievement-demo";
 
 export default function HelpPage() {
   return (
     <AppLayout>
-      {/* Fixed title bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-background">
-        {/* This div is an empty spacer, which you can style as necessary */}
-      </div>
-      <div className="fixed top-10 left-0 right-0 z-50 h-16 bg-background border-b border-border">
-        <div className="p-4">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
+        <div className="max-w-2xl mx-auto p-4">
           <h1 className="text-xl font-bold">Help</h1>
         </div>
       </div>
 
-      <main className="p-4 pb-24 space-y-4 max-w-[1000px] mx-auto w-full text-lg md:px-44 md:pl-56">
+      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px] md:mt-[100px]">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5" />
-              Getting Started
+              <Home className="h-5 w-5" />
+              Home Page
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p>Welcome to Sparta Complete Wellness! Here's how to get started:</p>
+            <h3 className="font-semibold">Posts</h3>
+            <p>Your posts on the Home page seen by your team</p>
+            <p>Prayer requests are seen by your team and other teams.</p>
+
+            <h3 className="font-semibold mt-4">Post Types:</h3>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Your administrator will assign you to a team</li>
-              <li>Start sharing your wellness journey through posts</li>
-              <li>Track your measurements in your profile</li>
-              <li>Engage with your team members</li>
+              <li><strong>Food:</strong> Up to 3 posts a day (3 points each). Sunday is a free day if you choose.</li>
+              <li><strong>Workout:</strong> Up to 5 posts a week (3 points each).</li>
+              <li><strong>Scripture:</strong> One for each day of the week (3 points each).</li>
+              <li><strong>Memory verse:</strong> One per week (10 points)</li>
+              <li><strong>Miscellaneous:</strong> No points are awarded.</li>
             </ul>
+
+            <div className="bg-muted/50 p-3 rounded-md mt-4 space-y-2">
+              <p className="text-sm">
+                <strong>Note:</strong> If you are in a team marked as "Competitive" you must post Food, Workout and Scripture post on the current day and not allowed to change the date.
+              </p>
+              <p className="text-sm">
+                <strong>Note:</strong> Deleting a post with points will remove the points also
+              </p>
+            </div>
+
+            <h3 className="font-semibold mt-4">Messages</h3>
+            <p>You can message only members of your team</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Book className="h-5 w-5" />
-              Posting Guide
+              <Activity className="h-5 w-5" />
+              Activity Page
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <h3 className="font-semibold">Types of Posts:</h3>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Food (3 points):</strong> Share your healthy meals with a photo</li>
-              <li><strong>Workout (3 points):</strong> Document your exercise with a photo</li>
-              <li><strong>Scripture (3 points):</strong> Share inspiring biblical verses</li>
-              <li><strong>Memory Verse (10 points):</strong> Weekly scripture memorization</li>
-              <li><strong>Comments:</strong> Engage with other posts</li>
-            </ul>
-          </CardContent>
-        </Card>
+            <div>
+              <h3 className="font-semibold">Week Content</h3>
+              <ul className="list-disc pl-6 space-y-1 mt-2">
+                <li>Memory Verse for the week is listed at the top of the section.</li>
+                <li>Follow the instructions in the section to have a successful week.</li>
+              </ul>
+            </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Dumbbell className="h-5 w-5" />
-              Fitness Tracking
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>Track your fitness progress through:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Regular weight measurements</li>
-              <li>Waist measurements</li>
-              <li>Progress graphs in your profile</li>
-              <li>Daily activity posts</li>
-            </ul>
-          </CardContent>
-        </Card>
+            <div>
+              <h3 className="font-semibold">Week and Day Content</h3>
+              <ul className="list-disc pl-6 space-y-1 mt-2">
+                <li>Today's Bible verse is at the top of the section.</li>
+                <li>Follow the instruction in the section to have a successful day.</li>
+              </ul>
+            </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Cross className="h-5 w-5" />
-              Spiritual Growth
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>Enhance your spiritual journey by:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Sharing daily scripture readings</li>
-              <li>Memorizing weekly verses</li>
-              <li>Engaging in spiritual discussions</li>
-              <li>Supporting team members through prayer and encouragement</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              Achievements
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>Earn achievements by reaching milestones in your wellness journey:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Complete a streak of consistent food posts</li>
-              <li>Finish all your workouts for the week</li>
-              <li>Maintain a daily scripture reading habit</li>
-              <li>Successfully memorize and share weekly verses</li>
-              <li>Help your team reach collective goals</li>
-            </ul>
-            
-            <AchievementDemo />
+            <div>
+              <h3 className="font-semibold">Re-Engage (Non-competitive teams only)</h3>
+              <p className="mt-2">
+                If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week. All posts and points Week/Day and after will be forfeited.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </main>

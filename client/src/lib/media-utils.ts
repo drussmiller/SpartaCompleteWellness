@@ -65,6 +65,12 @@ export function createMediaUrl(mediaUrl: string | null): string {
     return mediaUrl;
   }
 
+  // If it's an HLS playlist URL, return as-is
+  if (mediaUrl.startsWith('/api/hls/')) {
+    console.log('HLS playlist URL, returning as-is');
+    return mediaUrl;
+  }
+
   // Extract just the filename from the end of the path
   let filename = mediaUrl;
   
@@ -120,7 +126,9 @@ export function createThumbnailUrl(mediaUrl: string | null): string {
   if (filename.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
     const baseName = filename.substring(0, filename.lastIndexOf('.'));
     const thumbnailFilename = `${baseName}.jpg`;
-    const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}`;
+    // Add cache-busting timestamp to force reload of previously failed thumbnails
+    const cacheBuster = Date.now();
+    const result = `/api/serve-file?filename=${encodeURIComponent(thumbnailFilename)}&_cb=${cacheBuster}`;
     console.log('Created video thumbnail URL:', result);
     return result;
   }

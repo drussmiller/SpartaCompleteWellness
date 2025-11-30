@@ -2,6 +2,7 @@ import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
+import { VideoUploadResult } from "@/hooks/use-video-upload";
 import { Post, User } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -12,6 +13,8 @@ import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect, useState } from "react";
 import { getThumbnailUrl } from "@/lib/image-utils";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CommentDrawerProps {
   postId: number;
@@ -24,6 +27,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // Manual fetch states
   const [originalPost, setOriginalPost] = useState<Post & { author: User } | null>(null);
@@ -35,15 +39,48 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const [commentsError, setCommentsError] = useState<Error | null>(null);
 
   const [isCommentBoxVisible, setIsCommentBoxVisible] = useState(true);
+  const [viewportHeight, setViewportHeight] = useState<number>(window.innerHeight);
+  const [viewportTop, setViewportTop] = useState<number>(0);
+  const keyboardHeight = useKeyboardAdjustment();
 
   // Callback to handle visibility
   const handleCommentVisibility = (isEditing: boolean, isReplying: boolean) => {
     setIsCommentBoxVisible(!isEditing && !isReplying);
   };
 
-  // Focus on the comment input when the drawer opens
+  // Track viewport height and position changes for keyboard
   useEffect(() => {
-    if (isOpen) {
+    const updateViewport = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+        setViewportTop(window.visualViewport.offsetTop);
+      } else {
+        setViewportHeight(window.innerHeight);
+        setViewportTop(0);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateViewport);
+      window.visualViewport.addEventListener('scroll', updateViewport);
+    }
+    window.addEventListener('resize', updateViewport);
+
+    // Initial setup
+    updateViewport();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateViewport);
+        window.visualViewport.removeEventListener('scroll', updateViewport);
+      }
+      window.removeEventListener('resize', updateViewport);
+    };
+  }, []);
+
+  // Focus on the comment input when the drawer opens (disabled on mobile to prevent keyboard from blocking view)
+  useEffect(() => {
+    if (isOpen && !isMobile) {
       // Try multiple approaches to ensure focus
       const focusTextarea = () => {
         // Method 1: Direct focus using our ref
@@ -67,7 +104,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         setTimeout(focusTextarea, delay);
       });
     }
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // Fetch original post manually
   useEffect(() => {
@@ -189,8 +226,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
               if (comment.type === 'memory_verse') {
                 return {...comment, is_video: true};
               } 
-              // For miscellaneous comments, check for video indicators
-              else if (comment.type === 'miscellaneous') {
+              // For miscellaneous and regular comments, check for video indicators
+              else if (comment.type === 'miscellaneous' || comment.type === 'comment') {
                 const mediaUrl = comment.mediaUrl.toLowerCase();
                 const isVideo = 
                   // Check file extensions
@@ -204,6 +241,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                   mediaUrl.includes('/video/') ||
                   mediaUrl.includes('/memory_verse/') ||
                   mediaUrl.includes('/miscellaneous/') ||
+                  mediaUrl.includes('/hls/') ||
                   // Check content for [VIDEO] marker
                   (comment.content && comment.content.includes('[VIDEO]'));
 
@@ -234,12 +272,20 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   }, [isOpen, postId]);
 
   const createCommentMutation = useMutation({
-    mutationFn: async ({ content, file }: { content: string, file?: File }) => {
-      if (!content.trim()) {
-        throw new Error("Comment content cannot be empty");
+    mutationFn: async ({ content, file, chunkedUploadData }: { 
+      content: string, 
+      file?: File,
+      chunkedUploadData?: VideoUploadResult
+    }) => {
+      // Validate: must have either content or media
+      const hasMedia = !!file || !!chunkedUploadData;
+      const hasContent = content && content.trim().length > 0;
+      
+      if (!hasContent && !hasMedia) {
+        throw new Error("Comment must have either text or media");
       }
 
-      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file });
+      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file, hasChunkedUpload: !!chunkedUploadData });
 
       // Use FormData to handle both text and file uploads
       const formData = new FormData();
@@ -248,10 +294,29 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       formData.append('parentId', postId.toString());
       formData.append('points', '1');
 
-      // Append file if provided
-      if (file) {
+      // If we have chunked upload data (HLS converted video), use that instead of raw file
+      if (chunkedUploadData) {
+        console.log("Using chunked upload data for comment:", chunkedUploadData);
+        formData.append('chunkedUploadMediaUrl', chunkedUploadData.mediaUrl);
+        if (chunkedUploadData.thumbnailUrl) {
+          formData.append('chunkedUploadThumbnailUrl', chunkedUploadData.thumbnailUrl);
+        }
+        formData.append('chunkedUploadFilename', chunkedUploadData.filename);
+        formData.append('chunkedUploadIsVideo', 'true');
+        formData.append('is_video', 'true');
+        formData.append('selected_media_type', 'video');
+      }
+      // Append file if provided (for images and small videos)
+      else if (file) {
         console.log("Appending file to comment:", file.name, file.type);
         formData.append('image', file); // Using 'image' instead of 'file' to match the server's multer config
+        
+        // Set is_video flag for video files
+        if (file.type.startsWith('video/')) {
+          formData.append('is_video', 'true');
+          formData.append('selected_media_type', 'video');
+          console.log("Marked comment as video");
+        }
       }
 
       try {
@@ -300,8 +365,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                 if (comment.type === 'memory_verse') {
                   return {...comment, is_video: true};
                 } 
-                // For miscellaneous comments, check for video indicators
-                else if (comment.type === 'miscellaneous') {
+                // For miscellaneous and regular comments, check for video indicators
+                else if (comment.type === 'miscellaneous' || comment.type === 'comment') {
                   const mediaUrl = comment.mediaUrl.toLowerCase();
                   const isVideo = 
                     // Check file extensions
@@ -315,6 +380,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
                     mediaUrl.includes('/video/') ||
                     mediaUrl.includes('/memory_verse/') ||
                     mediaUrl.includes('/miscellaneous/') ||
+                    mediaUrl.includes('/hls/') ||
                     // Check content for [VIDEO] marker
                     (comment.content && comment.content.includes('[VIDEO]'));
 
@@ -398,10 +464,21 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         side="right" 
         ref={drawerRef}
         className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
-        style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 30px)' }}
+        style={{ 
+          width: '100%', 
+          maxWidth: '100%', 
+          overflow: 'hidden', 
+          paddingTop: 'env(safe-area-inset-top, 30px)',
+          position: 'fixed',
+          top: `${viewportTop}px`,
+          left: '0',
+          right: '0',
+          height: `${viewportHeight}px`,
+          maxHeight: `${viewportHeight}px`
+        }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="h-full w-full flex flex-col">
+        <div className="w-full flex flex-col" style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
           {/* Fixed header bar */}
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
@@ -415,11 +492,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
               <div className="flex flex-col items-start justify-center h-full ml-14 pt-2">
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`}
-                      alt={originalPost.author.username}
-                    />
-                    <AvatarFallback>
+                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                    <AvatarFallback
+                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                      className="text-white"
+                    >
                       {originalPost.author.username?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -469,13 +546,14 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
           {/* Fixed comment form at the bottom */}
           {isCommentBoxVisible && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background z-[99999]" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className={`fixed bottom-0 left-0 right-0 px-4 pt-4 border-t bg-background z-[99999] ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
-                onSubmit={async (content, file) => {
-                  await createCommentMutation.mutateAsync({ content, file });
+                onSubmit={async (content, file, chunkedUploadData) => {
+                  await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
                 }}
                 isSubmitting={createCommentMutation.isPending}
                 inputRef={commentInputRef}
+                disableAutoScroll={isMobile}
               />
             </div>
           )}

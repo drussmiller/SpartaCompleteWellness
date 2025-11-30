@@ -125,19 +125,20 @@ export default function WaiverPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-primary">
-            Liability Waiver & Release
-          </CardTitle>
-          <p className="text-muted-foreground">
-            Please read and sign this waiver to continue using Sparta Complete Wellness
-          </p>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          {/* Waiver Content */}
-          <ScrollArea className="h-64 w-full border rounded-md p-4">
+      <div className="w-full max-w-4xl max-h-screen overflow-y-auto py-4">
+        <Card className="w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-primary">
+              Liability Waiver & Release
+            </CardTitle>
+            <p className="text-muted-foreground">
+              Please read and sign this waiver to continue using Sparta Complete Wellness
+            </p>
+          </CardHeader>
+          
+          <CardContent className="space-y-6 pb-8">
+            {/* Waiver Content */}
+            <ScrollArea className="h-64 w-full border rounded-md p-4">
             <div className="space-y-4 text-sm">
               <h3 className="font-semibold text-lg">ASSUMPTION OF RISK AND RELEASE OF LIABILITY</h3>
               
@@ -181,7 +182,12 @@ export default function WaiverPage() {
                 I grant permission for my likeness to be captured in photographs, videos, or other media during Activities and for such media to be used for promotional purposes by Sparta Complete Wellness.
               </p>
               
-              <h4 className="font-semibold">6. SEVERABILITY</h4>
+              <h4 className="font-semibold">6. SMS TEXT MESSAGE NOTIFICATIONS</h4>
+              <p>
+                I understand that Sparta Complete Wellness may send SMS text message notifications for important program updates, daily reminders, and alerts. I may opt in or opt out of receiving these text messages at any time through my notification settings in the app. Standard message and data rates may apply. Message frequency may vary.
+              </p>
+              
+              <h4 className="font-semibold">7. SEVERABILITY</h4>
               <p>
                 If any portion of this agreement is held invalid, the remainder shall continue in full force and effect.
               </p>
@@ -304,7 +310,7 @@ export default function WaiverPage() {
           </div>
           
           {/* Submit Button */}
-          <div className="flex justify-center">
+          <div className="flex flex-col gap-3 items-center">
             <Button 
               onClick={handleSubmit}
               disabled={!hasReadWaiver || !hasAgreed || !(signatureType === 'draw' ? signature : typedSignature.trim()) || isSubmitting}
@@ -313,13 +319,34 @@ export default function WaiverPage() {
             >
               {isSubmitting ? 'Submitting...' : 'Sign Waiver & Continue'}
             </Button>
+            
+            <Button 
+              onClick={async () => {
+                try {
+                  await fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                  });
+                  window.location.href = '/auth';
+                } catch (error) {
+                  console.error('Error signing out:', error);
+                  window.location.href = '/auth';
+                }
+              }}
+              variant="outline"
+              className="w-full max-w-md"
+              size="lg"
+            >
+              Cancel
+            </Button>
           </div>
           
           <p className="text-xs text-gray-500 text-center">
             By clicking "Sign Waiver & Continue", you acknowledge that you have read, understood, and agree to be bound by this waiver.
           </p>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

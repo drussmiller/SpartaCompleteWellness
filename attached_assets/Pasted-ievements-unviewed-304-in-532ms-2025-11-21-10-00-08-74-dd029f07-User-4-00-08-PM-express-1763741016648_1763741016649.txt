@@ -1,0 +1,150 @@
+ievements/unviewed 304 in 532ms :: []
+
+2025-11-21 10:00:08.74
+dd029f07
+User
+4:00:08 PM [express] GET /api/notifications/unread 304 in 508ms :: {"unreadCount":0}
+2025-11-21 10:00:08.77
+dd029f07
+User
+4:00:08 PM [express] GET /api/posts/has-any-posts 304 in 511ms :: {"hasAnyPosts":true}
+2025-11-21 10:00:08.82
+dd029f07
+User
+4:00:08 PM [express] GET /api/teams/1/competitive 304 in 741ms :: {"competitive":false}
+2025-11-21 10:00:09.41
+dd029f07
+User
+Attempting to download file from Object Storage: shared/uploads/1763681550413-image.jpeg
+2025-11-21 10:00:09.46
+dd029f07
+User
+Attempting to download file from Object Storage: shared/uploads/1762141243857-image.jpeg
+2025-11-21 10:00:09.55
+dd029f07
+User
+Attempting to download file from Object Storage: shared/uploads/1763681606243-image.jpeg
+2025-11-21 10:00:09.55
+dd029f07
+User
+Attempting to download file from Object Storage: shared/uploads/1763403658528-image.jpeg
+2025-11-21 10:00:09.65
+dd029f07
+User
+Successfully downloaded shared/uploads/1763681550413-image.jpeg, size: 486532 bytes
+2025-11-21 10:00:09.65
+dd029f07
+User
+Download result for shared/uploads/1763681550413-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:00:09.69
+dd029f07
+User
+Successfully downloaded shared/uploads/1762141243857-image.jpeg, size: 260036 bytes
+2025-11-21 10:00:09.69
+dd029f07
+User
+Download result for shared/uploads/1762141243857-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:00:09.75
+dd029f07
+User
+Successfully downloaded shared/uploads/1763681606243-image.jpeg, size: 556401 bytes
+2025-11-21 10:00:09.75
+dd029f07
+User
+Download result for shared/uploads/1763681606243-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:00:09.76
+dd029f07
+User
+Successfully downloaded shared/uploads/1763403658528-image.jpeg, size: 135040 bytes
+2025-11-21 10:00:09.76
+dd029f07
+User
+Download result for shared/uploads/1763403658528-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:00:09.99
+dd029f07
+User
+4:00:09 PM [express] GET /api/serve-file 200 in 579ms
+2025-11-21 10:00:09.99
+dd029f07
+User
+4:00:09 PM [express] GET /api/serve-file 200 in 532ms
+2025-11-21 10:00:10.05
+dd029f07
+User
+4:00:10 PM [express] GET /api/serve-file 200 in 509ms
+2025-11-21 10:00:10.06
+dd029f07
+User
+4:00:10 PM [express] GET /api/serve-file 200 in 509ms
+2025-11-21 10:00:10.22
+dd029f07
+User
+4:00:10 PM [express] GET /api/posts/39/reactions 200 in 703ms :: []
+2025-11-21 10:00:10.25
+dd029f07
+User
+4:00:10 PM [express] GET /api/posts/32/reactions 200 in 668ms :: []
+2025-11-21 10:00:10.28
+dd029f07
+User
+4:00:10 PM [express] GET /api/posts/30/reactions 200 in 573ms :: []
+2025-11-21 10:00:10.32
+dd029f07
+User
+4:00:10 PM [express] GET /api/posts/33/reactions 200 in 535ms :: []
+2025-11-21 10:00:10.32
+dd029f07
+User
+4:00:10 PM [express] GET /api/posts/21/reactions 200 in 535ms :: [{"id":2,"userId":19,"postId":21,"t…
+2025-11-21 10:00:10.39
+dd029f07
+User
+4:00:10 PM [express] GET /api/posts/6/reactions 200 in 536ms :: []
+2025-11-21 10:00:10.43
+dd029f07
+User
+4:00:10 PM [express] GET /api/posts/15/reactions 200 in 536ms :: []
+2025-11-21 10:00:11.38
+dd029f07
+User
+4:00:11 PM [express] GET /api/notifications/unread 304 in 200ms :: {"unreadCount":0}
+2025-11-21 10:00:11.39
+dd029f07
+User
+4:00:11 PM [express] GET /api/notifications 304 in 190ms :: []
+2025-11-21 10:00:11.41
+dd029f07
+User
+4:00:11 PM [express] GET /api/notifications/unread 304 in 199ms :: {"unreadCount":0}
+2025-11-21 10:00:11.42
+dd029f07
+User
+4:00:11 PM [express] GET /api/notifications/unread 304 in 188ms :: {"unreadCount":0}
+2025-11-21 10:00:11.44
+dd029f07
+User
+4:00:11 PM [express] GET /api/notifications 304 in 200ms :: []
+2025-11-21 10:00:11.47
+dd029f07
+User
+4:00:11 PM [express] GET /api/notifications/unread 304 in 205ms :: {"unreadCount":0}
+2025-11-21 10:00:11.49
+dd029f07
+User
+Attempting to download file from Object Storage: shared/uploads/1763731302840-IMG_9481.mov
+2025-11-21 10:00:11.49
+dd029f07
+User
+Created video cache directory: /tmp/video-cache
+2025-11-21 10:00:11.49
+dd029f07
+User
+Downloading shared/uploads/1763731302840-IMG_9481.mov to cache...
+2025-11-21 10:00:11.49
+dd029f07
+User
+Loaded 0 videos from cache directory
+2025-11-21 10:00:14.78
+dd029f07
+User
+Successfully downloaded shared/uploads/1763731302840-IMG_9481.mov, size: 39987588 bytes

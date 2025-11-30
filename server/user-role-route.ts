@@ -1,9 +1,10 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, teams, groups } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { authenticate } from "./auth";
 import { logger } from "./logger";
+import { storage } from "./storage";
 
 // Create a router for the user role endpoint
 export const userRoleRouter = Router();
@@ -11,10 +12,6 @@ export const userRoleRouter = Router();
 // Endpoint for updating user roles (admin/team lead)
 userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Request, res: Response) => {
   try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
     const userId = parseInt(req.params.userId);
     if (isNaN(userId)) {
       return res.status(400).json({ message: "Invalid user ID format" });
@@ -25,8 +22,62 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
       return res.status(400).json({ message: "Invalid role parameters. Required: role and value" });
     }
 
-    if (role !== 'isAdmin' && role !== 'isTeamLead') {
-      return res.status(400).json({ message: "Invalid role. Must be 'isAdmin' or 'isTeamLead'" });
+    if (role !== 'isAdmin' && role !== 'isTeamLead' && role !== 'isGroupAdmin') {
+      return res.status(400).json({ message: "Invalid role. Must be 'isAdmin', 'isTeamLead', or 'isGroupAdmin'" });
+    }
+
+    // Check authorization based on role being modified
+    const isFullAdmin = req.user?.isAdmin;
+    const isGroupAdmin = req.user?.isGroupAdmin;
+    const isTeamLead = req.user?.isTeamLead;
+
+    // Full admins can do anything
+    if (!isFullAdmin) {
+      // Group admins and Team Leads can only manage Team Lead roles
+      if (role !== 'isTeamLead') {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      if (!isGroupAdmin && !isTeamLead) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Get the target user
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!targetUser || !targetUser.teamId) {
+        return res.status(400).json({ message: "User must be in a team" });
+      }
+
+      // Team Leads can only manage users in their own team
+      if (isTeamLead && !isFullAdmin && !isGroupAdmin) {
+        if (targetUser.teamId !== req.user.teamId) {
+          return res.status(403).json({ message: "You can only manage Team Leads in your own team" });
+        }
+      }
+
+      // Group Admins can only manage users in their group
+      if (isGroupAdmin && !isFullAdmin) {
+        // Get the target user's team to find their group
+        const [targetTeam] = await db
+          .select()
+          .from(teams)
+          .where(eq(teams.id, targetUser.teamId))
+          .limit(1);
+
+        if (!targetTeam) {
+          return res.status(400).json({ message: "User's team not found" });
+        }
+
+        // Verify the Group Admin has authority over this group
+        if (targetTeam.groupId !== req.user.adminGroupId) {
+          return res.status(403).json({ message: "You can only manage Team Leads in your own group" });
+        }
+      }
     }
 
     // Don't allow removing admin from primary admin account
@@ -44,11 +95,60 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
       return res.status(400).json({ message: "Cannot remove admin role from primary admin account" });
     }
 
-    // Update the user's role
-    await db
-      .update(users)
-      .set({ [role]: value })
-      .where(eq(users.id, userId));
+    // For Group Admin role, verify permissions
+    if (role === "isGroupAdmin") {
+      if (!req.user.isAdmin) {
+        return res.status(403).json({ message: "Only Admins can assign Group Admin role" });
+      }
+
+      if (value) {
+        // When promoting to Group Admin, set adminGroupId based on their team if they have one
+        const [targetUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (targetUser?.teamId) {
+          const [team] = await db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, targetUser.teamId))
+            .limit(1);
+
+          if (team) {
+            await db
+              .update(users)
+              .set({ isGroupAdmin: true, adminGroupId: team.groupId })
+              .where(eq(users.id, userId));
+          } else {
+            // If team not found, just set the role
+            await db
+              .update(users)
+              .set({ isGroupAdmin: true })
+              .where(eq(users.id, userId));
+          }
+        } else {
+          // If no team, adminGroupId will remain null and can be set later
+          await db
+            .update(users)
+            .set({ isGroupAdmin: true })
+            .where(eq(users.id, userId));
+        }
+      } else {
+        // Clear adminGroupId AND isGroupAdmin when removing Group Admin role
+        await db
+          .update(users)
+          .set({ isGroupAdmin: false, adminGroupId: null })
+          .where(eq(users.id, userId));
+      }
+    } else {
+      // Update standard roles (isAdmin, isTeamLead)
+      await db
+        .update(users)
+        .set({ [role]: value })
+        .where(eq(users.id, userId));
+    }
 
     const [updatedUser] = await db
       .select()

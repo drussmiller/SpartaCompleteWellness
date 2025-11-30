@@ -1,4 +1,4 @@
-ssimport { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
@@ -32,6 +32,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const [comments, setComments] = useState<Array<Post & { author: User }>>([]);
   const [areCommentsLoading, setAreCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<Error | null>(null);
+  
+  const [isCommentBoxVisible, setIsCommentBoxVisible] = useState(true);
+
+  // Callback to handle visibility
+  const handleCommentVisibility = (isEditing: boolean, isReplying: boolean) => {
+    setIsCommentBoxVisible(!isEditing && !isReplying);
+  };
 
   // Focus on the comment input when the drawer opens
   useEffect(() => {
@@ -177,18 +184,88 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   }, [isOpen, postId]);
 
   const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const data = {
-        type: "comment",
-        content: content.trim(),
-        parentId: postId,
-        points: 1
-      };
-
-      console.log(`Creating comment for post ${postId}...`, data);
+    mutationFn: async ({ content, file, chunkedUploadData }: { content: string; file?: File; chunkedUploadData?: any }) => {
+      // Validate: must have either content or media
+      const hasMedia = !!file || !!chunkedUploadData;
+      const hasContent = content && content.trim().length > 0;
+      
+      if (!hasContent && !hasMedia) {
+        throw new Error("Comment must have either text or media");
+      }
+      
+      console.log(`Creating comment for post ${postId}...`, { content, hasFile: !!file, hasChunkedUpload: !!chunkedUploadData });
       
       try {
-        const res = await fetch('/api/posts', {
+        // If we have chunked upload data, use JSON request
+        if (chunkedUploadData) {
+          const data = {
+            type: "comment",
+            content: content.trim(),
+            parentId: postId,
+            points: 1,
+            chunkedUploadMediaUrl: chunkedUploadData.mediaUrl,
+            chunkedUploadThumbnailUrl: chunkedUploadData.thumbnailUrl,
+            chunkedUploadFilename: chunkedUploadData.filename,
+            chunkedUploadIsVideo: chunkedUploadData.isVideo,
+          };
+          
+          const res = await fetch('/api/posts/comments', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data),
+            credentials: 'include'
+          });
+
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`Comment creation error (${res.status}):`, errorText);
+            throw new Error(errorText || "Failed to create comment");
+          }
+
+          return await res.json();
+        }
+        
+        // If we have a file, use FormData
+        if (file) {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const data = {
+            type: "comment",
+            content: content.trim(),
+            parentId: postId,
+            points: 1
+          };
+          
+          formData.append('data', JSON.stringify(data));
+          
+          const res = await fetch('/api/posts/comments', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
+
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`Comment creation error (${res.status}):`, errorText);
+            throw new Error(errorText || "Failed to create comment");
+          }
+
+          return await res.json();
+        }
+        
+        // Otherwise, use regular JSON request
+        const data = {
+          type: "comment",
+          content: content.trim(),
+          parentId: postId,
+          points: 1
+        };
+
+        const res = await fetch('/api/posts/comments', {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
@@ -295,11 +372,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 {/* User info and time */}
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={originalPost.author.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${originalPost.author.username}`}
-                      alt={originalPost.author.username}
-                    />
-                    <AvatarFallback>
+                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                    <AvatarFallback
+                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                      className="text-white"
+                    >
                       {originalPost.author.username?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -338,20 +415,22 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
               <>
                 <div className="flex-1 overflow-y-auto h-[calc(100vh-12rem)] p-4 space-y-6 w-full max-w-none">
                   {originalPost && <PostView post={originalPost} />}
-                  <CommentList comments={comments} postId={postId} />
+                  <CommentList comments={comments} postId={postId} onVisibilityChange={handleCommentVisibility} />
                 </div>
 
                 {/* Fixed comment form at the bottom */}
-                <div className="p-4 pb-28 border-t bg-background fixed bottom-0 left-0 right-0">
-                  <CommentForm
-                    onSubmit={async (content) => {
-                      await createCommentMutation.mutateAsync(content);
-                    }}
-                    isSubmitting={createCommentMutation.isPending}
-                    ref={commentInputRef}
-                    inputRef={commentInputRef}
-                  />
-                </div>
+                {isCommentBoxVisible && (
+                  <div className="p-4 pb-28 border-t bg-background fixed bottom-0 left-0 right-0">
+                    <CommentForm
+                      onSubmit={async (content, file, chunkedUploadData) => {
+                        await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
+                      }}
+                      isSubmitting={createCommentMutation.isPending}
+                      ref={commentInputRef}
+                      inputRef={commentInputRef}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>

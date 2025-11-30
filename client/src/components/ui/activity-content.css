@@ -57,29 +57,56 @@ iframe {
   display: block;
 }
 
-/* Hide all duplicate videos in weekly-content by using a data attribute */
-.weekly-content .video-wrapper[data-duplicate="true"] {
-  display: none !important;
-}
-
 /* Special treatment for daily content */
 .daily-content .video-wrapper {
   margin-top: 15px;
   margin-bottom: 25px;
 }
 
-/* Ensure correct video size regardless of parent */
+/* YouTube video container styles */
+.youtube-video-container {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 15px auto;
+  aspect-ratio: 16/9;
+  display: block;
+}
+
+.youtube-video-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Legacy video wrapper support */
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 15px auto;
+  aspect-ratio: 16/9;
+  display: block;
+}
+
 .video-wrapper iframe {
-  margin: 0;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .youtube-video-container,
+  .video-wrapper {
+    max-width: 100%;
+    margin: 10px 0;
+  }
 }
 
 /* Remove extra spaces around iframes */
-p > .video-wrapper:only-child {
+p > .video-wrapper:only-child,
+p > .youtube-video-container:only-child {
   margin: 0;
 }
 
@@ -88,14 +115,10 @@ p > .video-wrapper:only-child {
   display: none;
 }
 
-/* Fix for nested div within paragraph tags that cause duplicate rendering */
-.rich-text-content p > div.video-wrapper {
+/* Fix for nested div within paragraph tags */
+.rich-text-content p > div.video-wrapper,
+.rich-text-content p > div.youtube-video-container {
   display: block;
   margin-top: 1em;
   margin-bottom: 1em;
-}
-
-/* Hide duplicate videos */
-.rich-text-content p > div.video-wrapper + div.video-wrapper {
-  display: none;
 }

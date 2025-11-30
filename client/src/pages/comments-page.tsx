@@ -10,55 +10,76 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// Removed useSwipeToClose import - using custom full-page swipe detection
-
+import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function CommentsPage() {
+  const isMobile = useIsMobile();
   const { postId } = useParams<{ postId: string }>();
   const [, navigate] = useLocation();
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
+  const keyboardHeight = useKeyboardAdjustmentMessages();
+  const scrollableRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const [isEditingOrReplying, setIsEditingOrReplying] = useState(false);
 
-  // Add swipe-to-close functionality - detect swipe right anywhere on the page
+  // Add swipe-to-close functionality - detect swipe on scrollable area only, exclude form
   useEffect(() => {
+    const scrollableElement = scrollableRef.current;
+    const formElement = formRef.current;
+    if (!scrollableElement) return;
+
     let startX = 0;
     let startY = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Don't start swipe detection if touching the form area
+      if (formElement && e.target instanceof Node && formElement.contains(e.target)) {
+        console.log('📱 Ignoring touch - inside form area');
+        return;
+      }
+
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      console.log('📱 Comments page - Touch start anywhere:', { startX, startY });
+      console.log('📱 Comments page - Touch start on scrollable area:', { startX, startY });
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
+      // Don't trigger swipe if touching the form area
+      if (formElement && e.target instanceof Node && formElement.contains(e.target)) {
+        console.log('📱 Ignoring swipe - inside form area');
+        return;
+      }
+
       const endX = e.changedTouches[0].clientX;
       const endY = e.changedTouches[0].clientY;
       
       const deltaX = endX - startX;
       const deltaY = Math.abs(endY - startY);
       
-      console.log('📱 Comments page - Touch end anywhere:', { deltaX, deltaY, startX, endX });
+      console.log('📱 Comments page - Touch end on scrollable area:', { deltaX, deltaY, startX, endX });
       
-      // Right swipe detection: swipe right > 80px anywhere on screen, limited vertical movement
+      // Right swipe detection: swipe right > 80px, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
-        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED ANYWHERE! Going back to home');
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to home');
         e.preventDefault();
         e.stopPropagation();
         navigate("/");
       }
     };
 
-    // Attach to document for full-page swipe detection
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    // Attach to scrollable area only
+    scrollableElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+    scrollableElement.addEventListener('touchend', handleTouchEnd, { passive: false });
     
-    console.log('🔥 COMMENTS PAGE - Full-page touch event listeners attached');
+    console.log('🔥 COMMENTS PAGE - Touch event listeners attached to scrollable area');
 
     return () => {
-      console.log('🔥 COMMENTS PAGE - Cleaning up full-page touch event listeners');
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchend', handleTouchEnd);
+      console.log('🔥 COMMENTS PAGE - Cleaning up touch event listeners');
+      scrollableElement.removeEventListener('touchstart', handleTouchStart);
+      scrollableElement.removeEventListener('touchend', handleTouchEnd);
     };
   }, [navigate]);
 
@@ -103,11 +124,60 @@ export default function CommentsPage() {
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: async (data: { content: string; postId: number }) => {
+    mutationFn: async (data: { content: string; postId: number; file?: File; chunkedUploadData?: any }) => {
       if (!user?.id) throw new Error("You must be logged in to comment");
 
       try {
-        // Submit the comment
+        // If we have chunked upload data, use JSON request with chunked upload info
+        if (data.chunkedUploadData) {
+          const response = await apiRequest("POST", `/api/posts/comments`, {
+            type: "comment",
+            content: data.content,
+            parentId: data.postId,
+            chunkedUploadMediaUrl: data.chunkedUploadData.mediaUrl,
+            chunkedUploadThumbnailUrl: data.chunkedUploadData.thumbnailUrl,
+            chunkedUploadFilename: data.chunkedUploadData.filename,
+            chunkedUploadIsVideo: data.chunkedUploadData.isVideo,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to create comment");
+          }
+
+          await queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+          return await response.json();
+        }
+
+        // If we have a file, use FormData
+        if (data.file) {
+          const formData = new FormData();
+          formData.append('file', data.file);
+          
+          const commentData = {
+            type: "comment",
+            content: data.content,
+            parentId: data.postId
+          };
+          
+          formData.append('data', JSON.stringify(commentData));
+          
+          const response = await fetch('/api/posts/comments', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to create comment");
+          }
+
+          await queryClient.invalidateQueries({ queryKey: [`/api/posts/comments/${postId}`] });
+          return await response.json();
+        }
+
+        // Otherwise, use regular JSON request
         const response = await apiRequest("POST", `/api/posts/comments`, {
           type: "comment",
           content: data.content,
@@ -195,11 +265,33 @@ export default function CommentsPage() {
 
   return (
     <AppLayout title="Comments">
-      <div className="flex-1 bg-white min-h-screen w-full relative">
-        {/* Swipe detection is handled at document level via useEffect - no overlay needed */}
+      <div 
+        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+        style={{
+          position: 'fixed',
+          top: '4rem',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 100
+        }}
+      >
+        <div className={`flex flex-col h-full ${!isMobile ? 'border-x border-gray-200' : ''}`}>
+          {/* Swipe detection is handled on scrollable area only via useEffect */}
+          
+          {/* Fixed Title Box at Top */}
+          <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+            <h3 className="text-lg font-semibold">Original Post</h3>
+          </div>
         
-        <ScrollArea className="h-[calc(100vh-6rem)]">
-          <div className="container mx-auto px-4 py-6 space-y-6 bg-white min-h-full">
+        {/* Scrollable Content */}
+        <ScrollArea 
+          className="flex-1 overflow-y-auto"
+          style={{
+            height: `calc(100vh - 4rem - 260px)`
+          }}
+        >
+          <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
             <div className="bg-white">
               <PostView post={originalPost} />
             </div>
@@ -207,24 +299,47 @@ export default function CommentsPage() {
             {comments.length > 0 && (
               <div className="border-t border-gray-200 pt-6 bg-white">
                 <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
-                <CommentList comments={comments} postId={parseInt(postId)} />
+                <CommentList 
+                  comments={comments} 
+                  postId={parseInt(postId)} 
+                  onVisibilityChange={(isEditing, isReplying) => {
+                    console.log("Visibility change:", { isEditing, isReplying });
+                    setIsEditingOrReplying(isEditing || isReplying);
+                  }}
+                />
               </div>
             )}
-            
-            <div className="border-t border-gray-200 pt-6 bg-white">
-              <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
-              <CommentForm
-                onSubmit={async (content) => {
-                  await createCommentMutation.mutateAsync({
-                    content: content,
-                    postId: parseInt(postId)
-                  });
-                }}
-                isSubmitting={createCommentMutation.isPending}
-              />
-            </div>
           </div>
         </ScrollArea>
+        </div>
+        
+        {/* Fixed Comment Form at Bottom - hidden when editing/replying */}
+        {!isEditingOrReplying && (
+          <div 
+            ref={formRef}
+            className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50
+            }}
+          >
+            <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
+            <CommentForm
+              onSubmit={async (content, file, chunkedUploadData) => {
+                await createCommentMutation.mutateAsync({
+                  content,
+                  postId: parseInt(postId),
+                  file,
+                  chunkedUploadData
+                });
+              }}
+              isSubmitting={createCommentMutation.isPending}
+            />
+          </div>
+        )}
       </div>
     </AppLayout>
   );

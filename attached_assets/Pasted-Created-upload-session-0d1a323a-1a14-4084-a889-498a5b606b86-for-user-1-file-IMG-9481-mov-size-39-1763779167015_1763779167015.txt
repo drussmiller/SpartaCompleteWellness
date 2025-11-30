@@ -1,0 +1,105 @@
+Created upload session 0d1a323a-1a14-4084-a889-498a5b606b86 for user 1, file: IMG_9481.mov, size: 39987588
+2025-11-21 20:31:11.65
+c461330d
+User
+2:31:11 AM [express] POST /api/uploads/sessions 200 in 44ms :: {"sessionId":"0d1a323a-1a14-4084-a889…
+2025-11-21 20:31:16.21
+c461330d
+User
+Appended chunk 0 to session 0d1a323a-1a14-4084-a889-498a5b606b86, progress: 10485760/39987588
+2025-11-21 20:31:16.25
+c461330d
+User
+2:31:16 AM [express] PATCH /api/uploads/sessions/0d1a323a-1a14-4084-a889-498a5b606b86/chunk 200 in 6…
+2025-11-21 20:31:21.07
+c461330d
+User
+Appended chunk 1 to session 0d1a323a-1a14-4084-a889-498a5b606b86, progress: 20971520/39987588
+2025-11-21 20:31:21.10
+c461330d
+User
+2:31:21 AM [express] PATCH /api/uploads/sessions/0d1a323a-1a14-4084-a889-498a5b606b86/chunk 200 in 4…
+2025-11-21 20:31:28.31
+c461330d
+User
+Appended chunk 2 to session 0d1a323a-1a14-4084-a889-498a5b606b86, progress: 31457280/39987588
+2025-11-21 20:31:28.35
+c461330d
+User
+2:31:28 AM [express] PATCH /api/uploads/sessions/0d1a323a-1a14-4084-a889-498a5b606b86/chunk 200 in 4…
+2025-11-21 20:31:34.45
+c461330d
+User
+Found 0 unread messages for user 1
+2025-11-21 20:31:34.48
+c461330d
+User
+2:31:34 AM [express] GET /api/messages/unread/count 304 in 65ms :: {"unreadCount":0}
+2025-11-21 20:31:34.98
+c461330d
+User
+Appended chunk 3 to session 0d1a323a-1a14-4084-a889-498a5b606b86, progress: 39987588/39987588
+2025-11-21 20:31:35.02
+c461330d
+User
+2:31:35 AM [express] PATCH /api/uploads/sessions/0d1a323a-1a14-4084-a889-498a5b606b86/chunk 200 in 4…
+2025-11-21 20:31:35.18
+c461330d
+User
+📤 [Finalize Upload] Session found, finalizing 39987588 bytes...
+2025-11-21 20:31:35.18
+c461330d
+User
+📤 [Finalize Upload] Starting for session 0d1a323a-1a14-4084-a889-498a5b606b86, postType: video
+2025-11-21 20:31:35.20
+c461330d
+User
+✅ [Finalize Upload] File buffer ready: 39987588 bytes
+2025-11-21 20:31:35.20
+c461330d
+User
+[Video Upload] Processing video, converting to H.264/AAC MP4 with faststart
+2025-11-21 20:31:35.20
+c461330d
+User
+Finalized session 0d1a323a-1a14-4084-a889-498a5b606b86, file size: 39987588
+2025-11-21 20:31:35.20
+c461330d
+User
+📤 [Finalize Upload] Storing file in Object Storage, isVideo: true
+2025-11-21 20:31:35.36
+c461330d
+User
+[Video Remux] H.264 detected, remuxing with faststart: 1763778695204-IMG_9481-source.mov
+2025-11-21 20:31:35.36
+c461330d
+User
+[Video Probe] Detected codec: h264
+2025-11-21 20:31:35.37
+c461330d
+User
+[Video Remux] FFmpeg: ffmpeg -i /tmp/1763778695204-IMG_9481-source.mov -y -c copy -movflags +faststart /tmp/1763778695204-...
+2025-11-21 20:31:35.55
+c461330d
+User
+[Video Remux] Complete: 1763778695204-IMG_9481.mp4
+2025-11-21 20:31:35.58
+c461330d
+User
+[Video Upload] Conversion complete: 1763778695204-IMG_9481.mp4
+2025-11-21 20:31:36.33
+c461330d
+User
+Successfully uploaded shared/uploads/1763778695204-IMG_9481.mp4 to Object Storage
+2025-11-21 20:31:37.10
+c461330d
+User
+Video thumbnail created successfully: 1763778695204-IMG_9481.jpg
+2025-11-21 20:31:37.11
+c461330d
+User
+mediaUrl: '/api/object-storage/direct-download?storageKey=shared/uploads/1763778695204-IMG_9481.mp4',
+2025-11-21 20:31:37.11
+c461330d
+User
+isVideo: true

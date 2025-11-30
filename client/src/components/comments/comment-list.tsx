@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, X } from "lucide-react";
 import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -14,7 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { VideoPlayer } from "@/components/ui/video-player";
-import { createMediaUrl } from "@/lib/media-utils";
+import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import {
   AlertDialog,
@@ -60,11 +61,41 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const replyingToComment = comments.find(c => c.id === replyingTo);
 
   const createReplyMutation = useMutation({
-    mutationFn: async (data: { content: string; file?: File }) => {
+    mutationFn: async (data: { content: string; file?: File; chunkedUploadData?: any }) => {
       if (!replyingTo) throw new Error("No comment selected to reply to");
       if (!user?.id) throw new Error("You must be logged in to reply");
 
-      if (data.file) {
+      // Handle chunked upload result (large videos)
+      if (data.chunkedUploadData) {
+        const formData = new FormData();
+        formData.append('data', JSON.stringify({
+          content: data.content.trim(),
+          parentId: replyingTo,
+          depth: (replyingToComment?.depth ?? 0) + 1
+        }));
+        
+        // Add chunked upload metadata
+        formData.append('chunkedUploadMediaUrl', data.chunkedUploadData.mediaUrl);
+        formData.append('chunkedUploadThumbnailUrl', data.chunkedUploadData.thumbnailUrl || '');
+        formData.append('chunkedUploadFilename', data.chunkedUploadData.filename);
+        formData.append('chunkedUploadIsVideo', String(data.chunkedUploadData.isVideo));
+        
+        const res = await fetch("/api/posts/comments", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to post reply:", errorText);
+          throw new Error(`Failed to post reply: ${errorText}`);
+        }
+
+        return res.json();
+      }
+      // Handle small file upload
+      else if (data.file) {
         // Send as FormData when there's a file
         const formData = new FormData();
         formData.append('data', JSON.stringify({
@@ -171,7 +202,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         throw new Error("Comment content cannot be empty");
       }
 
-      const res = await fetch(`/api/posts/${id}`, {
+      const res = await fetch(`/api/posts/comments/${id}`, {
         method: "PATCH",
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +214,8 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update comment");
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to update comment");
       }
 
       return res.json();
@@ -336,23 +368,67 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     const isReplying = replyingTo === comment.id;
     const [imageError, setImageError] = useState(false);
 
+    // Helper function to get video thumbnail URL
+    const getVideoThumbnailUrl = (mediaUrl: string) => {
+      // Use database thumbnailUrl if available (for HLS videos and new uploads)
+      const dbThumbnail = (comment as any).thumbnailUrl || (comment as any).thumbnail_url;
+      if (dbThumbnail) {
+        return dbThumbnail;
+      }
+      
+      // Don't try to create thumbnails for HLS playlists
+      if (mediaUrl.includes('.m3u8') || mediaUrl.includes('/api/hls/')) {
+        return undefined;
+      }
+      
+      // For regular video files, create thumbnail URL by replacing extension with .jpg
+      if (mediaUrl.toLowerCase().match(/\.(mov|mp4|webm|avi)$/)) {
+        let filename = mediaUrl;
+        
+        // Extract filename from URL if needed
+        if (filename.includes('filename=')) {
+          const urlParams = new URLSearchParams(filename.split('?')[1]);
+          filename = urlParams.get('filename') || filename;
+        } else if (filename.includes('/')) {
+          filename = filename.split('/').pop() || filename;
+        }
+        
+        // Remove query parameters
+        if (filename.includes('?')) {
+          filename = filename.split('?')[0];
+        }
+        
+        // Replace video extension with .jpg
+        const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi)$/i, '.jpg');
+        // Add cache-busting using comment ID to force reload of previously failed thumbnails
+        return `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}&_cb=${comment.id}`;
+      }
+
+      // For other files, don't create a thumbnail
+      return undefined;
+    };
+
     return (
       <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
-        <div className="flex items-start gap-4">
-          <Avatar>
-            <AvatarImage
-              src={comment.author?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.author?.username}`}
-            />
-            <AvatarFallback>{comment.author?.username?.[0].toUpperCase()}</AvatarFallback>
+        <div className="flex items-start gap-4 min-w-0">
+          <Avatar className={depth > 0 ? 'h-7 w-7' : 'h-10 w-10'}>
+            {comment.author?.imageUrl && <AvatarImage src={comment.author.imageUrl} />}
+            <AvatarFallback
+              style={{ backgroundColor: comment.author?.avatarColor || '#6366F1' }}
+              className="text-white"
+            >
+              {comment.author?.username?.[0].toUpperCase()}
+            </AvatarFallback>
           </Avatar>
-          <div className="flex-1 flex flex-col gap-2">
+          <div className="flex-1 flex flex-col gap-2 min-w-0">
             <Card
-                className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                className={`w-full overflow-hidden ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
                 onClick={(e) => {
-                  // Don't show menu if clicking on a link
+                  // Don't show menu if clicking on a link or the play button
                   if (e.target instanceof HTMLElement && (
                     e.target.tagName === 'A' || 
-                    e.target.closest('a')
+                    e.target.closest('a') ||
+                    e.target.closest('button[data-play-button]')
                   )) {
                     return;
                   }
@@ -363,7 +439,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               {depth > 0 && (
                 <div className="absolute -left-8 -top-3 h-6 w-8 border-l-2 border-t-2 border-gray-300 rounded-tl-lg"></div>
               )}
-              <CardContent className="pt-3 px-4 pb-3">
+              <CardContent className="pt-3 px-4 pb-3 overflow-hidden max-w-full">
                 <div className="flex justify-between">
                   <p className="font-medium">{comment.author?.username}</p>
                 </div>
@@ -405,12 +481,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   </div>
                 )}
                 {comment.mediaUrl && comment.is_video && (
-                  <div className="mt-2">
-                    <VideoPlayer
-                      src={createMediaUrl(comment.mediaUrl)}
-                      className="w-full h-auto object-contain rounded-md max-h-[300px]"
-                      onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
-                    />
+                  <div className="mt-2 w-full max-w-full overflow-hidden">
+                      <VideoPlayer
+                        src={createMediaUrl(comment.mediaUrl)}
+                        poster={getVideoThumbnailUrl(comment.mediaUrl)}
+                        className="w-full h-auto object-contain rounded-md max-h-[300px]"
+                        onError={(error) => console.error("Error loading comment video:", comment.mediaUrl, error)}
+                      />
                   </div>
                 )}
 
@@ -446,38 +523,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           <CommentCard key={reply.id} comment={reply} depth={depth + 1} />
         ))}
 
-        {editingComment === comment.id && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t z-[9999999]" style={{ zIndex: 2147483647, transform: 'translateZ(0)' }}>
-            <div className="flex items-center mb-2">
-              <p className="text-sm text-muted-foreground">
-                Edit comment
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-2"
-                onClick={() => {
-                  setEditingComment(null);
-                  onVisibilityChange?.(false, replyingTo !== null);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-            <CommentForm
-              onSubmit={async (content, file) => {
-                await editCommentMutation.mutateAsync({ id: comment.id, content });
-              }}
-              isSubmitting={editCommentMutation.isPending}
-              defaultValue={comment.content || ""}
-              onCancel={() => {
-                setEditingComment(null);
-                onVisibilityChange?.(false, replyingTo !== null);
-              }}
-              inputRef={editInputRef}
-            />
-          </div>
-        )}
       </div>
     );
   };
@@ -496,14 +541,61 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   const selectedCommentData = findSelectedComment(threadedComments);
 
   useEffect(() => {
-    if (replyingTo && replyInputRef.current) {
-      replyInputRef.current.focus();
+    // Notify parent component about visibility changes
+    if (onVisibilityChange) {
+      onVisibilityChange(!!editingComment, !!replyingTo);
     }
-    if (editingComment && editInputRef.current) {
-      editInputRef.current.focus();
+  }, [editingComment, replyingTo, onVisibilityChange]);
+
+  // Auto-focus edit textbox when editing starts
+  useEffect(() => {
+    if (editingComment) {
+      // Use multiple attempts with increasing delays to ensure the portal is rendered
+      const attempts = [100, 200, 300, 400, 500];
+      attempts.forEach(delay => {
+        setTimeout(() => {
+          if (editInputRef.current) {
+            editInputRef.current.focus();
+            console.log("✅ Auto-focused edit textbox at", delay, "ms");
+          } else {
+            console.log("❌ Edit ref not ready at", delay, "ms");
+          }
+        }, delay);
+      });
     }
-    onVisibilityChange?.(editingComment !== null, replyingTo !== null);
-  }, [replyingTo, editingComment, onVisibilityChange]);
+  }, [editingComment]);
+
+  // Auto-focus reply textbox when replying starts
+  useEffect(() => {
+    if (replyingTo) {
+      // Use multiple attempts with increasing delays to ensure the portal is rendered
+      const attempts = [100, 200, 300, 400, 500];
+      attempts.forEach(delay => {
+        setTimeout(() => {
+          if (replyInputRef.current) {
+            replyInputRef.current.focus();
+            console.log("✅ Auto-focused reply textbox at", delay, "ms");
+          } else {
+            console.log("❌ Reply ref not ready at", delay, "ms");
+          }
+        }, delay);
+      });
+    }
+  }, [replyingTo]);
+
+  // Find the currently editing comment
+  const findEditingComment = (comments: CommentWithReplies[]): CommentWithReplies | undefined => {
+    for (const comment of comments) {
+      if (comment.id === editingComment) return comment;
+      if (comment.replies) {
+        const found = findEditingComment(comment.replies);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  const editingCommentData = findEditingComment(threadedComments);
 
   return (
     <>
@@ -513,27 +605,99 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
         ))}
       </div>
 
+      {/* Inline edit form - NO PORTAL */}
+      {editingCommentData && (
+          <div 
+            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              pointerEvents: 'auto'
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">
+              Edit comment
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                console.log("Cancel edit clicked");
+                setEditingComment(null);
+              }}
+              type="button"
+              data-testid="button-cancel-edit"
+            >
+              Cancel
+            </Button>
+          </div>
+          <CommentForm
+            onSubmit={async (content, file) => {
+              console.log("Edit form submitted");
+              await editCommentMutation.mutateAsync({ id: editingCommentData.id, content });
+              setEditingComment(null);
+            }}
+            isSubmitting={editCommentMutation.isPending}
+            defaultValue={editingCommentData.content || ""}
+            onCancel={() => {
+              setEditingComment(null);
+            }}
+            inputRef={editInputRef}
+            disableAutoScroll={false}
+            skipScrollReset={true}
+            key={`edit-form-${editingComment}`}
+          />
+          </div>
+      )}
+
+      {/* Inline reply form - NO PORTAL */}
       {replyingToComment && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ position: 'fixed', bottom: '0', zIndex: 2147483647, transform: 'translateZ(0)', height: 'auto', minHeight: '120px' }}>
-          <div className="flex items-center mb-2">
+          <div 
+            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              pointerEvents: 'auto'
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Replying to {replyingToComment.author?.username}
             </p>
             <Button
               variant="ghost"
               size="sm"
-              className="ml-2"
               onClick={() => {
+                console.log("Cancel reply clicked");
                 setReplyingTo(null);
-                onVisibilityChange?.(editingComment !== null, false);
               }}
+              type="button"
+              data-testid="button-cancel-reply"
             >
               Cancel
             </Button>
           </div>
           <CommentForm
-              onSubmit={async (content, file) => {
-                await createReplyMutation.mutateAsync({ content, file });
+              onSubmit={async (content, file, chunkedUploadData) => {
+                console.log("Reply form submitted");
+                await createReplyMutation.mutateAsync({ content, file, chunkedUploadData });
                 if (replyInputRef.current) {
                   replyInputRef.current.value = '';
                 }
@@ -541,13 +705,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             isSubmitting={createReplyMutation.isPending}
             placeholder={`Reply to ${replyingToComment.author?.username}...`}
             inputRef={replyInputRef}
+            disableAutoScroll={false}
             onCancel={() => {
               setReplyingTo(null);
-              onVisibilityChange?.(editingComment !== null, false);
             }}
             key={`reply-form-${replyingTo}`}
+            skipScrollReset={true}
           />
-        </div>
+          </div>
       )}
 
       {selectedCommentData && (

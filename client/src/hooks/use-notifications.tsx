@@ -17,12 +17,14 @@ export function useNotifications(suppressToasts = false) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const reconnectAttemptsRef = useRef<number>(0); // Ref to track reconnect attempts
+  const maxReconnectAttempts = 10; // Define max reconnect attempts
+
   // Determine if we should show notification toasts
   // Don't show if explicitly suppressed or if we're on the notification-related pages
-  const shouldShowToasts = !suppressToasts && 
-    !location.includes("notification-settings") && 
-    !location.includes("notification-schedule") && 
+  const shouldShowToasts = !suppressToasts &&
+    !location.includes("notification-settings") &&
+    !location.includes("notification-schedule") &&
     !location.includes("notifications");
 
   // Query for notifications
@@ -32,185 +34,109 @@ export function useNotifications(suppressToasts = false) {
     refetchInterval: 60000, // Refetch every minute
   });
 
-  // Simple function to connect to WebSocket server
+  // Simple function to connect to WebSocket server - TEMPORARILY DISABLED
   const connectWebSocket = useCallback(() => {
-    // Exit if no user 
-    if (!user) {
-      console.log("WebSocket not connecting - user not authenticated");
-      return;
-    }
-    
-    console.log("WebSocket connection attempt initiated at", new Date().toISOString());
-    
-    // Update connection status
-    setConnectionStatus("connecting");
-    
-    // Clear any existing reconnect timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    
-    // Close any existing connection first
-    if (socketRef.current) {
-      try {
-        console.log("Closing existing connection before creating a new one");
-        socketRef.current.onopen = null;
-        socketRef.current.onmessage = null;
-        socketRef.current.onclose = null;
-        socketRef.current.onerror = null;
-        socketRef.current.close();
-        socketRef.current = null;
-      } catch (err) {
-        console.error("Error closing existing connection:", err);
-        socketRef.current = null;
-      }
-    }
+    if (!user) return; // Ensure user is available
 
-    // Create a new WebSocket connection after a short delay
-    setTimeout(() => {
+    setConnectionStatus("connecting");
+    socketRef.current = new WebSocket("ws://localhost:8080"); // Replace with your WebSocket server URL
+
+    socketRef.current.onopen = () => {
+      console.log("WebSocket connected");
+      setConnectionStatus("connected");
+      reconnectAttemptsRef.current = 0; // Reset reconnect attempts on successful connection
+      // Send a ping to the server to check connection health
+      pingIntervalRef.current = setInterval(() => {
+        if (socketRef.current?.readyState === WebSocket.OPEN) {
+          socketRef.current.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+        }
+      }, 30000); // Send ping every 30 seconds
+    };
+
+    socketRef.current.onmessage = (event) => {
       try {
-        // Set up the WebSocket connection with fresh instance
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        console.log("Creating new WebSocket connection to URL:", wsUrl);
-        
-        // Create a brand new WebSocket object
-        const socket = new WebSocket(wsUrl);
-        socketRef.current = socket;
-        
-        socket.onopen = () => {
-          console.log("WebSocket connection established");
-          setConnectionStatus("connected");
-          
-          // Authenticate with the server
-          if (user) {
-            socket.send(JSON.stringify({
-              type: "auth",
-              userId: user.id
+        const data = JSON.parse(event.data);
+
+        // Handle ping message from server
+        if (data.type === 'ping') {
+          // Respond with pong immediately
+          if (socketRef.current?.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({
+              type: 'pong',
+              pingTimestamp: data.timestamp
             }));
           }
-          
-          // Setup periodic ping to keep connection alive
-          if (pingIntervalRef.current) {
-            clearInterval(pingIntervalRef.current);
-          }
-          
-          pingIntervalRef.current = setInterval(() => {
-            if (socket.readyState === WebSocket.OPEN) {
-              try {
-                socket.send(JSON.stringify({
-                  type: "ping",
-                  timestamp: Date.now()
-                }));
-                console.log("Ping sent to server");
-              } catch (err) {
-                console.error("Error sending ping:", err);
-              }
-            }
-          }, 30000); // Send ping every 30 seconds
-        };
-        
-        socket.onmessage = (event) => {
-          try {
-            // Handle string messages as JSON
-            if (typeof event.data === 'string') {
-              try {
-                const data = JSON.parse(event.data);
-                console.log("WebSocket message received:", data.type);
-                
-                // Handle different message types
-                switch (data.type) {
-                  case "notification":
-                    // Handle notification messages
-                    if (data.data) {
-                      if (shouldShowToasts) {
-                        toast({
-                          title: data.data.title,
-                          description: data.data.message,
-                          duration: 5000,
-                        });
-                      }
-                      
-                      // Update notifications in the cache
-                      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-                    }
-                    break;
-                    
-                  case "auth_success":
-                    console.log("WebSocket authentication successful");
-                    break;
-                    
-                  case "connected":
-                    console.log("WebSocket connection confirmed by server");
-                    break;
-                    
-                  case "pong":
-                    console.log("Pong received from server");
-                    break;
-                    
-                  case "error":
-                    console.error("WebSocket error message from server:", data.message);
-                    break;
-                }
-              } catch (jsonError) {
-                console.error("Failed to parse WebSocket JSON message:", jsonError);
-              }
-            }
-          } catch (error) {
-            console.error("Error handling WebSocket message:", error);
-          }
-        };
-        
-        socket.onclose = (event) => {
-          console.log("WebSocket connection closed with code:", event.code);
-          setConnectionStatus("disconnected");
-          
-          // Clear ping interval
-          if (pingIntervalRef.current) {
-            clearInterval(pingIntervalRef.current);
-            pingIntervalRef.current = null;
-          }
-          
-          // Schedule a single reconnect attempt
-          if (!reconnectTimeoutRef.current) {
-            reconnectTimeoutRef.current = setTimeout(() => {
-              console.log("Attempting to reconnect...");
-              connectWebSocket();
-            }, 5000); // Try to reconnect after 5 seconds
-          }
-        };
-        
-        socket.onerror = (event) => {
-          console.error("WebSocket error occurred");
-          setConnectionStatus("disconnected");
-        };
-        
+          return;
+        }
+
+        // Handle other message types (e.g., notifications)
+        if (data.type === "notification") {
+          // Invalidate notifications query to trigger refetch
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+        }
       } catch (error) {
-        console.error("Error setting up WebSocket:", error);
-        setConnectionStatus("disconnected");
+        console.error("Failed to process WebSocket message:", error);
       }
-    }, 500); // Short delay to ensure clean connection
+    };
+
+    socketRef.current.onclose = (event) => {
+      console.log("WebSocket disconnected:", event.code, event.reason);
+      setConnectionStatus("disconnected");
+      socketRef.current = null;
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+
+      // Attempt to reconnect with longer delays to reduce spam
+      if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+        const delay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current), 60000); // Start at 5s, max 60s
+        console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
+
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectAttemptsRef.current++;
+          connectWebSocket();
+        }, delay);
+      } else {
+        console.error('Max reconnect attempts reached');
+      }
+    };
+
+    socketRef.current.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      // The 'onclose' event will also be fired, so no need to set status/reconnect here
+    };
+
   }, [user, toast, shouldShowToasts]);
 
-  // Connect to WebSocket when user is available
+
+  // Connect to WebSocket when user is available - DISABLED until WebSocket server is set up
   useEffect(() => {
+    // WebSocket connection temporarily disabled to prevent reconnection loops
+    // Uncomment when WebSocket server is available
+    /*
     if (user && socketRef.current === null) {
       connectWebSocket();
     }
-    
+    */
+
     // Clean up on unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
       }
-      
+
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      
+
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
@@ -218,11 +144,40 @@ export function useNotifications(suppressToasts = false) {
     };
   }, [user, connectWebSocket]);
 
+  // Refresh notifications when the page becomes visible (e.g., after waking from sleep)
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Page became visible, refreshing notifications');
+        // Invalidate and refetch notifications
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('Window gained focus, refreshing notifications');
+      // Invalidate and refetch notifications
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user]);
+
   // Helper function to fix memory verse thumbnails
   const fixMemoryVerseThumbnails = useCallback(async () => {
     try {
       console.log("Triggering memory verse thumbnail fix");
-      
+
       // Create a fetch request to the fix-thumbnails endpoint
       const response = await fetch('/api/memory-verse/fix-thumbnails', {
         method: 'POST',
@@ -231,7 +186,7 @@ export function useNotifications(suppressToasts = false) {
         },
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         console.log("Memory verse thumbnail fix initiated");
         toast({
@@ -258,12 +213,12 @@ export function useNotifications(suppressToasts = false) {
       return false;
     }
   }, [toast]);
-  
+
   // Helper function to fix all thumbnails including miscellaneous videos
   const fixAllThumbnails = useCallback(async () => {
     try {
       console.log("Triggering all thumbnails fix");
-      
+
       // Create a fetch request to the general fix-thumbnails endpoint
       const response = await fetch('/api/fix-thumbnails', {
         method: 'POST',
@@ -272,7 +227,7 @@ export function useNotifications(suppressToasts = false) {
         },
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         console.log("All thumbnails fix initiated");
         toast({

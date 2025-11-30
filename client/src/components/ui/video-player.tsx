@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Play, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAlternativePosterUrls, getVideoPoster } from '@/lib/memory-verse-utils';
-import { useLocation } from 'wouter';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import Hls from 'hls.js';
 import './video-player.css'; // Import the custom CSS
 
 interface VideoPlayerProps {
@@ -78,40 +80,81 @@ export function VideoPlayer({
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [videoInitialized, setVideoInitialized] = useState(false);
   const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
-  const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(true);
-  const [location, setLocation] = useLocation();
+  const [showingBlankPlaceholder, setShowingBlankPlaceholder] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  
+  // Callback ref to detect when video element is actually mounted
+  const videoCallbackRef = useCallback((node: HTMLVideoElement | null) => {
+    if (node) {
+      console.log('[HLS DEBUG] Video element mounted in DOM');
+      videoRef.current = node;
+      setVideoElement(node);
+    }
+  }, []);
 
-  // Initialize with blank placeholder, then load thumbnail
+  // Initialize thumbnail loading
   useEffect(() => {
-    // Start with blank placeholder for a brief moment
-    setShowingBlankPlaceholder(true);
+    setShowingBlankPlaceholder(false);
     setThumbnailLoaded(false);
 
-    // After a brief delay, start loading the thumbnail
-    const timer = setTimeout(() => {
-      setShowingBlankPlaceholder(false);
-
-      if (!simplifiedPoster) {
-        // If no poster, show fallback immediately
-        setThumbnailLoaded(true);
-      }
-      // If we have a poster, thumbnailLoaded will be set by onLoad event
-    }, 100); // Very brief delay to prevent video flash
-
-    return () => clearTimeout(timer);
+    if (!simplifiedPoster) {
+      // If no poster, mark as loaded (will show nothing due to removed fallback)
+      setThumbnailLoaded(true);
+    }
+    // If we have a poster, thumbnailLoaded will be set by onLoad event
   }, [simplifiedPoster]);
 
-  // Handle thumbnail click - navigate to video player page
+  // Handle thumbnail click - open video dialog overlay
   const handleThumbnailClick = () => {
-    console.log("Thumbnail clicked, navigating to video player page");
+    console.log("Thumbnail clicked, opening video player dialog");
+    console.log("Video src that will be used:", src);
+    setIsDialogOpen(true);
+    
+    // Small delay to ensure video element is rendered before attempting play
+    setTimeout(() => {
+      if (videoRef.current) {
+        console.log("Video element found after dialog open");
+        console.log("Video element src:", videoRef.current.src);
+        console.log("Video element currentSrc:", videoRef.current.currentSrc);
+        console.log("Video element readyState:", videoRef.current.readyState);
+        console.log("Video element networkState:", videoRef.current.networkState);
+        console.log("Attempting to play video after dialog open");
+        
+        // Unmute the video before playing
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1.0;
+        
+        videoRef.current.play().catch(error => {
+          console.log('Initial play attempt failed:', error);
+        });
+      } else {
+        console.error("Video element NOT found after dialog open!");
+      }
+    }, 100);
+  };
 
-    // Navigate to video player page with video URL as parameter
-    const videoUrl = encodeURIComponent(src);
-    const posterUrl = simplifiedPoster ? encodeURIComponent(simplifiedPoster) : '';
+  // Handle dialog close
+  const handleDialogClose = () => {
+    console.log("Video player dialog closed");
+    setIsDialogOpen(false);
+    setShowControls(false); // Reset controls visibility when closing
+    
+    // Pause video when closing dialog
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
 
-    setLocation(`/video-player?src=${videoUrl}&poster=${posterUrl}`);
+  // Handle video click to show controls
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+    setShowControls(true);
   };
 
 
@@ -130,10 +173,93 @@ export function VideoPlayer({
     // As requested by user, no fallback images or alternatives - just fail silently
   };
 
-  // Set up video loaded event
+  // Set up HLS or native video playback
+  useEffect(() => {
+    console.log('[HLS DEBUG] useEffect triggered, src:', src, 'videoElement:', !!videoElement, 'isDialogOpen:', isDialogOpen);
+    
+    // Only initialize when dialog is open (for HLS videos) or immediately (for thumbnails)
+    if (!videoElement || !src) {
+      console.log('[HLS DEBUG] Early return - videoElement:', !!videoElement, 'src:', !!src);
+      return;
+    }
+    
+    const isHLS = src.endsWith('.m3u8');
+    
+    // For HLS videos, only initialize when dialog is actually open
+    if (isHLS && !isDialogOpen) {
+      console.log('[HLS DEBUG] HLS video but dialog not open yet, waiting...');
+      return;
+    }
+
+    console.log('[HLS DEBUG] isHLS:', isHLS, 'Hls.isSupported():', Hls.isSupported());
+    
+    if (isHLS && Hls.isSupported()) {
+      console.log('[HLS] Initializing HLS.js for:', src);
+      
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 90, // Keep 90s of data in buffer
+      });
+      
+      hlsRef.current = hls;
+      
+      hls.loadSource(src);
+      hls.attachMedia(videoElement);
+      
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('[HLS] Manifest parsed, video ready to play');
+        if (onLoad) onLoad();
+      });
+      
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error('[HLS] Error:', data.type, data.details, data);
+        
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.error('[HLS] Fatal network error, trying to recover');
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.error('[HLS] Fatal media error, trying to recover');
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error('[HLS] Fatal error, cannot recover');
+              if (onError) onError(new Error(`HLS Error: ${data.details}`));
+              hls.destroy();
+              break;
+          }
+        }
+      });
+      
+      return () => {
+        console.log('[HLS] Cleaning up HLS instance');
+        hls.destroy();
+        hlsRef.current = null;
+      };
+    } else if (isHLS) {
+      // HLS not supported, check if browser natively supports it (Safari)
+      if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        console.log('[HLS] Using native HLS support');
+        videoElement.src = src;
+      } else {
+        console.error('[HLS] HLS not supported on this browser');
+        if (onError) onError(new Error('HLS playback not supported'));
+      }
+    }
+    // else: regular video, browser will handle it natively
+    
+  }, [src, onLoad, onError, isDialogOpen, videoElement]);
+
+  // Set up video loaded event (for non-HLS videos)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    const isHLS = src?.endsWith('.m3u8');
+    if (isHLS) return; // HLS events are handled above
 
     const handleVideoLoaded = () => {
       console.log("Video data loaded");
@@ -152,7 +278,7 @@ export function VideoPlayer({
       video.removeEventListener('loadeddata', handleVideoLoaded);
       video.removeEventListener('error', handleError);
     };
-  }, [onLoad, onError]);
+  }, [src, onLoad, onError]);
 
   // Listen for thumbnail regeneration events
   useEffect(() => {
@@ -205,108 +331,169 @@ export function VideoPlayer({
 
 
   return (
-    <div 
-      ref={containerRef}
-      className={cn("relative", className)}
-      style={{ margin: 0, padding: 0, lineHeight: 0 }}
-    >
-      {/* Show content based on current state */}
-      {!showVideo && (
-        <div className="relative w-full h-full min-h-[200px]">
-          {/* Show blank placeholder first */}
-          {showingBlankPlaceholder && (
-            <div className="w-full h-full min-h-[200px] bg-gray-100 border border-gray-200"></div>
-          )}
+    <>
+      <div 
+        ref={containerRef}
+        className={cn("relative", className)}
+        style={{ margin: 0, padding: 0, lineHeight: 0 }}
+      >
+        {/* Show content based on current state */}
+        {!showVideo && (
+          <div className="relative w-full max-w-full overflow-hidden">
+            {/* No blank placeholder - removed per user request */}
 
-          {/* Show thumbnail after placeholder, only when loaded */}
-          {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
-            <>
-              <div 
-                className="w-full cursor-pointer video-thumbnail-container"
-                onClick={handleThumbnailClick}
-                style={{ 
-                  width: '100%',
-                  maxWidth: '600px',
-                  aspectRatio: '3/2',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  margin: '0 auto'
-                }}
-              >
+            {/* Show thumbnail after placeholder, only when loaded */}
+            {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
+              <div className="relative w-full max-w-full overflow-hidden cursor-pointer video-thumbnail-container">
                 <img 
                   src={simplifiedPoster} 
                   alt="Video thumbnail" 
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto max-w-full object-cover rounded-md"
                   style={{ 
                     display: 'block',
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: 'center'
+                    maxHeight: '300px'
                   }}
                 />
-              </div>
-              {/* Play button overlay on thumbnail */}
-              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
-                <div 
-                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
-                  onClick={handleThumbnailClick}
-                  style={{ transition: 'none' }}
-                >
-                  <Play size={24} className="text-white" fill="white" />
+                {/* Play button overlay on thumbnail */}
+                <div className="absolute inset-0 flex items-end justify-start bg-black/10 pointer-events-none">
+                  <div 
+                    className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80 pointer-events-auto"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleThumbnailClick();
+                    }}
+                    data-play-button
+                    style={{ transition: 'none' }}
+                  >
+                    <Play size={24} className="text-white" fill="white" />
+                  </div>
                 </div>
               </div>
-            </>
-          )}
+            )}
 
-          {/* Show fallback if no poster or poster failed, but not during blank placeholder */}
-          {!showingBlankPlaceholder && thumbnailLoaded && (!simplifiedPoster || posterError) && (
-            <>
-              <div 
-                className="w-full h-full min-h-[200px] flex flex-col items-center justify-center cursor-pointer"
-                onClick={handleThumbnailClick}
-                style={{
-                  background: posterError ? 
-                    "linear-gradient(to right, rgba(37, 99, 235, 0.1), rgba(124, 58, 237, 0.1))" : 
-                    "white",
-                  border: "1px solid #e5e7eb"
-                }}
-              >
-                <div className="p-4 rounded-lg flex flex-col items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                  </svg>
-                </div>
-              </div>
-              {/* Play button overlay on fallback */}
-              <div className="absolute inset-0 flex items-end justify-start bg-black/10">
-                <div 
-                  className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80"
-                  onClick={handleThumbnailClick}
-                  style={{ transition: 'none' }}
-                >
-                  <Play size={24} className="text-white" fill="white" />
-                </div>
-              </div>
-            </>
-          )}
+            {/* No fallback - if poster fails, show nothing */}
 
-          {/* Loading thumbnail (hidden image to trigger load) */}
-          {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
-            <img 
-              src={simplifiedPoster} 
-              alt="Video thumbnail" 
-              onLoad={handlePosterLoad}
-              onError={handlePosterError}
-              style={{ display: 'none' }}
+            {/* Loading thumbnail (hidden image to trigger load) */}
+            {!showingBlankPlaceholder && !thumbnailLoaded && simplifiedPoster && (
+              <img 
+                src={simplifiedPoster} 
+                alt="Video thumbnail" 
+                onLoad={handlePosterLoad}
+                onError={handlePosterError}
+                style={{ display: 'none' }}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Video Player Dialog Overlay */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal>
+        <DialogContent 
+          className="max-w-[95vw] md:max-w-[750px] max-h-[95vh] w-full h-full p-0 bg-black border-0" 
+          style={{ zIndex: 2147483647 }}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+        >
+          <div 
+            className="relative w-full h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <Button
+              onClick={handleDialogClose}
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 left-4 z-50 text-white hover:bg-white/20 !h-10 !w-10 !outline-none !ring-0 focus-visible:!ring-0 focus-visible:!ring-offset-0 !border-0"
+              data-testid="button-close-video"
+            >
+              <X className="!h-8 !w-8" />
+            </Button>
+
+            {/* Video player */}
+            <video
+              ref={videoCallbackRef}
+              src={src?.endsWith('.m3u8') ? undefined : src}
+              poster={simplifiedPoster}
+              controls
+              autoPlay
+              muted
+              playsInline
+              preload="auto"
+              controlsList="nodownload noremoteplayback"
+              disablePictureInPicture={false}
+              disableRemotePlayback
+              onClick={handleVideoClick}
+              className="w-full max-w-full max-h-[75vh] md:max-w-[560px] object-contain cursor-pointer"
+              style={{
+                objectFit: 'contain',
+                minWidth: '300px',
+                minHeight: '200px',
+                backgroundColor: 'black'
+              }}
+              onLoadStart={() => {
+                console.log('Video load started:', src);
+              }}
+              onProgress={() => {
+                console.log('Video buffering progress');
+              }}
+              onError={(e) => {
+                console.error('Video playback error:', e);
+                const target = e.currentTarget as HTMLVideoElement;
+                if (target.error) {
+                  console.error('Video error code:', target.error.code);
+                  console.error('Video error message:', target.error.message);
+                }
+                if (onError) onError(new Error('Video failed to play'));
+              }}
+              onLoadedData={() => {
+                console.log('Video loaded successfully');
+                if (onLoad) onLoad();
+              }}
+              onLoadedMetadata={() => {
+                console.log('Video metadata loaded');
+              }}
+              onStalled={() => {
+                console.warn('Video playback stalled');
+              }}
+              onSuspend={() => {
+                console.warn('Video loading suspended');
+              }}
+              onWaiting={() => {
+                console.warn('Video waiting for data');
+              }}
+              onCanPlay={() => {
+                console.log('Video can play');
+                // Ensure autoplay starts when video is ready
+                if (videoRef.current) {
+                  console.log('Attempting to play video via onCanPlay');
+                  
+                  // Make sure video is muted first if autoplay fails with sound
+                  videoRef.current.play().catch(error => {
+                    console.log('Autoplay with sound was prevented, trying muted:', error);
+                    // Try muted autoplay (more likely to be allowed on mobile)
+                    if (videoRef.current) {
+                      videoRef.current.muted = true;
+                      videoRef.current.play().then(() => {
+                        // Successfully started muted, now try to unmute
+                        if (videoRef.current) {
+                          videoRef.current.muted = false;
+                        }
+                      }).catch(mutedError => {
+                        console.log('Even muted autoplay was prevented:', mutedError);
+                        // User will need to manually tap to play
+                      });
+                    }
+                  });
+                }
+              }}
             />
-          )}
-        </div>
-      )}
-
-
-
-
-    </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

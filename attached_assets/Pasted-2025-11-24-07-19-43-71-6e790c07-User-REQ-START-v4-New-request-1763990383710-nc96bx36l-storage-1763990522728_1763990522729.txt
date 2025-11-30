@@ -1,0 +1,88 @@
+2025-11-24 07:19:43.71
+6e790c07
+User
+[REQ START v4] New request 1763990383710-nc96bx36l - storageKey: shared/uploads/1763949420423-IMG_9507.mp4, range: bytes=0-1, method: GET
+2025-11-24 07:19:43.71
+6e790c07
+User
+[REQ v4] 1763990383710-nc96bx36l: Direct download: shared/uploads/1763949420423-IMG_9507.mp4, route: /api/object-storage/direct-download, range: bytes=0-1
+2025-11-24 07:19:43.71
+6e790c07
+User
+[VIDEO PATH v4 PROD] 1763990383710-nc96bx36l: Video detected: shared/uploads/1763949420423-IMG_9507.mp4, ext: mp4 - Using buffered download for production
+2025-11-24 07:19:43.71
+6e790c07
+User
+Attempting to download file from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-24 07:19:43.71
+6e790c07
+User
+[VIDEO DOWNLOAD v4 PROD] 1763990383710-nc96bx36l: Downloading full video from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-24 07:19:44.23
+6e790c07
+User
+[VIDEO SENT v4 PROD] 1763990383710-nc96bx36l: Response completed
+2025-11-24 07:19:44.23
+6e790c07
+User
+[VIDEO SEND v4 PROD] 1763990383710-nc96bx36l: Sending full video as 200 response (34529527 bytes)
+2025-11-24 07:19:44.23
+6e790c07
+User
+Download result for shared/uploads/1763949420423-IMG_9507.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 07:19:44.23
+6e790c07
+User
+[VIDEO DOWNLOADED v4 PROD] 1763990383710-nc96bx36l: Downloaded 34529527 bytes
+2025-11-24 07:19:44.23
+6e790c07
+User
+Successfully downloaded shared/uploads/1763949420423-IMG_9507.mp4, size: 34529527 bytes
+2025-11-24 07:19:44.27
+6e790c07
+User
+1:19:44 PM [express] POST /api/check-daily-scores 200 in 2ms
+2025-11-24 07:19:44.32
+6e790c07
+User
+1:19:44 PM [express] GET /api/object-storage/direct-download 200 in 613ms
+2025-11-24 07:19:44.56
+6e790c07
+User
+[REQ v4] 1763990384560-cvaoi8szv: Direct download: shared/uploads/1763949420423-IMG_9507.mp4, route: /api/object-storage/direct-download, range: bytes=0-1445
+2025-11-24 07:19:44.56
+6e790c07
+User
+Attempting to download file from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-24 07:19:44.56
+6e790c07
+User
+[VIDEO DOWNLOAD v4 PROD] 1763990384560-cvaoi8szv: Downloading full video from Object Storage: shared/uploads/1763949420423-IMG_9507.mp4
+2025-11-24 07:19:44.56
+6e790c07
+User
+[VIDEO PATH v4 PROD] 1763990384560-cvaoi8szv: Video detected: shared/uploads/1763949420423-IMG_9507.mp4, ext: mp4 - Using buffered download for production
+2025-11-24 07:19:44.56
+6e790c07
+User
+[REQ START v4] New request 1763990384560-cvaoi8szv - storageKey: shared/uploads/1763949420423-IMG_9507.mp4, range: bytes=0-1445, method: GET
+2025-11-24 07:19:45.00
+6e790c07
+User
+[VIDEO SEND v4 PROD] 1763990384560-cvaoi8szv: Sending full video as 200 response (34529527 bytes)
+2025-11-24 07:19:45.00
+6e790c07
+User
+[VIDEO DOWNLOADED v4 PROD] 1763990384560-cvaoi8szv: Downloaded 34529527 bytes
+2025-11-24 07:19:45.00
+6e790c07
+User
+Successfully downloaded shared/uploads/1763949420423-IMG_9507.mp4, size: 34529527 bytes
+2025-11-24 07:19:45.00
+6e790c07
+User
+Download result for shared/uploads/1763949420423-IMG_9507.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 07:19:45.00
+6e790c07
+User
+[VIDEO SENT v4 PROD] 1763990384560-cvaoi8szv: Response completed

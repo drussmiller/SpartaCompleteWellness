@@ -1,0 +1,148 @@
+useAuth hook called
+use-auth.tsx:152 useAuth hook called
+Dialog.tsx:540  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ Dialog.tsx:540
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+commitRootImpl @ react-dom.development.js:26974
+commitRoot @ react-dom.development.js:26721
+performSyncWorkOnRoot @ react-dom.development.js:26156
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:780 🎯 Team selected: {rawValue: '1', parsedValue: 1, fieldValue: null}
+create-post-dialog.tsx:782 🎯 After onChange, field value: null
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:512 ============ FORM SUBMIT DEBUG START ============
+create-post-dialog.tsx:513 🔥 onSubmit called with data: {type: 'miscellaneous', hasMediaUrl: true, content: ''}
+create-post-dialog.tsx:514 🔥 Form errors: {}
+create-post-dialog.tsx:515 🔥 [SCOPE DEBUG] Form data received in onSubmit: {postScope: 'team', targetOrganizationId: null, targetGroupId: null, targetTeamId: 1}
+create-post-dialog.tsx:521 🔥 [SCOPE DEBUG] Local state values: {localPostScope: 'team'}
+create-post-dialog.tsx:524 🔥 [SCOPE DEBUG] All form values from getValues(): {type: 'miscellaneous', content: '', mediaUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD…Qa+O46whIEowqPcAsxMxYf3Y4hCQSFVnI2tY/mmgRfMwhCP/Z', points: 3, postDate: Wed Oct 15 2025 21:04:19 GMT-0500 (Central Daylight Time), …}
+create-post-dialog.tsx:525 ============ FORM SUBMIT DEBUG END ============
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:217 🚀🚀🚀 MUTATION FUNCTION CALLED with data: {type: 'miscellaneous', content: '', mediaUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD…Qa+O46whIEowqPcAsxMxYf3Y4hCQSFVnI2tY/mmgRfMwhCP/Z', is_video: false, points: 3, …}
+create-post-dialog.tsx:218 🚀 SCOPE DATA IN MUTATION: {postScope: 'team', targetOrganizationId: null, targetGroupId: null, targetTeamId: 1}
+create-post-dialog.tsx:224 Starting post creation for type: miscellaneous
+create-post-dialog.tsx:251 Media URL found, preparing to upload {type: 'miscellaneous', mediaUrlLength: 29619, urlPreview: 'data:image/jpeg;base64,/9j/4AA...'}
+create-post-dialog.tsx:315 Processing image URL to blob
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+create-post-dialog.tsx:317 Blob created from image URL {type: 'image/jpeg', size: 22197}
+create-post-dialog.tsx:322 Image blob appended to form data
+create-post-dialog.tsx:344 📦 POST DATA OBJECT BEFORE STRINGIFY: {type: 'miscellaneous', content: '', points: 0, createdAt: '2025-10-16T02:04:19.049Z', postScope: 'team', …}
+create-post-dialog.tsx:345 📦 SCOPE FIELDS: {postScope: 'team', targetOrganizationId: null, targetGroupId: null, targetTeamId: 1}
+create-post-dialog.tsx:361 Added media type marker for miscellaneous post: {selectedMediaType: 'image', isVideo: false, contentWithVideoMarker: ''}
+create-post-dialog.tsx:369 📦 STRINGIFIED POST DATA: {"type":"miscellaneous","content":"","points":0,"createdAt":"2025-10-16T02:04:19.049Z","postScope":"team","targetOrganizationId":null,"targetGroupId":null,"targetTeamId":1}
+create-post-dialog.tsx:370 📦 JSON includes postScope? true
+create-post-dialog.tsx:371 📦 JSON includes targetTeamId? true
+create-post-dialog.tsx:375 FormData ready for submission {formDataKeys: Array(3), hasImageKey: true, isMultipartFormData: true}
+create-post-dialog.tsx:381 Sending POST request to /api/posts
+create-post-dialog.tsx:390 Response status: 201 Created
+create-post-dialog.tsx:397 Response headers: {access-control-allow-credentials: 'true', access-control-allow-headers: 'Origin, X-Requested-With, Content-Type, Accept', access-control-allow-methods: 'GET, POST, PUT, DELETE, OPTIONS, PATCH', access-control-allow-origin: 'https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev:5000', cache-control: 'no-store', …}
+create-post-dialog.tsx:399 Server response received {status: 201, ok: true, statusText: 'Created'}
+create-post-dialog.tsx:454 Post created successfully, invalidating queries to update UI
+home-page.tsx:77 Fetching posts...
+home-page.tsx:77 Fetching posts...
+use-auth.tsx:25 AuthProvider initializing
+use-auth.tsx:63 AuthProvider state: {user: {…}, isLoading: false, error: null}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+App.tsx:39 MainContent rendering - auth state: {user: {…}, isLoading: false, error: null}
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1760479044258-1d8y5ha2mfb.MOV
+media-utils.ts:81 Cleaned filename: 1760479044258-1d8y5ha2mfb.MOV
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1760479044258-1d8y5ha2mfb.MOV&_cb=1760580288769
+video-player.tsx:29 createSimplifiedPosterUrl called with: /api/serve-file?filename=1760479044258-1d8y5ha2mfb.jpg&_cb=738
+video-player.tsx:39 Video player: URL already has correct JPG format: /api/serve-file?filename=1760479044258-1d8y5ha2mfb.jpg&_cb=738
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+home-page.tsx:87 Posts received from API: 5 posts
+home-page.tsx:91 Posts after prayer filtering: 5
+home-page.tsx:87 Posts received from API: 5 posts
+home-page.tsx:91 Posts after prayer filtering: 5
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+app-layout.tsx:20 AppLayout render - isBottomNavVisible: true isMobile: false
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1760580287916-image.jpeg
+media-utils.ts:81 Cleaned filename: 1760580287916-image.jpeg
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1760580287916-image.jpeg&_cb=1760580289676
+media-utils.ts:97 createThumbnailUrl called with: shared/uploads/1760580287916-image.jpeg
+media-utils.ts:117 Creating thumbnail for filename: 1760580287916-image.jpeg
+media-utils.ts:134 Created image thumbnail URL: /api/serve-file?filename=1760580287916-image.poster.jpg
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+media-utils.ts:42 createMediaUrl called with: shared/uploads/1760479044258-1d8y5ha2mfb.MOV
+media-utils.ts:81 Cleaned filename: 1760479044258-1d8y5ha2mfb.MOV
+media-utils.ts:87 Created clean media URL: /api/serve-file?filename=1760479044258-1d8y5ha2mfb.MOV&_cb=1760580289684
+video-player.tsx:29 createSimplifiedPosterUrl called with: /api/serve-file?filename=1760479044258-1d8y5ha2mfb.jpg&_cb=738
+video-player.tsx:39 Video player: URL already has correct JPG format: /api/serve-file?filename=1760479044258-1d8y5ha2mfb.jpg&_cb=738
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-comment-count.tsx:75 Fetched 0 comments for post 759
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+use-auth.tsx:152 useAuth hook called
+post-card.tsx:357 [Image Load Success] {src: '/api/serve-file?filename=1760580287916-image.jpeg&_cb=1760580289676', originalUrl: 'shared/uploads/1760580287916-image.jpeg', postId: 759, postType: 'miscellaneous'}

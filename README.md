@@ -81,7 +81,10 @@ The application will be available at `http://localhost:5000`
 - **Post Creation**: Share text, images, and videos with automatic thumbnail generation
 - **Real-time Messaging**: Private messaging between users with file attachments
 - **Media Processing**: Automatic image resizing and video thumbnail extraction
-- **Activity Tracking**: Track fitness activities and team progress
+- **Activity Tracking**: Track fitness activities and team progress with individual program start dates
+  - Personalized week and day calculations based on each user's program start date
+  - Monday-aligned program schedules for consistency
+  - Dynamic progress tracking across Activity and Admin pages
 - **Prayer Requests**: Organization-wide prayer request sharing
 - **Admin Dashboard**: Complete CRUD operations for all organizational levels
 
@@ -89,7 +92,10 @@ The application will be available at `http://localhost:5000`
 - **Organization Management**: Create, edit, and delete organizations
 - **Group Management**: Manage groups within organizations 
 - **Team Management**: Handle team creation and assignment
-- **User Management**: User administration with role management
+- **User Management**: User administration with role management, including:
+  - Individual program start date assignment (Monday-only selection)
+  - Custom progress tracking based on user's program start date
+  - Editable user profiles with date joined and program start information
 - **Real-time Notifications**: WebSocket-based live updates
 
 ## 🗂️ Project Structure
@@ -126,6 +132,11 @@ The application uses Drizzle ORM for database operations. Schema changes should 
 ```bash
 npm run db:push
 ```
+
+#### Key Schema Features
+- **User Table**: Includes `program_start_date` field for individualized program tracking
+- **Activity Tracking**: Week and day calculations use user-specific program start dates
+- **Timezone Handling**: UTC offset calculations for accurate local time tracking
 
 ### File Storage
 

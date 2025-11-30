@@ -1,9 +1,10 @@
 import { useLocation } from "wouter";
-import { Home, Calendar, Bell, Menu } from "lucide-react";
+import { Home, Calendar, Bell, Menu, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useEffect, useMemo, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -14,12 +15,28 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  
+  // State to track if we've woken from sleep/switched apps (needs more padding)
+  const [hasWoken, setHasWoken] = useState(false);
+
+  // Detect Android device - apply padding for Android to keep buttons in safe zone
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.includes('android');
+  }, []);
+
+  // Android-specific: Add bottom padding to keep buttons in safe zone
+  // Initial load needs no extra padding, wake/switch needs 40px
+  const androidPadding = hasWoken 
+    ? 'max(env(safe-area-inset-bottom), 40px)'
+    : 'max(env(safe-area-inset-bottom), 0px)';
 
   // Add debug logging to verify props
-  console.log('BottomNav render - isVisible:', isVisible);
+  console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
 
   // Query for unread notifications count
-  const { data: unreadCount = 0 } = useQuery({
+  const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
     queryKey: ["/api/notifications/unread"],
     queryFn: async () => {
       try {
@@ -32,8 +49,40 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         return 0;
       }
     },
-    refetchInterval: 30000 // Refetch every 30 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    enabled: !!user
   });
+
+  // Refresh notification count and force re-render when page becomes visible or window gains focus
+  // This ensures Android padding is properly applied after waking from sleep/screen saver
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Bottom nav: Page became visible, applying wake padding');
+        refetchNotificationCount();
+        // Apply wake padding (32px)
+        setHasWoken(true);
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('Bottom nav: Window gained focus, applying wake padding');
+      refetchNotificationCount();
+      // Apply wake padding (32px)
+      setHasWoken(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user, refetchNotificationCount]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
@@ -48,9 +97,10 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   });
 
   const items = [
-    { icon: Home, label: "Home", href: "/" },
+    { icon: Home, label: "Home", href: "/", noTeamRequired: true },
     { icon: Calendar, label: "Activity", href: "/activity" },
-    { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount },
+    { icon: HelpCircle, label: "Help", href: "/help", noTeamRequired: true },
+    { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount, noTeamRequired: true },
   ];
 
   return (
@@ -64,6 +114,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
+        paddingBottom: isAndroid ? androidPadding : 'max(env(safe-area-inset-bottom), 4px)',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
@@ -76,9 +127,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Desktop layout
         orientation === "vertical" && "flex-col py-4 space-y-4"
       )}>
-        {items.map(({ icon: Icon, label, href, count }) => {
+        {items.map(({ icon: Icon, label, href, count, noTeamRequired }) => {
           const isActivityLink = href === "/activity";
-          const isDisabled = !user?.teamId || (isActivityLink && activityStatus && !activityStatus.programHasStarted);
+          const isDisabled = !noTeamRequired && (!user?.teamId || (isActivityLink && activityStatus && !activityStatus.programHasStarted));
 
           return (
           <div
@@ -87,7 +138,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             className={cn(
               "flex flex-col items-center justify-center gap-1 relative",
               // Size styles
-              orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+              orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
               // Disabled or enabled cursor
               isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               // Text styles
@@ -99,15 +150,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             )}
           >
             <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
-            <span className="text-xs">
-              {label}
-              {isActivityLink && !user?.teamId && (
-                <span className="block text-[10px] text-muted-foreground">(Team Required)</span>
-              )}
-              {isActivityLink && user?.teamId && activityStatus && !activityStatus.programHasStarted && (
-                <span className="block text-[10px] text-muted-foreground">(Starts Next Monday)</span>
-              )}
-            </span>
+            <span className="text-xs">{label}</span>
             {count > 0 && (
               <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                 {count}
@@ -121,7 +164,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
           className={cn(
             "flex flex-col items-center justify-center gap-1 cursor-pointer",
             // Size styles
-            orientation === "horizontal" ? "h-full w-full pb-4" : "w-full py-2",
+            orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
             // Text styles
             location === "/menu"
               ? "text-primary"

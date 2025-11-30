@@ -86,8 +86,8 @@ export class SpartaObjectStorage {
         const key = `shared/uploads/${uniqueFilename}`;
         await this.objectStorage.uploadFromBytes(key, buffer);
         console.log(`Successfully uploaded ${uniqueFilename} to Object Storage with key: ${key}`);
-        // Return URL that points to Object Storage direct access
-        return `/api/object-storage/direct-download?fileUrl=shared/uploads/${uniqueFilename}`;
+        // Return the raw storage key
+        return key;
       } catch (error) {
         console.error(`Object Storage upload failed for ${uniqueFilename}, using local storage:`, error.message);
         // Fall through to local storage
@@ -133,7 +133,12 @@ export class SpartaObjectStorage {
     const uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
     const filePath = path.join(this.baseDir, uniqueFilename);
 
-    // Write file to local filesystem
+    // Ensure upload directory exists
+    if (!fs.existsSync(this.baseDir)) {
+      fs.mkdirSync(this.baseDir, { recursive: true });
+    }
+
+    // Write file to local filesystem (temporary for thumbnail generation)
     fs.writeFileSync(filePath, fileBuffer);
 
     // Try to upload to Object Storage if available
@@ -155,12 +160,38 @@ export class SpartaObjectStorage {
         
         const result = {
           filename: uniqueFilename,
-          url: `/api/object-storage/direct-download?storageKey=${key}`,
+          url: key,
         } as any;
         
-        // Create thumbnail if it's an image or video
-        if (mimeType.startsWith('image/') || isVideo) {
-          result.thumbnailUrl = result.url;
+        // Create thumbnail only for videos (images are displayed at original size)
+        if (isVideo) {
+          try {
+            const thumbnailFilename = `${uniqueFilename.replace(fileExt, '.jpg')}`;
+            const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
+
+            await this.createVideoThumbnail(filePath, thumbnailPath);
+
+            // Upload thumbnail to Object Storage
+            if (fs.existsSync(thumbnailPath)) {
+              const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+              const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
+              await this.objectStorage.uploadFromBytes(thumbnailKey, thumbnailBuffer);
+              console.log(`Successfully uploaded thumbnail ${thumbnailFilename} to Object Storage at ${thumbnailKey}`);
+              result.thumbnailUrl = thumbnailKey;
+              
+              // Clean up local thumbnail file
+              fs.unlinkSync(thumbnailPath);
+            }
+          } catch (error) {
+            console.error('Error creating/uploading thumbnail:', error);
+            logger.error('Error creating/uploading thumbnail:', error instanceof Error ? error : new Error(String(error)));
+          }
+        }
+        
+        // Clean up local video file after successful upload
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log(`Cleaned up local file: ${filePath}`);
         }
         
         return result;
@@ -175,17 +206,13 @@ export class SpartaObjectStorage {
       url: `/uploads/${uniqueFilename}`,
     } as any;
 
-    // Create thumbnail if it's an image or video
-    if (mimeType.startsWith('image/') || isVideo) {
+    // Create thumbnail only for videos (images are displayed at original size)
+    if (isVideo) {
       try {
         const thumbnailFilename = `thumb-${uniqueFilename.replace(fileExt, '.jpg')}`;
         const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
 
-        if (isVideo) {
-          await this.createVideoThumbnail(filePath, thumbnailPath);
-        } else {
-          await this.createThumbnail(filePath, thumbnailPath);
-        }
+        await this.createVideoThumbnail(filePath, thumbnailPath);
 
         // Upload thumbnail to Object Storage if available
         if (this.objectStorage && fs.existsSync(thumbnailPath)) {
@@ -216,7 +243,7 @@ export class SpartaObjectStorage {
    * @returns Promise that resolves when thumbnail is created
    */
   private async createThumbnail(sourcePath: string, targetPath: string): Promise<void> {
-    const sharp = require('sharp');
+    const sharp = (await import('sharp')).default;
     
     await sharp(sourcePath)
       .resize(300, 300, {
@@ -236,8 +263,8 @@ export class SpartaObjectStorage {
    * @returns Promise that resolves when thumbnail is created
    */
   private async createVideoThumbnail(videoPath: string, targetPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const ffmpeg = require('fluent-ffmpeg');
+    return new Promise(async (resolve, reject) => {
+      const ffmpeg = (await import('fluent-ffmpeg')).default;
       
       // Create a random ID for this process
       const processId = Math.random().toString(36).substring(2, 8);
@@ -284,7 +311,9 @@ export class SpartaObjectStorage {
         })
         .seekInput(1)           // Seek to 1 second
         .frames(1)              // Extract 1 frame
-        .size('640x360')        // Fixed size to avoid invalid parameters
+        .outputOptions([
+          '-vf', 'scale=640:360:force_original_aspect_ratio=increase,crop=640:360'  // Scale and crop to center
+        ])
         .output(targetPath)
         .run();
       
@@ -311,39 +340,50 @@ export class SpartaObjectStorage {
       return;
     }
 
-    console.log(`Attempting to delete file from URL: ${fileUrl}`);
+    console.log(`[DELETE] Attempting to delete file: ${fileUrl}`);
 
-    // Extract filename from URL
-    const filename = path.basename(fileUrl);
+    // Handle both full paths and filenames
+    // If fileUrl already contains 'shared/uploads/', use it as-is
+    // Otherwise, extract filename and build the path
+    let objectStorageKey = fileUrl;
+    if (!fileUrl.startsWith('shared/uploads/')) {
+      const filename = path.basename(fileUrl);
+      objectStorageKey = `shared/uploads/${filename}`;
+    }
+
+    console.log(`[DELETE] Object Storage key: ${objectStorageKey}`);
+
+    // Extract just the filename for local filesystem
+    const filename = path.basename(objectStorageKey);
     const filePath = path.join(this.baseDir, filename);
-
-    console.log(`Looking for file at path: ${filePath}`);
 
     // Delete from local filesystem
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-      console.log(`Deleted local file: ${filePath}`);
+      console.log(`[DELETE] Deleted local file: ${filePath}`);
     } else {
-      console.log(`Local file not found: ${filePath}`);
+      console.log(`[DELETE] Local file not found: ${filePath}`);
     }
 
-    // Delete thumbnail if it exists
+    // Delete thumbnail if it exists (old naming convention)
     const thumbnailFilename = `thumb-${filename.replace(/\.[^/.]+$/, '.jpg')}`;
     const thumbnailPath = path.join(this.thumbnailDir, thumbnailFilename);
     if (fs.existsSync(thumbnailPath)) {
       fs.unlinkSync(thumbnailPath);
-      console.log(`Deleted thumbnail: ${thumbnailPath}`);
+      console.log(`[DELETE] Deleted old-style thumbnail: ${thumbnailPath}`);
     }
 
-    // Delete from Object Storage if available
+    // Delete from Object Storage
     if (this.objectStorage) {
       try {
-        const key = `shared/uploads/${filename}`;
-        await this.objectStorage.delete(key);
-        console.log(`Deleted from Object Storage: ${key}`);
+        await this.objectStorage.delete(objectStorageKey);
+        console.log(`[DELETE] Successfully deleted from Object Storage: ${objectStorageKey}`);
       } catch (error) {
-        console.error(`Error deleting from Object Storage:`, error);
+        console.error(`[DELETE] Error deleting from Object Storage (${objectStorageKey}):`, error);
+        throw error; // Re-throw to let caller know deletion failed
       }
+    } else {
+      console.warn(`[DELETE] Object Storage not available, cannot delete: ${objectStorageKey}`);
     }
   }
 

@@ -257,8 +257,11 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
     setActiveAchievements(prev => prev.filter(a => a.id !== id));
   }, []);
   
-  // Listen for WebSocket achievement events
+  // Listen for WebSocket achievement events - DISABLED until WebSocket server is set up
   useEffect(() => {
+    // WebSocket connection temporarily disabled to prevent reconnection loops
+    // Uncomment when WebSocket server is available
+    /*
     if (!user || socketRef.current) return;
     
     // Get the WebSocket connection
@@ -305,6 +308,7 @@ export function AchievementsProvider({ children }: { children: ReactNode }) {
     socket.onclose = () => {
       socketRef.current = null;
     };
+    */
     
     return () => {
       if (socketRef.current) {

@@ -61,6 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   console.log('AuthProvider state:', { user, isLoading, error });
+  if (user) {
+    console.log('Current user avatarColor:', user.avatarColor);
+  }
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {

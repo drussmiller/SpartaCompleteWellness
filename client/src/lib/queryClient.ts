@@ -30,9 +30,10 @@ export async function apiRequest(
       credentials: 'include',
     });
 
-    // Log failed API requests for debugging
+    // Log failed API requests for debugging (clone response before reading)
     if (!response.ok) {
-      const errorText = await response.text();
+      const clonedResponse = response.clone();
+      const errorText = await clonedResponse.text();
       console.error(`API ${method} request to ${path} failed:`, {
         status: response.status,
         statusText: response.statusText,
@@ -108,9 +109,9 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 30000, // Added from changes
-      refetchOnMount: "if-stale", // Added from changes
-      retry: 1, // Added from changes
+      staleTime: 30000,
+      refetchOnMount: false,
+      retry: 1,
     },
     mutations: {
       retry: false,

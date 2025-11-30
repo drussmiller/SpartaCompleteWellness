@@ -1,0 +1,153 @@
+y-posts 304 in 580ms :: {"hasAnyPosts":true}
+2025-11-21 10:23:14.33
+315bf031
+User
+4:23:14 PM [express] GET /api/prayer-requests/unread 304 in 292ms :: {"unreadCount":0}
+2025-11-21 10:23:14.40
+315bf031
+User
+4:23:14 PM [express] GET /api/prayer-requests/unread 304 in 283ms :: {"unreadCount":0}
+2025-11-21 10:23:14.43
+315bf031
+User
+4:23:14 PM [express] GET /api/users/me 304 in 580ms :: {"id":1,"username":"admin","preferredName":"a…
+2025-11-21 10:23:14.46
+315bf031
+User
+4:23:14 PM [express] GET /api/activities/current 304 in 552ms :: {"currentWeek":7,"currentDay":5,"pr…
+2025-11-21 10:23:14.49
+315bf031
+User
+4:23:14 PM [express] GET /api/messages/unread/count 304 in 553ms :: {"unreadCount":0}
+2025-11-21 10:23:14.56
+315bf031
+User
+4:23:14 PM [express] GET /api/notifications/unread 304 in 504ms :: {"unreadCount":0}
+2025-11-21 10:23:14.60
+315bf031
+User
+4:23:14 PM [express] GET /api/achievements/unviewed 304 in 510ms :: []
+2025-11-21 10:23:14.62
+315bf031
+User
+4:23:14 PM [express] GET /api/teams/1/competitive 304 in 790ms :: {"competitive":false}
+2025-11-21 10:23:15.29
+315bf031
+User
+Attempting to download file from Object Storage: shared/uploads/1763403658528-image.jpeg
+2025-11-21 10:23:15.32
+315bf031
+User
+Attempting to download file from Object Storage: shared/uploads/1762141243857-image.jpeg
+2025-11-21 10:23:15.39
+315bf031
+User
+Attempting to download file from Object Storage: shared/uploads/1763681606243-image.jpeg
+2025-11-21 10:23:15.42
+315bf031
+User
+Attempting to download file from Object Storage: shared/uploads/1763681550413-image.jpeg
+2025-11-21 10:23:15.49
+315bf031
+User
+Successfully downloaded shared/uploads/1762141243857-image.jpeg, size: 260036 bytes
+2025-11-21 10:23:15.49
+315bf031
+User
+Download result for shared/uploads/1762141243857-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:23:15.54
+315bf031
+User
+Download result for shared/uploads/1763681606243-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:23:15.54
+315bf031
+User
+Successfully downloaded shared/uploads/1763681606243-image.jpeg, size: 556401 bytes
+2025-11-21 10:23:15.54
+315bf031
+User
+Successfully downloaded shared/uploads/1763403658528-image.jpeg, size: 135040 bytes
+2025-11-21 10:23:15.54
+315bf031
+User
+Download result for shared/uploads/1763403658528-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:23:15.58
+315bf031
+User
+Download result for shared/uploads/1763681550413-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 10:23:15.58
+315bf031
+User
+Successfully downloaded shared/uploads/1763681550413-image.jpeg, size: 486532 bytes
+2025-11-21 10:23:15.77
+315bf031
+User
+4:23:15 PM [express] GET /api/serve-file 200 in 455ms
+2025-11-21 10:23:15.80
+315bf031
+User
+4:23:15 PM [express] GET /api/serve-file 200 in 417ms
+2025-11-21 10:23:15.83
+315bf031
+User
+4:23:15 PM [express] GET /api/serve-file 200 in 541ms
+2025-11-21 10:23:15.87
+315bf031
+User
+4:23:15 PM [express] GET /api/serve-file 200 in 446ms
+2025-11-21 10:23:16.02
+315bf031
+User
+4:23:16 PM [express] GET /api/posts/39/reactions 200 in 621ms :: []
+2025-11-21 10:23:16.06
+315bf031
+User
+4:23:16 PM [express] GET /api/posts/32/reactions 200 in 597ms :: []
+2025-11-21 10:23:16.10
+315bf031
+User
+4:23:16 PM [express] GET /api/posts/30/reactions 200 in 549ms :: []
+2025-11-21 10:23:16.14
+315bf031
+User
+4:23:16 PM [express] GET /api/posts/15/reactions 200 in 535ms :: []
+2025-11-21 10:23:16.16
+315bf031
+User
+4:23:16 PM [express] GET /api/posts/33/reactions 200 in 534ms :: []
+2025-11-21 10:23:16.20
+315bf031
+User
+4:23:16 PM [express] GET /api/posts/21/reactions 200 in 537ms :: [{"id":2,"userId":19,"postId":21,"t…
+2025-11-21 10:23:16.20
+315bf031
+User
+4:23:16 PM [express] GET /api/posts/6/reactions 200 in 527ms :: []
+2025-11-21 10:23:16.55
+315bf031
+User
+4:23:16 PM [express] GET /api/notifications/unread 304 in 199ms :: {"unreadCount":0}
+2025-11-21 10:23:16.56
+315bf031
+User
+4:23:16 PM [express] GET /api/notifications/unread 304 in 194ms :: {"unreadCount":0}
+2025-11-21 10:23:16.62
+315bf031
+User
+4:23:16 PM [express] GET /api/notifications 304 in 199ms :: []
+2025-11-21 10:23:16.66
+315bf031
+User
+Downloading shared/uploads/1763731302840-IMG_9481.mov to cache...
+2025-11-21 10:23:17.36
+315bf031
+User
+Successfully downloaded shared/uploads/1763731302840-IMG_9481.mov, size: 39987588 bytes
+2025-11-21 10:23:17.42
+315bf031
+User
+4:23:17 PM [express] GET /api/serve-file 206 in 770ms
+2025-11-21 10:23:17.65
+315bf031
+User
+Cache hit for shared/uploads/1763731302840-IMG_9481.mov

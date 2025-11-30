@@ -1,0 +1,452 @@
+2025-11-21 21:26:08.42
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications/unread 304 in 308ms :: {"unreadCount":0}
+2025-11-21 21:26:08.45
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications/unread 304 in 301ms :: {"unreadCount":0}
+2025-11-21 21:26:08.46
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications/unread 304 in 309ms :: {"unreadCount":0}
+2025-11-21 21:26:08.48
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications/unread 304 in 302ms :: {"unreadCount":0}
+2025-11-21 21:26:08.49
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications 304 in 308ms :: []
+2025-11-21 21:26:08.51
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications 304 in 302ms :: []
+2025-11-21 21:26:08.52
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications/unread 304 in 309ms :: {"unreadCount":0}
+2025-11-21 21:26:08.55
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications/unread 304 in 301ms :: {"unreadCount":0}
+2025-11-21 21:26:08.55
+c461330d
+User
+3:26:08 AM [express] GET /api/notifications 304 in 308ms :: []
+2025-11-21 21:26:21.82
+c461330d
+User
+3:26:21 AM [express] GET / 304 in 36ms
+2025-11-21 21:26:22.06
+c461330d
+User
+3:26:22 AM [express] GET /assets/index-B3VftyfQ.css 304 in 34ms
+2025-11-21 21:26:22.06
+c461330d
+User
+3:26:22 AM [express] GET /assets/index-BmxXL3Tl.js 304 in 34ms
+2025-11-21 21:26:22.36
+c461330d
+User
+Authenticated user: 1
+2025-11-21 21:26:22.36
+c461330d
+User
+GET /api/user - Session: _GT5Kl-3ieqIaJNCKS_za8_DNy9Ts3Vo
+2025-11-21 21:26:22.36
+c461330d
+User
+GET /api/user - Session userId: undefined
+2025-11-21 21:26:22.36
+c461330d
+User
+GET /api/user - Is Authenticated: true
+2025-11-21 21:26:22.36
+c461330d
+User
+User data being returned: {"id":1,"username":"admin","avatarColor":"#F43F5E"}
+2025-11-21 21:26:22.36
+c461330d
+User
+GET /api/user - Passport user: 1
+2025-11-21 21:26:23.07
+c461330d
+User
+3:26:23 AM [express] GET /sparta_circle_red.png 304 in 345ms
+2025-11-21 21:26:23.21
+c461330d
+User
+3:26:23 AM [express] GET /api/prayer-requests/unread 304 in 340ms :: {"unreadCount":0}
+2025-11-21 21:26:23.28
+c461330d
+User
+Found 0 unread messages for user 1
+2025-11-21 21:26:23.34
+c461330d
+User
+3:26:23 AM [express] GET /api/prayer-requests/unread 304 in 303ms :: {"unreadCount":0}
+2025-11-21 21:26:23.38
+c461330d
+User
+3:26:23 AM [express] GET /api/notifications 304 in 576ms :: []
+2025-11-21 21:26:23.52
+c461330d
+User
+3:26:23 AM [express] GET /api/messages/unread/count 304 in 546ms :: {"unreadCount":0}
+2025-11-21 21:26:23.58
+c461330d
+User
+3:26:23 AM [express] GET /api/achievements/unviewed 304 in 574ms :: []
+2025-11-21 21:26:23.58
+c461330d
+User
+3:26:23 AM [express] GET /api/users/me 304 in 508ms :: {"id":1,"username":"admin","preferredName":"a…
+2025-11-21 21:26:23.61
+c461330d
+User
+3:26:23 AM [express] GET /api/posts/has-any-posts 304 in 504ms :: {"hasAnyPosts":true}
+2025-11-21 21:26:23.61
+c461330d
+User
+3:26:23 AM [express] GET /api/activities/current 304 in 476ms :: {"currentWeek":7,"currentDay":5,"pr…
+2025-11-21 21:26:23.64
+c461330d
+User
+3:26:23 AM [express] GET /api/notifications/unread 200 in 503ms :: {"unreadCount":0}
+2025-11-21 21:26:23.71
+c461330d
+User
+3:26:23 AM [express] GET /api/teams/1/competitive 304 in 793ms :: {"competitive":false}
+2025-11-21 21:26:24.21
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1763681550413-image.jpeg
+2025-11-21 21:26:24.28
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1763403658528-image.jpeg
+2025-11-21 21:26:24.31
+c461330d
+User
+Download result for shared/uploads/1763681550413-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 21:26:24.31
+c461330d
+User
+Successfully downloaded shared/uploads/1763681550413-image.jpeg, size: 486532 bytes
+2025-11-21 21:26:24.37
+c461330d
+User
+Successfully downloaded shared/uploads/1763403658528-image.jpeg, size: 135040 bytes
+2025-11-21 21:26:24.37
+c461330d
+User
+Download result for shared/uploads/1763403658528-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 21:26:24.38
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1763681606243-image.jpeg
+2025-11-21 21:26:24.38
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1762141243857-image.jpeg
+2025-11-21 21:26:24.44
+c461330d
+User
+Download result for shared/uploads/1763681606243-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 21:26:24.44
+c461330d
+User
+Successfully downloaded shared/uploads/1763681606243-image.jpeg, size: 556401 bytes
+2025-11-21 21:26:24.45
+c461330d
+User
+Download result for shared/uploads/1762141243857-image.jpeg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 21:26:24.45
+c461330d
+User
+Successfully downloaded shared/uploads/1762141243857-image.jpeg, size: 260036 bytes
+2025-11-21 21:26:24.55
+c461330d
+User
+3:26:24 AM [express] GET /api/serve-file 200 in 339ms
+2025-11-21 21:26:24.61
+c461330d
+User
+3:26:24 AM [express] GET /api/serve-file 200 in 335ms
+2025-11-21 21:26:24.68
+c461330d
+User
+3:26:24 AM [express] GET /api/serve-file 200 in 300ms
+2025-11-21 21:26:24.68
+c461330d
+User
+3:26:24 AM [express] GET /api/serve-file 200 in 305ms
+2025-11-21 21:26:24.89
+c461330d
+User
+3:26:24 AM [express] GET /api/posts/32/reactions 200 in 480ms :: []
+2025-11-21 21:26:24.91
+c461330d
+User
+3:26:24 AM [express] GET /api/posts/30/reactions 200 in 462ms :: []
+2025-11-21 21:26:24.95
+c461330d
+User
+3:26:24 AM [express] GET /api/posts/6/reactions 200 in 460ms :: []
+2025-11-21 21:26:24.99
+c461330d
+User
+3:26:24 AM [express] GET /api/posts/15/reactions 200 in 471ms :: []
+2025-11-21 21:26:25.02
+c461330d
+User
+3:26:25 AM [express] GET /api/posts/21/reactions 200 in 443ms :: [{"id":2,"userId":19,"postId":21,"t…
+2025-11-21 21:26:25.04
+c461330d
+User
+3:26:25 AM [express] GET /api/posts/33/reactions 200 in 460ms :: []
+2025-11-21 21:26:30.18
+c461330d
+User
+3:26:30 AM [express] GET /api/notifications/unread 304 in 328ms :: {"unreadCount":0}
+2025-11-21 21:26:30.21
+c461330d
+User
+3:26:30 AM [express] GET /api/teams 304 in 346ms :: [{"id":1,"name":"Admin","description":"Admin’s d…
+2025-11-21 21:26:30.21
+c461330d
+User
+3:26:30 AM [express] GET /api/notifications 304 in 330ms :: []
+2025-11-21 21:26:30.24
+c461330d
+User
+3:26:30 AM [express] GET /api/notifications/unread 304 in 349ms :: {"unreadCount":0}
+2025-11-21 21:26:30.28
+c461330d
+User
+3:26:30 AM [express] GET /api/notifications 304 in 331ms :: []
+2025-11-21 21:26:30.28
+c461330d
+User
+3:26:30 AM [express] GET /api/groups 304 in 365ms :: [{"id":1,"name":"Admin","description":"Admin gr…
+2025-11-21 21:26:30.31
+c461330d
+User
+3:26:30 AM [express] GET /api/organizations 304 in 382ms :: [{"id":1,"name":"Sparta","description":"…
+2025-11-21 21:26:30.31
+c461330d
+User
+3:26:30 AM [express] GET /api/notifications/unread 304 in 354ms :: {"unreadCount":0}
+2025-11-21 21:26:30.34
+c461330d
+User
+3:26:30 AM [express] GET /api/notifications/unread 304 in 234ms :: {"unreadCount":0}
+2025-11-21 21:26:47.14
+c461330d
+User
+3:26:47 AM [express] GET /api/notifications/unread 304 in 99ms :: {"unreadCount":0}
+2025-11-21 21:26:47.14
+c461330d
+User
+3:26:47 AM [express] GET /api/notifications 304 in 98ms :: []
+2025-11-21 21:26:47.17
+c461330d
+User
+3:26:47 AM [express] GET /api/notifications/unread 304 in 98ms :: {"unreadCount":0}
+2025-11-21 21:26:49.23
+c461330d
+User
+Created upload session c764c53c-847a-4263-b134-6a7069c9e2f9 for user 1, file: IMG_9481.mov, size: 39987588
+2025-11-21 21:26:49.27
+c461330d
+User
+3:26:49 AM [express] POST /api/uploads/sessions 200 in 39ms :: {"sessionId":"c764c53c-847a-4263-b134…
+2025-11-21 21:26:51.31
+c461330d
+User
+Appended chunk 0 to session c764c53c-847a-4263-b134-6a7069c9e2f9, progress: 10485760/39987588
+2025-11-21 21:26:51.34
+c461330d
+User
+3:26:51 AM [express] PATCH /api/uploads/sessions/c764c53c-847a-4263-b134-6a7069c9e2f9/chunk 200 in 5…
+2025-11-21 21:26:53.09
+c461330d
+User
+Appended chunk 1 to session c764c53c-847a-4263-b134-6a7069c9e2f9, progress: 20971520/39987588
+2025-11-21 21:26:53.12
+c461330d
+User
+3:26:53 AM [express] PATCH /api/uploads/sessions/c764c53c-847a-4263-b134-6a7069c9e2f9/chunk 200 in 4…
+2025-11-21 21:26:54.69
+c461330d
+User
+Appended chunk 2 to session c764c53c-847a-4263-b134-6a7069c9e2f9, progress: 31457280/39987588
+2025-11-21 21:26:54.72
+c461330d
+User
+3:26:54 AM [express] PATCH /api/uploads/sessions/c764c53c-847a-4263-b134-6a7069c9e2f9/chunk 200 in 5…
+2025-11-21 21:26:56.46
+c461330d
+User
+Appended chunk 3 to session c764c53c-847a-4263-b134-6a7069c9e2f9, progress: 39987588/39987588
+2025-11-21 21:26:56.49
+c461330d
+User
+3:26:56 AM [express] PATCH /api/uploads/sessions/c764c53c-847a-4263-b134-6a7069c9e2f9/chunk 200 in 4…
+2025-11-21 21:26:56.63
+c461330d
+User
+📤 [Finalize Upload] Session found, finalizing 39987588 bytes...
+2025-11-21 21:26:56.63
+c461330d
+User
+📤 [Finalize Upload] Starting for session c764c53c-847a-4263-b134-6a7069c9e2f9, postType: video
+2025-11-21 21:26:56.65
+c461330d
+User
+Finalized session c764c53c-847a-4263-b134-6a7069c9e2f9, file size: 39987588
+2025-11-21 21:26:56.65
+c461330d
+User
+✅ [Finalize Upload] File buffer ready: 39987588 bytes
+2025-11-21 21:26:56.65
+c461330d
+User
+📤 [Finalize Upload] Storing file in Object Storage, isVideo: true
+2025-11-21 21:26:56.65
+c461330d
+User
+[Video Upload] Processing video, converting to H.264/AAC MP4 with faststart
+2025-11-21 21:26:56.81
+c461330d
+User
+[Video Remux] H.264 detected, remuxing with faststart: 1763782016654-IMG_9481-source.mov
+2025-11-21 21:26:56.81
+c461330d
+User
+[Video Probe] Detected codec: h264
+2025-11-21 21:26:56.81
+c461330d
+User
+[Video Remux] FFmpeg: ffmpeg -i /tmp/1763782016654-IMG_9481-source.mov -y -c copy -movflags +faststart /tmp/1763782016654-...
+2025-11-21 21:26:56.99
+c461330d
+User
+[Video Remux] Complete: 1763782016654-IMG_9481.mp4
+2025-11-21 21:26:57.01
+c461330d
+User
+[Video Upload] Conversion complete: 1763782016654-IMG_9481.mp4
+2025-11-21 21:26:57.78
+c461330d
+User
+Successfully uploaded shared/uploads/1763782016654-IMG_9481.mp4 to Object Storage
+2025-11-21 21:26:58.54
+c461330d
+User
+Video thumbnail created successfully: 1763782016654-IMG_9481.jpg
+2025-11-21 21:26:58.54
+c461330d
+User
+}
+2025-11-21 21:26:58.54
+c461330d
+User
+isVideo: true
+2025-11-21 21:26:58.54
+c461330d
+User
+filename: '1763782016654-IMG_9481.mp4',
+2025-11-21 21:26:58.54
+c461330d
+User
+mediaUrl: '/api/object-storage/direct-download?storageKey=shared/uploads/1763782016654-IMG_9481.mp4',
+2025-11-21 21:26:58.54
+c461330d
+User
+thumbnailUrl: 'shared/uploads/1763782016654-IMG_9481.jpg',
+2025-11-21 21:26:58.54
+c461330d
+User
+✅ [Finalize Upload] File stored successfully: {
+2025-11-21 21:26:58.54
+c461330d
+User
+Deleted upload session c764c53c-847a-4263-b134-6a7069c9e2f9
+2025-11-21 21:26:58.58
+c461330d
+User
+3:26:58 AM [express] POST /api/uploads/sessions/c764c53c-847a-4263-b134-6a7069c9e2f9/finalize 200 in…
+2025-11-21 21:26:58.82
+c461330d
+User
+bodyKeys: [ 'is_video', 'selected_media_type', 'data' ],
+2025-11-21 21:26:58.82
+c461330d
+User
+Assigning points: { type: 'miscellaneous', points: 0 }
+2025-11-21 21:26:58.82
+c461330d
+User
+fileDetails: 'No file uploaded',
+2025-11-21 21:26:58.82
+c461330d
+User
+}
+2025-11-21 21:26:58.82
+c461330d
+User
+hasFile: false,
+2025-11-21 21:26:58.82
+c461330d
+User
+filesKeys: []
+2025-11-21 21:26:58.82
+c461330d
+User
+}
+2025-11-21 21:26:58.82
+c461330d
+User
+thumbnailUrl: 'shared/uploads/1763782016654-IMG_9481.jpg',
+2025-11-21 21:26:58.82
+c461330d
+User
+POST /api/posts - Request received {
+2025-11-21 21:26:58.82
+c461330d
+User
+mediaUrl: '/api/object-storage/direct-download?storageKey=shared/uploads/1763782016654-IMG_9481.mp4',
+2025-11-21 21:26:58.82
+c461330d
+User
+contentType: 'multipart/form-data; boundary=----WebKitFormBoundaryCNCm1D756q5ZaGi1',
+2025-11-21 21:26:58.82
+c461330d
+User
+✅ Using chunked upload result for post creation: {
+2025-11-21 21:26:58.82
+c461330d
+User
+Successfully parsed post data: { postType: 'miscellaneous' }
+2025-11-21 21:26:58.82
+c461330d
+User
+isVideo: true
+2025-11-21 21:26:58.82
+c461330d
+User
+filename: '1763782016654-IMG_9481.mp4',
+2025-11-21 21:26:59.87
+c461330d
+User
+Attempting to download file from Object Storage: shared/uploads/1763782016654-IMG_9481.jpg
+2025-11-21 21:26:59.92
+c461330d
+User
+Download result for shared/uploads/1763782016654-IMG_9481.jpg: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-21 21:26:59.92
+c461330d
+User
+Successfully downloaded shared/uploads/1763782016654-IMG_9481.jpg, size: 92463 bytes

@@ -11,6 +11,8 @@ import {
   notifications,
   measurements,
   workoutVideos,
+  workoutTypes,
+  messages,
   type Post,
   type Team,
   type Group,
@@ -21,9 +23,11 @@ import {
   type Notification,
   type Measurement,
   type WorkoutVideo,
+  type WorkoutType,
   type InsertTeam,
   type InsertGroup,
-  type InsertOrganization
+  type InsertOrganization,
+  type InsertWorkoutType
 } from "@shared/schema";
 import { logger } from "./logger";
 import session from "express-session";
@@ -72,6 +76,20 @@ export const storage = {
       throw error;
     }
   },
+
+  async getUserByPreferredName(preferredName: string): Promise<User | null> {
+    try {
+      const result = await db
+        .select()
+        .from(users)
+        .where(sql`LOWER(${users.preferredName}) = LOWER(${preferredName})`)
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      logger.error(`Failed to get user by preferred name ${preferredName}: ${error}`);
+      throw error;
+    }
+  },
   async getUser(id: number): Promise<User | null> {
     try {
       const result = await db
@@ -109,9 +127,17 @@ export const storage = {
 
   async createUser(data: Omit<User, "id" | "createdAt">): Promise<User> {
     try {
+      const avatarColors = [
+        '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16',
+        '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
+        '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF',
+        '#EC4899', '#F43F5E'
+      ];
+      const randomColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
+      
       const [user] = await db
         .insert(users)
-        .values({ ...data, createdAt: new Date() })
+        .values({ ...data, avatarColor: randomColor, createdAt: new Date() })
         .returning();
       return user;
     } catch (error) {
@@ -182,16 +208,25 @@ export const storage = {
   },
 
   // Activities
-  async getActivities(week?: number, day?: number): Promise<Activity[]> {
+  async getActivities(week?: number, day?: number, activityTypeId?: number): Promise<Activity[]> {
     try {
       let query = db.select().from(activities);
+      const conditions = [];
 
       if (week !== undefined) {
-        query = query.where(eq(activities.week, week));
+        conditions.push(eq(activities.week, week));
       }
 
       if (day !== undefined) {
-        query = query.where(eq(activities.day, day));
+        conditions.push(eq(activities.day, day));
+      }
+
+      if (activityTypeId !== undefined) {
+        conditions.push(eq(activities.activityTypeId, activityTypeId));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
       }
 
       return await query.orderBy(activities.week, activities.day);
@@ -201,14 +236,22 @@ export const storage = {
     }
   },
 
-  async getActivitiesForWeeks(weekNumbers: number[]): Promise<Activity[]> {
+  async getActivitiesForWeeks(weekNumbers: number[], activityTypeId?: number): Promise<Activity[]> {
     try {
       if (weekNumbers.length === 0) {
         return [];
       }
 
-      const query = db.select().from(activities).where(
+      const conditions = [
         or(...weekNumbers.map(week => eq(activities.week, week)))
+      ];
+
+      if (activityTypeId !== undefined) {
+        conditions.push(eq(activities.activityTypeId, activityTypeId));
+      }
+
+      const query = db.select().from(activities).where(
+        and(...conditions)
       );
 
       return await query.orderBy(activities.week, activities.day);
@@ -249,6 +292,7 @@ export const storage = {
           type: posts.type,
           content: posts.content,
           mediaUrl: posts.mediaUrl, // Updated to mediaUrl to match frontend expectations
+          thumbnailUrl: posts.thumbnailUrl, // Added thumbnailUrl for video thumbnails
           is_video: posts.is_video, // Added is_video field
           points: posts.points,
           createdAt: posts.createdAt,
@@ -326,78 +370,12 @@ export const storage = {
     try {
       logger.info(`Starting deletion of post ${id}`);
       
-      // First, get the post to check if it has media that needs to be deleted
-      const postToDelete = await db
-        .select({
-          id: posts.id,
-          mediaUrl: posts.mediaUrl,
-          is_video: posts.is_video
-        })
-        .from(posts)
-        .where(eq(posts.id, id))
-        .limit(1);
-      
-      logger.debug(`Post data for deletion:`, postToDelete[0]);
+      // NOTE: Media file cleanup is now handled in routes.ts BEFORE calling this function
+      // This ensures proper handling of HLS videos, thumbnails, and regular media files
       
       // Delete the post record from the database
       await db.delete(posts).where(eq(posts.id, id));
       logger.info(`Deleted post ${id} from database`);
-      
-      // If the post had media, delete the media files from Object Storage
-      if (postToDelete.length > 0 && postToDelete[0].mediaUrl) {
-        const mediaUrl = postToDelete[0].mediaUrl;
-        const isVideo = postToDelete[0].is_video;
-        
-        logger.info(`Deleting media files for post ${id}, mediaUrl: ${mediaUrl}, isVideo: ${isVideo}`);
-        
-        try {
-          // Import the SpartaObjectStorage utility
-          const { spartaStorage } = await import('./sparta-object-storage');
-          
-          // Extract clean filename from mediaUrl
-          let filename = '';
-          if (mediaUrl.includes('filename=')) {
-            // Handle serve-file URLs like /api/serve-file?filename=...
-            const urlParams = new URLSearchParams(mediaUrl.split('?')[1]);
-            filename = urlParams.get('filename') || '';
-          } else {
-            // Handle direct paths
-            filename = mediaUrl.split('/').pop() || '';
-          }
-          
-          logger.debug(`Extracted filename: ${filename}`);
-          
-          if (filename) {
-            // Build the actual Object Storage path
-            const filePath = `shared/uploads/${filename}`;
-            
-            // Delete the main media file
-            try {
-              await spartaStorage.deleteFile(filePath);
-              logger.info(`Deleted main media file: ${filePath}`);
-            } catch (err) {
-              logger.warn(`Could not delete main media file ${filePath}: ${err}`);
-            }
-            
-            // If it's a video, also delete the thumbnail
-            if (isVideo) {
-              // With the new compact naming, thumbnails have the same base name but .jpg extension
-              const baseName = filename.substring(0, filename.lastIndexOf('.'));
-              const thumbnailPath = `shared/uploads/${baseName}.jpg`;
-              
-              try {
-                await spartaStorage.deleteFile(thumbnailPath);
-                logger.info(`Deleted video thumbnail: ${thumbnailPath}`);
-              } catch (err) {
-                logger.debug(`Could not delete video thumbnail ${thumbnailPath}: ${err}`);
-              }
-            }
-          }
-        } catch (mediaError) {
-          // Log but don't throw - we want to continue even if media deletion fails
-          logger.error(`Error deleting media for post ${id}: ${mediaError}`);
-        }
-      }
       
       logger.info(`Successfully completed deletion of post ${id}`);
     } catch (error) {
@@ -494,6 +472,16 @@ export const storage = {
           .delete(notifications)
           .where(eq(notifications.userId, userId));
 
+        // Delete all messages sent by this user
+        await tx
+          .delete(messages)
+          .where(eq(messages.senderId, userId));
+
+        // Delete all messages received by this user
+        await tx
+          .delete(messages)
+          .where(eq(messages.recipientId, userId));
+
         // Finally delete the user
         await tx
           .delete(users)
@@ -568,6 +556,7 @@ export const storage = {
           type: posts.type,
           content: posts.content,
           mediaUrl: posts.mediaUrl, // Updated to mediaUrl to match frontend expectations
+          thumbnailUrl: posts.thumbnailUrl, // Added thumbnailUrl for video thumbnails
           is_video: posts.is_video, // Added is_video field
           points: posts.points,
           createdAt: posts.createdAt,
@@ -610,8 +599,13 @@ export const storage = {
   async createComment(data: Partial<Post>): Promise<Post> {
     try {
       logger.debug("Creating comment with data:", data);
-      if (!data.userId || !data.content || !data.parentId) {
+      // Require userId and parentId, but allow empty content if media is provided
+      if (!data.userId || !data.parentId) {
         throw new Error("Missing required fields for comment");
+      }
+      // Validate that either content or media is provided
+      if (!data.content && !data.mediaUrl) {
+        throw new Error("Comment must have either text content or media");
       }
       
       // Check for potentially problematic parent ID values (like JS timestamps)
@@ -641,6 +635,7 @@ export const storage = {
           content: data.content,
           parentId: safeParentId, // Use the safe parentId
           mediaUrl: data.mediaUrl || null, // Added mediaUrl field
+          thumbnailUrl: data.thumbnailUrl || null, // Added thumbnailUrl field for video thumbnails
           is_video: data.is_video || false, // Added is_video field with default false
           depth: data.depth || 0,
           points: data.points !== undefined ? data.points : 0, // Use provided points or default to 0
@@ -683,6 +678,94 @@ export const storage = {
       await db.delete(teams).where(eq(teams.id, id));
     } catch (error) {
       logger.error(`Failed to delete team ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async getTeamsByGroup(groupId: number): Promise<Team[]> {
+    try {
+      return await db.select().from(teams).where(eq(teams.groupId, groupId));
+    } catch (error) {
+      logger.error(`Failed to get teams for group ${groupId}:`, error);
+      throw error;
+    }
+  },
+
+  async getTeamMemberCount(teamId: number): Promise<number> {
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.teamId, teamId));
+      // Ensure we return a proper number, not a string
+      return Number(result[0]?.count) || 0;
+    } catch (error) {
+      logger.error(`Failed to get team member count for team ${teamId}:`, error);
+      throw error;
+    }
+  },
+
+  // Group Admin operations
+  async makeUserGroupAdmin(userId: number, groupId: number): Promise<User> {
+    try {
+      const [user] = await db
+        .update(users)
+        .set({ 
+          isGroupAdmin: true,
+          adminGroupId: groupId 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error) {
+      logger.error(`Failed to make user ${userId} group admin of group ${groupId}:`, error);
+      throw error;
+    }
+  },
+
+  async removeUserGroupAdmin(userId: number): Promise<User> {
+    try {
+      const [user] = await db
+        .update(users)
+        .set({ 
+          isGroupAdmin: false,
+          adminGroupId: null 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return user;
+    } catch (error) {
+      logger.error(`Failed to remove group admin status from user ${userId}:`, error);
+      throw error;
+    }
+  },
+
+  async getGroupAdmins(groupId: number): Promise<User[]> {
+    try {
+      return await db
+        .select()
+        .from(users)
+        .where(and(eq(users.isGroupAdmin, true), eq(users.adminGroupId, groupId)));
+    } catch (error) {
+      logger.error(`Failed to get group admins for group ${groupId}:`, error);
+      throw error;
+    }
+  },
+
+  async isUserGroupAdmin(userId: number, groupId: number): Promise<boolean> {
+    try {
+      const user = await db
+        .select()
+        .from(users)
+        .where(and(
+          eq(users.id, userId),
+          eq(users.isGroupAdmin, true),
+          eq(users.adminGroupId, groupId)
+        ))
+        .limit(1);
+      return user.length > 0;
+    } catch (error) {
+      logger.error(`Failed to check if user ${userId} is group admin of group ${groupId}:`, error);
       throw error;
     }
   },
@@ -788,12 +871,48 @@ export const storage = {
     }
   },
 
-  // Update team functions to work with groupId
-  async getTeamsByGroup(groupId: number): Promise<Team[]> {
+  // Workout Types
+  async getWorkoutTypes(): Promise<WorkoutType[]> {
     try {
-      return await db.select().from(teams).where(eq(teams.groupId, groupId));
+      return await db.select().from(workoutTypes);
     } catch (error) {
-      logger.error(`Failed to get teams for group ${groupId}: ${error}`);
+      logger.error(`Failed to get workout types: ${error}`);
+      throw error;
+    }
+  },
+
+  async createWorkoutType(data: InsertWorkoutType): Promise<WorkoutType> {
+    try {
+      const [workoutType] = await db
+        .insert(workoutTypes)
+        .values({ ...data, createdAt: new Date() })
+        .returning();
+      return workoutType;
+    } catch (error) {
+      logger.error(`Failed to create workout type: ${error}`);
+      throw error;
+    }
+  },
+
+  async updateWorkoutType(id: number, data: Partial<Omit<WorkoutType, "id" | "createdAt">>): Promise<WorkoutType> {
+    try {
+      const [workoutType] = await db
+        .update(workoutTypes)
+        .set(data)
+        .where(eq(workoutTypes.id, id))
+        .returning();
+      return workoutType;
+    } catch (error) {
+      logger.error('Database error updating workout type:', error);
+      throw error;
+    }
+  },
+
+  async deleteWorkoutType(id: number): Promise<void> {
+    try {
+      await db.delete(workoutTypes).where(eq(workoutTypes.id, id));
+    } catch (error) {
+      logger.error(`Failed to delete workout type ${id}: ${error}`);
       throw error;
     }
   }

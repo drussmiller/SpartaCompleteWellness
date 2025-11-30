@@ -1,0 +1,269 @@
+2025-11-24 13:53:16.55
+1efd8485
+User
+[REQ v4] 1764013996559-5nkwqrhec: Direct download: shared/uploads/1763949323609-IMG_9506.mp4, route: /api/object-storage/direct-download, range: bytes=0-1
+2025-11-24 13:53:16.55
+1efd8485
+User
+[REQ START v4] New request 1764013996559-5nkwqrhec - storageKey: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-1, method: GET
+2025-11-24 13:53:16.55
+1efd8485
+User
+[VIDEO v5] 1764013996559-5nkwqrhec: Video detected: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-1
+2025-11-24 13:53:16.55
+1efd8485
+User
+Attempting to download file from Object Storage: shared/uploads/1763949323609-IMG_9506.mp4
+2025-11-24 13:53:16.56
+1efd8485
+User
+7:53:16 PM [express] GET /api/notifications/unread 304 in 188ms :: {"unreadCount":0}
+2025-11-24 13:53:17.04
+1efd8485
+User
+[VIDEO v5] 1764013996559-5nkwqrhec: Downloaded 36547902 bytes from Object Storage
+2025-11-24 13:53:17.04
+1efd8485
+User
+Successfully downloaded shared/uploads/1763949323609-IMG_9506.mp4, size: 36547902 bytes
+2025-11-24 13:53:17.04
+1efd8485
+User
+Download result for shared/uploads/1763949323609-IMG_9506.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 13:53:17.04
+1efd8485
+User
+[VIDEO v5] 1764013996559-5nkwqrhec: Range request bytes=0-1 -> slice [0, 1] = 2 bytes
+2025-11-24 13:53:17.04
+1efd8485
+User
+[VIDEO v5] 1764013996559-5nkwqrhec: Sending 206 response: 2 bytes (0-1/36547902)
+2025-11-24 13:53:17.04
+1efd8485
+User
+[VIDEO v5] 1764013996559-5nkwqrhec: 206 response completed
+2025-11-24 13:53:17.07
+1efd8485
+User
+7:53:17 PM [express] GET /api/object-storage/direct-download 206 in 519ms
+2025-11-24 13:53:17.26
+1efd8485
+User
+Attempting to download file from Object Storage: shared/uploads/1763949323609-IMG_9506.mp4
+2025-11-24 13:53:17.26
+1efd8485
+User
+[REQ START v4] New request 1764013997265-lrx799q4a - storageKey: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-36547901, method: GET
+2025-11-24 13:53:17.26
+1efd8485
+User
+[VIDEO v5] 1764013997265-lrx799q4a: Video detected: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-36547901
+2025-11-24 13:53:17.26
+1efd8485
+User
+[REQ v4] 1764013997265-lrx799q4a: Direct download: shared/uploads/1763949323609-IMG_9506.mp4, route: /api/object-storage/direct-download, range: bytes=0-36547901
+2025-11-24 13:53:17.61
+1efd8485
+User
+[VIDEO v5] 1764013997265-lrx799q4a: Range request bytes=0-36547901 -> slice [0, 36547901] = 36547902 bytes
+2025-11-24 13:53:17.61
+1efd8485
+User
+Download result for shared/uploads/1763949323609-IMG_9506.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 13:53:17.61
+1efd8485
+User
+[VIDEO v5] 1764013997265-lrx799q4a: Sending 206 response: 36547902 bytes (0-36547901/36547902)
+2025-11-24 13:53:17.61
+1efd8485
+User
+Successfully downloaded shared/uploads/1763949323609-IMG_9506.mp4, size: 36547902 bytes
+2025-11-24 13:53:17.61
+1efd8485
+User
+[VIDEO v5] 1764013997265-lrx799q4a: Downloaded 36547902 bytes from Object Storage
+2025-11-24 13:53:17.61
+1efd8485
+User
+[VIDEO v5] 1764013997265-lrx799q4a: 206 response completed
+2025-11-24 13:53:17.71
+1efd8485
+User
+7:53:17 PM [express] GET /api/object-storage/direct-download 206 in 448ms
+2025-11-24 13:53:17.97
+1efd8485
+User
+[REQ START v4] New request 1764013997972-fu8moqv8i - storageKey: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-36547901, method: GET
+2025-11-24 13:53:17.97
+1efd8485
+User
+[REQ v4] 1764013997972-fu8moqv8i: Direct download: shared/uploads/1763949323609-IMG_9506.mp4, route: /api/object-storage/direct-download, range: bytes=0-36547901
+2025-11-24 13:53:17.97
+1efd8485
+User
+[VIDEO v5] 1764013997972-fu8moqv8i: Video detected: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-36547901
+2025-11-24 13:53:17.97
+1efd8485
+User
+Attempting to download file from Object Storage: shared/uploads/1763949323609-IMG_9506.mp4
+2025-11-24 13:53:18.29
+1efd8485
+User
+[VIDEO v5] 1764013997972-fu8moqv8i: Downloaded 36547902 bytes from Object Storage
+2025-11-24 13:53:18.29
+1efd8485
+User
+Download result for shared/uploads/1763949323609-IMG_9506.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 13:53:18.29
+1efd8485
+User
+[VIDEO v5] 1764013997972-fu8moqv8i: Sending 206 response: 36547902 bytes (0-36547901/36547902)
+2025-11-24 13:53:18.29
+1efd8485
+User
+[VIDEO v5] 1764013997972-fu8moqv8i: Range request bytes=0-36547901 -> slice [0, 36547901] = 36547902 bytes
+2025-11-24 13:53:18.29
+1efd8485
+User
+[VIDEO v5] 1764013997972-fu8moqv8i: 206 response completed
+2025-11-24 13:53:18.29
+1efd8485
+User
+Successfully downloaded shared/uploads/1763949323609-IMG_9506.mp4, size: 36547902 bytes
+2025-11-24 13:53:18.38
+1efd8485
+User
+7:53:18 PM [express] GET /api/object-storage/direct-download 206 in 412ms
+2025-11-24 13:53:18.74
+1efd8485
+User
+[REQ v4] 1764013998740-oewmktppo: Direct download: shared/uploads/1763949323609-IMG_9506.mp4, route: /api/object-storage/direct-download, range: bytes=0-1445
+2025-11-24 13:53:18.74
+1efd8485
+User
+[VIDEO v5] 1764013998740-oewmktppo: Video detected: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-1445
+2025-11-24 13:53:18.74
+1efd8485
+User
+[REQ START v4] New request 1764013998740-oewmktppo - storageKey: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-1445, method: GET
+2025-11-24 13:53:18.74
+1efd8485
+User
+Attempting to download file from Object Storage: shared/uploads/1763949323609-IMG_9506.mp4
+2025-11-24 13:53:19.05
+1efd8485
+User
+[VIDEO v5] 1764013998740-oewmktppo: Range request bytes=0-1445 -> slice [0, 1445] = 1446 bytes
+2025-11-24 13:53:19.05
+1efd8485
+User
+Download result for shared/uploads/1763949323609-IMG_9506.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 13:53:19.05
+1efd8485
+User
+Successfully downloaded shared/uploads/1763949323609-IMG_9506.mp4, size: 36547902 bytes
+2025-11-24 13:53:19.05
+1efd8485
+User
+[VIDEO v5] 1764013998740-oewmktppo: Downloaded 36547902 bytes from Object Storage
+2025-11-24 13:53:19.05
+1efd8485
+User
+[VIDEO v5] 1764013998740-oewmktppo: Sending 206 response: 1446 bytes (0-1445/36547902)
+2025-11-24 13:53:19.05
+1efd8485
+User
+[VIDEO v5] 1764013998740-oewmktppo: 206 response completed
+2025-11-24 13:53:19.09
+1efd8485
+User
+7:53:19 PM [express] GET /api/object-storage/direct-download 206 in 354ms
+2025-11-24 13:53:19.29
+1efd8485
+User
+[REQ START v4] New request 1764013999298-hqr2eq8ii - storageKey: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-1, method: GET
+2025-11-24 13:53:19.29
+1efd8485
+User
+Attempting to download file from Object Storage: shared/uploads/1763949323609-IMG_9506.mp4
+2025-11-24 13:53:19.61
+1efd8485
+User
+[VIDEO v5] 1764013999298-hqr2eq8ii: Downloaded 36547902 bytes from Object Storage
+2025-11-24 13:53:19.61
+1efd8485
+User
+Successfully downloaded shared/uploads/1763949323609-IMG_9506.mp4, size: 36547902 bytes
+2025-11-24 13:53:19.61
+1efd8485
+User
+[VIDEO v5] 1764013999298-hqr2eq8ii: Range request bytes=0-1 -> slice [0, 1] = 2 bytes
+2025-11-24 13:53:19.61
+1efd8485
+User
+Download result for shared/uploads/1763949323609-IMG_9506.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 13:53:19.64
+1efd8485
+User
+7:53:19 PM [express] GET /api/object-storage/direct-download 206 in 347ms
+2025-11-24 13:53:19.88
+1efd8485
+User
+[REQ START v4] New request 1764013999887-vljg0ivqm - storageKey: shared/uploads/1763949323609-IMG_9506.mp4, range: bytes=0-36547901, method: GET
+2025-11-24 13:53:19.88
+1efd8485
+User
+[REQ v4] 1764013999887-vljg0ivqm: Direct download: shared/uploads/1763949323609-IMG_9506.mp4, route: /api/object-storage/direct-download, range: bytes=0-36547901
+2025-11-24 13:53:20.20
+1efd8485
+User
+[VIDEO v5] 1764013999887-vljg0ivqm: Sending 206 response: 36547902 bytes (0-36547901/36547902)
+2025-11-24 13:53:20.84
+1efd8485
+User
+[VIDEO v5] 1764014000511-ami6hgery: Sending 206 response: 36547902 bytes (0-36547901/36547902)
+2025-11-24 13:53:20.84
+1efd8485
+User
+Successfully downloaded shared/uploads/1763949323609-IMG_9506.mp4, size: 36547902 bytes
+2025-11-24 13:53:20.84
+1efd8485
+User
+Download result for shared/uploads/1763949323609-IMG_9506.mp4: { type: 'object', hasOkProperty: true, isBuffer: false }
+2025-11-24 13:53:20.84
+1efd8485
+User
+[VIDEO v5] 1764014000511-ami6hgery: Downloaded 36547902 bytes from Object Storage
+2025-11-24 13:53:20.84
+1efd8485
+User
+[VIDEO v5] 1764014000511-ami6hgery: 206 response completed
+2025-11-24 13:53:20.84
+1efd8485
+User
+[VIDEO v5] 1764014000511-ami6hgery: Range request bytes=0-36547901 -> slice [0, 36547901] = 36547902 bytes
+2025-11-24 13:53:20.93
+1efd8485
+User
+7:53:20 PM [express] GET /api/object-storage/direct-download 206 in 427ms
+2025-11-24 13:53:20.93
+1efd8485
+User
+7:53:20 PM [express] GET /api/object-storage/direct-download 206 in 427ms
+2025-11-24 13:53:20.93
+1efd8485
+User
+7:53:20 PM [express] GET /api/object-storage/direct-download 206 in 427ms
+2025-11-24 13:54:47.20
+1efd8485
+User
+7:54:47 PM [express] GET /api/notifications/unread 304 in 63ms :: {"unreadCount":0}
+2025-11-24 13:54:47.20
+1efd8485
+User
+7:54:47 PM [express] GET /api/notifications/unread 304 in 63ms :: {"unreadCount":0}
+2025-11-24 13:55:07.99
+1efd8485
+User
+Found 0 unread messages for user 1
+2

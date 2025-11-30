@@ -1,0 +1,84 @@
+2025-11-21 18:54:44.44
+3c8eb496
+User
+Created upload session 6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425 for user 1, file: IMG_9481.mov, size: 39987588
+2025-11-21 18:54:44.47
+3c8eb496
+User
+12:54:44 AM [express] POST /api/uploads/sessions 200 in 34ms :: {"sessionId":"6e6d37d5-0a9a-4cc3-8ddd…
+2025-11-21 18:54:45.72
+3c8eb496
+User
+Appended chunk 0 to session 6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425, progress: 10485760/39987588
+2025-11-21 18:54:45.75
+3c8eb496
+User
+12:54:45 AM [express] PATCH /api/uploads/sessions/6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425/chunk 200 in 5…
+2025-11-21 18:54:47.02
+3c8eb496
+User
+Appended chunk 1 to session 6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425, progress: 20971520/39987588
+2025-11-21 18:54:47.07
+3c8eb496
+User
+12:54:47 AM [express] PATCH /api/uploads/sessions/6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425/chunk 200 in 7…
+2025-11-21 18:54:48.52
+3c8eb496
+User
+Appended chunk 2 to session 6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425, progress: 31457280/39987588
+2025-11-21 18:54:48.56
+3c8eb496
+User
+12:54:48 AM [express] PATCH /api/uploads/sessions/6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425/chunk 200 in 5…
+2025-11-21 18:54:49.79
+3c8eb496
+User
+Appended chunk 3 to session 6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425, progress: 39987588/39987588
+2025-11-21 18:54:49.82
+3c8eb496
+User
+12:54:49 AM [express] PATCH /api/uploads/sessions/6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425/chunk 200 in 5…
+2025-11-21 18:54:50.19
+3c8eb496
+User
+📤 [Finalize Upload] Session found, finalizing 39987588 bytes...
+2025-11-21 18:54:50.19
+3c8eb496
+User
+📤 [Finalize Upload] Starting for session 6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425, postType: video
+2025-11-21 18:54:50.22
+3c8eb496
+User
+📤 [Finalize Upload] Storing file in Object Storage, isVideo: true
+2025-11-21 18:54:50.22
+3c8eb496
+User
+Finalized session 6e6d37d5-0a9a-4cc3-8ddd-4f6430df7425, file size: 39987588
+2025-11-21 18:54:50.22
+3c8eb496
+User
+✅ [Finalize Upload] File buffer ready: 39987588 bytes
+2025-11-21 18:54:50.24
+3c8eb496
+User
+[Video Upload] MOV file detected, remuxing to MP4 with faststart
+2025-11-21 18:54:50.24
+3c8eb496
+User
+[Video Remux] Converting to MP4 with faststart: 1763772890224-IMG_9481.mov
+2025-11-21 18:54:51.08
+3c8eb496
+User
+[Video Remux] FFmpeg: ffmpeg -i /tmp/1763772890224-IMG_9481.mov -y -c copy -movflags +faststart /tmp/1763772890224-IMG_948...
+2025-11-21 18:54:51.33
+3c8eb496
+User
+[Video Remux] Complete: 1763772890224-IMG_9481.mp4
+2025-11-21 18:54:51.36
+3c8eb496
+User
+[Video Upload] Remux complete: 1763772890224-IMG_9481.mp4
+2025-11-21 18:54:52.56
+3c8eb496
+User
+Successfully uploaded shared/uploads/1763772890224-IMG_9481.mp4 to Object Storage

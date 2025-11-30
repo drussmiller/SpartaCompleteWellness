@@ -104,6 +104,45 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
+    // Check if this is a JSON request with chunked upload data
+    const contentType = req.headers['content-type'] || '';
+    const isJsonRequest = contentType.includes('application/json');
+    
+    // Handle chunked upload (pre-uploaded video via HLS conversion)
+    if (isJsonRequest && req.body.chunkedUploadMediaUrl) {
+      console.log('Processing message with chunked upload result:', req.body);
+      
+      const { content, recipientId, chunkedUploadMediaUrl, chunkedUploadThumbnailUrl, is_video } = req.body;
+      
+      // Validate recipient exists
+      const [recipient] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(recipientId)))
+        .limit(1);
+
+      if (!recipient) {
+        return res.status(404).json({ message: "Recipient not found" });
+      }
+      
+      // Create message with pre-uploaded media URLs
+      const [message] = await db
+        .insert(messages)
+        .values({
+          senderId: req.user.id,
+          recipientId: parseInt(recipientId),
+          content: content || null,
+          imageUrl: chunkedUploadMediaUrl, // HLS playlist or video URL
+          posterUrl: chunkedUploadThumbnailUrl || null, // Video thumbnail
+          isRead: false,
+          is_video: is_video === true || is_video === 'true',
+        })
+        .returning();
+
+      logger.info(`Message sent with chunked upload from user ${req.user.id} to ${recipientId} (mediaUrl: ${chunkedUploadMediaUrl})`);
+      return res.status(201).json(message);
+    }
+
     const { content, recipientId, is_video } = req.body;
 
     // Validate recipient exists
@@ -185,12 +224,19 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         // Store the full Object Storage key for proper URL construction - same as comments
         if (fileInfo && fileInfo.filename) {
           mediaUrl = `shared/uploads/${fileInfo.filename}`;
+          
+          // Store the thumbnail URL if it was generated for videos
+          if (isVideo && fileInfo.thumbnailUrl) {
+            req.body.posterUrl = fileInfo.thumbnailUrl;
+            console.log(`Video thumbnail generated:`, { posterUrl: fileInfo.thumbnailUrl });
+          }
+          
           console.log(`Stored message media file with full path:`, { url: mediaUrl, isVideo });
         } else {
           console.warn('Invalid fileInfo returned from Object Storage:', fileInfo);
           mediaUrl = null;
         }
-        console.log(`Stored message media file:`, { url: mediaUrl, isVideo, originalFileInfo: fileInfo });
+        console.log(`Stored message media file:`, { url: mediaUrl, isVideo, posterUrl: req.body.posterUrl, originalFileInfo: fileInfo });
       } catch (fileError) {
         console.error('Error processing media file for message:', fileError);
         logger.error('Error processing media file for message:', fileError);
@@ -207,6 +253,7 @@ messageRouter.post("/api/messages", authenticate, upload.single('image'), async 
         recipientId: parseInt(recipientId),
         content: content || null,
         imageUrl: mediaUrl, // Use the full Object Storage path like comments do
+        posterUrl: req.body.posterUrl || null, // Store the video thumbnail URL
         isRead: false,
         is_video: isVideoFlag,
       })
@@ -449,5 +496,216 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
     console.error("DETAILED ERROR fetching messages:", error);
     logger.error("Error fetching messages:", error);
     return res.status(500).json({ message: "Failed to fetch messages" });
+  }
+});
+
+// Update message content (edit message)
+messageRouter.patch("/api/messages/:messageId", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const messageId = parseInt(req.params.messageId);
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: "Content is required" });
+    }
+
+    // Get the message to verify ownership
+    const [existingMessage] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+
+    if (!existingMessage) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Verify the user owns this message
+    if (existingMessage.senderId !== req.user.id) {
+      return res.status(403).json({ message: "You can only edit your own messages" });
+    }
+
+    // Update the message content
+    const [updatedMessage] = await db
+      .update(messages)
+      .set({ content: content.trim() })
+      .where(eq(messages.id, messageId))
+      .returning();
+
+    logger.info(`Message ${messageId} updated by user ${req.user.id}`);
+    return res.json(updatedMessage);
+  } catch (error) {
+    logger.error("Error updating message:", error);
+    return res.status(500).json({ message: "Failed to update message" });
+  }
+});
+
+// Delete message
+messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const messageId = parseInt(req.params.messageId);
+
+    // Get the message to verify ownership
+    const [existingMessage] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+
+    if (!existingMessage) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Verify the user owns this message
+    if (existingMessage.senderId !== req.user.id) {
+      return res.status(403).json({ message: "You can only delete your own messages" });
+    }
+
+    // Delete associated media files if they exist
+    if (existingMessage.imageUrl) {
+      try {
+        const { Client } = await import("@replit/object-storage");
+        const client = new Client();
+        
+        // Handle HLS videos
+        if (existingMessage.imageUrl.includes('/api/hls/')) {
+          console.log(`[MESSAGE HLS DELETE] Starting HLS deletion for imageUrl: ${existingMessage.imageUrl}`);
+          
+          // Extract baseFilename from URL like "/api/hls/1764035901093-IMG_9504/playlist.m3u8"
+          const match = existingMessage.imageUrl.match(/\/api\/hls\/([^\/]+)\//);
+          console.log(`[MESSAGE HLS DELETE] Regex match result: ${match ? match[1] : 'NO MATCH'}`);
+          
+          if (match && match[1]) {
+            const baseFilename = match[1];
+            
+            // Delete all files in the HLS directory
+            const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+            console.log(`[MESSAGE HLS DELETE] Using prefix: ${hlsPrefix}`);
+            
+            try {
+              // List all files with the HLS prefix
+              console.log(`[MESSAGE HLS DELETE] Calling client.list() with prefix...`);
+              const listResult = await client.list({ prefix: hlsPrefix });
+              console.log(`[MESSAGE HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
+              
+              // Extract the file array from the result
+              const files = listResult.value || [];
+              console.log(`[MESSAGE HLS DELETE] Found ${files.length} files to delete`);
+              
+              // Delete all files in the HLS directory
+              let deletedCount = 0;
+              for (const fileItem of files) {
+                const fileKey = fileItem.name;
+                console.log(`[MESSAGE HLS DELETE] Attempting to delete: ${fileKey}`);
+                try {
+                  await client.delete(fileKey);
+                  deletedCount++;
+                  console.log(`[MESSAGE HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                } catch (deleteError) {
+                  console.error(`[MESSAGE HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                }
+              }
+              
+              console.log(`[MESSAGE HLS DELETE] Deletion complete: ${deletedCount}/${files.length} files deleted`);
+            } catch (hlsError) {
+              console.error(`[MESSAGE HLS DELETE] Error during HLS cleanup:`, hlsError);
+              // Continue with message deletion even if HLS cleanup fails
+            }
+          } else {
+            console.log(`[MESSAGE HLS DELETE] Could not extract baseFilename from URL: ${existingMessage.imageUrl}`);
+          }
+        }
+        // Handle regular media files
+        else {
+          // Extract storage key from media URL
+          let storageKey = null;
+          
+          // Format: /api/object-storage/direct-download?storageKey=shared/uploads/filename.ext
+          const objectStorageMatch = existingMessage.imageUrl.match(/storageKey=([^&]+)/);
+          if (objectStorageMatch && objectStorageMatch[1]) {
+            storageKey = decodeURIComponent(objectStorageMatch[1]);
+          }
+          
+          // Format: /api/serve-file?filename=shared/uploads/filename.ext
+          const serveFileMatch = existingMessage.imageUrl.match(/filename=([^&]+)/);
+          if (serveFileMatch && serveFileMatch[1]) {
+            storageKey = decodeURIComponent(serveFileMatch[1]);
+          }
+          
+          // Handle plain storage key paths (e.g., "shared/uploads/filename.ext")
+          if (!storageKey && existingMessage.imageUrl.startsWith('shared/uploads/')) {
+            storageKey = existingMessage.imageUrl;
+          }
+          
+          if (storageKey) {
+            console.log(`[MESSAGE DELETE] Deleting media file: ${storageKey}`);
+            try {
+              await client.delete(storageKey);
+              console.log(`[MESSAGE DELETE] ✅ Successfully deleted media file for message ${messageId}`);
+              
+              // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
+              if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
+                const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
+                console.log(`[MESSAGE DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
+                try {
+                  await client.delete(thumbnailKey);
+                  console.log(`[MESSAGE DELETE] ✅ Successfully deleted video thumbnail`);
+                } catch (thumbError) {
+                  console.log(`[MESSAGE DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
+                }
+              }
+            } catch (mediaError) {
+              console.error(`[MESSAGE DELETE] ❌ Error deleting media file:`, mediaError);
+            }
+          } else {
+            console.log(`[MESSAGE DELETE] Could not extract storage key from imageUrl: ${existingMessage.imageUrl}`);
+          }
+        }
+      } catch (error) {
+        logger.error(`[MESSAGE DELETE] Error cleaning up media files:`, error);
+      }
+    }
+
+    // Delete associated poster/thumbnail if it exists
+    if (existingMessage.posterUrl) {
+      try {
+        const { Client } = await import("@replit/object-storage");
+        const client = new Client();
+        
+        let posterStorageKey = null;
+        
+        const serveFileMatch = existingMessage.posterUrl.match(/filename=([^&]+)/);
+        if (serveFileMatch && serveFileMatch[1]) {
+          posterStorageKey = decodeURIComponent(serveFileMatch[1]);
+        }
+        
+        if (posterStorageKey) {
+          logger.info(`[MESSAGE DELETE] Deleting poster: ${posterStorageKey}`);
+          try {
+            await client.delete(posterStorageKey);
+            logger.info(`[MESSAGE DELETE] Successfully deleted poster for message ${messageId}`);
+          } catch (posterError) {
+            logger.error(`[MESSAGE DELETE] Error deleting poster:`, posterError);
+          }
+        }
+      } catch (error) {
+        logger.error(`[MESSAGE DELETE] Error cleaning up poster:`, error);
+      }
+    }
+
+    // Delete the message
+    await db
+      .delete(messages)
+      .where(eq(messages.id, messageId));
+
+    logger.info(`Message ${messageId} deleted by user ${req.user.id}`);
+    return res.json({ success: true, message: "Message deleted" });
+  } catch (error) {
+    logger.error("Error deleting message:", error);
+    return res.status(500).json({ message: "Failed to delete message" });
   }
 });
