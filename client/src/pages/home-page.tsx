@@ -217,102 +217,110 @@ export default function HomePage() {
       scrollContainerRef={scrollContainerRef}
     >
       <div className="min-h-screen bg-background">
-        {/* Fixed Header - spans full width */}
-        <div
-          className="fixed top-0 left-0 right-0 z-[50] bg-background border-b border-border"
-          style={{
-            transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
-            transition: "transform 0.3s ease-out",
-            pointerEvents: "auto",
-          }}
-        >
-          <div className="w-full max-w-[1000px] mx-auto px-4 md:px-40 md:pl-64">
-            <div className="flex items-center justify-between pt-12">
-              <div className="flex-1 flex justify-center">
-                <img
-                  src="/sparta_circle_red.png"
-                  alt="Sparta Complete Wellness Logo"
-                  className="w-36 h-auto mx-auto"
-                  onError={(e) => {
-                    console.error("Error loading logo:", e);
-                    // Fallback to a different logo if the main one fails
-                    e.currentTarget.src = "/Spartans_LOGO.png";
-                  }}
-                />
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center gap-2">
-                  <CreatePostDialog remaining={remaining} initialType="food" />
-                  {user?.teamId && <MessageSlideCard />}
+        {/* Border wrapper for desktop */}
+        <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : 'w-full'}`}>
+          <div className={`${!isMobile ? 'border-x border-border min-h-screen' : ''}`}>
+            {/* Fixed Header */}
+            <div
+              className="fixed top-0 z-[50] bg-background"
+              style={{
+                transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
+                transition: "transform 0.3s ease-out",
+                pointerEvents: "auto",
+                left: !isMobile ? '80px' : '0',
+                right: !isMobile ? 'auto' : '0',
+                width: !isMobile ? 'calc(100vw - 80px)' : '100%',
+              }}
+            >
+              <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-6 md:px-44 md:pl-56' : 'px-4'}`}>
+                <div className={`border-b border-border ${!isMobile ? 'border-x px-4' : ''}`}>
+              <div className="flex items-center justify-between pt-12">
+                <div className="flex-1 flex justify-center">
+                  <img
+                    src="/sparta_circle_red.png"
+                    alt="Sparta Complete Wellness Logo"
+                    className="w-36 h-auto mx-auto"
+                    onError={(e) => {
+                      console.error("Error loading logo:", e);
+                      // Fallback to a different logo if the main one fails
+                      e.currentTarget.src = "/Spartans_LOGO.png";
+                    }}
+                  />
                 </div>
-                {/* Admin/Group Admin filter for introductory videos */}
-                {(user?.isAdmin || user?.isGroupAdmin) && (
-                  <Button
-                    variant={showIntroVideosOnly ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowIntroVideosOnly(!showIntroVideosOnly)}
-                    className="text-xs h-7"
-                    data-testid="button-filter-intro-videos"
-                  >
-                    <Filter className="h-3 w-3 mr-1" />
-                    {showIntroVideosOnly ? "Show All Posts" : "New Users"}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-1 mb-2 px-6">
-              <Button
-                variant="default"
-                className="flex-1 mr-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
-              >
-                Team
-              </Button>
-              <Button
-                variant="outline"
-                className={`flex-1 ml-2 h-10 text-sm font-medium ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!user?.teamId}
-                onClick={handlePrayerRequestsClick}
-              >
-                <div className="relative">
-                  Prayer Requests
-                  {user?.teamId && prayerRequestCount > 0 && (
-                    <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {prayerRequestCount > 99 ? "99+" : prayerRequestCount}
-                    </div>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <CreatePostDialog remaining={remaining} initialType="food" />
+                    {user?.teamId && <MessageSlideCard />}
+                  </div>
+                  {/* Admin/Group Admin filter for introductory videos */}
+                  {(user?.isAdmin || user?.isGroupAdmin) && (
+                    <Button
+                      variant={showIntroVideosOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowIntroVideosOnly(!showIntroVideosOnly)}
+                      className="text-xs h-7"
+                      data-testid="button-filter-intro-videos"
+                    >
+                      <Filter className="h-3 w-3 mr-1" />
+                      {showIntroVideosOnly ? "Show All Posts" : "New Users"}
+                    </Button>
                   )}
                 </div>
-              </Button>
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between mt-1 mb-2 px-6">
+                <Button
+                  variant="default"
+                  className="flex-1 mr-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
+                >
+                  Team
+                </Button>
+                <Button
+                  variant="outline"
+                  className={`flex-1 ml-2 h-10 text-sm font-medium ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!user?.teamId}
+                  onClick={handlePrayerRequestsClick}
+                >
+                  <div className="relative">
+                    Prayer Requests
+                    {user?.teamId && prayerRequestCount > 0 && (
+                      <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {prayerRequestCount > 99 ? "99+" : prayerRequestCount}
+                      </div>
+                    )}
+                  </div>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Main content layout */}
-        <div
-          className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Pull-to-refresh indicator */}
-          <div 
-            className="fixed top-0 left-0 right-0 flex justify-center items-center z-40 pointer-events-none"
-            style={{
-              transform: `translateY(${Math.min(pullDistance - 20, 60)}px)`,
-              opacity: pullDistance > 20 ? Math.min(pullDistance / pullThreshold, 1) : 0,
-              transition: isPulling ? 'none' : 'all 0.3s ease-out',
-            }}
-          >
-            <div className="bg-background rounded-full p-3 shadow-lg border border-border">
-              <RefreshCw 
-                className={`h-5 w-5 text-primary ${isRefreshing || pullDistance >= pullThreshold ? 'animate-spin' : ''}`}
-                data-testid="icon-refresh"
-              />
-            </div>
-          </div>
+            {/* Main content layout */}
+            <div
+              className={!isMobile ? "pt-32" : ""}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Pull-to-refresh indicator */}
+              <div 
+                className="fixed top-0 left-0 right-0 flex justify-center items-center z-40 pointer-events-none"
+                style={{
+                  transform: `translateY(${Math.min(pullDistance - 20, 60)}px)`,
+                  opacity: pullDistance > 20 ? Math.min(pullDistance / pullThreshold, 1) : 0,
+                  transition: isPulling ? 'none' : 'all 0.3s ease-out',
+                }}
+              >
+                <div className="bg-background rounded-full p-3 shadow-lg border border-border">
+                  <RefreshCw 
+                    className={`h-5 w-5 text-primary ${isRefreshing || pullDistance >= pullThreshold ? 'animate-spin' : ''}`}
+                    data-testid="icon-refresh"
+                  />
+                </div>
+              </div>
 
-          <main className="p-4">
+              <main className="p-4">
             {/* Header */}
             <div className="mb-6">
               <div style={{ height: "75px" }}></div>
@@ -349,7 +357,9 @@ export default function HomePage() {
                   {isLoading && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
               </div>
-            </main>
+              </main>
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>

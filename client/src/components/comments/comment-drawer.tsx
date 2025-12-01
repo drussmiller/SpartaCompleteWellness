@@ -1,4 +1,4 @@
-import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
+import { createPortal } from "react-dom";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
@@ -458,61 +458,83 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     },
   });
 
-  return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent 
-        side="right" 
-        ref={drawerRef}
-        className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
-        style={{ 
-          width: '100%', 
-          maxWidth: '100%', 
-          overflow: 'hidden', 
-          paddingTop: 'env(safe-area-inset-top, 30px)',
-          position: 'fixed',
-          top: `${viewportTop}px`,
-          left: '0',
-          right: '0',
-          height: `${viewportHeight}px`,
-          maxHeight: `${viewportHeight}px`
-        }}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <div className="w-full flex flex-col" style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
-          {/* Fixed header bar */}
-          <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
-            {/* Back button */}
-            <SheetClose className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
-              <ChevronLeft className="text-2xl" />
-              <span className="sr-only">Close</span>
-            </SheetClose>
+  // Close drawer when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
 
-            {/* Post author info */}
-            {originalPost?.author && (
-              <div className="flex flex-col items-start justify-center h-full ml-14 pt-2">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-10 w-10">
-                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
-                    <AvatarFallback
-                      style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
-                      className="text-white"
-                    >
-                      {originalPost.author.username?.[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xl font-semibold">{originalPost.author.username}</span>
-                  {originalPost?.createdAt && (
-                    <>
-                      <span className="text-muted-foreground">-</span>
-                      <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside as any);
+
+      return () => {
+        document.body.style.overflow = '';
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside as any);
+      };
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      ref={drawerRef}
+      className="fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
+      style={{
+        top: `${viewportTop}px`,
+        height: `${viewportHeight}px`,
+        left: isMobile ? 0 : '80px',
+        right: 0,
+        paddingTop: 'env(safe-area-inset-top, 30px)'
+      }}
+    >
+      <div 
+        className={`w-full h-full flex flex-col bg-white ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+        style={{ overflow: 'hidden' }}
+      >
+        <div className={`h-full flex flex-col ${!isMobile ? 'border-x border-gray-200' : ''}`}>
+          {/* Fixed header bar */}
+          <div className="h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 px-4">
+          {/* Back button */}
+          <button 
+            onClick={onClose}
+            className="p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 flex-shrink-0"
+          >
+            <ChevronLeft className="text-2xl" />
+            <span className="sr-only">Close</span>
+          </button>
+
+          {/* Post author info */}
+          {originalPost?.author && (
+            <div className="flex items-center gap-2 flex-1">
+              <Avatar className="h-10 w-10">
+                {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                <AvatarFallback
+                  style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                  className="text-white"
+                >
+                  {originalPost.author.username?.[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xl font-semibold">{originalPost.author.username}</span>
+              {originalPost?.createdAt && (
+                <>
+                  <span className="text-muted-foreground">-</span>
+                  <span className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
           {/* Content area */}
           <div className="flex-1 overflow-y-auto pt-2">
@@ -532,7 +554,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
             {/* Post and comments section */}
             {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
-              <div className="px-4 pb-40" >
+              <div className="px-4 pb-4">
                 <PostView post={originalPost} />
                 <div className="border-t border-gray-200 my-4"></div>
                 <CommentList 
@@ -544,9 +566,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
             )}
           </div>
 
-          {/* Fixed comment form at the bottom */}
+          {/* Comment form at the bottom */}
           {isCommentBoxVisible && (
-            <div className={`fixed bottom-0 left-0 right-0 px-4 pt-4 border-t bg-background z-[99999] ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className={`px-4 pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
                 onSubmit={async (content, file, chunkedUploadData) => {
                   await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
@@ -558,7 +580,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </div>,
+    document.body
   );
 }

@@ -13,9 +13,11 @@ import { NotificationSettings } from "@/components/notification-settings";
 import { WelcomePage } from "./welcome-page";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function MenuPage() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   console.log('[MENU PAGE] User avatar color:', user?.avatarColor);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -34,7 +36,7 @@ export default function MenuPage() {
         {/* Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
           <div className="max-w-2xl mx-auto p-4">
-            <h1 className="text-xl font-bold">Menu</h1>
+            <h1 className={`text-xl font-bold ${!isMobile ? 'pl-16' : ''}`}>Menu</h1>
           </div>
         </div>
 
@@ -60,7 +62,7 @@ export default function MenuPage() {
                 </div>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0">
+            <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
               {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -73,7 +75,7 @@ export default function MenuPage() {
                 Welcome
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0">
+            <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
               {welcomeOpen && <WelcomePage onClose={() => setWelcomeOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -92,7 +94,7 @@ export default function MenuPage() {
                 {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0">
+            <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
               {notificationSettingsOpen && <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -111,7 +113,7 @@ export default function MenuPage() {
                 {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0">
+            <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
               {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -124,7 +126,7 @@ export default function MenuPage() {
                 Support Sparta
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0">
+            <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
               {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -153,7 +155,7 @@ export default function MenuPage() {
                   Admin Dashboard
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="p-0">
+              <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
                 {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
               </SheetContent>
             </Sheet>

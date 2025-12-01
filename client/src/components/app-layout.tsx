@@ -60,6 +60,12 @@ export function AppLayout({
               {children}
             </main>
           </div>
+          
+          {/* Portal root for overlays that need to respect layout constraints */}
+          <div id="app-portal-root" className="pointer-events-none fixed inset-x-0 top-16 bottom-0 flex justify-center">
+            <div className="w-full max-w-[1000px]"></div>
+          </div>
+          
           {isMobile && <BottomNav orientation="horizontal" isVisible={isBottomNavVisible} scrollOffset={scrollOffset} />}
         </div>
       </div>

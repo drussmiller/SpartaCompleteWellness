@@ -251,6 +251,13 @@ export default function ActivityManagementPage() {
       let title = filename;
 
       let content = data.content;
+      
+      // Debug: Log what mammoth returned
+      console.log('=== MAMMOTH RAW OUTPUT ===');
+      console.log('Content length:', content.length);
+      console.log('First 1000 chars:', content.substring(0, 1000));
+      console.log('Contains iframe?:', content.includes('<iframe'));
+      console.log('Number of iframes:', (content.match(/<iframe/g) || []).length);
 
       // Clean up invalid HTML symbols that may be added during document conversion
       content = content
@@ -266,14 +273,75 @@ export default function ActivityManagementPage() {
       content = content.replace(/\s*margin[^=]*="[^"]*"/gi, '');
       content = content.replace(/\s*padding[^=]*="[^"]*"/gi, '');
 
-      // YouTube URL regex - matches various YouTube URL formats
+      // Use DOM parsing to properly normalize all iframes
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, 'text/html');
+      
+      // Process all iframes
+      const iframes = doc.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        // Remove width and height attributes
+        iframe.removeAttribute('width');
+        iframe.removeAttribute('height');
+        
+        // Ensure allowfullscreen is set
+        iframe.setAttribute('allowfullscreen', '');
+        
+        // Check if already wrapped in video-wrapper
+        const parent = iframe.parentElement;
+        if (!parent || !parent.classList.contains('video-wrapper')) {
+          // Create wrapper div
+          const wrapper = doc.createElement('div');
+          wrapper.className = 'video-wrapper';
+          
+          // Wrap the iframe
+          parent?.insertBefore(wrapper, iframe);
+          wrapper.appendChild(iframe);
+        }
+      });
+      
+      // Serialize back to HTML
+      content = doc.body.innerHTML.trim();
+
+      // FIRST: Remove YouTube links from anchor tags (convert <a href="youtube">text</a> to just the YouTube URL)
+      // This prevents the URL from being replaced inside the href attribute
+      const ytLinkRegex = /<a[^>]+href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>([^<]*)<\/a>/gi;
+      content = content.replace(ytLinkRegex, (match: string, url: string) => {
+        console.log('Found YouTube anchor, extracting URL:', url);
+        return url; // Just return the bare URL, which will be converted to an embed below
+      });
+
+      console.log('After extracting YouTube URLs from anchors:', content.substring(0, 500));
+
+      // SECOND: Convert all YouTube URLs (now bare text) to embedded players
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
-      // Replace YouTube URLs with embedded players
       content = content.replace(youtubeRegex, (match: string, videoId: string) => {
+        console.log('Converting YouTube URL to embed:', match, 'Video ID:', videoId);
         if (!videoId) return match;
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
+      
+      console.log('After YouTube conversion:', content.substring(0, 500));
+
+      // Add visual separation after each video except the last one
+      const allVideoMatches: Array<{match: string, index: number}> = [];
+      const videoFindRegex = /<div class="video-wrapper"><iframe[^>]*><\/iframe><\/div>/g;
+      let videoMatch;
+      
+      while ((videoMatch = videoFindRegex.exec(content)) !== null) {
+        allVideoMatches.push({
+          match: videoMatch[0],
+          index: videoMatch.index
+        });
+      }
+      
+      // Add separator after each video except the last one (iterate backwards to preserve indices)
+      for (let i = allVideoMatches.length - 2; i >= 0; i--) {
+        const insertPosition = allVideoMatches[i].index + allVideoMatches[i].match.length;
+        const separator = '<hr class="my-6 border-t border-gray-300">';
+        content = content.substring(0, insertPosition) + separator + content.substring(insertPosition);
+      }
 
       // Amazon URL processing - handle text before URL on same or previous line
       // Pattern 1: Text ending with colon, then Amazon URL (most common)
@@ -311,9 +379,6 @@ export default function ActivityManagementPage() {
         }
         return match;
       });
-
-      // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
-      content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
 
       // Bible verses are kept as plain text
 
@@ -407,8 +472,8 @@ export default function ActivityManagementPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
-          <div className="flex items-center mb-6">
+      <div className="mx-auto w-full max-w-[1000px] px-6 md:px-44 md:pl-56 lg:border-x lg:border-border/40 bg-white space-y-8">
+          <div className="flex items-center mb-6 pt-6">
             <Button
               variant="ghost"
               onClick={() => window.history.back()}
@@ -659,16 +724,56 @@ export default function ActivityManagementPage() {
                           contentHtml = contentHtml.replace(/\s*margin[^=]*="[^"]*"/gi, '');
                           contentHtml = contentHtml.replace(/\s*padding[^=]*="[^"]*"/gi, '');
 
-                          // Process YouTube URLs in the content - convert to embedded iframes
+                          // Use DOM parsing to properly normalize all iframes
+                          const parser = new DOMParser();
+                          const doc = parser.parseFromString(contentHtml, 'text/html');
+                          
+                          // Process all iframes
+                          const iframes = doc.querySelectorAll('iframe');
+                          iframes.forEach(iframe => {
+                            // Remove width and height attributes
+                            iframe.removeAttribute('width');
+                            iframe.removeAttribute('height');
+                            
+                            // Ensure allowfullscreen is set
+                            iframe.setAttribute('allowfullscreen', '');
+                            
+                            // Check if already wrapped in video-wrapper
+                            const parent = iframe.parentElement;
+                            if (!parent || !parent.classList.contains('video-wrapper')) {
+                              // Create wrapper div
+                              const wrapper = doc.createElement('div');
+                              wrapper.className = 'video-wrapper';
+                              
+                              // Wrap the iframe
+                              parent?.insertBefore(wrapper, iframe);
+                              wrapper.appendChild(iframe);
+                            }
+                          });
+                          
+                          // Serialize back to HTML
+                          contentHtml = doc.body.innerHTML.trim();
+
+                          // FIRST: Remove YouTube links from anchor tags (convert <a href="youtube">text</a> to just the YouTube URL)
+                          // This prevents the URL from being replaced inside the href attribute
+                          const ytLinkRegex = /<a[^>]+href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>([^<]*)<\/a>/gi;
+                          contentHtml = contentHtml.replace(ytLinkRegex, (match: string, url: string) => {
+                            console.log('[BULK UPLOAD] Found YouTube anchor, extracting URL:', url);
+                            return url; // Just return the bare URL, which will be converted to an embed below
+                          });
+
+                          console.log('[BULK UPLOAD] After extracting YouTube URLs from anchors');
+
+                          // SECOND: Convert all YouTube URLs (now bare text) to embedded players
                           const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
                           contentHtml = contentHtml.replace(youtubeRegex, (match: string, videoId: string) => {
+                            console.log('[BULK UPLOAD] Converting YouTube URL to embed:', match, 'Video ID:', videoId);
                             if (!videoId) return match;
                             return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
                           });
-
-                          // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
-                          contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
+                          
+                          console.log('[BULK UPLOAD] After YouTube conversion');
 
                           // Remove consecutive duplicate YouTube videos
                           const videoEmbedRegex = /<div class="video-wrapper"><iframe src="https:\/\/www\.youtube\.com\/embed\/([a-zA-Z0-9_-]{11})"[^>]*><\/iframe><\/div>/g;
@@ -690,6 +795,26 @@ export default function ActivityManagementPage() {
                               // Same video as the previous one - remove this duplicate
                               contentHtml = contentHtml.substring(0, videos[i].index) + contentHtml.substring(videos[i].index + videos[i].fullMatch.length);
                             }
+                          }
+
+                          // Add visual separation after each video except the last one
+                          // Replace video wrappers with video + separator, except for the last occurrence
+                          const allVideoMatches: Array<{match: string, index: number}> = [];
+                          const videoFindRegex = /<div class="video-wrapper"><iframe[^>]*><\/iframe><\/div>/g;
+                          let videoMatch;
+                          
+                          while ((videoMatch = videoFindRegex.exec(contentHtml)) !== null) {
+                            allVideoMatches.push({
+                              match: videoMatch[0],
+                              index: videoMatch.index
+                            });
+                          }
+                          
+                          // Add separator after each video except the last one (iterate backwards to preserve indices)
+                          for (let i = allVideoMatches.length - 2; i >= 0; i--) {
+                            const insertPosition = allVideoMatches[i].index + allVideoMatches[i].match.length;
+                            const separator = '<hr class="my-6 border-t border-gray-300">';
+                            contentHtml = contentHtml.substring(0, insertPosition) + separator + contentHtml.substring(insertPosition);
                           }
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);

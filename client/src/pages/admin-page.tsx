@@ -1413,7 +1413,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div className="grid grid-cols-1 gap-6 mt-6">
               {/* Organizations Section - Only show for full admins */}
               {currentUser?.isAdmin && !currentUser?.isTeamLead && (
                 <Collapsible 
@@ -2670,7 +2670,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                 : "Select a Monday"}
                                             </Button>
                                           </PopoverTrigger>
-                                          <PopoverContent className="w-auto p-0" align="start">
+                                          <PopoverContent className="w-auto p-0 z-[100]" align="start">
                                             <Calendar
                                               mode="single"
                                               selected={team.programStartDate ? (() => {
