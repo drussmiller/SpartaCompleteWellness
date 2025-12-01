@@ -233,7 +233,7 @@ export default function HomePage() {
               }}
             >
               <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-6 md:px-44 md:pl-56' : 'px-4'}`}>
-                <div className={`border-b border-border ${!isMobile ? 'border-x' : ''}`}>
+                <div className={`border-b border-border ${!isMobile ? 'border-x px-4' : ''}`}>
               <div className="flex items-center justify-between pt-12">
                 <div className="flex-1 flex justify-center">
                   <img
