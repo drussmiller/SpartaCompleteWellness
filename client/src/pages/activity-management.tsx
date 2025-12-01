@@ -324,6 +324,25 @@ export default function ActivityManagementPage() {
       
       console.log('After YouTube conversion:', content.substring(0, 500));
 
+      // Add visual separation after each video except the last one
+      const allVideoMatches: Array<{match: string, index: number}> = [];
+      const videoFindRegex = /<div class="video-wrapper"><iframe[^>]*><\/iframe><\/div>/g;
+      let videoMatch;
+      
+      while ((videoMatch = videoFindRegex.exec(content)) !== null) {
+        allVideoMatches.push({
+          match: videoMatch[0],
+          index: videoMatch.index
+        });
+      }
+      
+      // Add separator after each video except the last one (iterate backwards to preserve indices)
+      for (let i = allVideoMatches.length - 2; i >= 0; i--) {
+        const insertPosition = allVideoMatches[i].index + allVideoMatches[i].match.length;
+        const separator = '<hr class="my-6 border-t border-gray-300">';
+        content = content.substring(0, insertPosition) + separator + content.substring(insertPosition);
+      }
+
       // Amazon URL processing - handle text before URL on same or previous line
       // Pattern 1: Text ending with colon, then Amazon URL (most common)
       // Matches: <p>Text:</p><p>amazonurl</p> OR <p>Text:<br>amazonurl</p>
@@ -776,6 +795,26 @@ export default function ActivityManagementPage() {
                               // Same video as the previous one - remove this duplicate
                               contentHtml = contentHtml.substring(0, videos[i].index) + contentHtml.substring(videos[i].index + videos[i].fullMatch.length);
                             }
+                          }
+
+                          // Add visual separation after each video except the last one
+                          // Replace video wrappers with video + separator, except for the last occurrence
+                          const allVideoMatches: Array<{match: string, index: number}> = [];
+                          const videoFindRegex = /<div class="video-wrapper"><iframe[^>]*><\/iframe><\/div>/g;
+                          let videoMatch;
+                          
+                          while ((videoMatch = videoFindRegex.exec(contentHtml)) !== null) {
+                            allVideoMatches.push({
+                              match: videoMatch[0],
+                              index: videoMatch.index
+                            });
+                          }
+                          
+                          // Add separator after each video except the last one (iterate backwards to preserve indices)
+                          for (let i = allVideoMatches.length - 2; i >= 0; i--) {
+                            const insertPosition = allVideoMatches[i].index + allVideoMatches[i].match.length;
+                            const separator = '<hr class="my-6 border-t border-gray-300">';
+                            contentHtml = contentHtml.substring(0, insertPosition) + separator + contentHtml.substring(insertPosition);
                           }
                         } else {
                           throw new Error(`Unsupported file type for ${file.name}`);
