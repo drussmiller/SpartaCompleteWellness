@@ -759,7 +759,7 @@ export function MessageSlideCard() {
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
-          left: 0,
+          left: !isMobile ? '80px' : 0,
           right: 0
         }}
         onTouchStart={handleTouchStart}
