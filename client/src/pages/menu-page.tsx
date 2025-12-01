@@ -62,7 +62,7 @@ export default function MenuPage() {
                 </div>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0 md:left-0">
+            <SheetContent side="right" className="p-0 md:left-[128px]">
               {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -75,7 +75,7 @@ export default function MenuPage() {
                 Welcome
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0 md:left-0">
+            <SheetContent side="right" className="p-0 md:left-[128px]">
               {welcomeOpen && <WelcomePage onClose={() => setWelcomeOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -94,7 +94,7 @@ export default function MenuPage() {
                 {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0 md:left-0">
+            <SheetContent side="right" className="p-0 md:left-[128px]">
               {notificationSettingsOpen && <NotificationSettings onClose={() => setNotificationSettingsOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -113,7 +113,7 @@ export default function MenuPage() {
                 {!user?.teamId && <span className="ml-auto text-xs text-muted-foreground">(Team Required)</span>}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0 md:left-0">
+            <SheetContent side="right" className="p-0 md:left-[128px]">
               {leaderboardOpen && <LeaderboardPage onClose={() => setLeaderboardOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -126,7 +126,7 @@ export default function MenuPage() {
                 Support Sparta
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0 md:left-0">
+            <SheetContent side="right" className="p-0 md:left-[128px]">
               {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
             </SheetContent>
           </Sheet>
@@ -155,7 +155,7 @@ export default function MenuPage() {
                   Admin Dashboard
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="p-0 md:left-0">
+              <SheetContent side="right" className="p-0 md:left-[128px]">
                 {adminOpen && <AdminPage onClose={() => setAdminOpen(false)} />}
               </SheetContent>
             </Sheet>
