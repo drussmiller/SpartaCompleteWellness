@@ -96,6 +96,35 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Validate storage key to prevent path traversal attacks
+function validateStorageKey(key: string | null): string | null {
+  if (!key) return null;
+  
+  // Normalize path separators and resolve relative paths
+  const normalized = key.replace(/\\/g, '/');
+  
+  // Reject paths containing path traversal sequences
+  if (normalized.includes('..') || normalized.includes('//')) {
+    console.warn(`[SECURITY] Rejected storage key with path traversal: ${key}`);
+    return null;
+  }
+  
+  // Only allow paths within shared/uploads/ directory
+  if (!normalized.startsWith('shared/uploads/')) {
+    console.warn(`[SECURITY] Rejected storage key outside allowed directory: ${key}`);
+    return null;
+  }
+  
+  // Additional validation: only allow safe characters in filename
+  const filename = normalized.split('/').pop() || '';
+  if (!/^[a-zA-Z0-9._-]+$/.test(filename)) {
+    console.warn(`[SECURITY] Rejected storage key with invalid filename characters: ${key}`);
+    return null;
+  }
+  
+  return normalized;
+}
+
 // Create a router for messages
 export const messageRouter = express.Router();
 
@@ -648,6 +677,9 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
             storageKey = existingMessage.imageUrl;
           }
           
+          // Validate storage key to prevent path traversal
+          storageKey = validateStorageKey(storageKey);
+          
           if (storageKey) {
             console.log(`[MESSAGE DELETE] Deleting media file: ${storageKey}`);
             try {
@@ -657,12 +689,16 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
               // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
               if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
                 const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
-                console.log(`[MESSAGE DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
-                try {
-                  await client.delete(thumbnailKey);
-                  console.log(`[MESSAGE DELETE] ✅ Successfully deleted video thumbnail`);
-                } catch (thumbError) {
-                  console.log(`[MESSAGE DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
+                // Validate thumbnail key as well
+                const validatedThumbnailKey = validateStorageKey(thumbnailKey);
+                if (validatedThumbnailKey) {
+                  console.log(`[MESSAGE DELETE] Attempting to delete video thumbnail: ${validatedThumbnailKey}`);
+                  try {
+                    await client.delete(validatedThumbnailKey);
+                    console.log(`[MESSAGE DELETE] ✅ Successfully deleted video thumbnail`);
+                  } catch (thumbError) {
+                    console.log(`[MESSAGE DELETE] Video thumbnail not found or already deleted: ${validatedThumbnailKey}`);
+                  }
                 }
               }
             } catch (mediaError) {
@@ -689,6 +725,9 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
         if (serveFileMatch && serveFileMatch[1]) {
           posterStorageKey = decodeURIComponent(serveFileMatch[1]);
         }
+        
+        // Validate poster storage key to prevent path traversal
+        posterStorageKey = validateStorageKey(posterStorageKey);
         
         if (posterStorageKey) {
           logger.info(`[MESSAGE DELETE] Deleting poster: ${posterStorageKey}`);
