@@ -472,7 +472,7 @@ export default function ActivityManagementPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen w-full bg-background/95 p-6 pb-24 shadow-lg animate-in slide-in-from-right">
+      <div className="container p-4 md:px-8">
           <div className="flex items-center mb-6">
             <Button
               variant="ghost"
