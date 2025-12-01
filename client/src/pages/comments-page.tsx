@@ -277,12 +277,8 @@ export default function CommentsPage() {
           style={{ top: '4rem', zIndex: 100 }}
         >
           <div 
-            className={`pointer-events-auto flex flex-col overflow-hidden ${!isMobile ? 'w-full max-w-[1000px] animate-slide-in-from-right' : 'w-full'}`}
-            style={{
-              backgroundColor: 'white',
-              borderLeft: isMobile ? 'none' : '4px solid red',
-              borderRight: isMobile ? 'none' : '4px solid blue'
-            }}
+            className={`pointer-events-auto flex flex-col overflow-hidden ${!isMobile ? 'max-w-[1000px] border-x border-gray-200 animate-slide-in-from-right' : 'w-full'}`}
+            style={{ backgroundColor: 'white' }}
           >
             {/* Fixed Title Box at Top */}
             <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
