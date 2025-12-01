@@ -496,11 +496,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       }}
     >
       <div 
-        className={`w-full h-full flex flex-col bg-white mx-auto ${!isMobile ? 'max-w-[1000px] px-6 md:px-44 md:pl-56 border-x border-gray-200' : ''}`}
+        className={`w-full h-full flex flex-col bg-white ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
         style={{ overflow: 'hidden' }}
       >
-        {/* Fixed header bar */}
-        <div className="h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 px-4">
+        <div className={`h-full flex flex-col ${!isMobile ? 'border-x border-gray-200' : ''}`}>
+          {/* Fixed header bar */}
+          <div className="h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 px-4">
           {/* Back button */}
           <button 
             onClick={onClose}
@@ -535,49 +536,50 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           )}
         </div>
 
-        {/* Content area */}
-        <div className="flex-1 overflow-y-auto pt-2">
-          {/* Show loading state */}
-          {(isPostLoading || areCommentsLoading) && (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          )}
+          {/* Content area */}
+          <div className="flex-1 overflow-y-auto pt-2">
+            {/* Show loading state */}
+            {(isPostLoading || areCommentsLoading) && (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            )}
 
-          {/* Show errors if any */}
-          {(postError || commentsError) && (
-            <div className="flex items-center justify-center p-8 text-destructive">
-              <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
-            </div>
-          )}
+            {/* Show errors if any */}
+            {(postError || commentsError) && (
+              <div className="flex items-center justify-center p-8 text-destructive">
+                <p>{postError?.message || commentsError?.message || "Failed to load content"}</p>
+              </div>
+            )}
 
-          {/* Post and comments section */}
-          {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
-            <div className="px-4 pb-4">
-              <PostView post={originalPost} />
-              <div className="border-t border-gray-200 my-4"></div>
-              <CommentList 
-                comments={comments} 
-                postId={postId} 
-                onVisibilityChange={handleCommentVisibility}
+            {/* Post and comments section */}
+            {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
+              <div className="px-4 pb-4">
+                <PostView post={originalPost} />
+                <div className="border-t border-gray-200 my-4"></div>
+                <CommentList 
+                  comments={comments} 
+                  postId={postId} 
+                  onVisibilityChange={handleCommentVisibility}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Comment form at the bottom */}
+          {isCommentBoxVisible && (
+            <div className={`px-4 pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+              <CommentForm
+                onSubmit={async (content, file, chunkedUploadData) => {
+                  await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+                inputRef={commentInputRef}
+                disableAutoScroll={isMobile}
               />
             </div>
           )}
         </div>
-
-        {/* Comment form at the bottom */}
-        {isCommentBoxVisible && (
-          <div className={`px-4 pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-            <CommentForm
-              onSubmit={async (content, file, chunkedUploadData) => {
-                await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
-              }}
-              isSubmitting={createCommentMutation.isPending}
-              inputRef={commentInputRef}
-              disableAutoScroll={isMobile}
-            />
-          </div>
-        )}
       </div>
     </div>,
     document.body
