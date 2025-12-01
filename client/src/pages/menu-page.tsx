@@ -13,9 +13,11 @@ import { NotificationSettings } from "@/components/notification-settings";
 import { WelcomePage } from "./welcome-page";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function MenuPage() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   console.log('[MENU PAGE] User avatar color:', user?.avatarColor);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -34,7 +36,7 @@ export default function MenuPage() {
         {/* Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
           <div className="max-w-2xl mx-auto p-4">
-            <h1 className="text-xl font-bold">Menu</h1>
+            <h1 className={`text-xl font-bold ${!isMobile ? 'pl-16' : ''}`}>Menu</h1>
           </div>
         </div>
 

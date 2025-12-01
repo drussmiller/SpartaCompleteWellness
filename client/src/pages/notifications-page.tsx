@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -122,7 +124,7 @@ export default function NotificationsPage() {
         {/* Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
           <div className="max-w-2xl mx-auto p-4">
-            <h1 className="text-xl font-bold">Notifications</h1>
+            <h1 className={`text-xl font-bold ${!isMobile ? 'pl-16' : ''}`}>Notifications</h1>
           </div>
         </div>
         <div className="flex justify-center items-center h-full mt-[84px]">
@@ -138,7 +140,7 @@ export default function NotificationsPage() {
         {/* Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
           <div className="max-w-2xl mx-auto p-4">
-            <h1 className="text-xl font-bold">Notifications</h1>
+            <h1 className={`text-xl font-bold ${!isMobile ? 'pl-16' : ''}`}>Notifications</h1>
           </div>
         </div>
         <div className="text-center py-8 text-destructive mt-[84px]">
@@ -153,7 +155,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
         <div className="max-w-2xl mx-auto p-4">
-          <h1 className="text-xl font-bold">Notifications</h1>
+          <h1 className={`text-xl font-bold ${!isMobile ? 'pl-16' : ''}`}>Notifications</h1>
         </div>
       </div>
 
