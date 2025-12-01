@@ -486,7 +486,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   return createPortal(
     <div
       ref={drawerRef}
-      className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+      className="fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
       style={{
         top: `${viewportTop}px`,
         height: `${viewportHeight}px`,
@@ -496,15 +496,15 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       }}
     >
       <div 
-        className={`w-full h-full flex flex-col bg-white ${!isMobile ? 'border-x border-gray-200' : ''}`}
+        className={`w-full h-full flex flex-col bg-white mx-auto ${!isMobile ? 'max-w-[1000px] border-x border-gray-200' : ''}`}
         style={{ overflow: 'hidden' }}
       >
         {/* Fixed header bar */}
-        <div className="h-32 border-b bg-background flex-shrink-0 pt-6 px-4">
+        <div className={`h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 ${!isMobile ? 'px-6 md:px-10' : 'px-4'}`}>
           {/* Back button */}
           <button 
             onClick={onClose}
-            className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            className="p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 flex-shrink-0"
           >
             <ChevronLeft className="text-2xl" />
             <span className="sr-only">Close</span>
@@ -512,27 +512,25 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
           {/* Post author info */}
           {originalPost?.author && (
-            <div className="flex flex-col items-start justify-center h-full ml-10 pt-2">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-10 w-10">
-                  {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
-                  <AvatarFallback
-                    style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
-                    className="text-white"
-                  >
-                    {originalPost.author.username?.[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xl font-semibold">{originalPost.author.username}</span>
-                {originalPost?.createdAt && (
-                  <>
-                    <span className="text-muted-foreground">-</span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
-                    </span>
-                  </>
-                )}
-              </div>
+            <div className="flex items-center gap-2 flex-1">
+              <Avatar className="h-10 w-10">
+                {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                <AvatarFallback
+                  style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
+                  className="text-white"
+                >
+                  {originalPost.author.username?.[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xl font-semibold">{originalPost.author.username}</span>
+              {originalPost?.createdAt && (
+                <>
+                  <span className="text-muted-foreground">-</span>
+                  <span className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(new Date(originalPost.createdAt), { addSuffix: false })}
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -555,7 +553,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
           {/* Post and comments section */}
           {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
-            <div className="px-4 pb-4" >
+            <div className={`pb-4 ${!isMobile ? 'px-6 md:px-10' : 'px-4'}`}>
               <PostView post={originalPost} />
               <div className="border-t border-gray-200 my-4"></div>
               <CommentList 
@@ -569,7 +567,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
         {/* Comment form at the bottom */}
         {isCommentBoxVisible && (
-          <div className={`px-4 pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div className={`pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'} ${!isMobile ? 'px-6 md:px-10' : 'px-4'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <CommentForm
               onSubmit={async (content, file, chunkedUploadData) => {
                 await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
