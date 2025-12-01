@@ -306,11 +306,17 @@ export default function ActivityManagementPage() {
       // YouTube URL regex - matches various YouTube URL formats (for bare URLs in text)
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
+      console.log('Before YouTube conversion:', content.substring(0, 500));
+      console.log('YouTube URLs found:', content.match(youtubeRegex));
+
       // Replace YouTube URLs with embedded players
       content = content.replace(youtubeRegex, (match: string, videoId: string) => {
+        console.log('Converting YouTube URL:', match, 'Video ID:', videoId);
         if (!videoId) return match;
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
+      
+      console.log('After YouTube conversion:', content.substring(0, 500));
 
       // Amazon URL processing - handle text before URL on same or previous line
       // Pattern 1: Text ending with colon, then Amazon URL (most common)
