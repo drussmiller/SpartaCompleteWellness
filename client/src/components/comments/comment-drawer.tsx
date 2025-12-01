@@ -486,7 +486,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   return createPortal(
     <div
       ref={drawerRef}
-      className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto' : ''}`}
+      className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
       style={{
         top: `${viewportTop}px`,
         height: `${viewportHeight}px`,
