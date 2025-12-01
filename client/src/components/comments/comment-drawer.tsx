@@ -496,11 +496,11 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       }}
     >
       <div 
-        className={`w-full h-full flex flex-col bg-white mx-auto ${!isMobile ? 'max-w-[1000px] border-x border-gray-200' : ''}`}
+        className={`w-full h-full flex flex-col bg-white mx-auto ${!isMobile ? 'max-w-[1000px] px-6 md:px-44 md:pl-56 border-x border-gray-200' : ''}`}
         style={{ overflow: 'hidden' }}
       >
         {/* Fixed header bar */}
-        <div className={`h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 ${!isMobile ? 'px-6 md:px-10' : 'px-4'}`}>
+        <div className="h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 px-4">
           {/* Back button */}
           <button 
             onClick={onClose}
@@ -553,7 +553,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
           {/* Post and comments section */}
           {!isPostLoading && !areCommentsLoading && !postError && !commentsError && originalPost && (
-            <div className={`pb-4 ${!isMobile ? 'px-6 md:px-10' : 'px-4'}`}>
+            <div className="px-4 pb-4">
               <PostView post={originalPost} />
               <div className="border-t border-gray-200 my-4"></div>
               <CommentList 
@@ -567,7 +567,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
         {/* Comment form at the bottom */}
         {isCommentBoxVisible && (
-          <div className={`pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'} ${!isMobile ? 'px-6 md:px-10' : 'px-4'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div className={`px-4 pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <CommentForm
               onSubmit={async (content, file, chunkedUploadData) => {
                 await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
