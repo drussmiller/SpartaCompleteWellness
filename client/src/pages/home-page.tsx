@@ -217,17 +217,23 @@ export default function HomePage() {
       scrollContainerRef={scrollContainerRef}
     >
       <div className="min-h-screen bg-background">
-        {/* Fixed Header - spans full width */}
-        <div
-          className="fixed top-0 left-0 right-0 z-[50] bg-background"
-          style={{
-            transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
-            transition: "transform 0.3s ease-out",
-            pointerEvents: "auto",
-          }}
-        >
-          <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-4 md:px-40 md:pl-64' : 'px-4'}`}>
-            <div className={`${!isMobile ? 'border-b border-border' : ''}`}>
+        {/* Border wrapper for desktop */}
+        <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : 'w-full'}`}>
+          <div className={`${!isMobile ? 'border-x border-border min-h-screen' : ''}`}>
+            {/* Fixed Header */}
+            <div
+              className="fixed top-0 z-[50] bg-background"
+              style={{
+                transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
+                transition: "transform 0.3s ease-out",
+                pointerEvents: "auto",
+                left: !isMobile ? '80px' : '0',
+                right: !isMobile ? 'auto' : '0',
+                width: !isMobile ? 'calc(100vw - 80px)' : '100%',
+              }}
+            >
+              <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-6 md:px-44 md:pl-56' : 'px-4'}`}>
+                <div className={`${!isMobile ? 'border-b border-border' : ''}`}>
               <div className="flex items-center justify-between pt-12">
                 <div className="flex-1 flex justify-center">
                   <img
@@ -290,31 +296,31 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Main content layout */}
-        <div
-          className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Pull-to-refresh indicator */}
-          <div 
-            className="fixed top-0 left-0 right-0 flex justify-center items-center z-40 pointer-events-none"
-            style={{
-              transform: `translateY(${Math.min(pullDistance - 20, 60)}px)`,
-              opacity: pullDistance > 20 ? Math.min(pullDistance / pullThreshold, 1) : 0,
-              transition: isPulling ? 'none' : 'all 0.3s ease-out',
-            }}
-          >
-            <div className="bg-background rounded-full p-3 shadow-lg border border-border">
-              <RefreshCw 
-                className={`h-5 w-5 text-primary ${isRefreshing || pullDistance >= pullThreshold ? 'animate-spin' : ''}`}
-                data-testid="icon-refresh"
-              />
-            </div>
-          </div>
+            {/* Main content layout */}
+            <div
+              className="pt-32"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Pull-to-refresh indicator */}
+              <div 
+                className="fixed top-0 left-0 right-0 flex justify-center items-center z-40 pointer-events-none"
+                style={{
+                  transform: `translateY(${Math.min(pullDistance - 20, 60)}px)`,
+                  opacity: pullDistance > 20 ? Math.min(pullDistance / pullThreshold, 1) : 0,
+                  transition: isPulling ? 'none' : 'all 0.3s ease-out',
+                }}
+              >
+                <div className="bg-background rounded-full p-3 shadow-lg border border-border">
+                  <RefreshCw 
+                    className={`h-5 w-5 text-primary ${isRefreshing || pullDistance >= pullThreshold ? 'animate-spin' : ''}`}
+                    data-testid="icon-refresh"
+                  />
+                </div>
+              </div>
 
-          <main className={`p-4 ${!isMobile ? 'border-x border-border' : ''}`}>
+              <main className="p-4">
             {/* Header */}
             <div className="mb-6">
               <div style={{ height: "75px" }}></div>
@@ -351,7 +357,9 @@ export default function HomePage() {
                   {isLoading && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
               </div>
-            </main>
+              </main>
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>
