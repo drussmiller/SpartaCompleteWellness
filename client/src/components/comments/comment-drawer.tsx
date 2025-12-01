@@ -491,8 +491,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         top: `${viewportTop}px`,
         height: `${viewportHeight}px`,
         left: isMobile ? 0 : '80px',
-        right: 0,
-        paddingTop: 'env(safe-area-inset-top, 30px)'
+        right: 0
       }}
     >
       <div 
@@ -501,7 +500,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       >
         <div className={`h-full flex flex-col ${!isMobile ? 'border-x border-gray-200' : ''}`}>
           {/* Fixed header bar */}
-          <div className="h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 px-4">
+          <div className="h-16 border-b bg-background flex-shrink-0 flex items-center gap-3 px-4">
           {/* Back button */}
           <button 
             onClick={onClose}

@@ -789,6 +789,9 @@ export function MessageSlideCard() {
             >
               <ChevronLeft className="text-black" style={{ width: '24px', height: '24px' }} />
             </Button>
+            <h2 className="text-2xl font-bold text-black flex-1">
+              {selectedMember ? selectedMember.username : "Messages"}
+            </h2>
           </div>
 
           {/* Content Area */}
