@@ -735,16 +735,26 @@ export default function ActivityManagementPage() {
                           // Serialize back to HTML
                           contentHtml = doc.body.innerHTML.trim();
 
-                          // Process YouTube URLs in the content - convert to embedded iframes (for bare URLs)
+                          // FIRST: Remove YouTube links from anchor tags (convert <a href="youtube">text</a> to just the YouTube URL)
+                          // This prevents the URL from being replaced inside the href attribute
+                          const ytLinkRegex = /<a[^>]+href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>([^<]*)<\/a>/gi;
+                          contentHtml = contentHtml.replace(ytLinkRegex, (match: string, url: string) => {
+                            console.log('[BULK UPLOAD] Found YouTube anchor, extracting URL:', url);
+                            return url; // Just return the bare URL, which will be converted to an embed below
+                          });
+
+                          console.log('[BULK UPLOAD] After extracting YouTube URLs from anchors');
+
+                          // SECOND: Convert all YouTube URLs (now bare text) to embedded players
                           const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
                           contentHtml = contentHtml.replace(youtubeRegex, (match: string, videoId: string) => {
+                            console.log('[BULK UPLOAD] Converting YouTube URL to embed:', match, 'Video ID:', videoId);
                             if (!videoId) return match;
                             return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
                           });
-
-                          // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
-                          contentHtml = contentHtml.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
+                          
+                          console.log('[BULK UPLOAD] After YouTube conversion');
 
                           // Remove consecutive duplicate YouTube videos
                           const videoEmbedRegex = /<div class="video-wrapper"><iframe src="https:\/\/www\.youtube\.com\/embed\/([a-zA-Z0-9_-]{11})"[^>]*><\/iframe><\/div>/g;
