@@ -318,6 +318,21 @@ export default function ActivityManagementPage() {
       
       console.log('After YouTube conversion:', content.substring(0, 500));
 
+      // Unwrap any anchors that contain video wrappers (YouTube links from Word become <a><div class="video-wrapper">...</div></a>)
+      const doc2 = new DOMParser().parseFromString(content, 'text/html');
+      const anchorsWithVideos = doc2.querySelectorAll('a');
+      
+      anchorsWithVideos.forEach(anchor => {
+        const videoWrapper = anchor.querySelector('.video-wrapper');
+        if (videoWrapper) {
+          // Replace the anchor with just the video wrapper
+          anchor.replaceWith(videoWrapper);
+        }
+      });
+      
+      content = doc2.body.innerHTML.trim();
+      console.log('After unwrapping video anchors:', content.substring(0, 500));
+
       // Amazon URL processing - handle text before URL on same or previous line
       // Pattern 1: Text ending with colon, then Amazon URL (most common)
       // Matches: <p>Text:</p><p>amazonurl</p> OR <p>Text:<br>amazonurl</p>
@@ -354,9 +369,6 @@ export default function ActivityManagementPage() {
         }
         return match;
       });
-
-      // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
-      content = content.replace(/<\/iframe><\/div><\/p>/g, '</iframe></div></a></p>');
 
       // Bible verses are kept as plain text
 
