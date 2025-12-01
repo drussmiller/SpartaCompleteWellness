@@ -314,7 +314,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <main className="p-4">
+          <main className={`p-4 ${!isMobile ? 'border-x border-border' : ''}`}>
             {/* Header */}
             <div className="mb-6">
               <div style={{ height: "75px" }}></div>
