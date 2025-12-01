@@ -217,18 +217,20 @@ export default function HomePage() {
       scrollContainerRef={scrollContainerRef}
     >
       <div className="min-h-screen bg-background">
-        {/* Fixed Header - spans full width */}
-        <div
-          className="fixed top-0 left-0 right-0 z-[50] bg-background"
-          style={{
-            transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
-            transition: "transform 0.3s ease-out",
-            pointerEvents: "auto",
-          }}
-        >
-          <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-4 md:px-40 md:pl-64' : 'px-4'}`}>
-            <div className={`${!isMobile ? 'border-b border-border' : ''}`}>
-              <div className="flex items-center justify-between pt-12">
+        {/* Outer wrapper with responsive padding */}
+        <div className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56" : "w-full"}`}>
+          {/* Inner bordered container */}
+          <div className={`min-h-screen bg-background flex flex-col ${!isMobile ? 'border-x border-border' : ''}`}>
+            {/* Sticky Header */}
+            <div
+              className="sticky top-0 z-[50] bg-background border-b border-border"
+              style={{
+                transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
+                transition: "transform 0.3s ease-out",
+                pointerEvents: "auto",
+              }}
+            >
+              <div className="flex items-center justify-between pt-12 px-4">
                 <div className="flex-1 flex justify-center">
                   <img
                     src="/sparta_circle_red.png"
@@ -263,7 +265,7 @@ export default function HomePage() {
               </div>
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between mt-1 mb-2 px-6">
+              <div className="flex justify-between mt-1 mb-2 px-10">
                 <Button
                   variant="default"
                   className="flex-1 mr-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
@@ -287,34 +289,32 @@ export default function HomePage() {
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Main content layout */}
-        <div
-          className={`${!isMobile ? "max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 pt-32" : "w-full"}`}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Pull-to-refresh indicator */}
-          <div 
-            className="fixed top-0 left-0 right-0 flex justify-center items-center z-40 pointer-events-none"
-            style={{
-              transform: `translateY(${Math.min(pullDistance - 20, 60)}px)`,
-              opacity: pullDistance > 20 ? Math.min(pullDistance / pullThreshold, 1) : 0,
-              transition: isPulling ? 'none' : 'all 0.3s ease-out',
-            }}
-          >
-            <div className="bg-background rounded-full p-3 shadow-lg border border-border">
-              <RefreshCw 
-                className={`h-5 w-5 text-primary ${isRefreshing || pullDistance >= pullThreshold ? 'animate-spin' : ''}`}
-                data-testid="icon-refresh"
-              />
-            </div>
-          </div>
+            {/* Scrollable content area */}
+            <div
+              className="flex-1"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Pull-to-refresh indicator */}
+              <div 
+                className="fixed top-0 left-0 right-0 flex justify-center items-center z-40 pointer-events-none"
+                style={{
+                  transform: `translateY(${Math.min(pullDistance - 20, 60)}px)`,
+                  opacity: pullDistance > 20 ? Math.min(pullDistance / pullThreshold, 1) : 0,
+                  transition: isPulling ? 'none' : 'all 0.3s ease-out',
+                }}
+              >
+                <div className="bg-background rounded-full p-3 shadow-lg border border-border">
+                  <RefreshCw 
+                    className={`h-5 w-5 text-primary ${isRefreshing || pullDistance >= pullThreshold ? 'animate-spin' : ''}`}
+                    data-testid="icon-refresh"
+                  />
+                </div>
+              </div>
 
-          <main className={`p-4 ${!isMobile ? 'border-x border-border' : ''}`}>
+              <main className="p-4 pt-20">
             {/* Header */}
             <div className="mb-6">
               <div style={{ height: "75px" }}></div>
@@ -351,7 +351,9 @@ export default function HomePage() {
                   {isLoading && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
               </div>
-            </main>
+              </main>
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>
