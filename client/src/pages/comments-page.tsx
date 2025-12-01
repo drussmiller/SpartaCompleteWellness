@@ -265,75 +265,59 @@ export default function CommentsPage() {
   }
 
   return (
-    <>
-      <AppLayout title="Comments">
-        <div style={{ display: 'none' }} />
-      </AppLayout>
+    <AppLayout title="Comments">
+      <div className="fixed inset-x-0 top-16 bottom-0 bg-white z-50 flex flex-col w-full md:max-w-[1000px] md:mx-auto md:border-x md:border-gray-200 animate-slide-in-from-right">
+        {/* Fixed Title Box at Top */}
+        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+          <h3 className="text-lg font-semibold">Original Post</h3>
+        </div>
       
-      {/* Render comments overlay using portal with proper wrapper pattern */}
-      {createPortal(
-        <div 
-          className="fixed inset-0 flex justify-center pointer-events-none"
-          style={{ top: '4rem', zIndex: 100 }}
-        >
-          <div 
-            className={`pointer-events-auto flex flex-col overflow-hidden ${!isMobile ? 'min-w-0 max-w-[1000px] border-x border-gray-200 animate-slide-in-from-right' : 'w-full'}`}
-            style={{ backgroundColor: 'white', width: isMobile ? '100%' : '1000px' }}
-          >
-            {/* Fixed Title Box at Top */}
-            <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
-              <h3 className="text-lg font-semibold">Original Post</h3>
-            </div>
-          
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-hidden">
-              <ScrollArea className="h-full">
-                <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
-                  <div className="bg-white">
-                    <PostView post={originalPost} />
-                  </div>
-                  
-                  {comments.length > 0 && (
-                    <div className="border-t border-gray-200 pt-6 bg-white">
-                      <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
-                      <CommentList 
-                        comments={comments} 
-                        postId={parseInt(postId)} 
-                        onVisibilityChange={(isEditing, isReplying) => {
-                          console.log("Visibility change:", { isEditing, isReplying });
-                          setIsEditingOrReplying(isEditing || isReplying);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-            
-            {/* Comment Form at Bottom - hidden when editing/replying */}
-            {!isEditingOrReplying && (
-              <div 
-                ref={formRef}
-                className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
-              >
-                <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
-                <CommentForm
-                  onSubmit={async (content, file, chunkedUploadData) => {
-                    await createCommentMutation.mutateAsync({
-                      content,
-                      postId: parseInt(postId),
-                      file,
-                      chunkedUploadData
-                    });
-                  }}
-                  isSubmitting={createCommentMutation.isPending}
-                />
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
+              <div className="bg-white">
+                <PostView post={originalPost} />
               </div>
-            )}
+              
+              {comments.length > 0 && (
+                <div className="border-t border-gray-200 pt-6 bg-white">
+                  <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
+                  <CommentList 
+                    comments={comments} 
+                    postId={parseInt(postId)} 
+                    onVisibilityChange={(isEditing, isReplying) => {
+                      console.log("Visibility change:", { isEditing, isReplying });
+                      setIsEditingOrReplying(isEditing || isReplying);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+        
+        {/* Comment Form at Bottom - hidden when editing/replying */}
+        {!isEditingOrReplying && (
+          <div 
+            ref={formRef}
+            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+          >
+            <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
+            <CommentForm
+              onSubmit={async (content, file, chunkedUploadData) => {
+                await createCommentMutation.mutateAsync({
+                  content,
+                  postId: parseInt(postId),
+                  file,
+                  chunkedUploadData
+                });
+              }}
+              isSubmitting={createCommentMutation.isPending}
+            />
           </div>
-        </div>,
-        document.body
-      )}
-    </>
+        )}
+      </div>
+    </AppLayout>
   );
 }
