@@ -408,7 +408,7 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
       (senderId=${req.user.id} AND recipientId=${otherUserId}) OR 
       (senderId=${otherUserId} AND recipientId=${req.user.id})`);
     
-    // Add the WHERE conditions using SQL string method to avoid issue with the builder
+    // Query messages using Drizzle ORM's parameterized query builder
     const rawMessages = await messageQuery
       .where(
         or(
