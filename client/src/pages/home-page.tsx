@@ -219,71 +219,73 @@ export default function HomePage() {
       <div className="min-h-screen bg-background">
         {/* Fixed Header - spans full width */}
         <div
-          className="fixed top-0 left-0 right-0 z-[50] bg-background border-b border-border"
+          className="fixed top-0 left-0 right-0 z-[50] bg-background"
           style={{
             transform: isHeaderVisible ? "translateY(0)" : "translateY(-100%)",
             transition: "transform 0.3s ease-out",
             pointerEvents: "auto",
           }}
         >
-          <div className="w-full max-w-[1000px] mx-auto px-4 md:px-40 md:pl-64">
-            <div className="flex items-center justify-between pt-12">
-              <div className="flex-1 flex justify-center">
-                <img
-                  src="/sparta_circle_red.png"
-                  alt="Sparta Complete Wellness Logo"
-                  className="w-36 h-auto mx-auto"
-                  onError={(e) => {
-                    console.error("Error loading logo:", e);
-                    // Fallback to a different logo if the main one fails
-                    e.currentTarget.src = "/Spartans_LOGO.png";
-                  }}
-                />
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center gap-2">
-                  <CreatePostDialog remaining={remaining} initialType="food" />
-                  {user?.teamId && <MessageSlideCard />}
+          <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-4 md:px-40 md:pl-64' : 'px-4'}`}>
+            <div className={`${!isMobile ? 'border-b border-border' : ''}`}>
+              <div className="flex items-center justify-between pt-12">
+                <div className="flex-1 flex justify-center">
+                  <img
+                    src="/sparta_circle_red.png"
+                    alt="Sparta Complete Wellness Logo"
+                    className="w-36 h-auto mx-auto"
+                    onError={(e) => {
+                      console.error("Error loading logo:", e);
+                      // Fallback to a different logo if the main one fails
+                      e.currentTarget.src = "/Spartans_LOGO.png";
+                    }}
+                  />
                 </div>
-                {/* Admin/Group Admin filter for introductory videos */}
-                {(user?.isAdmin || user?.isGroupAdmin) && (
-                  <Button
-                    variant={showIntroVideosOnly ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowIntroVideosOnly(!showIntroVideosOnly)}
-                    className="text-xs h-7"
-                    data-testid="button-filter-intro-videos"
-                  >
-                    <Filter className="h-3 w-3 mr-1" />
-                    {showIntroVideosOnly ? "Show All Posts" : "New Users"}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-1 mb-2 px-6">
-              <Button
-                variant="default"
-                className="flex-1 mr-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
-              >
-                Team
-              </Button>
-              <Button
-                variant="outline"
-                className={`flex-1 ml-2 h-10 text-sm font-medium ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!user?.teamId}
-                onClick={handlePrayerRequestsClick}
-              >
-                <div className="relative">
-                  Prayer Requests
-                  {user?.teamId && prayerRequestCount > 0 && (
-                    <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {prayerRequestCount > 99 ? "99+" : prayerRequestCount}
-                    </div>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <CreatePostDialog remaining={remaining} initialType="food" />
+                    {user?.teamId && <MessageSlideCard />}
+                  </div>
+                  {/* Admin/Group Admin filter for introductory videos */}
+                  {(user?.isAdmin || user?.isGroupAdmin) && (
+                    <Button
+                      variant={showIntroVideosOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowIntroVideosOnly(!showIntroVideosOnly)}
+                      className="text-xs h-7"
+                      data-testid="button-filter-intro-videos"
+                    >
+                      <Filter className="h-3 w-3 mr-1" />
+                      {showIntroVideosOnly ? "Show All Posts" : "New Users"}
+                    </Button>
                   )}
                 </div>
-              </Button>
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between mt-1 mb-2 px-6">
+                <Button
+                  variant="default"
+                  className="flex-1 mr-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
+                >
+                  Team
+                </Button>
+                <Button
+                  variant="outline"
+                  className={`flex-1 ml-2 h-10 text-sm font-medium ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!user?.teamId}
+                  onClick={handlePrayerRequestsClick}
+                >
+                  <div className="relative">
+                    Prayer Requests
+                    {user?.teamId && prayerRequestCount > 0 && (
+                      <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {prayerRequestCount > 99 ? "99+" : prayerRequestCount}
+                      </div>
+                    )}
+                  </div>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
