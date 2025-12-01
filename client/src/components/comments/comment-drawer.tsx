@@ -1,4 +1,4 @@
-import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
+import { createPortal } from "react-dom";
 import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
@@ -458,35 +458,58 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     },
   });
 
-  return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent 
-        side="right" 
-        ref={drawerRef}
-        className="!w-full !p-0 comment-drawer pt-safe !z-[9999] md:!max-w-[1000px] md:!left-1/2 md:!-translate-x-1/2 md:border-x md:border-border"
-        style={{ 
-          width: isMobile ? '100%' : '1000px', 
-          maxWidth: isMobile ? '100%' : '1000px', 
-          overflow: 'hidden', 
-          paddingTop: 'env(safe-area-inset-top, 30px)',
-          position: 'fixed',
-          top: `${viewportTop}px`,
-          left: isMobile ? '0' : '50%',
-          right: isMobile ? '0' : 'auto',
-          transform: isMobile ? 'none' : 'translateX(-50%)',
-          height: `${viewportHeight}px`,
-          maxHeight: `${viewportHeight}px`
-        }}
-        onOpenAutoFocus={(e) => e.preventDefault()}
+  // Close drawer when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside as any);
+
+      return () => {
+        document.body.style.overflow = '';
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside as any);
+      };
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      ref={drawerRef}
+      className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+      style={{
+        top: `${viewportTop}px`,
+        height: `${viewportHeight}px`,
+        left: 0,
+        right: 0,
+        paddingTop: 'env(safe-area-inset-top, 30px)'
+      }}
+    >
+      <div 
+        className={`w-full h-full flex flex-col bg-white ${!isMobile ? 'border-x border-gray-200' : ''}`}
+        style={{ overflow: 'hidden' }}
       >
-        <div className="w-full flex flex-col" style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }}>
+        <div className="w-full flex flex-col" style={{ height: '100%' }}>
           {/* Fixed header bar */}
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6">
             {/* Back button */}
-            <SheetClose className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+            <button 
+              onClick={onClose}
+              className="absolute top-16 left-4 p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            >
               <ChevronLeft className="text-2xl" />
               <span className="sr-only">Close</span>
-            </SheetClose>
+            </button>
 
             {/* Post author info */}
             {originalPost?.author && (
@@ -559,7 +582,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </div>,
+    document.body
   );
 }
