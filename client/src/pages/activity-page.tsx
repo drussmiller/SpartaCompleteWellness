@@ -12,12 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ActivityPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isMobile = useIsMobile();
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [selectedDay, setSelectedDay] = useState<number>(1);
   
@@ -280,7 +278,7 @@ export default function ActivityPage() {
     <AppLayout>
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
-        <div className={`max-w-2xl mx-auto ${isMobile ? 'p-4' : 'pl-8 pr-4 py-4'}`}>
+        <div className="max-w-2xl mx-auto p-4">
           <h1 className="text-xl font-bold">Activity</h1>
         </div>
       </div>
