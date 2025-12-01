@@ -463,16 +463,17 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       <SheetContent 
         side="right" 
         ref={drawerRef}
-        className="!w-full !p-0 !max-w-full comment-drawer pt-safe !z-[9999]"
+        className="!w-full !p-0 comment-drawer pt-safe !z-[9999] md:!max-w-[1000px] md:!left-1/2 md:!-translate-x-1/2 md:border-x md:border-border"
         style={{ 
-          width: '100%', 
-          maxWidth: '100%', 
+          width: isMobile ? '100%' : '1000px', 
+          maxWidth: isMobile ? '100%' : '1000px', 
           overflow: 'hidden', 
           paddingTop: 'env(safe-area-inset-top, 30px)',
           position: 'fixed',
           top: `${viewportTop}px`,
-          left: '0',
-          right: '0',
+          left: isMobile ? '0' : '50%',
+          right: isMobile ? '0' : 'auto',
+          transform: isMobile ? 'none' : 'translateX(-50%)',
           height: `${viewportHeight}px`,
           maxHeight: `${viewportHeight}px`
         }}
