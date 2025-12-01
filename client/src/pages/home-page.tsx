@@ -232,9 +232,9 @@ export default function HomePage() {
                 width: !isMobile ? 'calc(100vw - 80px)' : '100%',
               }}
             >
-              <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-6 md:px-44 md:pl-56' : 'px-4'}`}>
-                <div className={`border-b border-border ${isMobile ? 'border-x' : ''}`}>
-              <div className="flex items-center justify-between pt-12">
+              <div className={`w-full mx-auto ${!isMobile ? 'max-w-[1000px] px-6 md:px-44 md:pl-56' : ''}`}>
+                <div className={`border-b border-border ${isMobile ? 'border-x mx-4' : ''}`}>
+              <div className={`flex items-center justify-between pt-12 ${isMobile ? 'px-4' : ''}`}>
                 <div className="flex-1 flex justify-center">
                   <img
                     src="/sparta_circle_red.png"
@@ -269,7 +269,7 @@ export default function HomePage() {
               </div>
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between mt-1 mb-2 px-6">
+              <div className={`flex justify-between mt-1 mb-2 ${isMobile ? 'px-4' : 'px-6'}`}>
                 <Button
                   variant="default"
                   className="flex-1 mr-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
