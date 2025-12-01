@@ -1,13 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Activity } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function HelpPage() {
+  const isMobile = useIsMobile();
+
   return (
     <AppLayout>
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
-        <div className="max-w-2xl mx-auto p-4">
+        <div className={`max-w-2xl mx-auto ${isMobile ? 'p-4' : 'pl-6 pr-4 py-4'}`}>
           <h1 className="text-xl font-bold">Help</h1>
         </div>
       </div>
