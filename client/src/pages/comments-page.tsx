@@ -264,60 +264,80 @@ export default function CommentsPage() {
     );
   }
 
+  // Get portal target
+  const portalTarget = document.getElementById('app-portal-root');
+  
+  if (!portalTarget) {
+    return (
+      <AppLayout title="Comments">
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-destructive">
+          <p>Portal target not found</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
-    <AppLayout title="Comments">
-      <div className="fixed inset-x-0 top-16 bottom-0 bg-white z-50 flex flex-col w-full md:max-w-[1000px] md:mx-auto md:border-x md:border-gray-200 animate-slide-in-from-right">
-        {/* Fixed Title Box at Top */}
-        <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
-          <h3 className="text-lg font-semibold">Original Post</h3>
-        </div>
+    <>
+      <AppLayout title="Comments">
+        <div style={{ display: 'none' }} />
+      </AppLayout>
       
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
-              <div className="bg-white">
-                <PostView post={originalPost} />
-              </div>
-              
-              {comments.length > 0 && (
-                <div className="border-t border-gray-200 pt-6 bg-white">
-                  <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
-                  <CommentList 
-                    comments={comments} 
-                    postId={parseInt(postId)} 
-                    onVisibilityChange={(isEditing, isReplying) => {
-                      console.log("Visibility change:", { isEditing, isReplying });
-                      setIsEditingOrReplying(isEditing || isReplying);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-        
-        {/* Comment Form at Bottom - hidden when editing/replying */}
-        {!isEditingOrReplying && (
-          <div 
-            ref={formRef}
-            className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
-          >
-            <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
-            <CommentForm
-              onSubmit={async (content, file, chunkedUploadData) => {
-                await createCommentMutation.mutateAsync({
-                  content,
-                  postId: parseInt(postId),
-                  file,
-                  chunkedUploadData
-                });
-              }}
-              isSubmitting={createCommentMutation.isPending}
-            />
+      {createPortal(
+        <div className="pointer-events-auto flex flex-col h-full w-full max-w-[1000px] md:border-x md:border-border bg-white animate-slide-in-from-right">
+          {/* Fixed Title Box at Top */}
+          <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+            <h3 className="text-lg font-semibold">Original Post</h3>
           </div>
-        )}
-      </div>
-    </AppLayout>
+        
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
+                <div className="bg-white">
+                  <PostView post={originalPost} />
+                </div>
+                
+                {comments.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6 bg-white">
+                    <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
+                    <CommentList 
+                      comments={comments} 
+                      postId={parseInt(postId)} 
+                      onVisibilityChange={(isEditing, isReplying) => {
+                        console.log("Visibility change:", { isEditing, isReplying });
+                        setIsEditingOrReplying(isEditing || isReplying);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+          
+          {/* Comment Form at Bottom - hidden when editing/replying */}
+          {!isEditingOrReplying && (
+            <div 
+              ref={formRef}
+              className="border-t border-gray-200 p-4 bg-white flex-shrink-0"
+            >
+              <h3 className="text-lg font-semibold mb-4">Add a Comment</h3>
+              <CommentForm
+                onSubmit={async (content, file, chunkedUploadData) => {
+                  await createCommentMutation.mutateAsync({
+                    content,
+                    postId: parseInt(postId),
+                    file,
+                    chunkedUploadData
+                  });
+                }}
+                isSubmitting={createCommentMutation.isPending}
+              />
+            </div>
+          )}
+        </div>,
+        portalTarget
+      )}
+    </>
   );
 }
