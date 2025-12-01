@@ -266,26 +266,43 @@ export default function ActivityManagementPage() {
       content = content.replace(/\s*margin[^=]*="[^"]*"/gi, '');
       content = content.replace(/\s*padding[^=]*="[^"]*"/gi, '');
 
-      // Strip width and height attributes from all iframe tags
-      content = content.replace(/<iframe([^>]*)\s+width="[^"]*"([^>]*)>/gi, '<iframe$1$2>');
-      content = content.replace(/<iframe([^>]*)\s+height="[^"]*"([^>]*)>/gi, '<iframe$1$2>');
+      // Use DOM parsing to properly normalize all iframes
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, 'text/html');
+      
+      // Process all iframes
+      const iframes = doc.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        // Remove width and height attributes
+        iframe.removeAttribute('width');
+        iframe.removeAttribute('height');
+        
+        // Ensure allowfullscreen is set
+        iframe.setAttribute('allowfullscreen', '');
+        
+        // Check if already wrapped in video-wrapper
+        const parent = iframe.parentElement;
+        if (!parent || !parent.classList.contains('video-wrapper')) {
+          // Create wrapper div
+          const wrapper = doc.createElement('div');
+          wrapper.className = 'video-wrapper';
+          
+          // Wrap the iframe
+          parent?.insertBefore(wrapper, iframe);
+          wrapper.appendChild(iframe);
+        }
+      });
+      
+      // Serialize back to HTML
+      content = doc.body.innerHTML.trim();
 
-      // YouTube URL regex - matches various YouTube URL formats
+      // YouTube URL regex - matches various YouTube URL formats (for bare URLs in text)
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
       // Replace YouTube URLs with embedded players
       content = content.replace(youtubeRegex, (match: string, videoId: string) => {
         if (!videoId) return match;
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
-      });
-
-      // Wrap any unwrapped YouTube iframes with video-wrapper
-      content = content.replace(/<iframe\s+src="https:\/\/www\.youtube\.com\/embed\/([^"]+)"([^>]*)><\/iframe>/gi, (match: string) => {
-        // Check if already wrapped
-        if (content.indexOf(`<div class="video-wrapper">${match}`) !== -1) {
-          return match;
-        }
-        return `<div class="video-wrapper">${match}</div>`;
       });
 
       // Amazon URL processing - handle text before URL on same or previous line
@@ -672,25 +689,42 @@ export default function ActivityManagementPage() {
                           contentHtml = contentHtml.replace(/\s*margin[^=]*="[^"]*"/gi, '');
                           contentHtml = contentHtml.replace(/\s*padding[^=]*="[^"]*"/gi, '');
 
-                          // Strip width and height attributes from all iframe tags
-                          contentHtml = contentHtml.replace(/<iframe([^>]*)\s+width="[^"]*"([^>]*)>/gi, '<iframe$1$2>');
-                          contentHtml = contentHtml.replace(/<iframe([^>]*)\s+height="[^"]*"([^>]*)>/gi, '<iframe$1$2>');
+                          // Use DOM parsing to properly normalize all iframes
+                          const parser = new DOMParser();
+                          const doc = parser.parseFromString(contentHtml, 'text/html');
+                          
+                          // Process all iframes
+                          const iframes = doc.querySelectorAll('iframe');
+                          iframes.forEach(iframe => {
+                            // Remove width and height attributes
+                            iframe.removeAttribute('width');
+                            iframe.removeAttribute('height');
+                            
+                            // Ensure allowfullscreen is set
+                            iframe.setAttribute('allowfullscreen', '');
+                            
+                            // Check if already wrapped in video-wrapper
+                            const parent = iframe.parentElement;
+                            if (!parent || !parent.classList.contains('video-wrapper')) {
+                              // Create wrapper div
+                              const wrapper = doc.createElement('div');
+                              wrapper.className = 'video-wrapper';
+                              
+                              // Wrap the iframe
+                              parent?.insertBefore(wrapper, iframe);
+                              wrapper.appendChild(iframe);
+                            }
+                          });
+                          
+                          // Serialize back to HTML
+                          contentHtml = doc.body.innerHTML.trim();
 
-                          // Process YouTube URLs in the content - convert to embedded iframes
+                          // Process YouTube URLs in the content - convert to embedded iframes (for bare URLs)
                           const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
                           contentHtml = contentHtml.replace(youtubeRegex, (match: string, videoId: string) => {
                             if (!videoId) return match;
                             return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
-                          });
-
-                          // Wrap any unwrapped YouTube iframes with video-wrapper
-                          contentHtml = contentHtml.replace(/<iframe\s+src="https:\/\/www\.youtube\.com\/embed\/([^"]+)"([^>]*)><\/iframe>/gi, (match: string) => {
-                            // Check if already wrapped
-                            if (contentHtml.indexOf(`<div class="video-wrapper">${match}`) !== -1) {
-                              return match;
-                            }
-                            return `<div class="video-wrapper">${match}</div>`;
                           });
 
                           // Add missing closing anchor tag after video embeds (from hyperlinked URLs in Word docs)
