@@ -490,7 +490,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
       style={{
         top: `${viewportTop}px`,
         height: `${viewportHeight}px`,
-        left: isMobile ? 0 : '80px',
+        left: 0,
         right: 0,
         paddingTop: 'env(safe-area-inset-top, 30px)'
       }}
