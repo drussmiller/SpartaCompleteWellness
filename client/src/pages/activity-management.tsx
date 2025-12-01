@@ -472,8 +472,8 @@ export default function ActivityManagementPage() {
 
   return (
     <AppLayout>
-      <div className="container p-4 md:px-8">
-          <div className="flex items-center mb-6">
+      <div className="mx-auto w-full max-w-[1000px] px-6 md:px-44 md:pl-56 lg:border-x lg:border-border/40 bg-white space-y-8">
+          <div className="flex items-center mb-6 pt-6">
             <Button
               variant="ghost"
               onClick={() => window.history.back()}
