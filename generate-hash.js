@@ -13,7 +13,6 @@ async function hashPassword(password) {
 async function main() {
   const password = "Test1234!";
   const hashedPassword = await hashPassword(password);
-  console.log(`Password: ${password}`);
   console.log(`Hashed Password: ${hashedPassword}`);
 }
 
