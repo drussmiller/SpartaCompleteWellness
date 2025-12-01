@@ -472,13 +472,13 @@ export default function ActivityManagementPage() {
                           const uploadData = await uploadRes.json();
                           const content = uploadData.content;
 
-                          // Extract lines from the HTML content
-                          const tempDiv = document.createElement('div');
-                          tempDiv.innerHTML = content;
+                          // Extract lines from the HTML content using DOMParser (safe from XSS)
+                          const parser = new DOMParser();
+                          const doc = parser.parseFromString(content, 'text/html');
 
                           // Extract lines by preserving paragraph structure from HTML
                           // Word docs convert to <p> tags or <div> tags for each line
-                          const paragraphs = tempDiv.querySelectorAll('p, div');
+                          const paragraphs = doc.querySelectorAll('p, div');
                           let lines: string[] = [];
 
                           if (paragraphs.length > 0) {
