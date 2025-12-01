@@ -472,13 +472,13 @@ export default function ActivityManagementPage() {
                           const uploadData = await uploadRes.json();
                           const content = uploadData.content;
 
-                          // Extract lines from the HTML content
-                          const tempDiv = document.createElement('div');
-                          tempDiv.innerHTML = content;
+                          // Extract lines from the HTML content using DOMParser (safe from XSS)
+                          const parser = new DOMParser();
+                          const doc = parser.parseFromString(content, 'text/html');
 
                           // Extract lines by preserving paragraph structure from HTML
                           // Word docs convert to <p> tags or <div> tags for each line
-                          const paragraphs = tempDiv.querySelectorAll('p, div');
+                          const paragraphs = doc.querySelectorAll('p, div');
                           let lines: string[] = [];
 
                           if (paragraphs.length > 0) {
@@ -536,7 +536,7 @@ export default function ActivityManagementPage() {
                               });
 
                               if (!updateRes.ok) {
-                                const errorData = await res.json();
+                                const errorData = await updateRes.json();
                                 throw new Error(errorData.message || `Failed to update Bible verse for absolute day ${absoluteDay}`);
                               }
 
@@ -556,7 +556,7 @@ export default function ActivityManagementPage() {
 
                               const activityRes = await apiRequest("POST", "/api/activities", activityData);
                               if (!activityRes.ok) {
-                                const errorData = await res.json();
+                                const errorData = await activityRes.json();
                                 throw new Error(errorData.message || `Failed to save Bible verse activity for absolute day ${absoluteDay}`);
                               }
 
@@ -644,7 +644,7 @@ export default function ActivityManagementPage() {
                           const uploadRes = await apiRequest("POST", "/api/activities/upload-doc", formData);
 
                           if (!uploadRes.ok) {
-                            const errorData = await res.json();
+                            const errorData = await uploadRes.json();
                             throw new Error(errorData.message || `Failed to upload ${file.name}`);
                           }
 
@@ -715,7 +715,7 @@ export default function ActivityManagementPage() {
                           // Create or update the activity
                           const activityRes = await apiRequest("POST", "/api/activities", activityData);
                           if (!activityRes.ok) {
-                            const errorData = await res.json();
+                            const errorData = await activityRes.json();
                             throw new Error(errorData.message || `Failed to save activity for ${file.name} Week ${weekNum}`);
                           }
 
