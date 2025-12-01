@@ -291,7 +291,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
     }, []);
 
   return (
-    <div className="flex flex-col rounded-lg shadow-sm bg-card pb-2" data-post-id={post.id}>
+    <div className="flex flex-col pb-2" data-post-id={post.id}>
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex gap-2 items-center">
           <Avatar className="h-10 w-10 border">
