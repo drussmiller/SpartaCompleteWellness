@@ -303,35 +303,26 @@ export default function ActivityManagementPage() {
       // Serialize back to HTML
       content = doc.body.innerHTML.trim();
 
-      // YouTube URL regex - matches various YouTube URL formats (for bare URLs in text)
+      // FIRST: Remove YouTube links from anchor tags (convert <a href="youtube">text</a> to just the YouTube URL)
+      // This prevents the URL from being replaced inside the href attribute
+      const ytLinkRegex = /<a[^>]+href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>([^<]*)<\/a>/gi;
+      content = content.replace(ytLinkRegex, (match: string, url: string) => {
+        console.log('Found YouTube anchor, extracting URL:', url);
+        return url; // Just return the bare URL, which will be converted to an embed below
+      });
+
+      console.log('After extracting YouTube URLs from anchors:', content.substring(0, 500));
+
+      // SECOND: Convert all YouTube URLs (now bare text) to embedded players
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)?/gi;
 
-      console.log('Before YouTube conversion:', content.substring(0, 500));
-      console.log('YouTube URLs found:', content.match(youtubeRegex));
-
-      // Replace YouTube URLs with embedded players
       content = content.replace(youtubeRegex, (match: string, videoId: string) => {
-        console.log('Converting YouTube URL:', match, 'Video ID:', videoId);
+        console.log('Converting YouTube URL to embed:', match, 'Video ID:', videoId);
         if (!videoId) return match;
         return `<div class="video-wrapper"><iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
       });
       
       console.log('After YouTube conversion:', content.substring(0, 500));
-
-      // Unwrap any anchors that contain video wrappers (YouTube links from Word become <a><div class="video-wrapper">...</div></a>)
-      const doc2 = new DOMParser().parseFromString(content, 'text/html');
-      const anchorsWithVideos = doc2.querySelectorAll('a');
-      
-      anchorsWithVideos.forEach(anchor => {
-        const videoWrapper = anchor.querySelector('.video-wrapper');
-        if (videoWrapper) {
-          // Replace the anchor with just the video wrapper
-          anchor.replaceWith(videoWrapper);
-        }
-      });
-      
-      content = doc2.body.innerHTML.trim();
-      console.log('After unwrapping video anchors:', content.substring(0, 500));
 
       // Amazon URL processing - handle text before URL on same or previous line
       // Pattern 1: Text ending with colon, then Amazon URL (most common)
