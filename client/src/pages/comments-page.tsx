@@ -266,7 +266,7 @@ export default function CommentsPage() {
   return (
     <AppLayout title="Comments">
       <div 
-        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+        className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 animate-slide-in-from-right' : ''}`}
         style={{
           position: 'fixed',
           top: '4rem',
@@ -317,7 +317,7 @@ export default function CommentsPage() {
         {!isEditingOrReplying && (
           <div 
             ref={formRef}
-            className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+            className={`border-t border-gray-200 p-4 bg-white flex-shrink-0 ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56 border-x' : ''}`}
             style={{
               position: 'fixed',
               bottom: 0,
