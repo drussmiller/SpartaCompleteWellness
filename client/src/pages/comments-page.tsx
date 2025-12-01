@@ -276,7 +276,7 @@ export default function CommentsPage() {
           className="fixed inset-0 flex justify-center pointer-events-none"
           style={{ top: '4rem', zIndex: 100 }}
         >
-          <div className={`pointer-events-auto w-full flex flex-col overflow-hidden bg-white ${!isMobile ? 'max-w-[1000px] border-x border-gray-200 animate-slide-in-from-right' : ''}`}>
+          <div className={`pointer-events-auto flex flex-col overflow-hidden bg-white ${!isMobile ? 'w-full max-w-[1000px] border-x border-gray-200 animate-slide-in-from-right' : 'w-full'}`}>
             {/* Fixed Title Box at Top */}
             <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
               <h3 className="text-lg font-semibold">Original Post</h3>
