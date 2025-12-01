@@ -298,7 +298,7 @@ export default function HomePage() {
 
             {/* Main content layout */}
             <div
-              className="pt-32"
+              className={!isMobile ? "pt-32" : ""}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
