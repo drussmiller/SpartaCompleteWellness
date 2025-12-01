@@ -251,6 +251,13 @@ export default function ActivityManagementPage() {
       let title = filename;
 
       let content = data.content;
+      
+      // Debug: Log what mammoth returned
+      console.log('=== MAMMOTH RAW OUTPUT ===');
+      console.log('Content length:', content.length);
+      console.log('First 1000 chars:', content.substring(0, 1000));
+      console.log('Contains iframe?:', content.includes('<iframe'));
+      console.log('Number of iframes:', (content.match(/<iframe/g) || []).length);
 
       // Clean up invalid HTML symbols that may be added during document conversion
       content = content
