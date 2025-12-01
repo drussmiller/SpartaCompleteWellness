@@ -582,9 +582,15 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
           if (match && match[1]) {
             const baseFilename = match[1];
             
-            // Delete all files in the HLS directory
-            const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
-            console.log(`[MESSAGE HLS DELETE] Using prefix: ${hlsPrefix}`);
+            // Sanitize baseFilename to prevent path traversal
+            const sanitizedFilename = baseFilename.replace(/[^a-zA-Z0-9_-]/g, '');
+            if (!sanitizedFilename) {
+              console.error(`[MESSAGE HLS DELETE] Invalid baseFilename after sanitization: ${baseFilename}`);
+              // Continue with message deletion even if we can't clean up media
+            } else {
+              // Delete all files in the HLS directory
+              const hlsPrefix = `shared/uploads/hls/${sanitizedFilename}/`;
+              console.log(`[MESSAGE HLS DELETE] Using prefix: ${hlsPrefix}`);
             
             try {
               // List all files with the HLS prefix
@@ -614,6 +620,7 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
             } catch (hlsError) {
               console.error(`[MESSAGE HLS DELETE] Error during HLS cleanup:`, hlsError);
               // Continue with message deletion even if HLS cleanup fails
+            }
             }
           } else {
             console.log(`[MESSAGE HLS DELETE] Could not extract baseFilename from URL: ${existingMessage.imageUrl}`);
