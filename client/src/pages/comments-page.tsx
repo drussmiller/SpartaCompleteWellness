@@ -270,62 +270,49 @@ export default function CommentsPage() {
         <div style={{ display: 'none' }} />
       </AppLayout>
       
-      {/* Render comments overlay using portal to escape AppLayout constraints */}
+      {/* Render comments overlay using portal - matches message-slide-card structure */}
       {createPortal(
         <div 
-          className="fixed flex justify-center"
+          className="fixed inset-0 flex justify-center pointer-events-none"
           style={{
             top: '4rem',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 100,
-            pointerEvents: 'none'
+            zIndex: 100
           }}
         >
           <div 
-            className={`flex flex-col bg-white overflow-hidden ${!isMobile ? 'w-full max-w-[1000px] px-6 md:px-44 md:pl-56 animate-slide-in-from-right' : 'w-full'}`}
-            style={{
-              pointerEvents: 'auto'
-            }}
+            className={`pointer-events-auto w-full bg-white flex flex-col overflow-hidden ${!isMobile ? 'max-w-[1000px] border-x border-gray-200 animate-slide-in-from-right' : ''}`}
           >
-            <div className={`flex flex-col h-full ${!isMobile ? 'border-x border-gray-200' : ''}`}>
-              {/* Swipe detection is handled on scrollable area only via useEffect */}
-              
-              {/* Fixed Title Box at Top */}
-              <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
-                <h3 className="text-lg font-semibold">Original Post</h3>
-              </div>
-            
+            {/* Fixed Title Box at Top */}
+            <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
+              <h3 className="text-lg font-semibold">Original Post</h3>
+            </div>
+          
             {/* Scrollable Content */}
-            <ScrollArea 
-              className="flex-1 overflow-y-auto"
-              style={{
-                height: `calc(100vh - 4rem - 260px)`
-              }}
-            >
-              <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
-                <div className="bg-white">
-                  <PostView post={originalPost} />
-                </div>
-                
-                {comments.length > 0 && (
-                  <div className="border-t border-gray-200 pt-6 bg-white">
-                    <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
-                    <CommentList 
-                      comments={comments} 
-                      postId={parseInt(postId)} 
-                      onVisibilityChange={(isEditing, isReplying) => {
-                        console.log("Visibility change:", { isEditing, isReplying });
-                        setIsEditingOrReplying(isEditing || isReplying);
-                      }}
-                    />
+            <div className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div ref={scrollableRef} className="px-4 py-6 space-y-6 bg-white">
+                  <div className="bg-white">
+                    <PostView post={originalPost} />
                   </div>
-                )}
-              </div>
-            </ScrollArea>
+                  
+                  {comments.length > 0 && (
+                    <div className="border-t border-gray-200 pt-6 bg-white">
+                      <h3 className="text-lg font-semibold mb-4">Comments ({comments.length})</h3>
+                      <CommentList 
+                        comments={comments} 
+                        postId={parseInt(postId)} 
+                        onVisibilityChange={(isEditing, isReplying) => {
+                          console.log("Visibility change:", { isEditing, isReplying });
+                          setIsEditingOrReplying(isEditing || isReplying);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
             
-            {/* Fixed Comment Form at Bottom - hidden when editing/replying */}
+            {/* Comment Form at Bottom - hidden when editing/replying */}
             {!isEditingOrReplying && (
               <div 
                 ref={formRef}
@@ -345,7 +332,6 @@ export default function CommentsPage() {
                 />
               </div>
             )}
-            </div>
           </div>
         </div>,
         document.body
