@@ -496,6 +496,8 @@ export const storage = {
       for (const post of postsWithMedia) {
         if (post.mediaUrl) {
           try {
+            logger.info(`Processing media deletion for post ${post.id}: mediaUrl=${post.mediaUrl}, is_video=${post.is_video}`);
+            
             // Check if this is an HLS video
             if (post.mediaUrl.includes('/api/hls/')) {
               // Extract base filename from HLS URL: /api/hls/{baseFilename}/playlist.m3u8
@@ -553,6 +555,8 @@ export const storage = {
               }
               
               if (filename) {
+                logger.info(`Extracted filename for post ${post.id}: ${filename}`);
+                
                 // Delete the main media file
                 const mainFileKey = filename.startsWith('shared/uploads/') 
                   ? filename 
@@ -566,11 +570,14 @@ export const storage = {
                 }
                 
                 // If it's a video, delete the associated thumbnail
+                logger.info(`Checking if post ${post.id} is_video: ${post.is_video}`);
                 if (post.is_video) {
                   // Get base filename without extension and without 'shared/uploads/' prefix
                   let baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '');
                   // Remove 'shared/uploads/' prefix if present to avoid duplication
                   baseFilename = baseFilename.replace(/^shared\/uploads\//, '');
+                  
+                  logger.info(`Base filename for thumbnails (post ${post.id}): ${baseFilename}`);
                   
                   // Try multiple thumbnail naming conventions
                   const thumbnailVariations = [
@@ -580,10 +587,11 @@ export const storage = {
                     `shared/uploads/thumb-${baseFilename}.jpg`,   // Old naming convention
                   ];
                   
+                  logger.info(`Trying ${thumbnailVariations.length} thumbnail variations for post ${post.id}`);
                   for (const thumbnailKey of thumbnailVariations) {
                     try {
                       await spartaObjectStorage.deleteFile(thumbnailKey);
-                      logger.debug(`Deleted video thumbnail for post ${post.id}: ${thumbnailKey}`);
+                      logger.info(`Successfully deleted video thumbnail for post ${post.id}: ${thumbnailKey}`);
                     } catch (err) {
                       logger.debug(`Could not delete thumbnail ${thumbnailKey}: ${err}`);
                     }
