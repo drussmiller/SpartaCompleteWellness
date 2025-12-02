@@ -86,7 +86,26 @@ function RegistrationForm() {
     },
   });
 
-  // Persist registration draft to sessionStorage
+  // Helper to save current state to sessionStorage
+  const saveDraft = () => {
+    const values = form.getValues();
+    const cooldownExpiry = cooldown > 0 ? Date.now() + (cooldown * 1000) : null;
+    
+    const draftData: RegistrationDraft = {
+      formValues: {
+        username: values.username || "",
+        email: values.email || "",
+        preferredName: values.preferredName || "",
+      },
+      emailSent,
+      isVerified,
+      cooldownExpiry,
+    };
+    
+    sessionStorage.setItem(REGISTRATION_DRAFT_KEY, JSON.stringify(draftData));
+  };
+
+  // Persist when form values change
   useEffect(() => {
     const subscription = form.watch((values) => {
       const currentEmail = form.getValues("email");
@@ -98,25 +117,16 @@ function RegistrationForm() {
         setCooldown(0);
       }
       
-      // Calculate cooldown expiry timestamp
-      const cooldownExpiry = cooldown > 0 ? Date.now() + (cooldown * 1000) : null;
-      
-      const draftData: RegistrationDraft = {
-        formValues: {
-          username: values.username || "",
-          email: values.email || "",
-          preferredName: values.preferredName || "",
-        },
-        emailSent,
-        isVerified,
-        cooldownExpiry,
-      };
-      
-      sessionStorage.setItem(REGISTRATION_DRAFT_KEY, JSON.stringify(draftData));
+      saveDraft();
     });
     
     return () => subscription.unsubscribe();
   }, [form, emailSent, isVerified, cooldown, draft?.formValues.email]);
+
+  // Persist immediately when verification state changes
+  useEffect(() => {
+    saveDraft();
+  }, [emailSent, isVerified, cooldown]);
 
   // Restart cooldown timer on mount if there's remaining time
   useEffect(() => {
