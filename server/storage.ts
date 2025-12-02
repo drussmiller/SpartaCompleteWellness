@@ -567,8 +567,10 @@ export const storage = {
                 
                 // If it's a video, delete the associated thumbnail
                 if (post.is_video) {
-                  // Get base filename without extension
-                  const baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '');
+                  // Get base filename without extension and without 'shared/uploads/' prefix
+                  let baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '');
+                  // Remove 'shared/uploads/' prefix if present to avoid duplication
+                  baseFilename = baseFilename.replace(/^shared\/uploads\//, '');
                   
                   // Try multiple thumbnail naming conventions
                   const thumbnailVariations = [
