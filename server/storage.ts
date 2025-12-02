@@ -569,22 +569,22 @@ export const storage = {
                 if (post.is_video) {
                   // Get base filename without extension
                   const baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '');
-                  const thumbnailKey = `shared/uploads/${baseFilename}.jpg`;
                   
-                  try {
-                    await spartaObjectStorage.deleteFile(thumbnailKey);
-                    logger.debug(`Deleted video thumbnail for post ${post.id}: ${thumbnailKey}`);
-                  } catch (err) {
-                    logger.debug(`Could not delete thumbnail ${thumbnailKey}: ${err}`);
-                  }
+                  // Try multiple thumbnail naming conventions
+                  const thumbnailVariations = [
+                    `shared/uploads/${baseFilename}.poster.jpg`,  // Primary format used by video uploads
+                    `shared/uploads/${baseFilename}.jpg`,         // Fallback format
+                    `shared/uploads/${baseFilename}.jpeg`,        // Alternative extension
+                    `shared/uploads/thumb-${baseFilename}.jpg`,   // Old naming convention
+                  ];
                   
-                  // Also try .jpeg extension
-                  const thumbnailKeyJpeg = `shared/uploads/${baseFilename}.jpeg`;
-                  try {
-                    await spartaObjectStorage.deleteFile(thumbnailKeyJpeg);
-                    logger.debug(`Deleted video thumbnail (jpeg) for post ${post.id}: ${thumbnailKeyJpeg}`);
-                  } catch (err) {
-                    logger.debug(`Could not delete thumbnail ${thumbnailKeyJpeg}: ${err}`);
+                  for (const thumbnailKey of thumbnailVariations) {
+                    try {
+                      await spartaObjectStorage.deleteFile(thumbnailKey);
+                      logger.debug(`Deleted video thumbnail for post ${post.id}: ${thumbnailKey}`);
+                    } catch (err) {
+                      logger.debug(`Could not delete thumbnail ${thumbnailKey}: ${err}`);
+                    }
                   }
                 }
               }
