@@ -2192,7 +2192,7 @@ export const registerRoutes = async (
             // - memory_verse and introductory_video are always videos
             // - miscellaneous/prayer posts only if explicitly marked
             // - other posts based on mimetype/extension
-            const isVideo = isMemoryVersePost || 
+            isVideo = isMemoryVersePost || 
                           isIntroductoryVideoPost ||
                           ((isMiscellaneousPost || isPrayerPost) ? isMiscellaneousVideo : 
                            (isVideoMimetype || hasVideoContentType || isVideoExtension));
