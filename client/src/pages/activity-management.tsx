@@ -895,48 +895,6 @@ export default function ActivityManagementPage() {
                 Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content). Special: Files named "BibleVerses.docx" will create daily Bible verse activities with each line becoming a day's verse.
               </p>
             </div>
-
-
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Existing Activities</h3>
-              <div className="space-y-4 mb-20">
-                {activities
-                  ?.slice()
-                  .sort((a, b) => a.week !== b.week ? a.week - b.week : a.day - b.day)
-                  .map((activity) => (
-                    <Card key={activity.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">
-                              {activity.day === 0
-                                ? `Week ${activity.week} Information`
-                                : `Week ${activity.week} - Day ${activity.day}`}
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditActivity(activity)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteActivity(activity.id)}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
-            </div>
             </div>
         </div>
 
