@@ -183,14 +183,14 @@ export function CreatePostDialog({
   });
 
   function getRemainingMessage(type: string) {
-    // Check if the selected date is before the program start date
+    // Check if TODAY has reached the program start date
     const isProgramStarted = () => {
       if (!user?.programStartDate) return true;
       const programStart = new Date(user.programStartDate);
       programStart.setHours(0, 0, 0, 0);
-      const selected = new Date(selectedDate);
-      selected.setHours(0, 0, 0, 0);
-      return selected >= programStart;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return today >= programStart;
     };
 
     // Show program start message for restricted types
@@ -238,14 +238,14 @@ export function CreatePostDialog({
 
   // Add a function to check if a post type should be disabled
   function isPostTypeDisabled(type: string) {
-    // Check if the selected date is before the user's program start date
+    // Check if TODAY has reached the user's program start date
     const isProgramStarted = () => {
       if (!user?.programStartDate) return true;
       const programStart = new Date(user.programStartDate);
       programStart.setHours(0, 0, 0, 0);
-      const selected = new Date(selectedDate);
-      selected.setHours(0, 0, 0, 0);
-      return selected >= programStart;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return today >= programStart;
     };
 
     // Disable Food, Workout, Scripture, and Memory verse until program starts
