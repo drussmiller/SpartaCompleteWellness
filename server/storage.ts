@@ -489,46 +489,104 @@ export const storage = {
       });
 
       // After the transaction completes successfully, clean up the media files
+      const { spartaObjectStorage } = await import('./sparta-object-storage-final');
+      const { Client } = await import('@replit/object-storage');
+      const objectStorage = new Client();
+      
       for (const post of postsWithMedia) {
         if (post.mediaUrl) {
           try {
-            // Delete the main media file
-            await spartaStorage.deleteFile(post.mediaUrl);
-            logger.debug(`Deleted media file for post ${post.id}: ${post.mediaUrl}`);
-
-            // If it's a video, also try to delete associated files (poster, thumbnails)
-            if (post.is_video) {
-              // Delete the poster image if it exists
-              const filename = post.mediaUrl.split('/').pop() || '';
-              const baseName = filename.substring(0, filename.lastIndexOf('.'));
-              const posterUrl = post.mediaUrl.replace(filename, `${baseName}.poster.jpg`);
+            // Check if this is an HLS video
+            if (post.mediaUrl.includes('/api/hls/')) {
+              // Extract base filename from HLS URL: /api/hls/{baseFilename}/playlist.m3u8
+              const hlsMatch = post.mediaUrl.match(/\/api\/hls\/([^/]+)\//);
+              if (hlsMatch) {
+                const baseFilename = hlsMatch[1];
+                logger.info(`Deleting HLS video for post ${post.id}: ${baseFilename}`);
+                
+                // Delete all files in the HLS directory
+                const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+                try {
+                  // List all files in the HLS directory
+                  const listResult = await objectStorage.list({ prefix: hlsPrefix });
+                  const files = listResult.value || [];
+                  logger.info(`Found ${files.length} HLS files to delete for ${baseFilename}`);
+                  
+                  // Delete each segment and playlist file
+                  for (const fileItem of files) {
+                    const fileKey = fileItem.key || fileItem.name;
+                    try {
+                      await spartaObjectStorage.deleteFile(fileKey);
+                      logger.debug(`Deleted HLS file: ${fileKey}`);
+                    } catch (err) {
+                      logger.error(`Failed to delete HLS file ${fileKey}: ${err}`);
+                    }
+                  }
+                } catch (err) {
+                  logger.error(`Failed to list HLS files for ${baseFilename}: ${err}`);
+                }
+                
+                // Delete the HLS source thumbnail (e.g., 1764433282280-IMG_9504-hls-source.jpg)
+                const hlsSourceThumbnail = `shared/uploads/${baseFilename}-hls-source.jpg`;
+                try {
+                  await spartaObjectStorage.deleteFile(hlsSourceThumbnail);
+                  logger.debug(`Deleted HLS source thumbnail: ${hlsSourceThumbnail}`);
+                } catch (err) {
+                  logger.debug(`Could not delete HLS source thumbnail ${hlsSourceThumbnail}: ${err}`);
+                }
+              }
+            } else {
+              // Regular video or image - extract filename from URL
+              let filename = '';
               
-              try {
-                await spartaStorage.deleteFile(posterUrl);
-                logger.debug(`Deleted poster image for post ${post.id}: ${posterUrl}`);
-              } catch (err) {
-                // Ignore errors for poster deletion - it might not exist
-                logger.debug(`Could not delete poster image for post ${post.id}: ${posterUrl}`);
+              // Handle different URL formats
+              if (post.mediaUrl.includes('shared/uploads/')) {
+                // Direct storage path: shared/uploads/filename.ext
+                filename = post.mediaUrl.split('shared/uploads/')[1]?.split('?')[0] || '';
+              } else if (post.mediaUrl.includes('/api/serve-file')) {
+                // Serve file URL: /api/serve-file?filename=...
+                const match = post.mediaUrl.match(/filename=([^&]+)/);
+                filename = match ? match[1] : '';
+              } else {
+                // Fallback: just get the last part of the URL
+                filename = post.mediaUrl.split('/').pop()?.split('?')[0] || '';
               }
               
-              // Delete thumbnails (both formats - with and without thumb- prefix)
-              const thumbPath = post.mediaUrl.replace('/uploads/', '/uploads/thumbnails/');
-              const prefixedThumbPath = thumbPath.replace(filename, `thumb-${filename}`);
-              
-              try {
-                await spartaStorage.deleteFile(thumbPath);
-                logger.debug(`Deleted thumbnail for post ${post.id}: ${thumbPath}`);
-              } catch (err) {
-                // Ignore errors for thumbnail deletion - it might not exist
-                logger.debug(`Could not delete thumbnail for post ${post.id}: ${thumbPath}`);
-              }
-              
-              try {
-                await spartaStorage.deleteFile(prefixedThumbPath);
-                logger.debug(`Deleted prefixed thumbnail for post ${post.id}: ${prefixedThumbPath}`);
-              } catch (err) {
-                // Ignore errors for prefixed thumbnail deletion - it might not exist
-                logger.debug(`Could not delete prefixed thumbnail for post ${post.id}: ${prefixedThumbPath}`);
+              if (filename) {
+                // Delete the main media file
+                const mainFileKey = filename.startsWith('shared/uploads/') 
+                  ? filename 
+                  : `shared/uploads/${filename}`;
+                  
+                try {
+                  await spartaObjectStorage.deleteFile(mainFileKey);
+                  logger.debug(`Deleted media file for post ${post.id}: ${mainFileKey}`);
+                } catch (err) {
+                  logger.error(`Failed to delete main file ${mainFileKey}: ${err}`);
+                }
+                
+                // If it's a video, delete the associated thumbnail
+                if (post.is_video) {
+                  // Get base filename without extension
+                  const baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '');
+                  const thumbnailKey = `shared/uploads/${baseFilename}.jpg`;
+                  
+                  try {
+                    await spartaObjectStorage.deleteFile(thumbnailKey);
+                    logger.debug(`Deleted video thumbnail for post ${post.id}: ${thumbnailKey}`);
+                  } catch (err) {
+                    logger.debug(`Could not delete thumbnail ${thumbnailKey}: ${err}`);
+                  }
+                  
+                  // Also try .jpeg extension
+                  const thumbnailKeyJpeg = `shared/uploads/${baseFilename}.jpeg`;
+                  try {
+                    await spartaObjectStorage.deleteFile(thumbnailKeyJpeg);
+                    logger.debug(`Deleted video thumbnail (jpeg) for post ${post.id}: ${thumbnailKeyJpeg}`);
+                  } catch (err) {
+                    logger.debug(`Could not delete thumbnail ${thumbnailKeyJpeg}: ${err}`);
+                  }
+                }
               }
             }
           } catch (mediaError) {
