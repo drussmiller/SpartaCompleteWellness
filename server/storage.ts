@@ -493,10 +493,12 @@ export const storage = {
       const { Client } = await import('@replit/object-storage');
       const objectStorage = new Client();
       
+      console.log(`[DELETE USER] Found ${postsWithMedia.length} posts with media for user ${userId}`);
+      
       for (const post of postsWithMedia) {
         if (post.mediaUrl) {
           try {
-            logger.info(`Processing media deletion for post ${post.id}: mediaUrl=${post.mediaUrl}, is_video=${post.is_video}`);
+            console.log(`[DELETE] Processing post ${post.id}: mediaUrl=${post.mediaUrl}, is_video=${post.is_video}`);
             
             // Check if this is an HLS video
             if (post.mediaUrl.includes('/api/hls/')) {
@@ -555,7 +557,7 @@ export const storage = {
               }
               
               if (filename) {
-                logger.info(`Extracted filename for post ${post.id}: ${filename}`);
+                console.log(`[DELETE] Extracted filename for post ${post.id}: "${filename}"`);
                 
                 // Delete the main media file
                 const mainFileKey = filename.startsWith('shared/uploads/') 
@@ -570,14 +572,14 @@ export const storage = {
                 }
                 
                 // If it's a video, delete the associated thumbnail
-                logger.info(`Checking if post ${post.id} is_video: ${post.is_video}`);
+                console.log(`[DELETE] Checking if post ${post.id} is_video: ${post.is_video} (type: ${typeof post.is_video})`);
                 if (post.is_video) {
                   // Get base filename without extension and without 'shared/uploads/' prefix
                   let baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '');
                   // Remove 'shared/uploads/' prefix if present to avoid duplication
                   baseFilename = baseFilename.replace(/^shared\/uploads\//, '');
                   
-                  logger.info(`Base filename for thumbnails (post ${post.id}): ${baseFilename}`);
+                  console.log(`[DELETE] Base filename for thumbnails (post ${post.id}): "${baseFilename}"`);
                   
                   // Try multiple thumbnail naming conventions
                   const thumbnailVariations = [
@@ -587,15 +589,18 @@ export const storage = {
                     `shared/uploads/thumb-${baseFilename}.jpg`,   // Old naming convention
                   ];
                   
-                  logger.info(`Trying ${thumbnailVariations.length} thumbnail variations for post ${post.id}`);
+                  console.log(`[DELETE] Trying ${thumbnailVariations.length} thumbnail variations for post ${post.id}:`, thumbnailVariations);
                   for (const thumbnailKey of thumbnailVariations) {
                     try {
+                      console.log(`[DELETE] Attempting to delete thumbnail: ${thumbnailKey}`);
                       await spartaObjectStorage.deleteFile(thumbnailKey);
-                      logger.info(`Successfully deleted video thumbnail for post ${post.id}: ${thumbnailKey}`);
+                      console.log(`[DELETE] ✓ Successfully deleted video thumbnail for post ${post.id}: ${thumbnailKey}`);
                     } catch (err) {
-                      logger.debug(`Could not delete thumbnail ${thumbnailKey}: ${err}`);
+                      console.log(`[DELETE] ✗ Could not delete thumbnail ${thumbnailKey}: ${err}`);
                     }
                   }
+                } else {
+                  console.log(`[DELETE] Skipping thumbnail deletion for post ${post.id} - not a video`);
                 }
               }
             }
