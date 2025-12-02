@@ -1956,6 +1956,28 @@ export const registerRoutes = async (
         }
       }
 
+      // Check if user can post this type based on program start date
+      const restrictedTypes = ['food', 'workout', 'scripture', 'memory_verse'];
+      if (restrictedTypes.includes(postData.type)) {
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, req.user.id)
+        });
+        
+        if (user?.programStartDate) {
+          const programStart = new Date(user.programStartDate);
+          programStart.setHours(0, 0, 0, 0);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          if (today < programStart) {
+            const formattedDate = programStart.toLocaleDateString();
+            return res.status(403).json({ 
+              message: `${postData.type} posts are not available until your program starts on ${formattedDate}` 
+            });
+          }
+        }
+      }
+
       // Calculate points based on post type
       let points = 0;
       const type = postData.type?.toLowerCase();
