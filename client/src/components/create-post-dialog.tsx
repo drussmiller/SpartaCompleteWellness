@@ -404,7 +404,7 @@ export function CreatePostDialog({
           type: data.type,
           content: content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
-          createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString(),
+          createdAt: data.postDate ? data.postDate.toISOString() : new Date().toISOString(),
           postScope: data.postScope || postScope || "my_team",
         };
         
@@ -640,7 +640,15 @@ export function CreatePostDialog({
     });
     console.log("🔥 [SCOPE DEBUG] All form values from getValues():", form.getValues());
     console.log("============ FORM SUBMIT DEBUG END ============");
-    data.postDate = selectedDate;
+    // Only use selectedDate if it's different from today, otherwise let the server use current time
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(selectedDate);
+    selected.setHours(0, 0, 0, 0);
+    
+    if (selected.getTime() !== today.getTime()) {
+      data.postDate = selectedDate;
+    }
     createPostMutation.mutate(data);
   };
 
