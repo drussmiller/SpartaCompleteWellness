@@ -1399,10 +1399,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-          <div className="container px-4 md:px-8 pt-0 -mt-4">
+          <div className="container px-4 md:px-8 pt-0 -mt-6">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
-              <div className="flex gap-2 mt-2 justify-center">
+              <div className="flex gap-2 mt-0 justify-center">
                 <Button
                   size="default"
                   className="px-4 bg-violet-700 text-white hover:bg-violet-800"
@@ -3186,15 +3186,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                     [user.id]: date
                                                   }));
 
-                                                  // Format date as YYYY-MM-DD for hidden input
-                                                  const offset = date.getTimezoneOffset();
-                                                  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-                                                  const formattedDate = localDate.toISOString().split("T")[0];
-
                                                   // Update hidden input value
                                                   const hiddenInput = document.querySelector(`input[name="programStartDate"][data-user-id="${user.id}"]`) as HTMLInputElement;
                                                   if (hiddenInput) {
-                                                    hiddenInput.value = formattedDate;
+                                                    const offset = date.getTimezoneOffset();
+                                                    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                                                    hiddenInput.value = localDate.toISOString().split("T")[0];
                                                   }
                                                 }
                                               }}
