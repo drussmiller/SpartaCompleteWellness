@@ -1399,10 +1399,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-          <div className="container px-4 md:px-8 pt-0 -mt-6">
+          <div className="container p-4 md:px-8">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
-              <div className="flex gap-2 mt-0 justify-center">
+              <div className="flex gap-2 mt-2 justify-center">
                 <Button
                   size="default"
                   className="px-4 bg-violet-700 text-white hover:bg-violet-800"
@@ -1699,9 +1699,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </CardHeader>
                             <CardContent>
                               <p className="text-sm">
-                                <span className="font-medium">
-                                  Groups:{" "}
-                                </span>
+                                <span className="font-medium">Groups: </span>
                                 {sortedGroups?.filter(
                                   (g) => g.organizationId === organization.id,
                                 ).length || 0}
@@ -3186,12 +3184,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                                     [user.id]: date
                                                   }));
 
+                                                  // Format date as YYYY-MM-DD for hidden input
+                                                  const offset = date.getTimezoneOffset();
+                                                  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                                                  const formattedDate = localDate.toISOString().split("T")[0];
+
                                                   // Update hidden input value
                                                   const hiddenInput = document.querySelector(`input[name="programStartDate"][data-user-id="${user.id}"]`) as HTMLInputElement;
                                                   if (hiddenInput) {
-                                                    const offset = date.getTimezoneOffset();
-                                                    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-                                                    hiddenInput.value = localDate.toISOString().split("T")[0];
+                                                    hiddenInput.value = formattedDate;
                                                   }
                                                 }
                                               }}
@@ -3322,7 +3323,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       <div className="mt-1 text-sm text-muted-foreground">
                                         Program Start Date:{" "}
                                         {(() => {
-                                          // Parse as local date by extracting YYYY-MM-DD
+                                          // Extract date portion only to avoid timezone conversion
                                           const dateStr = String(user.programStartDate).split('T')[0];
                                           const [year, month, day] = dateStr.split('-').map(Number);
                                           const localDate = new Date(year, month - 1, day);
@@ -3337,7 +3338,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         }
 
                                         if (user.programStartDate) {
-                                          // Parse as local date by extracting YYYY-MM-DD
+                                          // Extract date portion only to avoid timezone conversion
                                           const dateStr = String(user.programStartDate).split('T')[0];
                                           const [year, month, day] = dateStr.split('-').map(Number);
                                           const startDate = new Date(year, month - 1, day);
