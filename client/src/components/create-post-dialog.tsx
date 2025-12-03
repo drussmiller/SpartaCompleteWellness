@@ -139,6 +139,24 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
+  // Helper to parse programStartDate to local date at midnight
+  const parseProgramStartDate = (dateStr: string): Date => {
+    // If it's a date-only string (YYYY-MM-DD), parse directly as local
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day, 0, 0, 0, 0);
+    }
+    
+    // Otherwise, it's a full timestamp (UTC), extract UTC components to local
+    const utcDate = new Date(dateStr);
+    return new Date(
+      utcDate.getUTCFullYear(),
+      utcDate.getUTCMonth(),
+      utcDate.getUTCDate(),
+      0, 0, 0, 0
+    );
+  };
+
   // For users who haven't posted anything, default to introductory_video (0 points)
   // For users whose program hasn't started, default to miscellaneous
   // For users who have posted, default to food
@@ -147,10 +165,11 @@ export function CreatePostDialog({
     if (shouldDefaultToIntroVideo) return "introductory_video";
     if (defaultType) return defaultType;
     if (!user?.programStartDate) return "food";
-    const programStart = new Date(user.programStartDate);
-    programStart.setHours(0, 0, 0, 0);
+    
+    const programStart = parseProgramStartDate(user.programStartDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
     return today >= programStart ? "food" : "miscellaneous";
   };
   const actualType = getDefaultType();
@@ -200,13 +219,14 @@ export function CreatePostDialog({
     enabled: open && form.watch("type") === "memory_verse" // Only fetch when dialog is open and type is memory_verse
   });
 
-  // Check if TODAY has reached the program start date
+  // Check if TODAY has reached the program start date (using local timezone)
   const isProgramStarted = () => {
     if (!user?.programStartDate) return true;
-    const programStart = new Date(user.programStartDate);
-    programStart.setHours(0, 0, 0, 0);
+    
+    const programStart = parseProgramStartDate(user.programStartDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
     return today >= programStart;
   };
 
