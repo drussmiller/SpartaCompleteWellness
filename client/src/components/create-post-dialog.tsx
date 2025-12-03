@@ -197,6 +197,7 @@ export function CreatePostDialog({
     const programRestrictedTypes = ['food', 'workout', 'scripture', 'memory_verse'];
     if (programRestrictedTypes.includes(type) && !isProgramStarted()) {
       const programStart = new Date(user!.programStartDate!);
+      programStart.setHours(0, 0, 0, 0);
       return `(available from ${programStart.toLocaleDateString()})`;
     }
 
