@@ -1378,7 +1378,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     <AppLayout 
       sidebarWidth="80"
       headerContent={
-        <div className="px-4 pt-4 pb-2 flex items-center">
+        <div className="px-4 pt-16 pb-2 flex items-center">
           {onClose && (
             <Button
               variant="ghost"
@@ -1399,7 +1399,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-          <div className="container p-4 md:px-8">
+          <div className="container pt-0 px-4 pb-4 md:px-8">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
               <div className="flex gap-2 mt-2 justify-center">
