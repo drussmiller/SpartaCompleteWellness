@@ -4243,7 +4243,7 @@ export const registerRoutes = async (
         currentWeek: week,
         currentDay: day,
         programStartDate: user.programStartDate,
-        daysSinceStart: Math.max(0, daysSinceStart),
+        daysSinceStart: daysSinceStart,
         programHasStarted: !!programHasStarted
       });
     } catch (error) {
