@@ -8082,13 +8082,73 @@ export const registerRoutes = async (
         updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
-      // If team is being changed, update join date
+      // If team is being changed, update join date and program start date
       if (req.body.teamId !== undefined) {
         if (req.body.teamId) {
           const now = new Date();
           updateData.teamJoinedAt = now;
-          // Only set programStartDate if explicitly provided in the request
-          // Otherwise, leave it unchanged (don't auto-set to now)
+          
+          // Set programStartDate if not explicitly provided
+          if (!updateData.programStartDate) {
+            // Get team with its group info
+            const [teamWithGroup] = await db
+              .select({
+                teamStartDate: teams.programStartDate,
+                groupId: teams.groupId,
+              })
+              .from(teams)
+              .where(eq(teams.id, req.body.teamId))
+              .limit(1);
+
+            // Validate team exists
+            if (!teamWithGroup) {
+              return res.status(400).json({ 
+                message: `Team ${req.body.teamId} not found`
+              });
+            }
+
+            let programStartDate: Date | null = null;
+
+            // Priority 1: Team's start date
+            if (teamWithGroup.teamStartDate) {
+              programStartDate = new Date(teamWithGroup.teamStartDate);
+              logger.info(`Setting user programStartDate from team start date: ${programStartDate.toISOString()}`);
+            }
+            // Priority 2: Group's start date
+            else if (teamWithGroup.groupId) {
+              const [group] = await db
+                .select({ groupStartDate: groups.programStartDate })
+                .from(groups)
+                .where(eq(groups.id, teamWithGroup.groupId))
+                .limit(1);
+
+              if (group?.groupStartDate) {
+                programStartDate = new Date(group.groupStartDate);
+                logger.info(`Setting user programStartDate from group start date: ${programStartDate.toISOString()}`);
+              }
+            }
+
+            // Priority 3: Current date if Monday, otherwise next Monday
+            if (!programStartDate) {
+              const today = new Date();
+              const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+              
+              if (dayOfWeek === 1) {
+                // Today is Monday
+                programStartDate = new Date(today);
+                programStartDate.setHours(0, 0, 0, 0);
+              } else {
+                // Calculate next Monday
+                const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+                programStartDate = new Date(today);
+                programStartDate.setDate(today.getDate() + daysUntilMonday);
+                programStartDate.setHours(0, 0, 0, 0);
+              }
+              logger.info(`Setting user programStartDate to computed Monday: ${programStartDate.toISOString()}`);
+            }
+
+            updateData.programStartDate = programStartDate;
+          }
         } else {
           // If removing from team, clear join date but keep program start date
           updateData.teamJoinedAt = null;
