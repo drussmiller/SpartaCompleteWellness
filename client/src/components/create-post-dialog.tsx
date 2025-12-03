@@ -140,9 +140,20 @@ export function CreatePostDialog({
   };
 
   // For users who haven't posted anything, default to introductory_video (0 points)
+  // For users whose program hasn't started, default to miscellaneous
   // For users who have posted, default to food
   const shouldDefaultToIntroVideo = !hasAnyPosts;
-  const actualType = shouldDefaultToIntroVideo ? "introductory_video" : (defaultType || "food");
+  const getDefaultType = () => {
+    if (shouldDefaultToIntroVideo) return "introductory_video";
+    if (defaultType) return defaultType;
+    if (!user?.programStartDate) return "food";
+    const programStart = new Date(user.programStartDate);
+    programStart.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today >= programStart ? "food" : "miscellaneous";
+  };
+  const actualType = getDefaultType();
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -162,7 +173,14 @@ export function CreatePostDialog({
   // Update form type when hasAnyPosts changes or dialog opens
   useEffect(() => {
     if (open && !defaultType) {
-      const newType = hasAnyPosts ? "food" : "introductory_video";
+      let newType: string;
+      if (!hasAnyPosts) {
+        newType = "introductory_video";
+      } else if (!isProgramStarted()) {
+        newType = "miscellaneous";
+      } else {
+        newType = "food";
+      }
       form.setValue("type", newType);
       const newPoints = newType === "introductory_video" ? 0 : newType === "prayer" ? 0 : newType === "memory_verse" ? 10 : 3;
       form.setValue("points", newPoints);
@@ -182,25 +200,17 @@ export function CreatePostDialog({
     enabled: open && form.watch("type") === "memory_verse" // Only fetch when dialog is open and type is memory_verse
   });
 
+  // Check if TODAY has reached the program start date
+  const isProgramStarted = () => {
+    if (!user?.programStartDate) return true;
+    const programStart = new Date(user.programStartDate);
+    programStart.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today >= programStart;
+  };
+
   function getRemainingMessage(type: string) {
-    // Check if TODAY has reached the program start date
-    const isProgramStarted = () => {
-      if (!user?.programStartDate) return true;
-      const programStart = new Date(user.programStartDate);
-      programStart.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return today >= programStart;
-    };
-
-    // Show program start message for restricted types
-    const programRestrictedTypes = ['food', 'workout', 'scripture', 'memory_verse'];
-    if (programRestrictedTypes.includes(type) && !isProgramStarted()) {
-      const programStart = new Date(user!.programStartDate!);
-      programStart.setHours(0, 0, 0, 0);
-      return `(available from ${programStart.toLocaleDateString()})`;
-    }
-
     const selectedDayOfWeek = selectedDate.getDay();
 
     if (type === 'food') {
@@ -239,16 +249,6 @@ export function CreatePostDialog({
 
   // Add a function to check if a post type should be disabled
   function isPostTypeDisabled(type: string) {
-    // Check if TODAY has reached the user's program start date
-    const isProgramStarted = () => {
-      if (!user?.programStartDate) return true;
-      const programStart = new Date(user.programStartDate);
-      programStart.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return today >= programStart;
-    };
-
     // Disable Food, Workout, Scripture, and Memory verse until program starts
     const programRestrictedTypes = ['food', 'workout', 'scripture', 'memory_verse'];
     if (programRestrictedTypes.includes(type) && !isProgramStarted()) {
