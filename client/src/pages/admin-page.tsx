@@ -1394,7 +1394,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
     >
       <div
-        className="pb-20"
+        className="pb-20 -mt-20"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
