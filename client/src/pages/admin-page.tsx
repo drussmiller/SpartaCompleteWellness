@@ -1402,7 +1402,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           <div className="container pt-0 px-4 pb-4 md:px-8">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
-              <div className="flex gap-2 mt-2 justify-center">
+              <div className="flex gap-2 justify-center">
                 <Button
                   size="default"
                   className="px-4 bg-violet-700 text-white hover:bg-violet-800"
