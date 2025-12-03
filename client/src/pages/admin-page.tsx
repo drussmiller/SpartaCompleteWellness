@@ -1399,7 +1399,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-          <div className="container pt-0 px-4 pb-4 md:px-8">
+          <div className="container pt-0 md:pt-4 px-4 pb-4 md:px-8">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
               <div className="flex gap-2 justify-center">
