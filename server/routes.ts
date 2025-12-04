@@ -4278,9 +4278,8 @@ export const registerRoutes = async (
       // Calculate current week (1-based)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
 
-      // Calculate current day of week (1 = Monday, 7 = Sunday)
-      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const currentDay = rawDay === 0 ? 7 : rawDay;
+      // Calculate current day within the program week (1-7)
+      const currentDay = (daysSinceStart % 7) + 1;
 
       // Check if program has started - true if daysSinceStart is 0 or positive
       const programHasStarted = !!(user.programStartDate && daysSinceStart >= 0);
@@ -5642,8 +5641,48 @@ export const registerRoutes = async (
         users = [];
       }
 
+      // Calculate currentWeek and currentDay dynamically for each user
+      const usersWithCalculatedProgress = users.map(user => {
+        if (!user.programStartDate) {
+          return user;
+        }
+
+        const tzOffset = user.timezoneOffset || 0;
+        const now = new Date();
+        const userLocalNow = new Date(now.getTime() + tzOffset * 60000);
+
+        // Set to start of day in user's timezone
+        const userStartOfDay = new Date(userLocalNow);
+        userStartOfDay.setHours(0, 0, 0, 0);
+
+        // Program start date (from database) - ensure it's at start of day
+        const programStart = new Date(user.programStartDate);
+        programStart.setHours(0, 0, 0, 0);
+
+        // Calculate days since program start
+        const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+        const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+        // Calculate current week (1-based)
+        const currentWeek = Math.floor(daysSinceStart / 7) + 1;
+
+        // Calculate current day based on actual day of week (Monday=1, Sunday=7)
+        const jsDay = userLocalNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+        const currentDay = jsDay === 0 ? 7 : jsDay; // Convert to Monday=1, Sunday=7
+
+        // Don't allow negative weeks/days
+        const week = Math.max(1, currentWeek);
+        const day = Math.max(1, currentDay);
+
+        return {
+          ...user,
+          currentWeek: week,
+          currentDay: day
+        };
+      });
+
       // Explicitly set status to 200 to prevent 304
-      res.status(200).json(users);
+      res.status(200).json(usersWithCalculatedProgress);
     } catch (error) {
       logger.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
