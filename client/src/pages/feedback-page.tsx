@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Send } from "lucide-react";
+import { ChevronLeft, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
@@ -98,21 +98,20 @@ export function FeedbackPage({ onClose }: FeedbackPageProps = {}) {
       data-swipe-enabled="true"
     >
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-border">
-        <div className="flex items-center justify-between p-4">
+      <header className="sticky top-0 z-50 bg-background border-b border-border pt-12">
+        <div className="flex items-center p-4">
           <Button
             variant="ghost"
             size="icon"
+            className="mr-2 scale-125"
             onClick={handleBackClick}
-            className="h-9 w-9"
             data-testid="button-back"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ChevronLeft className="h-8 w-8 scale-125" />
           </Button>
           <h1 className="text-lg font-semibold">Feedback</h1>
-          <div className="w-9" />
         </div>
-      </div>
+      </header>
 
       {/* Main content area */}
       <ScrollArea className="flex-1">
