@@ -24,9 +24,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   }, []);
 
   // Android-specific: Dynamic padding based on app lifecycle state
-  // Initial load: -16px 
-  // After wake/resume: 40px
-  const [androidPaddingBase, setAndroidPaddingBase] = useState(-16);
+  // Initial load: 0px (nav sits lower)
+  // After wake/resume: 40px (nav sits higher)
+  const [androidPaddingBase, setAndroidPaddingBase] = useState(0);
   const [lastPaddingUpdate, setLastPaddingUpdate] = useState(0);
 
   // Add debug logging to verify props
