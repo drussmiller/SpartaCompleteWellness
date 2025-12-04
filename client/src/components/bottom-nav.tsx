@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -24,9 +24,10 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   }, []);
 
   // Android-specific: Dynamic padding based on app lifecycle state
-  // Initial load: -8px (sits ~32px lower than original 24px)
-  // After wake/resume: 28px (sits ~4px higher than original 24px)
+  // Initial load: -16px 
+  // After wake/resume: 40px
   const [androidPaddingBase, setAndroidPaddingBase] = useState(-16);
+  const [lastPaddingUpdate, setLastPaddingUpdate] = useState(0);
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPaddingBase:', androidPaddingBase);
@@ -50,48 +51,61 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     enabled: !!user
   });
 
-  // Refresh notification count when page becomes visible or window gains focus
-  useEffect(() => {
-    if (!user) return;
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Bottom nav: Page became visible, refreshing notifications');
-        refetchNotificationCount();
-        
-        // Android-specific: Adjust padding when app resumes/wakes up
-        if (isAndroid) {
+  // Memoized handlers to prevent listener re-attachment on every render
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible') {
+      console.log('Bottom nav: Page became visible, refreshing notifications');
+      refetchNotificationCount();
+      
+      // Android-specific: Adjust padding when app resumes/wakes up
+      if (isAndroid) {
+        const now = Date.now();
+        if (now - lastPaddingUpdate > 500) { // Prevent rapid updates
           // Check if keyboard is visible (visualViewport height < window height)
           const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
           if (!isKeyboardVisible) {
             setAndroidPaddingBase(40); // Set to 40px after wake/resume
+            setLastPaddingUpdate(now);
           }
         }
       }
-    };
+    }
+  }, [isAndroid, refetchNotificationCount, lastPaddingUpdate]);
 
-    const handleFocus = () => {
-      console.log('Bottom nav: Window gained focus, refreshing notifications');
-      refetchNotificationCount();
-      
-      // Android-specific: Adjust padding when window gains focus
-      if (isAndroid) {
+  const handleFocus = useCallback(() => {
+    console.log('Bottom nav: Window gained focus, refreshing notifications');
+    refetchNotificationCount();
+    
+    // Android-specific: Adjust padding when window gains focus
+    if (isAndroid) {
+      const now = Date.now();
+      if (now - lastPaddingUpdate > 500) { // Prevent rapid updates
         const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible) {
           setAndroidPaddingBase(40); // Set to 40px after focus
+          setLastPaddingUpdate(now);
         }
       }
-    };
+    }
+  }, [isAndroid, refetchNotificationCount, lastPaddingUpdate]);
 
-    const handleViewportResize = () => {
-      // Android-specific: Adjust padding when viewport resizes (e.g., keyboard show/hide)
-      if (isAndroid && window.visualViewport) {
+  const handleViewportResize = useCallback(() => {
+    // Android-specific: Adjust padding when viewport resizes (e.g., keyboard show/hide)
+    if (isAndroid && window.visualViewport) {
+      const now = Date.now();
+      if (now - lastPaddingUpdate > 500) { // Prevent rapid updates during navigation
         const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible && document.visibilityState === 'visible') {
           setAndroidPaddingBase(40); // Set to 40px when keyboard closes
+          setLastPaddingUpdate(now);
         }
       }
-    };
+    }
+  }, [isAndroid, lastPaddingUpdate]);
+
+  // Attach listeners only once
+  useEffect(() => {
+    if (!user) return;
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
@@ -108,7 +122,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         window.visualViewport.removeEventListener('resize', handleViewportResize);
       }
     };
-  }, [user, isAndroid]);
+  }, [user, handleVisibilityChange, handleFocus, handleViewportResize]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
