@@ -75,7 +75,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
           // Check if keyboard is visible (visualViewport height < window height)
           const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
           if (!isKeyboardVisible) {
-            setAndroidPaddingBase(0); // Move nav to bottom after wake/resume
+            setAndroidPaddingBase(-20); // Move nav up 20px after wake/resume
             setLastPaddingUpdate(now);
           }
         }
@@ -93,7 +93,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (now - lastPaddingUpdate > 500) { // Prevent rapid updates
         const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible) {
-          setAndroidPaddingBase(0); // Move nav to bottom after focus
+          setAndroidPaddingBase(-20); // Move nav up 20px after focus
           setLastPaddingUpdate(now);
         }
       }
@@ -107,7 +107,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (now - lastPaddingUpdate > 500) { // Prevent rapid updates during navigation
         const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible && document.visibilityState === 'visible') {
-          setAndroidPaddingBase(0); // Move nav to bottom when keyboard closes
+          setAndroidPaddingBase(-20); // Move nav up 20px when keyboard closes
           setLastPaddingUpdate(now);
         }
       }
