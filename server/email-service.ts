@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
 async function sendVerificationEmail(email: string, code: string): Promise<boolean> {
   try {
     if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
-      logger.warn("Gmail credentials not configured. Verification code:", code);
+      logger.warn("Gmail credentials not configured.", { code });
       // In development, just log the code
       console.log(`\n=== EMAIL VERIFICATION CODE for ${email} ===`);
       console.log(`Code: ${code}`);
@@ -60,7 +60,7 @@ async function sendVerificationEmail(email: string, code: string): Promise<boole
 async function sendPasswordResetCode(email: string, code: string): Promise<boolean> {
   try {
     if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
-      logger.warn("Gmail credentials not configured. Password reset code:", code);
+      logger.warn("Gmail credentials not configured.", { code });
       // In development, just log the code
       console.log(`\n=== PASSWORD RESET CODE for ${email} ===`);
       console.log(`Code: ${code}`);
@@ -102,9 +102,72 @@ async function sendPasswordResetCode(email: string, code: string): Promise<boole
   }
 }
 
+async function sendFeedbackEmail(
+  subject: string,
+  message: string,
+  userName: string,
+  userEmail: string,
+  userPhone?: string | null
+): Promise<boolean> {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
+      logger.warn("Gmail credentials not configured. Logging feedback to console.");
+      console.log(`\n=== FEEDBACK SUBMISSION ===`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Message: ${message}`);
+      console.log(`From: ${userName} (${userEmail})`);
+      if (userPhone) console.log(`Phone: ${userPhone}`);
+      console.log(`=======================================\n`);
+      return true;
+    }
+
+    const userInfoHtml = `
+      <hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;" />
+      <p style="color: #666; font-size: 14px;">
+        <strong>Submitted by:</strong><br />
+        Name: ${userName}<br />
+        Email: ${userEmail}${userPhone ? `<br />Phone: ${userPhone}` : ''}
+      </p>
+    `;
+
+    const userInfoText = `\n\n---\nSubmitted by:\nName: ${userName}\nEmail: ${userEmail}${userPhone ? `\nPhone: ${userPhone}` : ''}`;
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: "SpartaCompleteWellnessApp@gmail.com",
+      subject: `Feedback: ${subject}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">New Feedback Submission</h2>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0; border-left: 4px solid #6366F1;">
+            ${message.replace(/\n/g, '<br />')}
+          </div>
+          ${userInfoHtml}
+        </div>
+      `,
+      text: `New Feedback Submission\n\nSubject: ${subject}\n\n${message}${userInfoText}`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info(`Feedback email sent to SpartaCompleteWellnessApp@gmail.com`);
+    return true;
+  } catch (error) {
+    logger.error("Error sending feedback email:", error);
+    console.log(`\n=== FEEDBACK SUBMISSION (Error occurred) ===`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Message: ${message}`);
+    console.log(`From: ${userName} (${userEmail})`);
+    if (userPhone) console.log(`Phone: ${userPhone}`);
+    console.log(`=======================================\n`);
+    return true;
+  }
+}
+
 // Export as both individual functions and as a service object for compatibility
-export { sendVerificationEmail, sendPasswordResetCode };
+export { sendVerificationEmail, sendPasswordResetCode, sendFeedbackEmail };
 export const emailService = {
   sendVerificationEmail,
   sendPasswordResetCode,
+  sendFeedbackEmail,
 };

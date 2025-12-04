@@ -341,6 +341,56 @@ export const registerRoutes = async (
     });
   });
 
+  // Feedback submission endpoint
+  router.post("/api/feedback", authenticate, express.json(), async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { subject, message } = req.body;
+
+      if (!subject || !message) {
+        return res.status(400).json({ message: "Subject and message are required" });
+      }
+
+      const userName = req.user.preferredName || req.user.username;
+      const userEmail = req.user.email;
+      const userPhone = req.user.phoneNumber;
+
+      // Import email service
+      const { sendFeedbackEmail } = await import("./email-service");
+
+      // Send email to SpartaCompleteWellnessApp@gmail.com
+      await sendFeedbackEmail(subject, message, userName, userEmail, userPhone);
+
+      // Send SMS to all admins
+      const adminUsers = await storage.getAdminUsers();
+      const adminPhoneNumbers = adminUsers
+        .filter(admin => admin.phoneNumber && admin.smsEnabled)
+        .map(admin => admin.phoneNumber as string);
+
+      if (adminPhoneNumbers.length > 0) {
+        const smsMessage = `New feedback from ${userName}: ${subject}`;
+        
+        for (const phoneNumber of adminPhoneNumbers) {
+          try {
+            await smsService.sendSMSToUser(phoneNumber, smsMessage);
+          } catch (smsError) {
+            logger.error(`Failed to send SMS to admin ${phoneNumber}:`, smsError);
+          }
+        }
+      }
+
+      logger.info(`Feedback submitted by user ${req.user.id}: ${subject}`);
+      res.json({ message: "Feedback submitted successfully" });
+    } catch (error) {
+      logger.error("Error submitting feedback:", error);
+      res.status(500).json({
+        message: "Failed to submit feedback",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // WebSocket status endpoint to check real-time connections
   router.get("/api/ws-status", (req, res) => {
     // Count active WebSocket connections
