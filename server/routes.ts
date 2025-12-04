@@ -362,7 +362,7 @@ export const registerRoutes = async (
       // Send email to SpartaCompleteWellnessApp@gmail.com
       await sendFeedbackEmail(subject, message, userName, userEmail, userPhone);
 
-      // Send SMS to all admins
+      // Send SMS to all admins and create in-app notifications
       const adminUsers = await storage.getAdminUsers();
       const adminPhoneNumbers = adminUsers
         .filter(admin => admin.phoneNumber && admin.smsEnabled)
@@ -377,6 +377,35 @@ export const registerRoutes = async (
           } catch (smsError) {
             logger.error(`Failed to send SMS to admin ${phoneNumber}:`, smsError);
           }
+        }
+      }
+
+      // Create in-app notifications for all admins
+      for (const admin of adminUsers) {
+        const [notification] = await db
+          .insert(notifications)
+          .values({
+            userId: admin.id,
+            title: "New Feedback Received",
+            message: `${userName} submitted feedback: ${subject}`,
+            type: "feedback",
+            isRead: false,
+          })
+          .returning();
+
+        // Send real-time notification via WebSocket
+        const adminSockets = clients.get(admin.id);
+        if (adminSockets && adminSockets.size > 0) {
+          adminSockets.forEach((ws) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(
+                JSON.stringify({
+                  type: "new_notification",
+                  notification,
+                })
+              );
+            }
+          });
         }
       }
 
