@@ -24,7 +24,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   }, []);
 
   // Android-specific: Dynamic padding based on app lifecycle state
-  // Initial load: 4px (sits lower), After wake/resume: 12px (sits higher)
+  // Initial load: 4px (sits ~20px lower than original 24px)
+  // After wake/resume: 28px (sits ~4px higher than original 24px)
   const [androidPaddingBase, setAndroidPaddingBase] = useState(4);
 
   // Add debug logging to verify props
@@ -63,7 +64,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
           // Check if keyboard is visible (visualViewport height < window height)
           const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
           if (!isKeyboardVisible) {
-            setAndroidPaddingBase(12); // Higher padding after wake/resume
+            setAndroidPaddingBase(28); // Higher padding after wake/resume (4px above original 24px)
           }
         }
       }
@@ -77,7 +78,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (isAndroid) {
         const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible) {
-          setAndroidPaddingBase(12); // Higher padding after focus
+          setAndroidPaddingBase(28); // Higher padding after focus (4px above original 24px)
         }
       }
     };
@@ -87,7 +88,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (isAndroid && window.visualViewport) {
         const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible && document.visibilityState === 'visible') {
-          setAndroidPaddingBase(12);
+          setAndroidPaddingBase(28); // Higher padding when keyboard closes (4px above original 24px)
         }
       }
     };
