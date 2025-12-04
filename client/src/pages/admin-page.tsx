@@ -1394,15 +1394,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
     >
       <div
-        className="pb-20"
+        className="pb-20 -mt-[64px] md:mt-0"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-          <div className="container p-4 md:px-8">
+          <div className="container pt-0 md:pt-4 px-4 pb-4 md:px-8">
             {/* Activity Management - Only show for full admins */}
             {currentUser?.isAdmin && (
-              <div className="flex gap-2 mt-4 justify-center">
+              <div className="flex gap-2 justify-center">
                 <Button
                   size="default"
                   className="px-4 bg-violet-700 text-white hover:bg-violet-800"
@@ -1413,7 +1413,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-6 mt-6">
+            <div className="grid grid-cols-1 gap-6 mt-3">
               {/* Organizations Section - Only show for full admins */}
               {currentUser?.isAdmin && !currentUser?.isTeamLead && (
                 <Collapsible 

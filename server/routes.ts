@@ -341,6 +341,56 @@ export const registerRoutes = async (
     });
   });
 
+  // Feedback submission endpoint
+  router.post("/api/feedback", authenticate, express.json(), async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { subject, message } = req.body;
+
+      if (!subject || !message) {
+        return res.status(400).json({ message: "Subject and message are required" });
+      }
+
+      const userName = req.user.preferredName || req.user.username;
+      const userEmail = req.user.email;
+      const userPhone = req.user.phoneNumber;
+
+      // Import email service
+      const { sendFeedbackEmail } = await import("./email-service");
+
+      // Send email to SpartaCompleteWellnessApp@gmail.com
+      await sendFeedbackEmail(subject, message, userName, userEmail, userPhone);
+
+      // Send SMS to all admins
+      const adminUsers = await storage.getAdminUsers();
+      const adminPhoneNumbers = adminUsers
+        .filter(admin => admin.phoneNumber && admin.smsEnabled)
+        .map(admin => admin.phoneNumber as string);
+
+      if (adminPhoneNumbers.length > 0) {
+        const smsMessage = `New feedback from ${userName}: ${subject}`;
+        
+        for (const phoneNumber of adminPhoneNumbers) {
+          try {
+            await smsService.sendSMSToUser(phoneNumber, smsMessage);
+          } catch (smsError) {
+            logger.error(`Failed to send SMS to admin ${phoneNumber}:`, smsError);
+          }
+        }
+      }
+
+      logger.info(`Feedback submitted by user ${req.user.id}: ${subject}`);
+      res.json({ message: "Feedback submitted successfully" });
+    } catch (error) {
+      logger.error("Error submitting feedback:", error);
+      res.status(500).json({
+        message: "Failed to submit feedback",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // WebSocket status endpoint to check real-time connections
   router.get("/api/ws-status", (req, res) => {
     // Count active WebSocket connections
@@ -2192,7 +2242,7 @@ export const registerRoutes = async (
             // - memory_verse and introductory_video are always videos
             // - miscellaneous/prayer posts only if explicitly marked
             // - other posts based on mimetype/extension
-            const isVideo = isMemoryVersePost || 
+            isVideo = isMemoryVersePost || 
                           isIntroductoryVideoPost ||
                           ((isMiscellaneousPost || isPrayerPost) ? isMiscellaneousVideo : 
                            (isVideoMimetype || hasVideoContentType || isVideoExtension));
@@ -4243,7 +4293,7 @@ export const registerRoutes = async (
         currentWeek: week,
         currentDay: day,
         programStartDate: user.programStartDate,
-        daysSinceStart: Math.max(0, daysSinceStart),
+        daysSinceStart: daysSinceStart,
         programHasStarted: !!programHasStarted
       });
     } catch (error) {
@@ -8082,13 +8132,73 @@ export const registerRoutes = async (
         updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
-      // If team is being changed, update join date
+      // If team is being changed, update join date and program start date
       if (req.body.teamId !== undefined) {
         if (req.body.teamId) {
           const now = new Date();
           updateData.teamJoinedAt = now;
-          // Only set programStartDate if explicitly provided in the request
-          // Otherwise, leave it unchanged (don't auto-set to now)
+          
+          // Set programStartDate if not explicitly provided
+          if (!updateData.programStartDate) {
+            // Get team with its group info
+            const [teamWithGroup] = await db
+              .select({
+                teamStartDate: teams.programStartDate,
+                groupId: teams.groupId,
+              })
+              .from(teams)
+              .where(eq(teams.id, req.body.teamId))
+              .limit(1);
+
+            // Validate team exists
+            if (!teamWithGroup) {
+              return res.status(400).json({ 
+                message: `Team ${req.body.teamId} not found`
+              });
+            }
+
+            let programStartDate: Date | null = null;
+
+            // Priority 1: Team's start date
+            if (teamWithGroup.teamStartDate) {
+              programStartDate = new Date(teamWithGroup.teamStartDate);
+              logger.info(`Setting user programStartDate from team start date: ${programStartDate.toISOString()}`);
+            }
+            // Priority 2: Group's start date
+            else if (teamWithGroup.groupId) {
+              const [group] = await db
+                .select({ groupStartDate: groups.programStartDate })
+                .from(groups)
+                .where(eq(groups.id, teamWithGroup.groupId))
+                .limit(1);
+
+              if (group?.groupStartDate) {
+                programStartDate = new Date(group.groupStartDate);
+                logger.info(`Setting user programStartDate from group start date: ${programStartDate.toISOString()}`);
+              }
+            }
+
+            // Priority 3: Current date if Monday, otherwise next Monday
+            if (!programStartDate) {
+              const today = new Date();
+              const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+              
+              if (dayOfWeek === 1) {
+                // Today is Monday
+                programStartDate = new Date(today);
+                programStartDate.setHours(0, 0, 0, 0);
+              } else {
+                // Calculate next Monday
+                const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+                programStartDate = new Date(today);
+                programStartDate.setDate(today.getDate() + daysUntilMonday);
+                programStartDate.setHours(0, 0, 0, 0);
+              }
+              logger.info(`Setting user programStartDate to computed Monday: ${programStartDate.toISOString()}`);
+            }
+
+            updateData.programStartDate = programStartDate;
+          }
         } else {
           // If removing from team, clear join date but keep program start date
           updateData.teamJoinedAt = null;

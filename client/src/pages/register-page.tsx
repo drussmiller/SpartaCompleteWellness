@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Mail, Check } from "lucide-react";
 
+// Session storage key
+const REGISTRATION_DRAFT_KEY = "registration_draft";
+
 // Registration schema
 const insertUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -32,24 +35,120 @@ const insertUserSchema = z.object({
 });
 
 
+interface RegistrationDraft {
+  formValues: {
+    username: string;
+    email: string;
+    preferredName: string;
+  };
+  emailSent: boolean;
+  isVerified: boolean;
+  cooldownExpiry: number | null;
+}
+
 function RegistrationForm() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [emailSent, setEmailSent] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+  
+  // Load saved draft on mount
+  const loadDraft = (): RegistrationDraft | null => {
+    try {
+      const saved = sessionStorage.getItem(REGISTRATION_DRAFT_KEY);
+      if (!saved) return null;
+      return JSON.parse(saved) as RegistrationDraft;
+    } catch {
+      return null;
+    }
+  };
+
+  const draft = loadDraft();
+  const [emailSent, setEmailSent] = useState(draft?.emailSent || false);
+  const [isVerified, setIsVerified] = useState(draft?.isVerified || false);
+  
+  // Calculate remaining cooldown from expiry timestamp
+  const calculateCooldown = () => {
+    if (!draft?.cooldownExpiry) return 0;
+    const remaining = Math.max(0, Math.ceil((draft.cooldownExpiry - Date.now()) / 1000));
+    return remaining;
+  };
+  
+  const [cooldown, setCooldown] = useState(calculateCooldown());
 
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
-      username: "",
-      email: "",
+      username: draft?.formValues.username || "",
+      email: draft?.formValues.email || "",
       password: "",
       confirmPassword: "",
-      preferredName: "",
+      preferredName: draft?.formValues.preferredName || "",
       verificationCode: "",
     },
   });
+
+  // Helper to save current state to sessionStorage
+  const saveDraft = () => {
+    const values = form.getValues();
+    const cooldownExpiry = cooldown > 0 ? Date.now() + (cooldown * 1000) : null;
+    
+    const draftData: RegistrationDraft = {
+      formValues: {
+        username: values.username || "",
+        email: values.email || "",
+        preferredName: values.preferredName || "",
+      },
+      emailSent,
+      isVerified,
+      cooldownExpiry,
+    };
+    
+    sessionStorage.setItem(REGISTRATION_DRAFT_KEY, JSON.stringify(draftData));
+  };
+
+  // Persist when form values change
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      const currentEmail = form.getValues("email");
+      
+      // Clear verification state if email changed from saved draft
+      if (draft?.formValues.email && currentEmail !== draft.formValues.email) {
+        setEmailSent(false);
+        setIsVerified(false);
+        setCooldown(0);
+      }
+      
+      saveDraft();
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form, emailSent, isVerified, cooldown, draft?.formValues.email]);
+
+  // Persist immediately when verification state changes
+  useEffect(() => {
+    saveDraft();
+  }, [emailSent, isVerified, cooldown]);
+
+  // Restart cooldown timer on mount if there's remaining time
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, []);
+
+  // Clear draft helper
+  const clearDraft = () => {
+    sessionStorage.removeItem(REGISTRATION_DRAFT_KEY);
+  };
 
   // Send verification code
   const sendCodeMutation = useMutation({
@@ -124,6 +223,7 @@ function RegistrationForm() {
       return res.json();
     },
     onSuccess: () => {
+      clearDraft();
       toast({
         title: "Registration Successful",
         description: "Welcome to Team Fitness Tracker!",
@@ -346,7 +446,10 @@ function RegistrationForm() {
             type="button"
             variant="outline"
             className="w-full"
-            onClick={() => navigate("/auth")}
+            onClick={() => {
+              clearDraft();
+              navigate("/auth");
+            }}
             data-testid="button-cancel"
           >
             Cancel

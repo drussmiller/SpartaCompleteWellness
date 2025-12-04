@@ -139,10 +139,40 @@ export function CreatePostDialog({
     createdAt: string;
   };
 
+  // Helper to parse programStartDate to local date at midnight
+  const parseProgramStartDate = (dateStr: string): Date => {
+    // If it's a date-only string (YYYY-MM-DD), parse directly as local
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day, 0, 0, 0, 0);
+    }
+    
+    // Otherwise, it's a full timestamp (UTC), extract UTC components to local
+    const utcDate = new Date(dateStr);
+    return new Date(
+      utcDate.getUTCFullYear(),
+      utcDate.getUTCMonth(),
+      utcDate.getUTCDate(),
+      0, 0, 0, 0
+    );
+  };
+
   // For users who haven't posted anything, default to introductory_video (0 points)
+  // For users whose program hasn't started, default to miscellaneous
   // For users who have posted, default to food
   const shouldDefaultToIntroVideo = !hasAnyPosts;
-  const actualType = shouldDefaultToIntroVideo ? "introductory_video" : (defaultType || "food");
+  const getDefaultType = () => {
+    if (shouldDefaultToIntroVideo) return "introductory_video";
+    if (defaultType) return defaultType;
+    if (!user?.programStartDate) return "food";
+    
+    const programStart = parseProgramStartDate(user.programStartDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return today >= programStart ? "food" : "miscellaneous";
+  };
+  const actualType = getDefaultType();
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
@@ -162,7 +192,14 @@ export function CreatePostDialog({
   // Update form type when hasAnyPosts changes or dialog opens
   useEffect(() => {
     if (open && !defaultType) {
-      const newType = hasAnyPosts ? "food" : "introductory_video";
+      let newType: string;
+      if (!hasAnyPosts) {
+        newType = "introductory_video";
+      } else if (!isProgramStarted()) {
+        newType = "miscellaneous";
+      } else {
+        newType = "food";
+      }
       form.setValue("type", newType);
       const newPoints = newType === "introductory_video" ? 0 : newType === "prayer" ? 0 : newType === "memory_verse" ? 10 : 3;
       form.setValue("points", newPoints);
@@ -181,6 +218,17 @@ export function CreatePostDialog({
     },
     enabled: open && form.watch("type") === "memory_verse" // Only fetch when dialog is open and type is memory_verse
   });
+
+  // Check if TODAY has reached the program start date (using local timezone)
+  const isProgramStarted = () => {
+    if (!user?.programStartDate) return true;
+    
+    const programStart = parseProgramStartDate(user.programStartDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return today >= programStart;
+  };
 
   function getRemainingMessage(type: string) {
     const selectedDayOfWeek = selectedDate.getDay();
@@ -221,6 +269,12 @@ export function CreatePostDialog({
 
   // Add a function to check if a post type should be disabled
   function isPostTypeDisabled(type: string) {
+    // Disable Food, Workout, Scripture, and Memory verse until program starts
+    const programRestrictedTypes = ['food', 'workout', 'scripture', 'memory_verse'];
+    if (programRestrictedTypes.includes(type) && !isProgramStarted()) {
+      return true;
+    }
+
     // Use the canPost values directly from the usePostLimits hook
     // This ensures consistency between the dropdown display and button status
     switch (type) {
@@ -404,7 +458,7 @@ export function CreatePostDialog({
           type: data.type,
           content: content,
           points: data.type === "memory_verse" ? 10 : data.type === "comment" ? 1 : data.type === "miscellaneous" ? 0 : 3,
-          createdAt: data.postDate ? data.postDate.toISOString() : selectedDate.toISOString(),
+          createdAt: data.postDate ? data.postDate.toISOString() : new Date().toISOString(),
           postScope: data.postScope || postScope || "my_team",
         };
         
@@ -640,7 +694,15 @@ export function CreatePostDialog({
     });
     console.log("🔥 [SCOPE DEBUG] All form values from getValues():", form.getValues());
     console.log("============ FORM SUBMIT DEBUG END ============");
-    data.postDate = selectedDate;
+    // Only use selectedDate if it's different from today, otherwise let the server use current time
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(selectedDate);
+    selected.setHours(0, 0, 0, 0);
+    
+    if (selected.getTime() !== today.getTime()) {
+      data.postDate = selectedDate;
+    }
     createPostMutation.mutate(data);
   };
 
