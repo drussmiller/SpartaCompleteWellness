@@ -155,8 +155,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       )}
       style={{
         paddingBottom: isAndroid ? `env(safe-area-inset-bottom, 0px)` : 'max(env(safe-area-inset-bottom), 4px)',
-        bottom: isAndroid ? `${androidPaddingBase}px` : undefined,
-        transform: orientation === "horizontal" && !isAndroid ? `translateY(${scrollOffset}px)` : undefined,
+        transform: isAndroid 
+          ? `translateY(${androidPaddingBase}px)`
+          : orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
       }}>
