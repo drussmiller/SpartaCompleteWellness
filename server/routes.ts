@@ -5641,8 +5641,47 @@ export const registerRoutes = async (
         users = [];
       }
 
+      // Calculate currentWeek and currentDay dynamically for each user
+      const usersWithCalculatedProgress = users.map(user => {
+        if (!user.programStartDate) {
+          return user;
+        }
+
+        const tzOffset = user.timezoneOffset || 0;
+        const now = new Date();
+        const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
+
+        // Set to start of day in user's timezone
+        const userStartOfDay = new Date(userLocalNow);
+        userStartOfDay.setHours(0, 0, 0, 0);
+
+        // Program start date (from database) - ensure it's at start of day
+        const programStart = new Date(user.programStartDate);
+        programStart.setHours(0, 0, 0, 0);
+
+        // Calculate days since program start
+        const msSinceStart = userStartOfDay.getTime() - programStart.getTime();
+        const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+
+        // Calculate current week (1-based)
+        const currentWeek = Math.floor(daysSinceStart / 7) + 1;
+
+        // Calculate current day within the program week (1-7)
+        const currentDay = (daysSinceStart % 7) + 1;
+
+        // Don't allow negative weeks/days
+        const week = Math.max(1, currentWeek);
+        const day = Math.max(1, currentDay);
+
+        return {
+          ...user,
+          currentWeek: week,
+          currentDay: day
+        };
+      });
+
       // Explicitly set status to 200 to prevent 304
-      res.status(200).json(users);
+      res.status(200).json(usersWithCalculatedProgress);
     } catch (error) {
       logger.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
