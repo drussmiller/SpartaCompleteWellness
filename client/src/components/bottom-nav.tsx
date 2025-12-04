@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -16,19 +16,19 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Detect Android device - apply constant padding for Android to keep buttons in safe zone
+  // Detect Android device - apply dynamic padding for Android to keep buttons in safe zone
   const isAndroid = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const userAgent = navigator.userAgent.toLowerCase();
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Always add bottom padding to keep buttons in safe zone
-  // Using calc() ensures padding is always present, even immediately after wake/resume
-  const androidPadding = 'calc(env(safe-area-inset-bottom, 0px) + 24px)';
+  // Android-specific: Dynamic padding based on app lifecycle state
+  // Initial load: 4px (sits lower), After wake/resume: 12px (sits higher)
+  const [androidPaddingBase, setAndroidPaddingBase] = useState(4);
 
   // Add debug logging to verify props
-  console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPadding:', androidPadding);
+  console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPaddingBase:', androidPaddingBase);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -57,22 +57,57 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
+        
+        // Android-specific: Adjust padding when app resumes/wakes up
+        if (isAndroid) {
+          // Check if keyboard is visible (visualViewport height < window height)
+          const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
+          if (!isKeyboardVisible) {
+            setAndroidPaddingBase(12); // Higher padding after wake/resume
+          }
+        }
       }
     };
 
     const handleFocus = () => {
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
+      
+      // Android-specific: Adjust padding when window gains focus
+      if (isAndroid) {
+        const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
+        if (!isKeyboardVisible) {
+          setAndroidPaddingBase(12); // Higher padding after focus
+        }
+      }
+    };
+
+    const handleViewportResize = () => {
+      // Android-specific: Adjust padding when viewport resizes (e.g., keyboard show/hide)
+      if (isAndroid && window.visualViewport) {
+        const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
+        if (!isKeyboardVisible && document.visibilityState === 'visible') {
+          setAndroidPaddingBase(12);
+        }
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
+    
+    // Listen for viewport changes (keyboard show/hide)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportResize);
+    }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportResize);
+      }
     };
-  }, [user, refetchNotificationCount]);
+  }, [user, refetchNotificationCount, isAndroid]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
@@ -104,7 +139,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: isAndroid ? androidPadding : 'max(env(safe-area-inset-bottom), 4px)',
+        paddingBottom: isAndroid ? `calc(env(safe-area-inset-bottom, 0px) + ${androidPaddingBase}px)` : 'max(env(safe-area-inset-bottom), 4px)',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
