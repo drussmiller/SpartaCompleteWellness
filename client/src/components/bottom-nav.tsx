@@ -26,7 +26,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // Android-specific: Dynamic padding based on app lifecycle state
   // Initial load: -8px (sits ~32px lower than original 24px)
   // After wake/resume: 28px (sits ~4px higher than original 24px)
-  const [androidPaddingBase, setAndroidPaddingBase] = useState(-8);
+  const [androidPaddingBase, setAndroidPaddingBase] = useState(-16);
 
   // Add debug logging to verify props
   console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPaddingBase:', androidPaddingBase);
@@ -64,7 +64,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
           // Check if keyboard is visible (visualViewport height < window height)
           const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
           if (!isKeyboardVisible) {
-            setAndroidPaddingBase(28); // Higher padding after wake/resume (4px above original 24px)
+            setAndroidPaddingBase(40); // Set to 40px after wake/resume
           }
         }
       }
@@ -78,7 +78,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (isAndroid) {
         const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible) {
-          setAndroidPaddingBase(28); // Higher padding after focus (4px above original 24px)
+          setAndroidPaddingBase(40); // Set to 40px after focus
         }
       }
     };
@@ -88,7 +88,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (isAndroid && window.visualViewport) {
         const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible && document.visibilityState === 'visible') {
-          setAndroidPaddingBase(28); // Higher padding when keyboard closes (4px above original 24px)
+          setAndroidPaddingBase(40); // Set to 40px when keyboard closes
         }
       }
     };
@@ -108,7 +108,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         window.visualViewport.removeEventListener('resize', handleViewportResize);
       }
     };
-  }, [user, refetchNotificationCount, isAndroid]);
+  }, [user, isAndroid]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
