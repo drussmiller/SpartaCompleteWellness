@@ -5649,7 +5649,7 @@ export const registerRoutes = async (
 
         const tzOffset = user.timezoneOffset || 0;
         const now = new Date();
-        const userLocalNow = new Date(now.getTime() - tzOffset * 60000);
+        const userLocalNow = new Date(now.getTime() + tzOffset * 60000);
 
         // Set to start of day in user's timezone
         const userStartOfDay = new Date(userLocalNow);
@@ -5666,8 +5666,9 @@ export const registerRoutes = async (
         // Calculate current week (1-based)
         const currentWeek = Math.floor(daysSinceStart / 7) + 1;
 
-        // Calculate current day within the program week (1-7)
-        const currentDay = (daysSinceStart % 7) + 1;
+        // Calculate current day based on actual day of week (Monday=1, Sunday=7)
+        const jsDay = userLocalNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+        const currentDay = jsDay === 0 ? 7 : jsDay; // Convert to Monday=1, Sunday=7
 
         // Don't allow negative weeks/days
         const week = Math.max(1, currentWeek);
