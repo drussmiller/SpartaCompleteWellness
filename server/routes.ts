@@ -4278,9 +4278,8 @@ export const registerRoutes = async (
       // Calculate current week (1-based)
       const currentWeek = Math.floor(daysSinceStart / 7) + 1;
 
-      // Calculate current day of week (1 = Monday, 7 = Sunday)
-      const rawDay = userLocalNow.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const currentDay = rawDay === 0 ? 7 : rawDay;
+      // Calculate current day within the program week (1-7)
+      const currentDay = (daysSinceStart % 7) + 1;
 
       // Check if program has started - true if daysSinceStart is 0 or positive
       const programHasStarted = !!(user.programStartDate && daysSinceStart >= 0);
