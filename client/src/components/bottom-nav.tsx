@@ -20,7 +20,18 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const isAndroid = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.includes('android');
+    const isAndroidUA = userAgent.includes('android');
+    // Fallback detection: check if device supports touch and has unsafe area (common on Android)
+    const hasTouchScreen = () => {
+      return (window.matchMedia("(pointer:coarse)").matches) ||
+             (typeof window !== "undefined" && 
+              (window.ontouchstart !== undefined || 
+               navigator.maxTouchPoints > 0 || 
+               navigator.msMaxTouchPoints > 0));
+    };
+    const result = isAndroidUA || hasTouchScreen();
+    console.log('Android detection - UA:', isAndroidUA, 'Touch:', hasTouchScreen(), 'Result:', result);
+    return result;
   }, []);
 
   // Android-specific: Dynamic positioning based on app lifecycle state
