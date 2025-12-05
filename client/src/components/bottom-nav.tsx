@@ -19,9 +19,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // Detect Android device
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
   
-  // Android-specific: Add extra padding when app wakes up (not on initial load)
+  // Android-specific: Track if app has been backgrounded to maintain 48px padding
   const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(false);
-  const [androidExtraPadding, setAndroidExtraPadding] = useState(0);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -50,16 +49,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
-        
-        // Android-specific: Add padding when waking up from background (not on initial load)
-        if (isAndroid) {
-          if (hasBeenBackgrounded) {
-            console.log('Android: App waking up, adding 24px padding');
-            setAndroidExtraPadding(48);
-          } else {
-            console.log('Android: Initial load, no extra padding');
-          }
-        }
       } else if (document.visibilityState === 'hidden') {
         // Mark that the app has been backgrounded
         if (isAndroid) {
@@ -82,13 +71,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     };
   }, [user, refetchNotificationCount, hasBeenBackgrounded, isAndroid]);
 
-  // Android-specific: Maintain 48px padding after app has been backgrounded
-  useEffect(() => {
-    if (isAndroid && hasBeenBackgrounded && androidExtraPadding === 0) {
-      console.log('Android: Restoring 48px padding after navigation');
-      setAndroidExtraPadding(48);
-    }
-  }, [isAndroid, hasBeenBackgrounded, androidExtraPadding]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
@@ -120,8 +102,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: isAndroid 
-          ? `calc(max(env(safe-area-inset-bottom), 4px) + ${androidExtraPadding}px)`
+        paddingBottom: isAndroid && hasBeenBackgrounded
+          ? `calc(max(env(safe-area-inset-bottom), 4px) + 48px)`
           : 'max(env(safe-area-inset-bottom), 4px)',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
