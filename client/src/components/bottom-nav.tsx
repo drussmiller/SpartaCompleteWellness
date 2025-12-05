@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -23,9 +23,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Track wake adjustment (-60px moves nav up)
-  const [wakeAdjustment, setWakeAdjustment] = useState(0);
-  const wakeAdjustmentAppliedRef = useRef(false);
+  // Android-specific: Track wake adjustment (-60px moves nav up) - apply permanently on Android
+  const [wakeAdjustment] = useState(isAndroid ? -60 : 0);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -54,29 +53,12 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
-        
-        // Android-specific: Move nav up 60px on wake to escape safe area
-        if (isAndroid && !wakeAdjustmentAppliedRef.current) {
-          setWakeAdjustment(-60);
-          wakeAdjustmentAppliedRef.current = true;
-        }
-      } else {
-        // Reset when app goes hidden so adjustment applies again on next wake
-        if (isAndroid) {
-          wakeAdjustmentAppliedRef.current = false;
-        }
       }
     };
 
     const handleFocus = () => {
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
-      
-      // Android-specific: Move nav up 60px on focus to escape safe area
-      if (isAndroid && !wakeAdjustmentAppliedRef.current) {
-        setWakeAdjustment(-60);
-        wakeAdjustmentAppliedRef.current = true;
-      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
