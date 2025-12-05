@@ -23,6 +23,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     return userAgent.includes('android');
   }, []);
 
+  // Android-specific: Track wake adjustment (-48px moves nav up)
+  const [wakeAdjustment, setWakeAdjustment] = useState(0);
+
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
     queryKey: ["/api/notifications/unread"],
@@ -50,12 +53,24 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
+        
+        // Android-specific: Move nav up 48px on wake
+        if (isAndroid) {
+          setWakeAdjustment(-48);
+          setTimeout(() => setWakeAdjustment(0), 300);
+        }
       }
     };
 
     const handleFocus = () => {
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
+      
+      // Android-specific: Move nav up 48px on focus
+      if (isAndroid) {
+        setWakeAdjustment(-48);
+        setTimeout(() => setWakeAdjustment(0), 300);
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -100,9 +115,12 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         paddingBottom: isAndroid 
           ? '12px' 
           : 'max(env(safe-area-inset-bottom), 4px)',
-        transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
+        transform: orientation === "horizontal" 
+          ? `translateY(${scrollOffset + wakeAdjustment}px)` 
+          : undefined,
         opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none'
+        pointerEvents: isVisible ? 'auto' : 'none',
+        transition: wakeAdjustment !== 0 ? 'transform 0.3s ease-out' : undefined
       }}>
       <div className={cn(
         // Container styles
