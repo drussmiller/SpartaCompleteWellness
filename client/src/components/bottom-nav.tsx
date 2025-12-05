@@ -68,12 +68,25 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       refetchNotificationCount();
     };
 
+    const handleOrientationChange = () => {
+      if (isAndroid) {
+        const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+        if (isPortrait) {
+          console.log('Android: Screen rotated back to portrait');
+          sessionStorage.setItem('androidBackgrounded', 'true');
+          setHasBeenBackgrounded(true);
+        }
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('orientationchange', handleOrientationChange);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('orientationchange', handleOrientationChange);
     };
   }, [user, refetchNotificationCount, hasBeenBackgrounded, isAndroid]);
 
