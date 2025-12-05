@@ -19,8 +19,12 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // Detect Android device
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
   
-  // Android-specific: Track if app has been backgrounded to maintain 48px padding
-  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(false);
+  // Android-specific: Track if app has been backgrounded using localStorage to persist across navigation
+  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
+    if (!isAndroid) return false;
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('androidBackgrounded') : null;
+    return stored === 'true';
+  });
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -52,6 +56,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       } else if (document.visibilityState === 'hidden') {
         // Mark that the app has been backgrounded
         if (isAndroid) {
+          console.log('Android: App going to background, setting androidBackgrounded=true');
+          localStorage.setItem('androidBackgrounded', 'true');
           setHasBeenBackgrounded(true);
         }
       }
@@ -90,6 +96,11 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     { icon: HelpCircle, label: "Help", href: "/help", noTeamRequired: true },
     { icon: Bell, label: "Notifications", href: "/notifications", count: unreadCount, noTeamRequired: true },
   ];
+
+  // Debug logging
+  if (isAndroid) {
+    console.log('BottomNav render - isAndroid:', isAndroid, 'hasBeenBackgrounded:', hasBeenBackgrounded);
+  }
 
   return (
     <nav
