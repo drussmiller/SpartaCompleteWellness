@@ -55,7 +55,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         if (isAndroid) {
           if (hasBeenBackgrounded) {
             console.log('Android: App waking up, adding 24px padding');
-            setAndroidExtraPadding(24);
+            setAndroidExtraPadding(48);
           } else {
             console.log('Android: Initial load, no extra padding');
           }
@@ -81,6 +81,14 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       window.removeEventListener('focus', handleFocus);
     };
   }, [user, refetchNotificationCount, hasBeenBackgrounded, isAndroid]);
+
+  // Android-specific: Maintain 48px padding after app has been backgrounded
+  useEffect(() => {
+    if (isAndroid && hasBeenBackgrounded && androidExtraPadding === 0) {
+      console.log('Android: Restoring 48px padding after navigation');
+      setAndroidExtraPadding(48);
+    }
+  }, [isAndroid, hasBeenBackgrounded, androidExtraPadding]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
