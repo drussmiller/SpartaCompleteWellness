@@ -70,19 +70,19 @@ video::-webkit-media-controls {
 
 /* Video thumbnail container styles */
 .video-thumbnail-container {
-  /* Removed fixed aspect-ratio to allow natural image sizing */
   width: 100%;
   max-width: 100%;
-  height: auto;
+  height: 300px;
   display: block;
   font-size: 0;
   line-height: 0;
+  overflow: hidden;
 }
 
 .video-thumbnail-container img {
   width: 100%;
-  height: auto;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
