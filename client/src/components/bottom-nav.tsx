@@ -57,7 +57,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Android-specific: Move nav up 60px on wake to escape safe area
         if (isAndroid) {
           setWakeAdjustment(-60);
-          setTimeout(() => setWakeAdjustment(0), 300);
+          setTimeout(() => setWakeAdjustment(0), 1000);
         }
       }
     };
@@ -69,7 +69,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       // Android-specific: Move nav up 60px on focus to escape safe area
       if (isAndroid) {
         setWakeAdjustment(-60);
-        setTimeout(() => setWakeAdjustment(0), 300);
+        setTimeout(() => setWakeAdjustment(0), 1000);
       }
     };
 
