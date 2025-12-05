@@ -23,8 +23,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Track wake adjustment (-60px moves nav up) - apply permanently on Android
-  const [wakeAdjustment] = useState(isAndroid ? -60 : 0);
+  // Android-specific: Track adjustment
+  // Initial: -24px, On wake/focus: -60px
+  const [wakeAdjustment, setWakeAdjustment] = useState(isAndroid ? -24 : 0);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -53,12 +54,22 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
+        
+        // Android-specific: On wake, change adjustment to -60px
+        if (isAndroid) {
+          setWakeAdjustment(-60);
+        }
       }
     };
 
     const handleFocus = () => {
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
+      
+      // Android-specific: On focus, change adjustment to -60px
+      if (isAndroid) {
+        setWakeAdjustment(-60);
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
