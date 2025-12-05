@@ -39,36 +39,44 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
   const cleanVideoId = extractYouTubeId(videoId);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!wrapperRef.current) return;
+    if (!iframeRef.current) return;
 
-    // Handle fullscreen state changes to enable orientation on Android
-    const handleFullscreenChange = async () => {
-      const isFullscreen = document.fullscreenElement === wrapperRef.current || 
-                          (document as any).webkitFullscreenElement === wrapperRef.current;
-      
-      if (isFullscreen) {
-        // Entering fullscreen - try to lock to landscape on Android
+    const isAndroid = navigator.userAgent.toLowerCase().indexOf('android') > -1;
+    if (!isAndroid) return;
+
+    // For YouTube iframe fullscreen, we need to monitor when it goes fullscreen
+    // and request landscape orientation
+    const checkFullscreenAndLock = async () => {
+      // Check if any element is in fullscreen
+      const isInFullscreen = !!document.fullscreenElement || 
+                            !!(document as any).webkitFullscreenElement ||
+                            !!(document as any).mozFullScreenElement ||
+                            !!(document as any).msFullscreenElement;
+
+      if (isInFullscreen) {
+        // Try to lock orientation to landscape when fullscreen is detected
         try {
           const screenOrientation = screen.orientation as any;
           if (screenOrientation && typeof screenOrientation.lock === 'function') {
-            await screenOrientation.lock('landscape');
+            await screenOrientation.lock('landscape').catch(() => {
+              // Silently fail - some browsers don't support this
+            });
           }
         } catch (error) {
-          console.log('Could not lock orientation:', error);
-        }
-      } else {
-        // Exiting fullscreen - unlock orientation
-        try {
-          const screenOrientation = screen.orientation as any;
-          if (screenOrientation && typeof screenOrientation.unlock === 'function') {
-            screenOrientation.unlock();
-          }
-        } catch (error) {
-          console.log('Could not unlock orientation:', error);
+          // Silently fail
         }
       }
+    };
+
+    // Start checking for fullscreen every 500ms
+    checkIntervalRef.current = setInterval(checkFullscreenAndLock, 500);
+
+    // Also listen for fullscreen changes
+    const handleFullscreenChange = async () => {
+      await checkFullscreenAndLock();
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -77,6 +85,9 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
     document.addEventListener('msfullscreenchange', handleFullscreenChange);
 
     return () => {
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
