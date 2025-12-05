@@ -24,16 +24,20 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   }, []);
 
   // Android-specific: Add bottom padding when app wakes up to prevent nav going into safe area
-  const [androidBottomPadding, setAndroidBottomPadding] = useState(0);
+  // Start with 12px on first load, reset to 0 after 500ms
+  const [androidBottomPadding, setAndroidBottomPadding] = useState(isAndroid ? 12 : 0);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  // Apply 12px padding on first load for Android
+  // Reset padding after first load
   useEffect(() => {
-    if (isAndroid) {
-      setAndroidBottomPadding(12);
-      // Reset after 100ms 
-      setTimeout(() => setAndroidBottomPadding(0), 100);
+    if (isAndroid && !initialLoadDone && androidBottomPadding === 12) {
+      const timer = setTimeout(() => {
+        setAndroidBottomPadding(0);
+        setInitialLoadDone(true);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, []); // Run only once on mount
+  }, [isAndroid, initialLoadDone, androidBottomPadding]);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
