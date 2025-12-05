@@ -23,22 +23,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     return userAgent.includes('android');
   }, []);
 
-  // Android-specific: Add bottom padding when app wakes up to prevent nav going into safe area
-  // Start with 12px on first load, reset to 0 after 500ms
-  const [androidBottomPadding, setAndroidBottomPadding] = useState(isAndroid ? 12 : 0);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
-
-  // Reset padding after first load
-  useEffect(() => {
-    if (isAndroid && !initialLoadDone && androidBottomPadding === 12) {
-      const timer = setTimeout(() => {
-        setAndroidBottomPadding(0);
-        setInitialLoadDone(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isAndroid, initialLoadDone, androidBottomPadding]);
-
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
     queryKey: ["/api/notifications/unread"],
@@ -66,26 +50,12 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
-        
-        // Android-specific: Add padding when app wakes up
-        if (isAndroid) {
-          setAndroidBottomPadding(12);
-          // Reset after 100ms to avoid permanent state issues
-          setTimeout(() => setAndroidBottomPadding(0), 100);
-        }
       }
     };
 
     const handleFocus = () => {
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
-      
-      // Android-specific: Add padding when window gains focus
-      if (isAndroid) {
-        setAndroidBottomPadding(12);
-        // Reset after 100ms to avoid permanent state issues
-        setTimeout(() => setAndroidBottomPadding(0), 100);
-      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -127,9 +97,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: isAndroid 
-          ? `calc(max(env(safe-area-inset-bottom), 48px) + ${androidBottomPadding}px)`
-          : 'max(env(safe-area-inset-bottom), 4px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
