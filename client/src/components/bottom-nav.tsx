@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -16,16 +16,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Detect Android device
-  const isAndroid = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.includes('android');
-  }, []);
-
-  // Android-specific: Track adjustment
-  // Initial: -24px, On wake/focus: -60px
-  const [wakeAdjustment, setWakeAdjustment] = useState(isAndroid ? -24 : 0);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -54,22 +44,12 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
-        
-        // Android-specific: On wake, change adjustment to -60px
-        if (isAndroid) {
-          setWakeAdjustment(-60);
-        }
       }
     };
 
     const handleFocus = () => {
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
-      
-      // Android-specific: On focus, change adjustment to -60px
-      if (isAndroid) {
-        setWakeAdjustment(-24);
-      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -79,7 +59,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [user, isAndroid, refetchNotificationCount]);
+  }, [user, refetchNotificationCount]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
@@ -111,15 +91,10 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: isAndroid 
-          ? '12px' 
-          : 'max(env(safe-area-inset-bottom), 4px)',
-        transform: orientation === "horizontal" 
-          ? `translateY(${scrollOffset + wakeAdjustment}px)` 
-          : undefined,
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
+        transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
-        pointerEvents: isVisible ? 'auto' : 'none',
-        transition: wakeAdjustment !== 0 ? 'transform 0.3s ease-out' : undefined
+        pointerEvents: isVisible ? 'auto' : 'none'
       }}>
       <div className={cn(
         // Container styles
