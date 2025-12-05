@@ -344,13 +344,15 @@ export function VideoPlayer({
 
             {/* Show thumbnail after placeholder, only when loaded */}
             {!showingBlankPlaceholder && thumbnailLoaded && simplifiedPoster && !posterError && (
-              <div className="relative w-full max-w-full overflow-hidden cursor-pointer video-thumbnail-container inline-block">
+              <div className="relative w-full max-w-full overflow-hidden cursor-pointer video-thumbnail-container">
                 <img 
                   src={simplifiedPoster} 
                   alt="Video thumbnail" 
-                  className="w-full h-full max-w-full object-cover block"
+                  className="w-full max-w-full object-cover block"
                   style={{ 
-                    display: 'block'
+                    display: 'block',
+                    margin: 0,
+                    padding: 0
                   }}
                 />
                 {/* Play button overlay on thumbnail */}
