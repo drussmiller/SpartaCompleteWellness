@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect, useState } from "react";
+import React from "react";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -28,6 +29,13 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = React.useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   // Manual fetch states
   const [originalPost, setOriginalPost] = useState<Post & { author: User } | null>(null);
@@ -537,7 +545,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         </div>
 
           {/* Content area */}
-          <div className="flex-1 overflow-y-auto pt-2">
+          <div className={`flex-1 overflow-y-auto pt-2 ${isAndroid ? 'pb-40' : ''}`}>
             {/* Show loading state */}
             {(isPostLoading || areCommentsLoading) && (
               <div className="flex items-center justify-center p-8">

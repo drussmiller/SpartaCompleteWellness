@@ -8,11 +8,19 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useMemo } from "react";
 
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],

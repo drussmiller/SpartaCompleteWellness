@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Edit } from "lucide-react";
+import { useMemo } from "react";
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -54,6 +55,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [uploading, setUploading] = useState(false);
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose(
     {
@@ -451,7 +459,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 pb-60 space-y-6 bg-background">
+      <main className={`flex-1 overflow-y-auto p-6 pb-60 space-y-6 bg-background ${isAndroid ? 'pb-[calc(60+40)px]' : ''}`}>
         <div className="flex-1 space-y-4">
           <Card>
             <CardContent className="flex flex-col items-center p-6 space-y-4">

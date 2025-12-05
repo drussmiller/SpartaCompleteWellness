@@ -12,6 +12,7 @@ import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
 import { Link } from "wouter";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+import { useMemo } from "react";
 
 type TeamMember = {
   id: number;
@@ -52,6 +53,13 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose); // If onClose is provided, we're in sheet mode
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
@@ -110,7 +118,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 overflow-y-auto ${isAndroid ? 'pb-40' : ''}`}>
         <div className="container py-4 max-w-4xl mx-auto">
         {isLoading ? (
           <div className="flex justify-center items-center h-40">

@@ -2,9 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Activity } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useMemo } from "react";
 
 export default function HelpPage() {
   const isMobile = useIsMobile();
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
   
   return (
     <AppLayout>
@@ -15,7 +23,7 @@ export default function HelpPage() {
         </div>
       </div>
 
-      <main className="pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px] md:mt-[100px]">
+      <main className={`pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px] md:mt-[100px] ${isAndroid ? 'pb-[calc(24+40)px]' : ''}`}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

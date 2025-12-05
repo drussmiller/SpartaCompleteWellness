@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { BottomNav } from "@/components/bottom-nav";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+import { useMemo } from "react";
 
 interface WelcomePageProps {
   onClose?: () => void;
@@ -15,6 +16,13 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose);
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
@@ -59,7 +67,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 overflow-y-auto ${isAndroid ? 'pb-40' : ''}`}>
         <div className="container py-4 max-w-4xl mx-auto space-y-4">
           <Card>
             <CardHeader>
