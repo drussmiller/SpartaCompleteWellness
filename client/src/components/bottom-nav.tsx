@@ -20,18 +20,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const isAndroid = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const userAgent = navigator.userAgent.toLowerCase();
-    const isAndroidUA = userAgent.includes('android');
-    // Fallback detection: check if device supports touch and has unsafe area (common on Android)
-    const hasTouchScreen = () => {
-      return (window.matchMedia("(pointer:coarse)").matches) ||
-             (typeof window !== "undefined" && 
-              (window.ontouchstart !== undefined || 
-               navigator.maxTouchPoints > 0 || 
-               navigator.msMaxTouchPoints > 0));
-    };
-    const result = isAndroidUA || hasTouchScreen();
-    console.log('Android detection - UA:', isAndroidUA, 'Touch:', hasTouchScreen(), 'Result:', result);
-    return result;
+    return userAgent.includes('android');
   }, []);
 
   // Android-specific: Dynamic positioning based on app lifecycle state
@@ -75,7 +64,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
           // Check if keyboard is visible (visualViewport height < window height)
           const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
           if (!isKeyboardVisible) {
-            setAndroidPaddingBase(-20); // Move nav up 20px after wake/resume
+            setAndroidPaddingBase(0); // Move nav to bottom after wake/resume
             setLastPaddingUpdate(now);
           }
         }
@@ -93,7 +82,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (now - lastPaddingUpdate > 500) { // Prevent rapid updates
         const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible) {
-          setAndroidPaddingBase(-20); // Move nav up 20px after focus
+          setAndroidPaddingBase(0); // Move nav to bottom after focus
           setLastPaddingUpdate(now);
         }
       }
@@ -107,7 +96,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (now - lastPaddingUpdate > 500) { // Prevent rapid updates during navigation
         const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
         if (!isKeyboardVisible && document.visibilityState === 'visible') {
-          setAndroidPaddingBase(-20); // Move nav up 20px when keyboard closes
+          setAndroidPaddingBase(0); // Move nav to bottom when keyboard closes
           setLastPaddingUpdate(now);
         }
       }
@@ -166,8 +155,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       )}
       style={{
         paddingBottom: isAndroid ? `env(safe-area-inset-bottom, 0px)` : 'max(env(safe-area-inset-bottom), 4px)',
-        bottom: isAndroid ? `${-androidPaddingBase}px` : (orientation === "horizontal" ? `${scrollOffset}px` : undefined),
-        transform: !isAndroid && orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
+        transform: isAndroid 
+          ? `translateY(${androidPaddingBase}px)`
+          : orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
       }}>
