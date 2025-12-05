@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -37,6 +37,52 @@ export function removeDuplicateVideos(content: string): string {
 
 export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
   const cleanVideoId = extractYouTubeId(videoId);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+
+    // Handle fullscreen state changes to enable orientation on Android
+    const handleFullscreenChange = async () => {
+      const isFullscreen = document.fullscreenElement === wrapperRef.current || 
+                          (document as any).webkitFullscreenElement === wrapperRef.current;
+      
+      if (isFullscreen) {
+        // Entering fullscreen - try to lock to landscape on Android
+        try {
+          const screenOrientation = screen.orientation as any;
+          if (screenOrientation && typeof screenOrientation.lock === 'function') {
+            await screenOrientation.lock('landscape');
+          }
+        } catch (error) {
+          console.log('Could not lock orientation:', error);
+        }
+      } else {
+        // Exiting fullscreen - unlock orientation
+        try {
+          const screenOrientation = screen.orientation as any;
+          if (screenOrientation && typeof screenOrientation.unlock === 'function') {
+            screenOrientation.unlock();
+          }
+        } catch (error) {
+          console.log('Could not unlock orientation:', error);
+        }
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   if (!cleanVideoId) {
     return (
@@ -47,8 +93,13 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
   }
 
   return (
-    <div className={`video-wrapper ${className}`} style={{ overflow: 'visible' }}>
+    <div 
+      ref={wrapperRef}
+      className={`video-wrapper ${className}`} 
+      style={{ overflow: 'visible' }}
+    >
       <iframe
+        ref={iframeRef}
         src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=0&modestbranding=1`}
         title="YouTube video player"
         frameBorder="0"
