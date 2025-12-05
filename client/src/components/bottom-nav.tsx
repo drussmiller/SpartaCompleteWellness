@@ -26,6 +26,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // Android-specific: Add bottom padding when app wakes up to prevent nav going into safe area
   const [androidBottomPadding, setAndroidBottomPadding] = useState(0);
 
+  // Apply 12px padding on first load for Android
+  useEffect(() => {
+    if (isAndroid) {
+      setAndroidBottomPadding(12);
+      // Reset after 100ms 
+      setTimeout(() => setAndroidBottomPadding(0), 100);
+    }
+  }, []); // Run only once on mount
+
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
     queryKey: ["/api/notifications/unread"],
@@ -115,7 +124,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       )}
       style={{
         paddingBottom: isAndroid 
-          ? `calc(max(env(safe-area-inset-bottom), 4px) + ${androidBottomPadding}px)`
+          ? `calc(max(env(safe-area-inset-bottom), 48px) + ${androidBottomPadding}px)`
           : 'max(env(safe-area-inset-bottom), 4px)',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
