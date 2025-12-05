@@ -54,9 +54,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
         
-        // Android-specific: Move nav up 48px on wake
+        // Android-specific: Move nav up 60px on wake to escape safe area
         if (isAndroid) {
-          setWakeAdjustment(-48);
+          setWakeAdjustment(-60);
           setTimeout(() => setWakeAdjustment(0), 300);
         }
       }
@@ -66,9 +66,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
       
-      // Android-specific: Move nav up 48px on focus
+      // Android-specific: Move nav up 60px on focus to escape safe area
       if (isAndroid) {
-        setWakeAdjustment(-48);
+        setWakeAdjustment(-60);
         setTimeout(() => setWakeAdjustment(0), 300);
       }
     };
