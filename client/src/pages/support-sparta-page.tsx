@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
+import { useMemo } from "react";
 
 interface SupportSpartaPageProps {
   onClose?: () => void;
@@ -20,6 +21,13 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
   const { user } = useAuth();
   const isSheetMode = Boolean(onClose);
   const [showDonation, setShowDonation] = useState(false);
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
@@ -69,7 +77,7 @@ export function SupportSpartaPage({ onClose }: SupportSpartaPageProps = {}) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pb-24">
+      <main className={`flex-1 overflow-y-auto pb-24 ${isAndroid ? 'pb-[calc(24+40)px]' : ''}`}>
         <div className="py-6 px-4 max-w-4xl mx-auto">
           <Card className="flex flex-col">
             <ScrollArea className="flex-1">

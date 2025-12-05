@@ -71,6 +71,13 @@ export function MessageSlideCard() {
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
   const longPressTriggered = useRef<boolean>(false);
   const isMobile = useIsMobile();
+  
+  // Detect Android device for bottom padding adjustment
+  const isAndroid = React.useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.indexOf('android') > -1;
+  }, []);
 
   // Track viewport height and position changes for keyboard
   useEffect(() => {
@@ -797,7 +804,7 @@ export function MessageSlideCard() {
           {/* Content Area */}
           {!selectedMember ? (
             // Team Members List
-            <div className="flex-1 overflow-y-auto bg-white">
+            <div className={`flex-1 overflow-y-auto bg-white ${isAndroid ? 'pb-40' : ''}`}>
               <div className="space-y-2 p-4 pb-32 bg-white">
                 {teamMembersLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 bg-white">
@@ -840,7 +847,7 @@ export function MessageSlideCard() {
               {/* Messages List */}
               <div
                 ref={scrollAreaRef}
-                className="flex-1 bg-white overflow-y-auto"
+                className={`flex-1 bg-white overflow-y-auto ${isAndroid ? 'pb-40' : ''}`}
                 style={{
                   paddingBottom: '16px'
                 }}
