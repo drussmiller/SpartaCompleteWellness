@@ -348,15 +348,15 @@ export function VideoPlayer({
                 <img 
                   src={simplifiedPoster} 
                   alt="Video thumbnail" 
-                  className="w-full h-auto max-w-full object-cover rounded-md block"
+                  className="w-full h-full max-w-full object-cover block"
                   style={{ 
-                    maxHeight: '300px'
+                    display: 'block'
                   }}
                 />
                 {/* Play button overlay on thumbnail */}
-                <div className="absolute inset-0 flex items-end justify-start bg-black/10 pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none">
                   <div 
-                    className="p-2 m-3 rounded-full bg-black/60 cursor-pointer hover:bg-black/80 pointer-events-auto"
+                    className="p-2 rounded-full bg-black/60 cursor-pointer hover:bg-black/80 pointer-events-auto"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleThumbnailClick();
