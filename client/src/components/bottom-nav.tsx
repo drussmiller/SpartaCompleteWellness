@@ -68,7 +68,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       
       // Android-specific: On focus, change adjustment to -60px
       if (isAndroid) {
-        setWakeAdjustment(-60);
+        setWakeAdjustment(-24);
       }
     };
 
