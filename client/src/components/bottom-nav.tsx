@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -19,8 +19,12 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // Detect Android device
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
   
-  // Android-specific: Track if app has been backgrounded in current session
-  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(false);
+  // Android-specific: Use sessionStorage to persist state across navigation (but reset on new tab/session)
+  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
+    if (!isAndroid) return false;
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidBackgrounded') : null;
+    return stored === 'true';
+  });
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -53,6 +57,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         // Mark that the app has been backgrounded
         if (isAndroid) {
           console.log('Android: App going to background');
+          sessionStorage.setItem('androidBackgrounded', 'true');
           setHasBeenBackgrounded(true);
         }
       }
