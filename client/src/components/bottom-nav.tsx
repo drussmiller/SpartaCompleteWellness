@@ -19,12 +19,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   // Detect Android device
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
   
-  // Android-specific: Track if app has been backgrounded using localStorage to persist across navigation
-  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
-    if (!isAndroid) return false;
-    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('androidBackgrounded') : null;
-    return stored === 'true';
-  });
+  // Android-specific: Track if app has been backgrounded in current session
+  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(false);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -56,8 +52,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       } else if (document.visibilityState === 'hidden') {
         // Mark that the app has been backgrounded
         if (isAndroid) {
-          console.log('Android: App going to background, setting androidBackgrounded=true');
-          localStorage.setItem('androidBackgrounded', 'true');
+          console.log('Android: App going to background');
           setHasBeenBackgrounded(true);
         }
       }
