@@ -81,9 +81,8 @@ video::-webkit-media-controls {
 
 .video-thumbnail-container img {
   width: 100%;
-  height: auto; /* Changed from 100% to auto to respect natural dimensions */
-  object-fit: cover;
-  object-position: center;
+  height: auto;
+  object-fit: contain;
   display: block;
 }
 
