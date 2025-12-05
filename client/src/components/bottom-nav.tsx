@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -16,6 +16,15 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
+  // Detect Android device
+  const isAndroid = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return userAgent.includes('android');
+  }, []);
+
+  // Android-specific: Add bottom padding when app wakes up to prevent nav going into safe area
+  const [androidBottomPadding, setAndroidBottomPadding] = useState(0);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -44,12 +53,26 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       if (document.visibilityState === 'visible') {
         console.log('Bottom nav: Page became visible, refreshing notifications');
         refetchNotificationCount();
+        
+        // Android-specific: Add padding when app wakes up
+        if (isAndroid) {
+          setAndroidBottomPadding(12);
+          // Reset after 100ms to avoid permanent state issues
+          setTimeout(() => setAndroidBottomPadding(0), 100);
+        }
       }
     };
 
     const handleFocus = () => {
       console.log('Bottom nav: Window gained focus, refreshing notifications');
       refetchNotificationCount();
+      
+      // Android-specific: Add padding when window gains focus
+      if (isAndroid) {
+        setAndroidBottomPadding(12);
+        // Reset after 100ms to avoid permanent state issues
+        setTimeout(() => setAndroidBottomPadding(0), 100);
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -59,7 +82,7 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [user, refetchNotificationCount]);
+  }, [user, isAndroid, refetchNotificationCount]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
@@ -91,7 +114,9 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
+        paddingBottom: isAndroid 
+          ? `calc(max(env(safe-area-inset-bottom), 4px) + ${androidBottomPadding}px)`
+          : 'max(env(safe-area-inset-bottom), 4px)',
         transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
