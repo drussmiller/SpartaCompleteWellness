@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -16,21 +16,6 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
-  // Detect Android device - apply dynamic padding for Android to keep buttons in safe zone
-  const isAndroid = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.includes('android');
-  }, []);
-
-  // Android-specific: Dynamic positioning based on app lifecycle state
-  // Initial load: 20px (nav moves down, sits lower)
-  // After wake/resume: 0px (nav sits at bottom of safe area)
-  const [androidPaddingBase, setAndroidPaddingBase] = useState(20);
-  const [lastPaddingUpdate, setLastPaddingUpdate] = useState(0);
-
-  // Add debug logging to verify props
-  console.log('BottomNav render - isVisible:', isVisible, 'isAndroid:', isAndroid, 'androidPaddingBase:', androidPaddingBase);
 
   // Query for unread notifications count
   const { data: unreadCount = 0, refetch: refetchNotificationCount } = useQuery({
@@ -51,78 +36,30 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
     enabled: !!user
   });
 
-  // Memoized handlers to prevent listener re-attachment on every render
-  const handleVisibilityChange = useCallback(() => {
-    if (document.visibilityState === 'visible') {
-      console.log('Bottom nav: Page became visible, refreshing notifications');
-      refetchNotificationCount();
-      
-      // Android-specific: Adjust padding when app resumes/wakes up
-      if (isAndroid) {
-        const now = Date.now();
-        if (now - lastPaddingUpdate > 500) { // Prevent rapid updates
-          // Check if keyboard is visible (visualViewport height < window height)
-          const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
-          if (!isKeyboardVisible) {
-            setAndroidPaddingBase(0); // Move nav to bottom after wake/resume
-            setLastPaddingUpdate(now);
-          }
-        }
-      }
-    }
-  }, [isAndroid, refetchNotificationCount, lastPaddingUpdate]);
-
-  const handleFocus = useCallback(() => {
-    console.log('Bottom nav: Window gained focus, refreshing notifications');
-    refetchNotificationCount();
-    
-    // Android-specific: Adjust padding when window gains focus
-    if (isAndroid) {
-      const now = Date.now();
-      if (now - lastPaddingUpdate > 500) { // Prevent rapid updates
-        const isKeyboardVisible = window.visualViewport && window.visualViewport.height < window.innerHeight;
-        if (!isKeyboardVisible) {
-          setAndroidPaddingBase(0); // Move nav to bottom after focus
-          setLastPaddingUpdate(now);
-        }
-      }
-    }
-  }, [isAndroid, refetchNotificationCount, lastPaddingUpdate]);
-
-  const handleViewportResize = useCallback(() => {
-    // Android-specific: Adjust padding when viewport resizes (e.g., keyboard show/hide)
-    if (isAndroid && window.visualViewport) {
-      const now = Date.now();
-      if (now - lastPaddingUpdate > 500) { // Prevent rapid updates during navigation
-        const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
-        if (!isKeyboardVisible && document.visibilityState === 'visible') {
-          setAndroidPaddingBase(0); // Move nav to bottom when keyboard closes
-          setLastPaddingUpdate(now);
-        }
-      }
-    }
-  }, [isAndroid, lastPaddingUpdate]);
-
-  // Attach listeners only once
+  // Refresh notification count when page becomes visible or window gains focus
   useEffect(() => {
     if (!user) return;
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Bottom nav: Page became visible, refreshing notifications');
+        refetchNotificationCount();
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('Bottom nav: Window gained focus, refreshing notifications');
+      refetchNotificationCount();
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
-    
-    // Listen for viewport changes (keyboard show/hide)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleViewportResize);
-    }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleViewportResize);
-      }
     };
-  }, [user, handleVisibilityChange, handleFocus, handleViewportResize]);
+  }, [user, refetchNotificationCount]);
 
   // Check if user's program has started
   const { data: activityStatus } = useQuery({
@@ -154,10 +91,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         orientation === "vertical" && "w-full hidden"
       )}
       style={{
-        paddingBottom: isAndroid ? `env(safe-area-inset-bottom, 0px)` : 'max(env(safe-area-inset-bottom), 4px)',
-        transform: isAndroid 
-          ? `translateY(${androidPaddingBase}px)`
-          : orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
+        transform: orientation === "horizontal" ? `translateY(${scrollOffset}px)` : undefined,
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
       }}>
