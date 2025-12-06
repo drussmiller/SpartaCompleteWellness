@@ -64,12 +64,12 @@ export function CommentActionsDrawer({
 
   if (!isOpen) return null;
 
-  const portalTarget = typeof document !== 'undefined' ? document.getElementById('app-portal-root') : null;
-  const target = portalTarget || (typeof document !== 'undefined' ? document.body : null);
+  // Portal directly to body to ensure full-screen coverage for backdrop and drawer
+  const target = typeof document !== 'undefined' ? document.body : null;
 
   if (!target) return null;
 
-  console.log("🎨 CommentActionsDrawer RENDERING - isOpen:", isOpen, "target:", target?.id || "body");
+  console.log("🎨 CommentActionsDrawer RENDERING - isOpen:", isOpen, "target: body");
   
   return createPortal(
     <>
