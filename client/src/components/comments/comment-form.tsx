@@ -61,13 +61,16 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     if (!isAndroid) return;
 
     const handleVisibilityChange = () => {
+      console.log('[CommentForm] Visibility changed to:', document.visibilityState, 'hasBeenBackgrounded:', hasBeenBackgrounded);
       if (document.visibilityState === 'hidden') {
         // App going to background - mark that textbox should have padding
+        console.log('[CommentForm] App going to background');
         sessionStorage.setItem('androidTextboxBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       } else if (document.visibilityState === 'visible') {
         // App coming back to foreground - keep the padding flag
         const stored = sessionStorage.getItem('androidTextboxBackgrounded');
+        console.log('[CommentForm] App coming to foreground, stored:', stored);
         if (stored === 'true') {
           setHasBeenBackgrounded(true);
         }
@@ -76,20 +79,23 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
     const handleOrientationChange = () => {
       const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      console.log('[CommentForm] Orientation changed, isPortrait:', isPortrait);
       if (isPortrait) {
         sessionStorage.setItem('androidTextboxBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       }
     };
 
+    console.log('[CommentForm] Setting up Android listeners');
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('orientationchange', handleOrientationChange);
 
     return () => {
+      console.log('[CommentForm] Cleaning up Android listeners');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
-  }, [isAndroid]);
+  }, [isAndroid, hasBeenBackgrounded]);
 
   const textareaRef = inputRef || internalRef;
 
