@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { createPortal } from "react-dom";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 
 interface CommentActionsDrawerProps {
   isOpen: boolean;
@@ -24,9 +24,24 @@ export function CommentActionsDrawer({
   canDelete
 }: CommentActionsDrawerProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [isClickListenerReady, setIsClickListenerReady] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsClickListenerReady(false);
+      return;
+    }
+    
+    // Delay click listener attachment to avoid catching the opening click
+    const timer = setTimeout(() => {
+      setIsClickListenerReady(true);
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !isClickListenerReady) return;
     
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -36,7 +51,7 @@ export function CommentActionsDrawer({
 
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [isOpen, onClose]);
+  }, [isOpen, isClickListenerReady, onClose]);
 
   if (!isOpen) return null;
 
