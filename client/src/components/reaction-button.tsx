@@ -50,6 +50,12 @@ const reactionLabels = {
   pray: "Pray",
   muscle: "Strength",
   thumbs_down: "Dislike",
+  weight: "Weight",
+  angel: "Angel",
+  dove: "Dove",
+  church: "Church",
+  bible: "Bible",
+  cross: "Cross",
   faith: "Faith",
   idea: "Inspiration",
   rocket: "Progress",
@@ -70,12 +76,12 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartTimeRef = useRef<number>(0);
 
-  const { data: reactions = [], isLoading } = useQuery({
+  const { data: reactions = [] } = useQuery({
     queryKey: [`/api/posts/${postId}/reactions`],
     staleTime: 60000, // 60 seconds
     refetchOnWindowFocus: false,
     refetchInterval: false,
-    refetchOnMount: "if-stale",
+    refetchOnMount: true,
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", `/api/posts/${postId}/reactions`);
@@ -138,7 +144,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     }
 
     // Find user's existing reaction of this type
-    const existingReaction = reactions.find(r => r.userId === user.id && r.type === type);
+    const existingReaction = reactions.find((r: Reaction) => r.userId === user.id && r.type === type);
 
     try {
       if (existingReaction) {
@@ -154,7 +160,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   };
 
   // Get the current user's reaction if any
-  const userReaction = reactions.find(r => r.userId === user?.id);
+  const userReaction = reactions.find((r: Reaction) => r.userId === user?.id);
 
   // Only include the specified reaction types
   const allReactions: ReactionType[] = [
@@ -163,11 +169,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   ];
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        setIsOpen(false);
-      }
-    }} modal={true}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <DropdownMenuTrigger asChild onContextMenu={(e) => {
         e.preventDefault();
         setIsOpen(true);
@@ -219,7 +221,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1" side="top" sideOffset={5} style={{ zIndex: 9999 }}>
         {allReactions.map((type) => {
-          const isActive = reactions.some(r => r.userId === user?.id && r.type === type);
+          const isActive = reactions.some((r: Reaction) => r.userId === user?.id && r.type === type);
           return (
             <DropdownMenuItem
               key={type}
