@@ -564,7 +564,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
               <div className="px-4 pb-4">
                 <PostView post={originalPost} />
                 <div className="border-t border-gray-200 my-4"></div>
-                <CommentList 
+                <what page is called when I click on the comment icon 
                   comments={comments} 
                   postId={postId} 
                   onVisibilityChange={handleCommentVisibility}
