@@ -433,19 +433,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           <div className="flex-1 flex flex-col gap-2 min-w-0">
             <Card
                 className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
-                onClick={(e) => {
-                  // Don't show menu if clicking on a link or the play button
-                  if (e.target instanceof HTMLElement && (
-                    e.target.tagName === 'A' || 
-                    e.target.closest('a') ||
-                    e.target.closest('button[data-play-button]') ||
-                    e.target.closest('button')  // Don't open menu if clicking any button
-                  )) {
-                    return;
-                  }
-                  setSelectedComment(comment.id);
-                  setIsActionsOpen(true);
-                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
