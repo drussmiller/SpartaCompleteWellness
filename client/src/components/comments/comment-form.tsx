@@ -50,22 +50,50 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     return userAgent.indexOf('android') > -1;
   }, []);
 
+  // Android-specific: Use sessionStorage to persist state across navigation
+  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
+    if (!isAndroid) return false;
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidTextboxBackgrounded') : null;
+    return stored === 'true';
+  });
+
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
-  
-  // Helper function to detect if keyboard is hidden
-  const getIsKeyboardHidden = () => {
-    if (!isAndroid) return false;
-    if (typeof window === 'undefined') return false;
-    
-    if (window.visualViewport) {
-      // If visual viewport height is close to window height, keyboard is hidden
-      const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
-      return heightDiff < 50;
-    }
-    
-    return keyboardHeight === 0;
-  };
+
+  // Track backgrounding and wake-up for Android
+  useEffect(() => {
+    if (!isAndroid) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // App going to background - mark that textbox should have padding
+        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        setHasBeenBackgrounded(true);
+      } else if (document.visibilityState === 'visible') {
+        // App coming back to foreground - keep the padding flag
+        const stored = sessionStorage.getItem('androidTextboxBackgrounded');
+        if (stored === 'true') {
+          setHasBeenBackgrounded(true);
+        }
+      }
+    };
+
+    const handleOrientationChange = () => {
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      if (isPortrait) {
+        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        setHasBeenBackgrounded(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, [isAndroid]);
 
   const textareaRef = inputRef || internalRef;
 
@@ -316,7 +344,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               WebkitUserSelect: 'text',
               userSelect: 'text',
               WebkitTapHighlightColor: 'transparent',
-              paddingBottom: (isAndroid && getIsKeyboardHidden()) ? '12px' : '8px'
+              paddingBottom: (isAndroid && hasBeenBackgrounded) ? '12px' : '8px'
             }}
             data-testid="comment-textarea"
             autoComplete="off"
