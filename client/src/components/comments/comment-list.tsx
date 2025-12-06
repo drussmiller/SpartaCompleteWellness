@@ -343,7 +343,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     if (comment.parentId === postId) {
       topLevelComments.push(commentWithReplies);
     } else if (comment.parentId && commentMap[comment.parentId]) {
-      commentMap[comment.parentId].replies.push(commentWithReplies);
+      const parentComment = commentMap[comment.parentId];
+      if (parentComment && parentComment.replies) {
+        parentComment.replies.push(commentWithReplies);
+      }
     } else if (comment.parentId) {
       console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
       topLevelComments.push(commentWithReplies);
@@ -463,13 +466,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                         alt="Comment image" 
                         className="w-full h-auto object-contain rounded-md max-h-[300px]"
                         onLoad={(e) => {
+                          const img = e.target as HTMLImageElement;
                           console.log("Comment image loaded successfully:", comment.mediaUrl);
-                          console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
+                          console.log("Image dimensions:", img.naturalWidth, "x", img.naturalHeight);
                           setImageError(false);
                         }}
                         onError={(e) => {
+                          const img = e.target as HTMLImageElement;
                           console.error("Error loading comment image:", comment.mediaUrl);
-                          console.error("Full URL attempted:", e.target.src);
+                          console.error("Full URL attempted:", img.src);
                           setImageError(true);
                         }}
                         style={{
