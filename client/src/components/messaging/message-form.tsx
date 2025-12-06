@@ -63,21 +63,14 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   const { toast } = useToast();
 
   // Detect Android device for bottom padding adjustment
-  const isAndroid = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.indexOf('android') > -1;
-  }, []);
+  const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
 
-  // Force re-render when visibility changes
-  const [, setVisibilityTrigger] = useState(0);
-
-  // Get current padding based on localStorage (always current)
-  const getAndroidPadding = () => {
-    if (!isAndroid) return '8px';
-    const isBackgrounded = typeof localStorage !== 'undefined' ? localStorage.getItem('androidTextboxBackgrounded') === 'true' : false;
-    return isBackgrounded ? '12px' : '8px';
-  };
+  // Android-specific: Use sessionStorage to persist state across navigation
+  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
+    if (!isAndroid) return false;
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidTextboxBackgrounded') : null;
+    return stored === 'true';
+  });
 
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
@@ -89,34 +82,31 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         // App going to background - mark that textbox should have padding
-        localStorage.setItem('androidTextboxBackgrounded', 'true');
-        setVisibilityTrigger(prev => prev + 1);
+        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        setHasBeenBackgrounded(true);
       } else if (document.visibilityState === 'visible') {
-        // App coming back to foreground - read flag and trigger re-render
-        const stored = localStorage.getItem('androidTextboxBackgrounded');
+        // App coming back to foreground - keep the padding flag
+        const stored = sessionStorage.getItem('androidTextboxBackgrounded');
         if (stored === 'true') {
-          setVisibilityTrigger(prev => prev + 1);
+          setHasBeenBackgrounded(true);
         }
       }
     };
 
-    const handlePageShow = () => {
-      localStorage.setItem('androidTextboxBackgrounded', 'true');
-      setVisibilityTrigger(prev => prev + 1);
-    };
-
-    const handlePageHide = () => {
-      localStorage.setItem('androidTextboxBackgrounded', 'true');
+    const handleOrientationChange = () => {
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      if (isPortrait) {
+        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        setHasBeenBackgrounded(true);
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('pageshow', handlePageShow);
-    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('orientationchange', handleOrientationChange);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('pageshow', handlePageShow);
-      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('orientationchange', handleOrientationChange);
     };
   }, [isAndroid]);
 
@@ -596,7 +586,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               height: 'auto', 
               minHeight: '38px', 
               maxHeight: '200px',
-              paddingBottom: getAndroidPadding()
+              paddingBottom: (isAndroid && hasBeenBackgrounded) ? '12px' : '8px'
             }}
             id="message-textarea"
           />
