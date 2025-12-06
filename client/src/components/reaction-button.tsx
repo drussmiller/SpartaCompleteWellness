@@ -181,7 +181,6 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           onTouchStart={(e) => {
             touchStartTimeRef.current = Date.now();
             longPressTimerRef.current = setTimeout(() => {
-              e.preventDefault();
               setIsOpen(true);
             }, 500);
           }}
@@ -194,7 +193,6 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
             const touchDuration = Date.now() - touchStartTimeRef.current;
             // If it was a quick tap (under 500ms), handle the like reaction
             if (touchDuration < 500) {
-              e.preventDefault();
               e.stopPropagation();
               handleReaction('like');
             }
@@ -204,9 +202,9 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
             setIsOpen(true);
           }}
           onClick={(e) => {
-            e.preventDefault();
             e.stopPropagation();
             handleReaction('like');
+            setIsOpen(false);
           }}
         >
           {variant === 'icon' ? (
