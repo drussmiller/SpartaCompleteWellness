@@ -343,7 +343,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     if (comment.parentId === postId) {
       topLevelComments.push(commentWithReplies);
     } else if (comment.parentId && commentMap[comment.parentId]) {
-      commentMap[comment.parentId].replies.push(commentWithReplies);
+      const parentComment = commentMap[comment.parentId];
+      if (parentComment && parentComment.replies) {
+        parentComment.replies.push(commentWithReplies);
+      }
     } else if (comment.parentId) {
       console.warn(`Reply ${comment.id} has parent ${comment.parentId} which doesn't exist`);
       topLevelComments.push(commentWithReplies);
@@ -367,6 +370,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     const isOwnComment = user?.id === comment.author?.id;
     const isReplying = replyingTo === comment.id;
     const [imageError, setImageError] = useState(false);
+    const touchTimeRef = useRef<number>(0);
 
     // Helper function to get video thumbnail URL
     const getVideoThumbnailUrl = (mediaUrl: string) => {
@@ -409,7 +413,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     };
 
     return (
-      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
+      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`} onContextMenu={(e) => {
+        // Prevent browser context menu on entire comment card
+        const target = e.target as HTMLElement;
+        if (!target.closest('a') && !target.closest('button')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}>
         <div className="flex items-start gap-4 min-w-0">
           <Avatar className={depth > 0 ? 'h-7 w-7' : 'h-10 w-10'}>
             {comment.author?.imageUrl && <AvatarImage src={comment.author.imageUrl} />}
@@ -422,16 +433,21 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </Avatar>
           <div className="flex-1 flex flex-col gap-2 min-w-0">
             <Card
-                className={`w-full overflow-hidden ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
-                onClick={(e) => {
-                  // Don't show menu if clicking on a link or the play button
-                  if (e.target instanceof HTMLElement && (
-                    e.target.tagName === 'A' || 
-                    e.target.closest('a') ||
-                    e.target.closest('button[data-play-button]')
-                  )) {
-                    return;
+                className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                onTouchStart={(e) => {
+                  touchTimeRef.current = Date.now();
+                }}
+                onTouchEnd={(e) => {
+                  const touchDuration = Date.now() - touchTimeRef.current;
+                  // Long press detected if touch lasted >500ms
+                  if (touchDuration > 500) {
+                    setSelectedComment(comment.id);
+                    setIsActionsOpen(true);
                   }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setSelectedComment(comment.id);
                   setIsActionsOpen(true);
                 }}
@@ -463,13 +479,15 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                         alt="Comment image" 
                         className="w-full h-auto object-contain rounded-md max-h-[300px]"
                         onLoad={(e) => {
+                          const img = e.target as HTMLImageElement;
                           console.log("Comment image loaded successfully:", comment.mediaUrl);
-                          console.log("Image dimensions:", e.target.naturalWidth, "x", e.target.naturalHeight);
+                          console.log("Image dimensions:", img.naturalWidth, "x", img.naturalHeight);
                           setImageError(false);
                         }}
                         onError={(e) => {
+                          const img = e.target as HTMLImageElement;
                           console.error("Error loading comment image:", comment.mediaUrl);
-                          console.error("Full URL attempted:", e.target.src);
+                          console.error("Full URL attempted:", img.src);
                           setImageError(true);
                         }}
                         style={{
@@ -538,7 +556,16 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     return undefined;
   };
 
-  const selectedCommentData = findSelectedComment(threadedComments);
+  // Direct lookup from flat comments array to ensure we find it
+  const selectedCommentData = selectedComment ? comments.find(c => c.id === selectedComment) : undefined;
+  
+  // Debug logging for action drawer
+  console.log("🎯 Action drawer state:", { 
+    isActionsOpen, 
+    selectedComment, 
+    selectedCommentData: selectedCommentData?.id,
+    shouldShow: isActionsOpen && !!selectedCommentData 
+  });
 
   useEffect(() => {
     // Notify parent component about visibility changes
@@ -715,31 +742,36 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
       )}
 
-      {selectedCommentData && (
-        <CommentActionsDrawer
-          isOpen={isActionsOpen}
-          onClose={() => {
-            setIsActionsOpen(false);
-            setSelectedComment(null);
-          }}
-          onReply={() => {
-            setReplyingTo(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onEdit={() => {
-            setEditingComment(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onDelete={() => {
-            setCommentToDelete(selectedComment);
-            setShowDeleteAlert(true);
-            setIsActionsOpen(false);
-          }}
-          onCopy={() => handleCopyComment(selectedCommentData.content || "")}
-          canEdit={user?.id === selectedCommentData.author?.id}
-          canDelete={user?.id === selectedCommentData.author?.id}
-        />
-      )}
+      <CommentActionsDrawer
+        isOpen={isActionsOpen && !!selectedCommentData}
+        onClose={() => {
+          console.log("📘 CommentActionsDrawer onClose called");
+          setIsActionsOpen(false);
+          setSelectedComment(null);
+        }}
+        onReply={() => {
+          console.log("💬 Reply clicked");
+          setReplyingTo(selectedComment);
+          setIsActionsOpen(false);
+        }}
+        onEdit={() => {
+          console.log("✏️ Edit clicked");
+          setEditingComment(selectedComment);
+          setIsActionsOpen(false);
+        }}
+        onDelete={() => {
+          console.log("🗑️ Delete clicked");
+          setCommentToDelete(selectedComment);
+          setShowDeleteAlert(true);
+          setIsActionsOpen(false);
+        }}
+        onCopy={() => {
+          console.log("📋 Copy clicked");
+          handleCopyComment(selectedCommentData?.content || "");
+        }}
+        canEdit={user?.id === selectedCommentData?.author?.id}
+        canDelete={user?.id === selectedCommentData?.author?.id}
+      />
 
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent className="z-[99999]">

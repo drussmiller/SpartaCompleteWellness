@@ -1,12 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +44,12 @@ const reactionLabels = {
   pray: "Pray",
   muscle: "Strength",
   thumbs_down: "Dislike",
+  weight: "Weight",
+  angel: "Angel",
+  dove: "Dove",
+  church: "Church",
+  bible: "Bible",
+  cross: "Cross",
   faith: "Faith",
   idea: "Inspiration",
   rocket: "Progress",
@@ -67,13 +67,16 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   const { toast } = useToast();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartTimeRef = useRef<number>(0);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const { data: reactions = [], isLoading } = useQuery({
+  const { data: reactions = [] } = useQuery({
     queryKey: [`/api/posts/${postId}/reactions`],
     staleTime: 60000, // 60 seconds
     refetchOnWindowFocus: false,
     refetchInterval: false,
-    refetchOnMount: "if-stale",
+    refetchOnMount: true,
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", `/api/posts/${postId}/reactions`);
@@ -125,6 +128,18 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     },
   });
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
   const handleReaction = async (type: ReactionType = 'like') => {
     if (!user?.id) {
       toast({
@@ -136,7 +151,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     }
 
     // Find user's existing reaction of this type
-    const existingReaction = reactions.find(r => r.userId === user.id && r.type === type);
+    const existingReaction = reactions.find((r: Reaction) => r.userId === user.id && r.type === type);
 
     try {
       if (existingReaction) {
@@ -152,7 +167,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   };
 
   // Get the current user's reaction if any
-  const userReaction = reactions.find(r => r.userId === user?.id);
+  const userReaction = reactions.find((r: Reaction) => r.userId === user?.id);
 
   // Only include the specified reaction types
   const allReactions: ReactionType[] = [
@@ -161,72 +176,101 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   ];
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        setIsOpen(false);
-      }
-    }} modal={true}>
-      <DropdownMenuTrigger asChild onContextMenu={(e) => {
-        e.preventDefault();
-        setIsOpen(true);
-      }}>
-        <Button
-          variant="ghost"
-          size="lg"  /* Increased button size */
-          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
-          onTouchStart={(e) => {
-            const longPressTimer = setTimeout(() => {
-              e.preventDefault();
-              setIsOpen(true);
-            }, 500); // 500ms for long press
-            
-            const cleanup = () => {
-              clearTimeout(longPressTimer);
-            };
-
-            // Use local event handling instead of global document listeners
-            const handleTouchEnd = () => cleanup();
-            const handleTouchMove = () => cleanup();
-
-            e.currentTarget.addEventListener('touchend', handleTouchEnd, { once: true });
-            e.currentTarget.addEventListener('touchmove', handleTouchMove, { once: true });
-          }}
-          onClick={(e) => {
-            e.preventDefault(); // Prevent default action
-            e.stopPropagation(); // Prevent event bubbling
-
-            // Prevent dropdown from opening
-            setIsOpen(false);
-
-            // Handle the like reaction directly
+    <div className="relative" data-reaction-button>
+      <Button
+        ref={buttonRef}
+        variant="ghost"
+        size="lg"
+        className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
+        onTouchStart={(e) => {
+          touchStartTimeRef.current = Date.now();
+          longPressTimerRef.current = setTimeout(() => {
+            setIsOpen(true);
+          }, 500);
+        }}
+        onTouchEnd={(e) => {
+          if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+          }
+          
+          const touchDuration = Date.now() - touchStartTimeRef.current;
+          // If it was a quick tap (under 500ms), handle the like reaction
+          if (touchDuration < 500) {
+            e.stopPropagation();
             handleReaction('like');
+          }
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(true);
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReaction('like');
+        }}
+      >
+        {variant === 'icon' ? (
+          <div className="flex items-center gap-1">
+            <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black"}`} />
+            <span>Like</span>
+          </div>
+        ) : (
+          <span>Like</span>
+        )}
+      </Button>
+      {isOpen && (
+        <div 
+          className="fixed grid grid-cols-5 p-2 gap-1 rounded-md shadow-2xl bg-white"
+          style={{
+            width: '320px',
+            zIndex: 99999,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            padding: '8px',
+            gap: '4px',
+          }}
+          ref={(el) => {
+            if (el && buttonRef.current && typeof window !== 'undefined') {
+              const rect = buttonRef.current.getBoundingClientRect();
+              const top = rect.top - el.offsetHeight - 8;
+              const left = rect.left;
+              el.style.top = `${top}px`;
+              el.style.left = `${left}px`;
+            }
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
           }}
         >
-          {variant === 'icon' ? (
-            <div className="flex items-center gap-1">
-              <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black"}`} />
-              <span>Like</span>
-            </div>
-          ) : (
-            <span>Like</span>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1" side="top" sideOffset={5} style={{ zIndex: 9999 }}>
-        {allReactions.map((type) => {
-          const isActive = reactions.some(r => r.userId === user?.id && r.type === type);
-          return (
-            <DropdownMenuItem
-              key={type}
-              className={`flex flex-col items-center justify-center h-12 w-12 rounded hover:bg-muted ${isActive ? reactionEmojis[type]?.color || "" : ""}`}
-              onClick={() => handleReaction(type)}
-            >
-              <span className="text-lg">{reactionEmojis[type]?.emoji}</span>
-              <span className="text-xs capitalize">{reactionLabels[type] || type.replace('_', ' ')}</span>
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {allReactions.map((type) => {
+            const isActive = reactions.some((r: Reaction) => r.userId === user?.id && r.type === type);
+            return (
+              <button
+                key={type}
+                className={`flex flex-col items-center justify-center h-12 w-12 rounded hover:bg-muted ${isActive ? reactionEmojis[type]?.color || "" : ""}`}
+                onClick={() => {
+                  handleReaction(type);
+                  setIsOpen(false);
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <span className="text-lg">{reactionEmojis[type]?.emoji}</span>
+                <span className="text-xs capitalize">{reactionLabels[type] || type.replace('_', ' ')}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

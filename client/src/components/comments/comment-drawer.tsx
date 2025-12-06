@@ -23,7 +23,7 @@ interface CommentDrawerProps {
   onClose: () => void;
 }
 
-export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): JSX.Element {
+export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): JSX.Element | null {
   const { toast } = useToast();
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -466,26 +466,15 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     },
   });
 
-  // Close drawer when clicking outside
+  // Prevent scrolling on body when drawer is open
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside as any);
-
       return () => {
         document.body.style.overflow = '';
-        document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('touchstart', handleClickOutside as any);
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -505,7 +494,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     >
       <div 
         className={`w-full h-full flex flex-col bg-white ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
-        style={{ overflow: 'hidden' }}
       >
         <div className={`h-full flex flex-col ${!isMobile ? 'border-x border-gray-200' : ''}`}>
           {/* Fixed header bar */}
