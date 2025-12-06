@@ -560,13 +560,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   // Direct lookup from flat comments array to ensure we find it
   const selectedCommentData = selectedComment ? comments.find(c => c.id === selectedComment) : undefined;
 
-  // Debug logging
-  useEffect(() => {
-    if (isActionsOpen) {
-      console.log("🔍 DEBUG: isActionsOpen=true, selectedComment=", selectedComment, "selectedCommentData=", selectedCommentData);
-    }
-  }, [isActionsOpen, selectedComment, selectedCommentData]);
-
   useEffect(() => {
     // Notify parent component about visibility changes
     if (onVisibilityChange) {

@@ -33,10 +33,7 @@ export function CommentActionsDrawer({
       return;
     }
     
-    // Track when drawer opens
     openTimeRef.current = Date.now();
-    
-    // Delay click listener attachment to avoid catching the opening click
     const timer = setTimeout(() => {
       setIsClickListenerReady(true);
     }, 100);
@@ -65,12 +62,12 @@ export function CommentActionsDrawer({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, isClickListenerReady, onClose]);
 
-  if (!isOpen) {
-    console.log("🎯 CommentActionsDrawer: isOpen is false, returning null");
-    return null;
-  }
+  if (!isOpen) return null;
 
-  console.log("🎯 CommentActionsDrawer: RENDERING! Creating portal...");
+  const portalTarget = typeof document !== 'undefined' ? document.getElementById('app-portal-root') : null;
+  const target = portalTarget || (typeof document !== 'undefined' ? document.body : null);
+
+  if (!target) return null;
 
   return createPortal(
     <div
@@ -139,6 +136,6 @@ export function CommentActionsDrawer({
         Cancel
       </Button>
     </div>,
-    document.body
+    target
   );
 }
