@@ -72,43 +72,19 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
   
-  // State for tracking if keyboard is hidden on Android
-  const [isKeyboardHidden, setIsKeyboardHidden] = useState(true);
-  
-  // Listen to viewport changes to detect when keyboard appears/disappears
-  useEffect(() => {
-    if (!isAndroid || typeof window === 'undefined') return;
+  // Helper function to detect if keyboard is hidden
+  const getIsKeyboardHidden = () => {
+    if (!isAndroid) return false;
+    if (typeof window === 'undefined') return false;
     
-    const checkKeyboardState = () => {
-      if (window.visualViewport) {
-        // If visual viewport height is close to window height, keyboard is hidden
-        const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
-        setIsKeyboardHidden(heightDiff < 50);
-      } else {
-        setIsKeyboardHidden(keyboardHeight === 0);
-      }
-    };
-    
-    // Check on initial render
-    checkKeyboardState();
-    
-    // Listen to viewport changes
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', checkKeyboardState);
+      // If visual viewport height is close to window height, keyboard is hidden
+      const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
+      return heightDiff < 50;
     }
     
-    // Listen to visibility and focus changes to handle app switching
-    window.addEventListener('visibilitychange', checkKeyboardState);
-    window.addEventListener('focus', checkKeyboardState);
-    window.addEventListener('orientationchange', checkKeyboardState);
-    
-    return () => {
-      window.visualViewport?.removeEventListener('resize', checkKeyboardState);
-      window.removeEventListener('visibilitychange', checkKeyboardState);
-      window.removeEventListener('focus', checkKeyboardState);
-      window.removeEventListener('orientationchange', checkKeyboardState);
-    };
-  }, [isAndroid, keyboardHeight]);
+    return keyboardHeight === 0;
+  };
 
   // This function handles setting up refs for the textarea
   const setRefs = (element: HTMLTextAreaElement | null) => {
@@ -580,9 +556,14 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300 ${isAndroid && isKeyboardHidden ? 'pb-[12px]' : ''}`}
+            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300`}
             rows={1}
-            style={{ height: 'auto', minHeight: '38px', maxHeight: '200px' }}
+            style={{ 
+              height: 'auto', 
+              minHeight: '38px', 
+              maxHeight: '200px',
+              paddingBottom: (isAndroid && getIsKeyboardHidden()) ? '12px' : '8px'
+            }}
             id="message-textarea"
           />
         </div>

@@ -53,43 +53,19 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
   
-  // State for tracking if keyboard is hidden on Android
-  const [isKeyboardHidden, setIsKeyboardHidden] = useState(true);
-  
-  // Listen to viewport changes to detect when keyboard appears/disappears
-  useEffect(() => {
-    if (!isAndroid || typeof window === 'undefined') return;
+  // Helper function to detect if keyboard is hidden
+  const getIsKeyboardHidden = () => {
+    if (!isAndroid) return false;
+    if (typeof window === 'undefined') return false;
     
-    const checkKeyboardState = () => {
-      if (window.visualViewport) {
-        // If visual viewport height is close to window height, keyboard is hidden
-        const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
-        setIsKeyboardHidden(heightDiff < 50);
-      } else {
-        setIsKeyboardHidden(keyboardHeight === 0);
-      }
-    };
-    
-    // Check on initial render
-    checkKeyboardState();
-    
-    // Listen to viewport changes
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', checkKeyboardState);
+      // If visual viewport height is close to window height, keyboard is hidden
+      const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
+      return heightDiff < 50;
     }
     
-    // Listen to visibility and focus changes to handle app switching
-    window.addEventListener('visibilitychange', checkKeyboardState);
-    window.addEventListener('focus', checkKeyboardState);
-    window.addEventListener('orientationchange', checkKeyboardState);
-    
-    return () => {
-      window.visualViewport?.removeEventListener('resize', checkKeyboardState);
-      window.removeEventListener('visibilitychange', checkKeyboardState);
-      window.removeEventListener('focus', checkKeyboardState);
-      window.removeEventListener('orientationchange', checkKeyboardState);
-    };
-  }, [isAndroid, keyboardHeight]);
+    return keyboardHeight === 0;
+  };
 
   const textareaRef = inputRef || internalRef;
 
@@ -329,7 +305,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             readOnly={false}
             disabled={false}
             tabIndex={0}
-            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all ${isAndroid && isKeyboardHidden ? 'pb-[12px]' : ''}`}
+            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all`}
             rows={1}
             style={{ 
               height: '38px', 
@@ -339,7 +315,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               pointerEvents: 'auto',
               WebkitUserSelect: 'text',
               userSelect: 'text',
-              WebkitTapHighlightColor: 'transparent'
+              WebkitTapHighlightColor: 'transparent',
+              paddingBottom: (isAndroid && getIsKeyboardHidden()) ? '12px' : '8px'
             }}
             data-testid="comment-textarea"
             autoComplete="off"
