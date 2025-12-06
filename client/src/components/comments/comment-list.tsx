@@ -370,7 +370,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     const isOwnComment = user?.id === comment.author?.id;
     const isReplying = replyingTo === comment.id;
     const [imageError, setImageError] = useState(false);
-    const touchStartTimeRef = useRef<number>(0);
 
     // Helper function to get video thumbnail URL
     const getVideoThumbnailUrl = (mediaUrl: string) => {
@@ -432,41 +431,23 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   if (e.target instanceof HTMLElement && (
                     e.target.tagName === 'A' || 
                     e.target.closest('a') ||
-                    e.target.closest('button[data-play-button]')
+                    e.target.closest('button[data-play-button]') ||
+                    e.target.closest('button')  // Don't open menu if clicking any button
                   )) {
                     return;
                   }
                   setSelectedComment(comment.id);
                   setIsActionsOpen(true);
                 }}
-                onTouchStart={(e) => {
-                  // Record the time when touch starts
-                  touchStartTimeRef.current = Date.now();
-                }}
-                onTouchEnd={(e) => {
-                  // Check if this was a long-press (500ms or more)
-                  const touchDuration = Date.now() - touchStartTimeRef.current;
-                  if (touchDuration >= 500) {
-                    // Long-press detected
-                    const target = e.target as HTMLElement;
-                    if (target && !(
-                      target.tagName === 'A' || 
-                      target.closest('a') ||
-                      target.closest('button[data-play-button]')
-                    )) {
-                      setSelectedComment(comment.id);
-                      setIsActionsOpen(true);
-                    }
-                  }
-                }}
                 onContextMenu={(e) => {
-                  // Also handle right-click context menu
+                  // Handle right-click context menu
                   e.preventDefault();
                   const target = e.target as HTMLElement;
                   if (target && !(
                     target.tagName === 'A' || 
                     target.closest('a') ||
-                    target.closest('button[data-play-button]')
+                    target.closest('button[data-play-button]') ||
+                    target.closest('button')
                   )) {
                     setSelectedComment(comment.id);
                     setIsActionsOpen(true);
