@@ -72,18 +72,42 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
   
-  // Detect if keyboard is hidden on Android by comparing viewport heights
-  const isKeyboardHidden = useMemo(() => {
-    if (!isAndroid) return false;
-    if (typeof window === 'undefined') return false;
+  // State for tracking if keyboard is hidden on Android
+  const [isKeyboardHidden, setIsKeyboardHidden] = useState(true);
+  
+  // Listen to viewport changes to detect when keyboard appears/disappears
+  useEffect(() => {
+    if (!isAndroid || typeof window === 'undefined') return;
     
+    const checkKeyboardState = () => {
+      if (window.visualViewport) {
+        // If visual viewport height is close to window height, keyboard is hidden
+        const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
+        setIsKeyboardHidden(heightDiff < 50);
+      } else {
+        setIsKeyboardHidden(keyboardHeight === 0);
+      }
+    };
+    
+    // Check on initial render
+    checkKeyboardState();
+    
+    // Listen to viewport changes
     if (window.visualViewport) {
-      // If visual viewport height is close to window height, keyboard is hidden
-      const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
-      return heightDiff < 50; // Less than 50px difference means keyboard is hidden
+      window.visualViewport.addEventListener('resize', checkKeyboardState);
     }
     
-    return keyboardHeight === 0;
+    // Listen to visibility and focus changes to handle app switching
+    window.addEventListener('visibilitychange', checkKeyboardState);
+    window.addEventListener('focus', checkKeyboardState);
+    window.addEventListener('orientationchange', checkKeyboardState);
+    
+    return () => {
+      window.visualViewport?.removeEventListener('resize', checkKeyboardState);
+      window.removeEventListener('visibilitychange', checkKeyboardState);
+      window.removeEventListener('focus', checkKeyboardState);
+      window.removeEventListener('orientationchange', checkKeyboardState);
+    };
   }, [isAndroid, keyboardHeight]);
 
   // This function handles setting up refs for the textarea
