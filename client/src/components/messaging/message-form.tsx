@@ -544,7 +544,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               height: 'auto', 
               minHeight: '38px', 
               maxHeight: '200px',
-              paddingBottom: isAndroid ? 'var(--android-textbox-padding, 8px)' : '8px'
+              paddingBottom: isAndroid ? '12px' : '8px'
             }}
             id="message-textarea"
           />

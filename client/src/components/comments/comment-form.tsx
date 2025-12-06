@@ -298,7 +298,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               WebkitUserSelect: 'text',
               userSelect: 'text',
               WebkitTapHighlightColor: 'transparent',
-              paddingBottom: isAndroid ? 'var(--android-textbox-padding, 8px)' : '8px'
+              paddingBottom: isAndroid ? '12px' : '8px'
             }}
             data-testid="comment-textarea"
             autoComplete="off"
