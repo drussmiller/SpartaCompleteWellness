@@ -138,6 +138,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   // Close menu when clicking outside
   useEffect(() => {
     if (!isOpen) return;
+    console.log('🎉 Reaction menu opened for post:', postId);
     const handleClickOutside = (e: MouseEvent) => {
       if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         setIsOpen(false);
@@ -145,7 +146,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, postId]);
 
   const handleReaction = async (type: ReactionType = 'like') => {
     if (!user?.id) {
