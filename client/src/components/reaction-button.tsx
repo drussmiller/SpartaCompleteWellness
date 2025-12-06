@@ -1,13 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -138,7 +131,6 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   // Close menu when clicking outside
   useEffect(() => {
     if (!isOpen) return;
-    console.log('🎉 Reaction menu opened for post:', postId);
     const handleClickOutside = (e: MouseEvent) => {
       if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         setIsOpen(false);
@@ -146,7 +138,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, postId]);
+  }, [isOpen]);
 
   const handleReaction = async (type: ReactionType = 'like') => {
     if (!user?.id) {
@@ -227,19 +219,24 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           <span>Like</span>
         )}
       </Button>
-      {isOpen && createPortal(
+      {isOpen && (
         <div 
-          className="fixed w-84 grid grid-cols-5 p-2 gap-1 bg-white dark:bg-slate-950 border rounded-md shadow-lg"
+          className="fixed grid grid-cols-5 p-2 gap-1 rounded-md shadow-2xl bg-white"
+          style={{
+            width: '320px',
+            zIndex: 99999,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            padding: '8px',
+            gap: '4px',
+          }}
           ref={(el) => {
             if (el && buttonRef.current && typeof window !== 'undefined') {
               const rect = buttonRef.current.getBoundingClientRect();
-              el.style.top = `${rect.top - el.offsetHeight - 8}px`;
-              el.style.left = `${rect.left}px`;
-              el.style.zIndex = '999999';
-              el.style.position = 'fixed';
-              el.style.display = 'grid';
-              console.log('📍 Menu positioned - button rect:', { top: rect.top, left: rect.left, height: rect.height }, 'menu height:', el.offsetHeight);
-              console.log('🎨 Menu styles:', { top: el.style.top, left: el.style.left, zIndex: el.style.zIndex });
+              const top = rect.top - el.offsetHeight - 8;
+              const left = rect.left;
+              el.style.top = `${top}px`;
+              el.style.left = `${left}px`;
             }
           }}
         >
@@ -260,8 +257,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
               </button>
             );
           })}
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );
