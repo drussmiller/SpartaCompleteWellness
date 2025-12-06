@@ -203,6 +203,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
         }}
         onContextMenu={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           setIsOpen(true);
         }}
         onClick={(e) => {
