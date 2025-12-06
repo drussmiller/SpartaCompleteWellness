@@ -237,6 +237,9 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
               el.style.left = `${rect.left}px`;
               el.style.zIndex = '999999';
               el.style.position = 'fixed';
+              el.style.display = 'grid';
+              console.log('📍 Menu positioned - button rect:', { top: rect.top, left: rect.left, height: rect.height }, 'menu height:', el.offsetHeight);
+              console.log('🎨 Menu styles:', { top: el.style.top, left: el.style.left, zIndex: el.style.zIndex });
             }
           }}
         >
