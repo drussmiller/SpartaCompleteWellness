@@ -1,5 +1,6 @@
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { createPortal } from "react-dom";
 
 interface CommentActionsDrawerProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ export function CommentActionsDrawer({
 }: CommentActionsDrawerProps) {
   console.log("🎬 CommentActionsDrawer rendering - isOpen:", isOpen, "canEdit:", canEdit, "canDelete:", canDelete);
   
-  return (
+  return createPortal(
     <Sheet open={isOpen} onOpenChange={(open) => {
       console.log("📋 Sheet onOpenChange triggered - open:", open);
       !open && onClose();
@@ -94,6 +95,7 @@ export function CommentActionsDrawer({
           </Button>
         </div>
       </SheetContent>
-    </Sheet>
+    </Sheet>,
+    document.body
   );
 }
