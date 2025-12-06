@@ -71,6 +71,20 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
+  
+  // Detect if keyboard is hidden on Android by comparing viewport heights
+  const isKeyboardHidden = useMemo(() => {
+    if (!isAndroid) return false;
+    if (typeof window === 'undefined') return false;
+    
+    if (window.visualViewport) {
+      // If visual viewport height is close to window height, keyboard is hidden
+      const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
+      return heightDiff < 50; // Less than 50px difference means keyboard is hidden
+    }
+    
+    return keyboardHeight === 0;
+  }, [isAndroid, keyboardHeight]);
 
   // This function handles setting up refs for the textarea
   const setRefs = (element: HTMLTextAreaElement | null) => {
@@ -542,7 +556,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300 ${isAndroid && keyboardHeight === 0 ? 'pb-[12px]' : ''}`}
+            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border border-gray-300 ${isAndroid && isKeyboardHidden ? 'pb-[12px]' : ''}`}
             rows={1}
             style={{ height: 'auto', minHeight: '38px', maxHeight: '200px' }}
             id="message-textarea"

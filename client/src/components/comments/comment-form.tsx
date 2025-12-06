@@ -52,6 +52,20 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
+  
+  // Detect if keyboard is hidden on Android by comparing viewport heights
+  const isKeyboardHidden = useMemo(() => {
+    if (!isAndroid) return false;
+    if (typeof window === 'undefined') return false;
+    
+    if (window.visualViewport) {
+      // If visual viewport height is close to window height, keyboard is hidden
+      const heightDiff = Math.abs(window.innerHeight - window.visualViewport.height);
+      return heightDiff < 50; // Less than 50px difference means keyboard is hidden
+    }
+    
+    return keyboardHeight === 0;
+  }, [isAndroid, keyboardHeight]);
 
   const textareaRef = inputRef || internalRef;
 
@@ -291,7 +305,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             readOnly={false}
             disabled={false}
             tabIndex={0}
-            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all ${isAndroid && keyboardHeight === 0 ? 'pb-[12px]' : ''}`}
+            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all ${isAndroid && isKeyboardHidden ? 'pb-[12px]' : ''}`}
             rows={1}
             style={{ 
               height: '38px', 
