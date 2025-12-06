@@ -441,17 +441,19 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 }}
                 onContextMenu={(e) => {
                   // Handle right-click context menu
-                  e.preventDefault();
                   const target = e.target as HTMLElement;
+                  // Only prevent default and show menu if NOT clicking on a button or link
                   if (target && !(
                     target.tagName === 'A' || 
                     target.closest('a') ||
                     target.closest('button[data-play-button]') ||
                     target.closest('button')
                   )) {
+                    e.preventDefault();
                     setSelectedComment(comment.id);
                     setIsActionsOpen(true);
                   }
+                  // Let buttons handle their own context menu
                 }}
             >
               {depth > 0 && (
