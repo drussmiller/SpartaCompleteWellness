@@ -23,7 +23,7 @@ interface CommentDrawerProps {
   onClose: () => void;
 }
 
-export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): JSX.Element {
+export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): JSX.Element | null {
   const { toast } = useToast();
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
