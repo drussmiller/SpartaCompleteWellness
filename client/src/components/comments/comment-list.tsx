@@ -449,6 +449,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  console.log("🔘 RIGHT-CLICK on comment:", comment.id);
                   setSelectedComment(comment.id);
                   setIsActionsOpen(true);
                 }}
@@ -559,6 +560,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
   // Direct lookup from flat comments array to ensure we find it
   const selectedCommentData = selectedComment ? comments.find(c => c.id === selectedComment) : undefined;
+  
+  // Debug logging for action drawer
+  console.log("🎯 Action drawer state:", { 
+    isActionsOpen, 
+    selectedComment, 
+    selectedCommentData: selectedCommentData?.id,
+    shouldShow: isActionsOpen && !!selectedCommentData 
+  });
 
   useEffect(() => {
     // Notify parent component about visibility changes
