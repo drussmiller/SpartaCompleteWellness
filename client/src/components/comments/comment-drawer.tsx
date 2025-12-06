@@ -466,22 +466,23 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     },
   });
 
-  // Close drawer when clicking outside (but not on touch devices, to avoid closing on long press)
+  // Close drawer when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      // Only close on mouse clicks, not on simulated clicks from touch
-      if (event.pointerType === 'mouse' && drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
         onClose();
       }
     }
 
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside as any);
 
       return () => {
         document.body.style.overflow = '';
-        document.removeEventListener('click', handleClickOutside);
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside as any);
       };
     }
   }, [isOpen, onClose]);
