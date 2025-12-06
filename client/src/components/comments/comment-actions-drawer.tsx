@@ -25,6 +25,7 @@ export function CommentActionsDrawer({
 }: CommentActionsDrawerProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isClickListenerReady, setIsClickListenerReady] = useState(false);
+  const openTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!isOpen) {
@@ -32,10 +33,13 @@ export function CommentActionsDrawer({
       return;
     }
     
+    // Track when drawer opens
+    openTimeRef.current = Date.now();
+    
     // Delay click listener attachment to avoid catching the opening click
     const timer = setTimeout(() => {
       setIsClickListenerReady(true);
-    }, 50);
+    }, 100);
     
     return () => clearTimeout(timer);
   }, [isOpen]);
@@ -44,16 +48,29 @@ export function CommentActionsDrawer({
     if (!isOpen || !isClickListenerReady) return;
     
     const handleClickOutside = (e: MouseEvent) => {
+      // Don't close within 200ms of opening
+      if (Date.now() - openTimeRef.current < 200) {
+        return;
+      }
+      
+      // Ignore right-clicks
+      if (e.button === 2) return;
+      
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, isClickListenerReady, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log("🎯 CommentActionsDrawer: isOpen is false, returning null");
+    return null;
+  }
+
+  console.log("🎯 CommentActionsDrawer: RENDERING! Creating portal...");
 
   return createPortal(
     <div
