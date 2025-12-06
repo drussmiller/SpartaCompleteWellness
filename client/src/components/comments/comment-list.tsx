@@ -441,7 +441,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   const touchDuration = Date.now() - touchTimeRef.current;
                   // Long press detected if touch lasted >500ms
                   if (touchDuration > 500) {
-                    console.log("🔘 LONG-TAP on comment:", comment.id);
                     setSelectedComment(comment.id);
                     setIsActionsOpen(true);
                   }
@@ -449,7 +448,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log("🔘 RIGHT-CLICK on comment:", comment.id);
                   setSelectedComment(comment.id);
                   setIsActionsOpen(true);
                 }}

@@ -68,8 +68,6 @@ export function CommentActionsDrawer({
   const target = typeof document !== 'undefined' ? document.body : null;
 
   if (!target) return null;
-
-  console.log("🎨 CommentActionsDrawer RENDERING - isOpen:", isOpen, "target: body");
   
   return createPortal(
     <>
