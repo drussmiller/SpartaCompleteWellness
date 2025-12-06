@@ -412,7 +412,14 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     };
 
     return (
-      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`}>
+      <div className={`space-y-4 ${depth > 0 ? 'ml-12 mt-3' : ''}`} onContextMenu={(e) => {
+        // Prevent browser context menu on entire comment card
+        const target = e.target as HTMLElement;
+        if (!target.closest('a') && !target.closest('button')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}>
         <div className="flex items-start gap-4 min-w-0">
           <Avatar className={depth > 0 ? 'h-7 w-7' : 'h-10 w-10'}>
             {comment.author?.imageUrl && <AvatarImage src={comment.author.imageUrl} />}
@@ -440,13 +447,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   setIsActionsOpen(true);
                 }}
                 onContextMenu={(e) => {
-                  // Handle right-click context menu
-                  console.log("🖱️ RIGHT-CLICK on comment", comment.id);
                   e.preventDefault();
                   e.stopPropagation();
                   setSelectedComment(comment.id);
                   setIsActionsOpen(true);
-                  console.log("✅ Set selectedComment to", comment.id, "and isActionsOpen to true");
                 }}
             >
               {depth > 0 && (
@@ -554,10 +558,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   };
 
   const selectedCommentData = findSelectedComment(threadedComments);
-
-  useEffect(() => {
-    console.log("📊 selectedComment:", selectedComment, "selectedCommentData:", selectedCommentData, "isActionsOpen:", isActionsOpen);
-  }, [selectedComment, selectedCommentData, isActionsOpen]);
 
   useEffect(() => {
     // Notify parent component about visibility changes
