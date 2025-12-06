@@ -441,9 +441,12 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 }}
                 onContextMenu={(e) => {
                   // Handle right-click context menu
+                  console.log("🖱️ RIGHT-CLICK on comment", comment.id);
                   e.preventDefault();
+                  e.stopPropagation();
                   setSelectedComment(comment.id);
                   setIsActionsOpen(true);
+                  console.log("✅ Set selectedComment to", comment.id, "and isActionsOpen to true");
                 }}
             >
               {depth > 0 && (
@@ -551,6 +554,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
   };
 
   const selectedCommentData = findSelectedComment(threadedComments);
+
+  useEffect(() => {
+    console.log("📊 selectedComment:", selectedComment, "selectedCommentData:", selectedCommentData, "isActionsOpen:", isActionsOpen);
+  }, [selectedComment, selectedCommentData, isActionsOpen]);
 
   useEffect(() => {
     // Notify parent component about visibility changes
@@ -727,31 +734,29 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
       )}
 
-      {selectedCommentData && (
-        <CommentActionsDrawer
-          isOpen={isActionsOpen}
-          onClose={() => {
-            setIsActionsOpen(false);
-            setSelectedComment(null);
-          }}
-          onReply={() => {
-            setReplyingTo(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onEdit={() => {
-            setEditingComment(selectedComment);
-            setIsActionsOpen(false);
-          }}
-          onDelete={() => {
-            setCommentToDelete(selectedComment);
-            setShowDeleteAlert(true);
-            setIsActionsOpen(false);
-          }}
-          onCopy={() => handleCopyComment(selectedCommentData.content || "")}
-          canEdit={user?.id === selectedCommentData.author?.id}
-          canDelete={user?.id === selectedCommentData.author?.id}
-        />
-      )}
+      <CommentActionsDrawer
+        isOpen={isActionsOpen && !!selectedCommentData}
+        onClose={() => {
+          setIsActionsOpen(false);
+          setSelectedComment(null);
+        }}
+        onReply={() => {
+          setReplyingTo(selectedComment);
+          setIsActionsOpen(false);
+        }}
+        onEdit={() => {
+          setEditingComment(selectedComment);
+          setIsActionsOpen(false);
+        }}
+        onDelete={() => {
+          setCommentToDelete(selectedComment);
+          setShowDeleteAlert(true);
+          setIsActionsOpen(false);
+        }}
+        onCopy={() => handleCopyComment(selectedCommentData?.content || "")}
+        canEdit={user?.id === selectedCommentData?.author?.id}
+        canDelete={user?.id === selectedCommentData?.author?.id}
+      />
 
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent className="z-[99999]">
