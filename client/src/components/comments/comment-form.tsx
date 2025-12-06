@@ -5,6 +5,7 @@ import { Loader2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useVideoUpload, VideoUploadResult } from "@/hooks/use-video-upload";
+import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 
 interface CommentFormProps {
   onSubmit: (content: string, file?: File, chunkedUploadData?: VideoUploadResult) => Promise<void>; 
@@ -48,6 +49,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     const userAgent = navigator.userAgent.toLowerCase();
     return userAgent.indexOf('android') > -1;
   }, []);
+
+  // Track keyboard height
+  const keyboardHeight = useKeyboardAdjustment();
 
   const textareaRef = inputRef || internalRef;
 
@@ -287,7 +291,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             readOnly={false}
             disabled={false}
             tabIndex={0}
-            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all ${isAndroid ? 'pb-[12px]' : ''}`}
+            className={`resize-none bg-gray-100 rounded-md py-2 px-4 border-2 border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all ${isAndroid && keyboardHeight === 0 ? 'pb-[12px]' : ''}`}
             rows={1}
             style={{ 
               height: '38px', 
