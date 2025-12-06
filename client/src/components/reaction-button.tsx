@@ -240,6 +240,10 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
               el.style.left = `${left}px`;
             }
           }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
         >
           {allReactions.map((type) => {
             const isActive = reactions.some((r: Reaction) => r.userId === user?.id && r.type === type);
@@ -251,7 +255,14 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
                   handleReaction(type);
                   setIsOpen(false);
                 }}
-                onMouseDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <span className="text-lg">{reactionEmojis[type]?.emoji}</span>
                 <span className="text-xs capitalize">{reactionLabels[type] || type.replace('_', ' ')}</span>
