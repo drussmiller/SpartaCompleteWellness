@@ -466,33 +466,22 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     },
   });
 
-  // Close drawer when clicking outside
+  // Close drawer when clicking outside (but not on touch devices, to avoid closing on long press)
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+    function handleClickOutside(event: MouseEvent) {
+      // Only close on mouse clicks, not on simulated clicks from touch
+      if (event.pointerType === 'mouse' && drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
         onClose();
       }
     }
 
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      document.addEventListener('mousedown', handleClickOutside);
-      // Don't use touchstart for closing, use touchend instead with a debounce
-      // This prevents closing when user is interacting with comment cards
-      let touchStartTime = 0;
-      document.addEventListener('touchstart', () => {
-        touchStartTime = Date.now();
-      }, { capture: true });
-      document.addEventListener('touchend', (event: any) => {
-        // Only close on touchend if it's a very quick tap (< 200ms) outside the drawer
-        if (Date.now() - touchStartTime < 200 && drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
-          onClose();
-        }
-      }, { capture: true });
+      document.addEventListener('click', handleClickOutside);
 
       return () => {
         document.body.style.overflow = '';
-        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('click', handleClickOutside);
       };
     }
   }, [isOpen, onClose]);
