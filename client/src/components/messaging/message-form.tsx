@@ -69,12 +69,15 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     return userAgent.indexOf('android') > -1;
   }, []);
 
-  // Android-specific: Use localStorage to persist state across backgrounding
-  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
-    if (!isAndroid) return false;
-    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('androidTextboxBackgrounded') : null;
-    return stored === 'true';
-  });
+  // Force re-render when visibility changes
+  const [, setVisibilityTrigger] = useState(0);
+
+  // Get current padding based on localStorage (always current)
+  const getAndroidPadding = () => {
+    if (!isAndroid) return '8px';
+    const isBackgrounded = typeof localStorage !== 'undefined' ? localStorage.getItem('androidTextboxBackgrounded') === 'true' : false;
+    return isBackgrounded ? '12px' : '8px';
+  };
 
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
@@ -87,28 +90,33 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
       if (document.visibilityState === 'hidden') {
         // App going to background - mark that textbox should have padding
         localStorage.setItem('androidTextboxBackgrounded', 'true');
-        setHasBeenBackgrounded(true);
+        setVisibilityTrigger(prev => prev + 1);
       } else if (document.visibilityState === 'visible') {
-        // App coming back to foreground - keep the padding flag
+        // App coming back to foreground - read flag and trigger re-render
         const stored = localStorage.getItem('androidTextboxBackgrounded');
-        setHasBeenBackgrounded(stored === 'true');
+        if (stored === 'true') {
+          setVisibilityTrigger(prev => prev + 1);
+        }
       }
     };
 
-    const handleOrientationChange = () => {
-      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-      if (isPortrait) {
-        localStorage.setItem('androidTextboxBackgrounded', 'true');
-        setHasBeenBackgrounded(true);
-      }
+    const handlePageShow = () => {
+      localStorage.setItem('androidTextboxBackgrounded', 'true');
+      setVisibilityTrigger(prev => prev + 1);
+    };
+
+    const handlePageHide = () => {
+      localStorage.setItem('androidTextboxBackgrounded', 'true');
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('pagehide', handlePageHide);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, [isAndroid]);
 
@@ -588,7 +596,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
               height: 'auto', 
               minHeight: '38px', 
               maxHeight: '200px',
-              paddingBottom: (isAndroid && hasBeenBackgrounded) ? '12px' : '8px'
+              paddingBottom: getAndroidPadding()
             }}
             id="message-textarea"
           />
