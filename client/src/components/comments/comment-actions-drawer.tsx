@@ -85,7 +85,7 @@ export function CommentActionsDrawer({
         className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 flex flex-col w-full shadow-2xl"
         style={{
           zIndex: 2147483647,
-          paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 32px)',
           maxHeight: '40vh',
           overflow: 'auto',
           pointerEvents: 'auto'
