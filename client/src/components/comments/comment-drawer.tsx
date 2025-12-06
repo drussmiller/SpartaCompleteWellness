@@ -494,7 +494,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     >
       <div 
         className={`w-full h-full flex flex-col bg-white ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
-        style={{ overflow: 'hidden' }}
       >
         <div className={`h-full flex flex-col ${!isMobile ? 'border-x border-gray-200' : ''}`}>
           {/* Fixed header bar */}
