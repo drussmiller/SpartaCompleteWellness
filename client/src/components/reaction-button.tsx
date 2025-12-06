@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +67,8 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   const { toast } = useToast();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartTimeRef = useRef<number>(0);
 
   const { data: reactions = [], isLoading } = useQuery({
     queryKey: [`/api/posts/${postId}/reactions`],
@@ -172,33 +174,36 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       }}>
         <Button
           variant="ghost"
-          size="lg"  /* Increased button size */
+          size="lg"
           className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
           onTouchStart={(e) => {
-            const longPressTimer = setTimeout(() => {
+            touchStartTimeRef.current = Date.now();
+            longPressTimerRef.current = setTimeout(() => {
               e.preventDefault();
               setIsOpen(true);
-            }, 500); // 500ms for long press
+            }, 500);
+          }}
+          onTouchEnd={(e) => {
+            if (longPressTimerRef.current) {
+              clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = null;
+            }
             
-            const cleanup = () => {
-              clearTimeout(longPressTimer);
-            };
-
-            // Use local event handling instead of global document listeners
-            const handleTouchEnd = () => cleanup();
-            const handleTouchMove = () => cleanup();
-
-            e.currentTarget.addEventListener('touchend', handleTouchEnd, { once: true });
-            e.currentTarget.addEventListener('touchmove', handleTouchMove, { once: true });
+            const touchDuration = Date.now() - touchStartTimeRef.current;
+            // If it was a quick tap (under 500ms), handle the like reaction
+            if (touchDuration < 500) {
+              e.preventDefault();
+              e.stopPropagation();
+              handleReaction('like');
+            }
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setIsOpen(true);
           }}
           onClick={(e) => {
-            e.preventDefault(); // Prevent default action
-            e.stopPropagation(); // Prevent event bubbling
-
-            // Prevent dropdown from opening
-            setIsOpen(false);
-
-            // Handle the like reaction directly
+            e.preventDefault();
+            e.stopPropagation();
             handleReaction('like');
           }}
         >
