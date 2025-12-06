@@ -370,6 +370,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
     const isOwnComment = user?.id === comment.author?.id;
     const isReplying = replyingTo === comment.id;
     const [imageError, setImageError] = useState(false);
+    const touchTimeRef = useRef<number>(0);
 
     // Helper function to get video thumbnail URL
     const getVideoThumbnailUrl = (mediaUrl: string) => {
@@ -433,6 +434,18 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           <div className="flex-1 flex flex-col gap-2 min-w-0">
             <Card
                 className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                onTouchStart={(e) => {
+                  touchTimeRef.current = Date.now();
+                }}
+                onTouchEnd={(e) => {
+                  const touchDuration = Date.now() - touchTimeRef.current;
+                  // Long press detected if touch lasted >500ms
+                  if (touchDuration > 500) {
+                    console.log("🔘 LONG-TAP on comment:", comment.id);
+                    setSelectedComment(comment.id);
+                    setIsActionsOpen(true);
+                  }
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
