@@ -469,7 +469,8 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   // Close drawer when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+      // Check if click/touch is outside the drawer
+      if (!drawerRef.current?.contains(event.target as Node)) {
         onClose();
       }
     }
@@ -477,12 +478,10 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside as any);
 
       return () => {
         document.body.style.overflow = '';
         document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('touchstart', handleClickOutside as any);
       };
     }
   }, [isOpen, onClose]);
