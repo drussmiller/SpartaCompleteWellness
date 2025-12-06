@@ -423,8 +423,10 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           <div className="flex-1 flex flex-col gap-2 min-w-0">
             <Card
                 className={`w-full overflow-hidden ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
-                  e.stopPropagation();
                   // Don't show menu if clicking on a link or the play button
                   if (e.target instanceof HTMLElement && (
                     e.target.tagName === 'A' || 
