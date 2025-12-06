@@ -219,7 +219,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1" side="top" sideOffset={5} style={{ zIndex: 9999 }}>
+      <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1" side="top" sideOffset={10} style={{ zIndex: 50000 }}>
         {allReactions.map((type) => {
           const isActive = reactions.some((r: Reaction) => r.userId === user?.id && r.type === type);
           return (
