@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,6 +76,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   const [isOpen, setIsOpen] = useState(false);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartTimeRef = useRef<number>(0);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const { data: reactions = [] } = useQuery({
     queryKey: [`/api/posts/${postId}/reactions`],
@@ -133,6 +135,18 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
     },
   });
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
   const handleReaction = async (type: ReactionType = 'like') => {
     if (!user?.id) {
       toast({
@@ -169,8 +183,9 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   ];
 
   return (
-    <div className="relative">
+    <div className="relative" data-reaction-button>
       <Button
+        ref={buttonRef}
         variant="ghost"
         size="lg"
         className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
@@ -211,8 +226,24 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           <span>Like</span>
         )}
       </Button>
-      {isOpen && (
-        <div className="absolute top-0 left-0 w-84 grid grid-cols-5 p-2 gap-1 bg-white dark:bg-slate-950 border rounded-md shadow-lg" style={{ zIndex: 50000 }}>
+      {isOpen && createPortal(
+        <div 
+          className="fixed w-84 grid grid-cols-5 p-2 gap-1 bg-white dark:bg-slate-950 border rounded-md shadow-lg"
+          style={{ 
+            zIndex: 50000,
+            top: 'var(--menu-top)',
+            left: 'var(--menu-left)'
+          }}
+          ref={(el) => {
+            if (el && typeof window !== 'undefined') {
+              const rect = document.querySelector('[data-reaction-button]')?.getBoundingClientRect();
+              if (rect) {
+                el.style.setProperty('--menu-top', `${rect.top - rect.height - 10}px`);
+                el.style.setProperty('--menu-left', `${rect.left}px`);
+              }
+            }
+          }}
+        >
           {allReactions.map((type) => {
             const isActive = reactions.some((r: Reaction) => r.userId === user?.id && r.type === type);
             return (
@@ -230,7 +261,8 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
