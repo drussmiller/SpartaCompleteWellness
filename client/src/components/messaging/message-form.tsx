@@ -69,10 +69,10 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     return userAgent.indexOf('android') > -1;
   }, []);
 
-  // Android-specific: Use sessionStorage to persist state across navigation
+  // Android-specific: Use localStorage to persist state across backgrounding
   const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
     if (!isAndroid) return false;
-    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidTextboxBackgrounded') : null;
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('androidTextboxBackgrounded') : null;
     return stored === 'true';
   });
 
@@ -86,21 +86,19 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         // App going to background - mark that textbox should have padding
-        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        localStorage.setItem('androidTextboxBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       } else if (document.visibilityState === 'visible') {
         // App coming back to foreground - keep the padding flag
-        const stored = sessionStorage.getItem('androidTextboxBackgrounded');
-        if (stored === 'true') {
-          setHasBeenBackgrounded(true);
-        }
+        const stored = localStorage.getItem('androidTextboxBackgrounded');
+        setHasBeenBackgrounded(stored === 'true');
       }
     };
 
     const handleOrientationChange = () => {
       const isPortrait = window.matchMedia("(orientation: portrait)").matches;
       if (isPortrait) {
-        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        localStorage.setItem('androidTextboxBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       }
     };
