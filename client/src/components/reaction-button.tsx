@@ -234,7 +234,8 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
               const rect = buttonRef.current.getBoundingClientRect();
               el.style.top = `${rect.top - el.offsetHeight - 8}px`;
               el.style.left = `${rect.left}px`;
-              el.style.zIndex = '50000';
+              el.style.zIndex = '999999';
+              el.style.position = 'fixed';
             }
           }}
         >
