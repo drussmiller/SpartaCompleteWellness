@@ -170,53 +170,50 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={true}>
-      <DropdownMenuTrigger asChild onContextMenu={(e) => {
-        e.preventDefault();
-        setIsOpen(true);
-      }}>
-        <Button
-          variant="ghost"
-          size="lg"
-          className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
-          onTouchStart={(e) => {
-            touchStartTimeRef.current = Date.now();
-            longPressTimerRef.current = setTimeout(() => {
-              setIsOpen(true);
-            }, 500);
-          }}
-          onTouchEnd={(e) => {
-            if (longPressTimerRef.current) {
-              clearTimeout(longPressTimerRef.current);
-              longPressTimerRef.current = null;
-            }
-            
-            const touchDuration = Date.now() - touchStartTimeRef.current;
-            // If it was a quick tap (under 500ms), handle the like reaction
-            if (touchDuration < 500) {
-              e.stopPropagation();
-              handleReaction('like');
-            }
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault();
+      <DropdownMenuTrigger asChild>
+        <div style={{ display: 'none' }} />
+      </DropdownMenuTrigger>
+      <Button
+        variant="ghost"
+        size="lg"
+        className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
+        onTouchStart={(e) => {
+          touchStartTimeRef.current = Date.now();
+          longPressTimerRef.current = setTimeout(() => {
             setIsOpen(true);
-          }}
-          onClick={(e) => {
+          }, 500);
+        }}
+        onTouchEnd={(e) => {
+          if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+          }
+          
+          const touchDuration = Date.now() - touchStartTimeRef.current;
+          // If it was a quick tap (under 500ms), handle the like reaction
+          if (touchDuration < 500) {
             e.stopPropagation();
             handleReaction('like');
-            setIsOpen(false);
-          }}
-        >
-          {variant === 'icon' ? (
-            <div className="flex items-center gap-1">
-              <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black"}`} />
-              <span>Like</span>
-            </div>
-          ) : (
+          }
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setIsOpen(true);
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReaction('like');
+        }}
+      >
+        {variant === 'icon' ? (
+          <div className="flex items-center gap-1">
+            <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black"}`} />
             <span>Like</span>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
+          </div>
+        ) : (
+          <span>Like</span>
+        )}
+      </Button>
       <DropdownMenuContent align="start" className="w-84 grid grid-cols-5 p-2 gap-1" side="top" sideOffset={10} style={{ zIndex: 50000 }}>
         {allReactions.map((type) => {
           const isActive = reactions.some((r: Reaction) => r.userId === user?.id && r.type === type);
