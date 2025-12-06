@@ -427,7 +427,6 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 onTouchEnd={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
-                  e.stopPropagation();
                   // Don't show menu if clicking on a link or the play button
                   if (e.target instanceof HTMLElement && (
                     e.target.tagName === 'A' || 
