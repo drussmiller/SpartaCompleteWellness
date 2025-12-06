@@ -148,6 +148,48 @@ function MainContent() {
 function App() {
   console.log('App component rendering');
 
+  // Android-specific: Set CSS custom property for safe padding that persists across component remounts
+  useEffect(() => {
+    const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
+    if (!isAndroid) return;
+
+    const root = document.documentElement;
+    
+    // Check if already backgrounded from sessionStorage
+    const wasBackgrounded = sessionStorage.getItem('androidBackgrounded') === 'true';
+    if (wasBackgrounded) {
+      root.style.setProperty('--android-textbox-padding', '12px');
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        sessionStorage.setItem('androidBackgrounded', 'true');
+        root.style.setProperty('--android-textbox-padding', '12px');
+      } else if (document.visibilityState === 'visible') {
+        // Re-apply on visible in case it was cleared
+        if (sessionStorage.getItem('androidBackgrounded') === 'true') {
+          root.style.setProperty('--android-textbox-padding', '12px');
+        }
+      }
+    };
+
+    const handleOrientationChange = () => {
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      if (isPortrait) {
+        sessionStorage.setItem('androidBackgrounded', 'true');
+        root.style.setProperty('--android-textbox-padding', '12px');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, []);
+
   // Check for notification permission when app loads
   // This needs to be called from a user interaction (e.g., button click)
   // but we can check if it's already been granted

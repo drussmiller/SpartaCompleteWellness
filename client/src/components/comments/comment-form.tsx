@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent, useMemo } from "react";
+import React, { useState, useEffect, useRef, forwardRef, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
@@ -46,52 +46,8 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   // Detect Android device for bottom padding adjustment
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
 
-  // Android-specific: Use the SAME sessionStorage key as bottom-nav so it persists
-  // even when this component is unmounted during backgrounding
-  const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
-    if (!isAndroid) return false;
-    // Use the same key as bottom-nav.tsx which is always mounted
-    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidBackgrounded') : null;
-    return stored === 'true';
-  });
-
   // Track keyboard height
   const keyboardHeight = useKeyboardAdjustment();
-
-  // Track backgrounding and wake-up for Android
-  useEffect(() => {
-    if (!isAndroid) return;
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        // App going to background - use same key as bottom-nav
-        sessionStorage.setItem('androidBackgrounded', 'true');
-        setHasBeenBackgrounded(true);
-      } else if (document.visibilityState === 'visible') {
-        // App coming back - read the key set by bottom-nav or any other component
-        const stored = sessionStorage.getItem('androidBackgrounded');
-        if (stored === 'true') {
-          setHasBeenBackgrounded(true);
-        }
-      }
-    };
-
-    const handleOrientationChange = () => {
-      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-      if (isPortrait) {
-        sessionStorage.setItem('androidBackgrounded', 'true');
-        setHasBeenBackgrounded(true);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('orientationchange', handleOrientationChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('orientationchange', handleOrientationChange);
-    };
-  }, [isAndroid]);
 
   const textareaRef = inputRef || internalRef;
 
@@ -342,7 +298,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
               WebkitUserSelect: 'text',
               userSelect: 'text',
               WebkitTapHighlightColor: 'transparent',
-              paddingBottom: (isAndroid && hasBeenBackgrounded) ? '12px' : '8px'
+              paddingBottom: isAndroid ? 'var(--android-textbox-padding, 8px)' : '8px'
             }}
             data-testid="comment-textarea"
             autoComplete="off"
