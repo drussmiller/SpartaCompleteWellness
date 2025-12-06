@@ -65,10 +65,12 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
   // Detect Android device for bottom padding adjustment
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
 
-  // Android-specific: Use sessionStorage to persist state across navigation
+  // Android-specific: Use the SAME sessionStorage key as bottom-nav so it persists
+  // even when this component is unmounted during backgrounding
   const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
     if (!isAndroid) return false;
-    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidTextboxBackgrounded') : null;
+    // Use the same key as bottom-nav.tsx which is always mounted
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidBackgrounded') : null;
     return stored === 'true';
   });
 
@@ -81,12 +83,12 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        // App going to background - mark that textbox should have padding
-        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        // App going to background - use same key as bottom-nav
+        sessionStorage.setItem('androidBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       } else if (document.visibilityState === 'visible') {
-        // App coming back to foreground - keep the padding flag
-        const stored = sessionStorage.getItem('androidTextboxBackgrounded');
+        // App coming back - read the key set by bottom-nav or any other component
+        const stored = sessionStorage.getItem('androidBackgrounded');
         if (stored === 'true') {
           setHasBeenBackgrounded(true);
         }
@@ -96,7 +98,7 @@ export const MessageForm = forwardRef<HTMLTextAreaElement, MessageFormProps>(({
     const handleOrientationChange = () => {
       const isPortrait = window.matchMedia("(orientation: portrait)").matches;
       if (isPortrait) {
-        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        sessionStorage.setItem('androidBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       }
     };

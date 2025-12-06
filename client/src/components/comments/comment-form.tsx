@@ -46,10 +46,12 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
   // Detect Android device for bottom padding adjustment
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
 
-  // Android-specific: Use sessionStorage to persist state across navigation
+  // Android-specific: Use the SAME sessionStorage key as bottom-nav so it persists
+  // even when this component is unmounted during backgrounding
   const [hasBeenBackgrounded, setHasBeenBackgrounded] = useState(() => {
     if (!isAndroid) return false;
-    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidTextboxBackgrounded') : null;
+    // Use the same key as bottom-nav.tsx which is always mounted
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidBackgrounded') : null;
     return stored === 'true';
   });
 
@@ -61,16 +63,13 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     if (!isAndroid) return;
 
     const handleVisibilityChange = () => {
-      console.log('[CommentForm] Visibility changed to:', document.visibilityState, 'hasBeenBackgrounded:', hasBeenBackgrounded);
       if (document.visibilityState === 'hidden') {
-        // App going to background - mark that textbox should have padding
-        console.log('[CommentForm] App going to background');
-        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        // App going to background - use same key as bottom-nav
+        sessionStorage.setItem('androidBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       } else if (document.visibilityState === 'visible') {
-        // App coming back to foreground - keep the padding flag
-        const stored = sessionStorage.getItem('androidTextboxBackgrounded');
-        console.log('[CommentForm] App coming to foreground, stored:', stored);
+        // App coming back - read the key set by bottom-nav or any other component
+        const stored = sessionStorage.getItem('androidBackgrounded');
         if (stored === 'true') {
           setHasBeenBackgrounded(true);
         }
@@ -79,23 +78,20 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
 
     const handleOrientationChange = () => {
       const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-      console.log('[CommentForm] Orientation changed, isPortrait:', isPortrait);
       if (isPortrait) {
-        sessionStorage.setItem('androidTextboxBackgrounded', 'true');
+        sessionStorage.setItem('androidBackgrounded', 'true');
         setHasBeenBackgrounded(true);
       }
     };
 
-    console.log('[CommentForm] Setting up Android listeners');
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('orientationchange', handleOrientationChange);
 
     return () => {
-      console.log('[CommentForm] Cleaning up Android listeners');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
-  }, [isAndroid, hasBeenBackgrounded]);
+  }, [isAndroid]);
 
   const textareaRef = inputRef || internalRef;
 
