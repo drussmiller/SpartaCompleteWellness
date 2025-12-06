@@ -477,12 +477,22 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside as any);
+      // Don't use touchstart for closing, use touchend instead with a debounce
+      // This prevents closing when user is interacting with comment cards
+      let touchStartTime = 0;
+      document.addEventListener('touchstart', () => {
+        touchStartTime = Date.now();
+      }, { capture: true });
+      document.addEventListener('touchend', (event: any) => {
+        // Only close on touchend if it's a very quick tap (< 200ms) outside the drawer
+        if (Date.now() - touchStartTime < 200 && drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+          onClose();
+        }
+      }, { capture: true });
 
       return () => {
         document.body.style.overflow = '';
         document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('touchstart', handleClickOutside as any);
       };
     }
   }, [isOpen, onClose]);
