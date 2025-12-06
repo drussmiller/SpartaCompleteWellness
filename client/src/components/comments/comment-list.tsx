@@ -559,6 +559,13 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
 
   const selectedCommentData = findSelectedComment(threadedComments);
 
+  // Debug logging
+  useEffect(() => {
+    if (isActionsOpen) {
+      console.log("🔍 DEBUG: isActionsOpen=true, selectedComment=", selectedComment, "selectedCommentData=", selectedCommentData);
+    }
+  }, [isActionsOpen, selectedComment, selectedCommentData]);
+
   useEffect(() => {
     // Notify parent component about visibility changes
     if (onVisibilityChange) {
@@ -734,36 +741,38 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           </div>
       )}
 
-      <CommentActionsDrawer
-        isOpen={isActionsOpen && !!selectedCommentData}
-        onClose={() => {
-          console.log("📘 CommentActionsDrawer onClose called");
-          setIsActionsOpen(false);
-          setSelectedComment(null);
-        }}
-        onReply={() => {
-          console.log("💬 Reply clicked");
-          setReplyingTo(selectedComment);
-          setIsActionsOpen(false);
-        }}
-        onEdit={() => {
-          console.log("✏️ Edit clicked");
-          setEditingComment(selectedComment);
-          setIsActionsOpen(false);
-        }}
-        onDelete={() => {
-          console.log("🗑️ Delete clicked");
-          setCommentToDelete(selectedComment);
-          setShowDeleteAlert(true);
-          setIsActionsOpen(false);
-        }}
-        onCopy={() => {
-          console.log("📋 Copy clicked");
-          handleCopyComment(selectedCommentData?.content || "");
-        }}
-        canEdit={user?.id === selectedCommentData?.author?.id}
-        canDelete={user?.id === selectedCommentData?.author?.id}
-      />
+      {selectedCommentData && (
+        <CommentActionsDrawer
+          isOpen={isActionsOpen}
+          onClose={() => {
+            console.log("📘 CommentActionsDrawer onClose called");
+            setIsActionsOpen(false);
+            setSelectedComment(null);
+          }}
+          onReply={() => {
+            console.log("💬 Reply clicked");
+            setReplyingTo(selectedComment);
+            setIsActionsOpen(false);
+          }}
+          onEdit={() => {
+            console.log("✏️ Edit clicked");
+            setEditingComment(selectedComment);
+            setIsActionsOpen(false);
+          }}
+          onDelete={() => {
+            console.log("🗑️ Delete clicked");
+            setCommentToDelete(selectedComment);
+            setShowDeleteAlert(true);
+            setIsActionsOpen(false);
+          }}
+          onCopy={() => {
+            console.log("📋 Copy clicked");
+            handleCopyComment(selectedCommentData?.content || "");
+          }}
+          canEdit={user?.id === selectedCommentData?.author?.id}
+          canDelete={user?.id === selectedCommentData?.author?.id}
+        />
+      )}
 
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent className="z-[99999]">
