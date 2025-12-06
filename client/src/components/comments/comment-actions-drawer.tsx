@@ -22,11 +22,16 @@ export function CommentActionsDrawer({
   canEdit,
   canDelete
 }: CommentActionsDrawerProps) {
+  console.log("🎬 CommentActionsDrawer rendering - isOpen:", isOpen, "canEdit:", canEdit, "canDelete:", canDelete);
+  
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Sheet open={isOpen} onOpenChange={(open) => {
+      console.log("📋 Sheet onOpenChange triggered - open:", open);
+      !open && onClose();
+    }}>
       <SheetContent 
         side="bottom" 
-        className="h-fit max-h-[40vh] p-0 z-[9999]"
+        className="h-fit max-h-[40vh] p-0 z-[9999999]"
         style={{
           paddingBottom: 'max(env(safe-area-inset-bottom), 24px)'
         }}
