@@ -79,6 +79,33 @@ export function MessageSlideCard() {
     return userAgent.indexOf('android') > -1;
   }, []);
 
+  // Android-specific: Track if app has been backgrounded to apply extra safe area padding
+  const [hasBeenBackgrounded, setHasBeenBackgrounded] = React.useState(() => {
+    if (!isAndroid) return false;
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidBackgrounded') : null;
+    return stored === 'true';
+  });
+
+  // Listen for backgrounding events on Android
+  useEffect(() => {
+    if (!isAndroid) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        sessionStorage.setItem('androidBackgrounded', 'true');
+        setHasBeenBackgrounded(true);
+      } else if (document.visibilityState === 'visible') {
+        const stored = sessionStorage.getItem('androidBackgrounded');
+        if (stored === 'true') {
+          setHasBeenBackgrounded(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isAndroid]);
+
   // Track viewport height and position changes for keyboard
   useEffect(() => {
     const updateViewport = () => {
@@ -975,7 +1002,9 @@ export function MessageSlideCard() {
                 className={`px-4 pt-3 bg-white flex-shrink-0 ${keyboardHeight > 0 ? 'pb-5' : 'pb-8'}`}
                 style={{
                   backgroundColor: '#ffffff',
-                  paddingBottom: `calc(${keyboardHeight > 0 ? '1.25rem' : '2rem'} + 0.25rem)`
+                  paddingBottom: isAndroid && hasBeenBackgrounded 
+                    ? `calc(${keyboardHeight > 0 ? '1.25rem' : '2rem'} + 48px)` 
+                    : `calc(${keyboardHeight > 0 ? '1.25rem' : '2rem'} + 0.25rem)`
                 }}
                 data-testid="message-form"
               >

@@ -37,6 +37,33 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
     return userAgent.indexOf('android') > -1;
   }, []);
 
+  // Android-specific: Track if app has been backgrounded to apply extra safe area padding
+  const [hasBeenBackgrounded, setHasBeenBackgrounded] = React.useState(() => {
+    if (!isAndroid) return false;
+    const stored = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('androidBackgrounded') : null;
+    return stored === 'true';
+  });
+
+  // Listen for backgrounding events on Android
+  useEffect(() => {
+    if (!isAndroid) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        sessionStorage.setItem('androidBackgrounded', 'true');
+        setHasBeenBackgrounded(true);
+      } else if (document.visibilityState === 'visible') {
+        const stored = sessionStorage.getItem('androidBackgrounded');
+        if (stored === 'true') {
+          setHasBeenBackgrounded(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isAndroid]);
+
   // Manual fetch states
   const [originalPost, setOriginalPost] = useState<Post & { author: User } | null>(null);
   const [isPostLoading, setIsPostLoading] = useState(false);
@@ -564,7 +591,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
 
           {/* Comment form at the bottom */}
           {isCommentBoxVisible && (
-            <div className={`px-4 pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className={`px-4 pt-4 border-t bg-background flex-shrink-0 ${keyboardHeight > 0 ? 'pb-4' : 'pb-8'}`} style={{ marginBottom: isAndroid && hasBeenBackgrounded ? '48px' : 'env(safe-area-inset-bottom, 0px)' }}>
               <CommentForm
                 onSubmit={async (content, file, chunkedUploadData) => {
                   await createCommentMutation.mutateAsync({ content, file, chunkedUploadData });
