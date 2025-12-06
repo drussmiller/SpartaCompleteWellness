@@ -229,18 +229,12 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       {isOpen && createPortal(
         <div 
           className="fixed w-84 grid grid-cols-5 p-2 gap-1 bg-white dark:bg-slate-950 border rounded-md shadow-lg"
-          style={{ 
-            zIndex: 50000,
-            top: 'var(--menu-top)',
-            left: 'var(--menu-left)'
-          }}
           ref={(el) => {
-            if (el && typeof window !== 'undefined') {
-              const rect = document.querySelector('[data-reaction-button]')?.getBoundingClientRect();
-              if (rect) {
-                el.style.setProperty('--menu-top', `${rect.top - rect.height - 10}px`);
-                el.style.setProperty('--menu-left', `${rect.left}px`);
-              }
+            if (el && buttonRef.current && typeof window !== 'undefined') {
+              const rect = buttonRef.current.getBoundingClientRect();
+              el.style.top = `${rect.top - el.offsetHeight - 8}px`;
+              el.style.left = `${rect.left}px`;
+              el.style.zIndex = '50000';
             }
           }}
         >
