@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect, useState } from "react";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 interface CommentDrawerProps {
   postId: number;
@@ -23,6 +24,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: onClose,
+    threshold: 60,
+    maxVerticalMovement: 150
+  });
   
   // Manual fetch states
   const [originalPost, setOriginalPost] = useState<Post & { author: User } | null>(null);
@@ -340,6 +347,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           e.preventDefault();
           // Do nothing here - we'll handle it in the useEffect
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onMouseDown={(e) => {
           // Prevent losing focus when clicking outside the textarea but inside the drawer
           if (e.target instanceof HTMLTextAreaElement) {
