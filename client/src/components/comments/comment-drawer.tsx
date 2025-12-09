@@ -30,9 +30,19 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const [isClosing, setIsClosing] = useState(false);
+  
+  const handleClose = React.useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 300);
+  }, [onClose, isClosing]);
   
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
-    onSwipeRight: onClose,
+    onSwipeRight: handleClose,
     threshold: 60,
     maxVerticalMovement: 150
   });
@@ -517,7 +527,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   return createPortal(
     <div
       ref={drawerRef}
-      className="fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
+      className={`fixed bg-white z-[2147483647] flex flex-col ${isClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`}
       style={{
         top: `${viewportTop}px`,
         height: `${viewportHeight}px`,
@@ -537,7 +547,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 px-4">
           {/* Back button */}
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 flex-shrink-0"
           >
             <ChevronLeft className="text-2xl" />
