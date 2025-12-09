@@ -826,6 +826,7 @@ export function MessageSlideCard() {
               onClick={() => {
                 if (selectedMember) {
                   setSelectedMember(null);
+                  handleClose();
                 } else {
                   handleClose();
                 }
