@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useRef, useEffect, useState } from "react";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 interface CommentDrawerProps {
   postId: number;
@@ -23,6 +24,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: onClose,
+    threshold: 60,
+    maxVerticalMovement: 150
+  });
   
   // Manual fetch states
   const [originalPost, setOriginalPost] = useState<Post & { author: User } | null>(null);
@@ -357,7 +364,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           }, 0);
         }}
       >
-        <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
+        <div 
+          className="h-[100dvh] flex flex-col overflow-hidden w-full"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {/* Fixed header bar */}
           <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
             {/* Back button */}

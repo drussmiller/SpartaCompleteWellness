@@ -16,6 +16,7 @@ import React from "react";
 import { getThumbnailUrl } from "@/lib/image-utils";
 import { useKeyboardAdjustment } from "@/hooks/use-keyboard-adjustment";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 interface CommentDrawerProps {
   postId: number;
@@ -29,6 +30,22 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const [isClosing, setIsClosing] = useState(false);
+  
+  const handleClose = React.useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 300);
+  }, [onClose, isClosing]);
+  
+  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
+    onSwipeRight: handleClose,
+    threshold: 60,
+    maxVerticalMovement: 150
+  });
   
   // Detect Android device for bottom padding adjustment
   const isAndroid = React.useMemo(() => {
@@ -510,7 +527,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
   return createPortal(
     <div
       ref={drawerRef}
-      className="fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right"
+      className={`fixed bg-white z-[2147483647] flex flex-col ${isClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`}
       style={{
         top: `${viewportTop}px`,
         height: `${viewportHeight}px`,
@@ -518,6 +535,9 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         right: 0,
         paddingTop: 'env(safe-area-inset-top, 30px)'
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <div 
         className={`w-full h-full flex flex-col bg-white ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
@@ -527,7 +547,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
           <div className="h-32 border-b bg-background flex-shrink-0 pt-6 flex items-center gap-3 px-4">
           {/* Back button */}
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 flex-shrink-0"
           >
             <ChevronLeft className="text-2xl" />
