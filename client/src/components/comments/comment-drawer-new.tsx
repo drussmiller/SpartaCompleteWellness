@@ -347,9 +347,6 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           e.preventDefault();
           // Do nothing here - we'll handle it in the useEffect
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         onMouseDown={(e) => {
           // Prevent losing focus when clicking outside the textarea but inside the drawer
           if (e.target instanceof HTMLTextAreaElement) {
@@ -367,7 +364,12 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
           }, 0);
         }}
       >
-        <div className="h-[100dvh] flex flex-col overflow-hidden w-full">
+        <div 
+          className="h-[100dvh] flex flex-col overflow-hidden w-full"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {/* Fixed header bar */}
           <div className="h-20 border-b bg-background fixed top-0 left-0 right-0 z-[10000]">
             {/* Back button */}
