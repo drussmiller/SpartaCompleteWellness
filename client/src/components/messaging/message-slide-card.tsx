@@ -52,6 +52,7 @@ interface Message {
 
 export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [messageText, setMessageText] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
@@ -133,13 +134,23 @@ export function MessageSlideCard() {
     };
   }, []);
 
+  // Handle close with animation
+  const handleClose = React.useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      setIsOpen(false);
+    }, 300);
+  }, [isClosing]);
+
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
       if (selectedMember) {
         setSelectedMember(null);
       } else {
-        setIsOpen(false);
+        handleClose();
       }
     }
   });
@@ -685,7 +696,7 @@ export function MessageSlideCard() {
       }
       
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        handleClose();
         setSelectedMember(null);
       }
     }
@@ -703,7 +714,7 @@ export function MessageSlideCard() {
         document.removeEventListener('touchstart', handleClickOutside as any);
       };
     }
-  }, [isOpen, contextMenu]);
+  }, [isOpen, contextMenu, handleClose]);
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -789,7 +800,7 @@ export function MessageSlideCard() {
       {isOpen && createPortal(
         <div
         ref={cardRef}
-        className={`fixed bg-white z-[2147483647] flex flex-col animate-slide-in-from-right ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
+        className={`fixed bg-white z-[2147483647] flex flex-col ${isClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'} ${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : ''}`}
         style={{
           top: `${viewportTop}px`,
           height: `${viewportHeight}px`,
@@ -816,7 +827,7 @@ export function MessageSlideCard() {
                 if (selectedMember) {
                   setSelectedMember(null);
                 } else {
-                  setIsOpen(false);
+                  handleClose();
                 }
               }}
               className="mr-3 bg-transparent hover:bg-gray-100 flex-shrink-0"
