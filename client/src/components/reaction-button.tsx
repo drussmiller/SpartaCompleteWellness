@@ -70,6 +70,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartTimeRef = useRef<number>(0);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const touchHandledRef = useRef<boolean>(false);
 
   const { data: reactions = [] } = useQuery({
     queryKey: [`/api/posts/${postId}/reactions`],
@@ -184,6 +185,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
         className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
         onTouchStart={(e) => {
           touchStartTimeRef.current = Date.now();
+          touchHandledRef.current = false;
           longPressTimerRef.current = setTimeout(() => {
             setIsOpen(true);
           }, 500);
@@ -198,6 +200,8 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           // If it was a quick tap (under 500ms), handle the like reaction
           if (touchDuration < 500) {
             e.stopPropagation();
+            e.preventDefault();
+            touchHandledRef.current = true;
             handleReaction('like');
           }
         }}
@@ -207,6 +211,11 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
           setIsOpen(true);
         }}
         onClick={(e) => {
+          // Don't handle click if we already handled it via touch
+          if (touchHandledRef.current) {
+            touchHandledRef.current = false;
+            return;
+          }
           e.stopPropagation();
           handleReaction('like');
         }}
