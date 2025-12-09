@@ -53,6 +53,7 @@ interface Message {
 export function MessageSlideCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isConversationClosing, setIsConversationClosing] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [messageText, setMessageText] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
@@ -144,11 +145,21 @@ export function MessageSlideCard() {
     }, 300);
   }, [isClosing]);
 
+  // Handle closing conversation view with animation
+  const handleCloseConversation = React.useCallback(() => {
+    if (isConversationClosing) return;
+    setIsConversationClosing(true);
+    setTimeout(() => {
+      setIsConversationClosing(false);
+      setSelectedMember(null);
+    }, 300);
+  }, [isConversationClosing]);
+
   // Swipe to close functionality
   const { handleTouchStart, handleTouchMove, handleTouchEnd } = useSwipeToClose({
     onSwipeRight: () => {
       if (selectedMember) {
-        setSelectedMember(null);
+        handleCloseConversation();
       } else {
         handleClose();
       }
@@ -697,7 +708,6 @@ export function MessageSlideCard() {
       
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
         handleClose();
-        setSelectedMember(null);
       }
     }
 
@@ -825,8 +835,7 @@ export function MessageSlideCard() {
               size="icon"
               onClick={() => {
                 if (selectedMember) {
-                  setSelectedMember(null);
-                  handleClose();
+                  handleCloseConversation();
                 } else {
                   handleClose();
                 }
@@ -882,7 +891,7 @@ export function MessageSlideCard() {
             </div>
           ) : (
             // Messages View
-            <div className="flex flex-col flex-1 bg-white overflow-hidden">
+            <div className={`flex flex-col flex-1 bg-white overflow-hidden ${isConversationClosing ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`}>
               {/* Messages List */}
               <div
                 ref={scrollAreaRef}
