@@ -560,7 +560,7 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps): 
         </div>
 
           {/* Content area */}
-          <div className={`flex-1 overflow-y-auto pt-2 ${isAndroid ? 'pb-40' : ''}`}>
+          <div className={`flex-1 overflow-y-auto pt-2 ${isAndroid ? 'pb-40' : 'pb-40'}`}>
             {/* Show loading state */}
             {(isPostLoading || areCommentsLoading) && (
               <div className="flex items-center justify-center p-8">

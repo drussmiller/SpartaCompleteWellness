@@ -173,7 +173,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
               <CardTitle>Your First Post</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p>Once you are in a team your first post will be an intro video.</p>
+              <p>Your first post will be an intro video.</p>
               <p className="font-semibold">Tell us:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Why you joined Sparta</li>
