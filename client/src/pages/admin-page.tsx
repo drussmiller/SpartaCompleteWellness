@@ -3044,8 +3044,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       {visibleUsers.map((user) => (
                         <Card key={user.id}>
                           <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                              <div>
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="flex-1">
                                 {editingUser?.id === user.id ? (
                                   <form
                                       onSubmit={(e) => {
@@ -3388,71 +3388,75 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   </>
                                 )}
                               </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditingUser(user)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog 
-                                open={deleteDialogOpen && userToDelete === user.id}
-                                onOpenChange={(open) => {
-                                  setDeleteDialogOpen(open);
-                                  if (!open) setUserToDelete(null);
-                                }}
-                              >
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => {
-                                      setUserToDelete(user.id);
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                    data-testid={`button-delete-user-${user.id}`}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogTitle>
-                                    Are you sure?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This
-                                    will permanently delete the user
-                                    account and all associated data.
-                                  </AlertDialogDescription>
-                                  <div className="flex items-center justify-end gap-2 mt-4">
-                                    <AlertDialogCancel data-testid="button-cancel-delete">
-                                      Cancel
-                                    </AlertDialogCancel>
+                              <div className="flex gap-2">
+                                {editingUser?.id !== user.id && (
+                                  <>
                                     <Button
-                                      variant="destructive"
-                                      className="bg-red-600 hover:bg-red-700"
-                                      onClick={() => {
-                                        if (userToDelete) {
-                                          deleteUserMutation.mutate(userToDelete);
-                                        }
-                                      }}
-                                      disabled={deleteUserMutation.isPending}
-                                      data-testid="button-confirm-delete"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setEditingUser(user)}
                                     >
-                                      {deleteUserMutation.isPending ? (
-                                        <>
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          Deleting...
-                                        </>
-                                      ) : (
-                                        "Delete User"
-                                      )}
+                                      <Edit className="h-4 w-4" />
                                     </Button>
-                                  </div>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                                    <AlertDialog 
+                                      open={deleteDialogOpen && userToDelete === user.id}
+                                      onOpenChange={(open) => {
+                                        setDeleteDialogOpen(open);
+                                        if (!open) setUserToDelete(null);
+                                      }}
+                                    >
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() => {
+                                            setUserToDelete(user.id);
+                                            setDeleteDialogOpen(true);
+                                          }}
+                                          data-testid={`button-delete-user-${user.id}`}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogTitle>
+                                          Are you sure?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This action cannot be undone. This
+                                          will permanently delete the user
+                                          account and all associated data.
+                                        </AlertDialogDescription>
+                                        <div className="flex items-center justify-end gap-2 mt-4">
+                                          <AlertDialogCancel data-testid="button-cancel-delete">
+                                            Cancel
+                                          </AlertDialogCancel>
+                                          <Button
+                                            variant="destructive"
+                                            className="bg-red-600 hover:bg-red-700"
+                                            onClick={() => {
+                                              if (userToDelete) {
+                                                deleteUserMutation.mutate(userToDelete);
+                                              }
+                                            }}
+                                            disabled={deleteUserMutation.isPending}
+                                            data-testid="button-confirm-delete"
+                                          >
+                                            {deleteUserMutation.isPending ? (
+                                              <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Deleting...
+                                              </>
+                                            ) : (
+                                              "Delete User"
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>
+                                )}
+                              </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
