@@ -1677,32 +1677,33 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 ).length || 0}
                               </p>
                               <div className="flex gap-2 justify-end mt-4">
-                                {editingOrganization?.id !==
-                                  organization.id && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                      setEditingOrganization(organization)
-                                    }
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
+                                {editingOrganization?.id !== organization.id && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        setEditingOrganization(organization)
+                                      }
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() =>
+                                        deleteOrganizationMutation.mutate(
+                                          organization.id,
+                                        )
+                                      }
+                                      disabled={
+                                        deleteOrganizationMutation.isPending
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
                                 )}
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() =>
-                                    deleteOrganizationMutation.mutate(
-                                      organization.id,
-                                    )
-                                  }
-                                  disabled={
-                                    deleteOrganizationMutation.isPending
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
                               </div>
                             </CardContent>
                           </Card>
@@ -2274,24 +2275,26 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </p>
                               <div className="flex gap-2 justify-end mt-4">
                                 {editingGroup?.id !== group.id && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setEditingGroup(group)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setEditingGroup(group)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() =>
+                                        deleteGroupMutation.mutate(group.id)
+                                      }
+                                      disabled={deleteGroupMutation.isPending}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
                                 )}
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() =>
-                                    deleteGroupMutation.mutate(group.id)
-                                  }
-                                  disabled={deleteGroupMutation.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
                               </div>
                               <div className="mt-4 pt-4 border-t">
                                 <p className="text-sm font-medium mb-2">Invite Codes:</p>
@@ -2831,25 +2834,29 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </span>
                           </p>
                           <div className="flex gap-2 justify-end mt-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingTeam(team);
-                                setSelectedGroupId(
-                                  team.groupId?.toString() || "",
-                                );
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => handleDeleteTeamClick(team.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {editingTeam?.id !== team.id && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingTeam(team);
+                                    setSelectedGroupId(
+                                      team.groupId?.toString() || "",
+                                    );
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => handleDeleteTeamClick(team.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                           <div className="mt-4 pt-4 border-t">
                             <p className="text-sm font-medium mb-2">Invite Codes:</p>
