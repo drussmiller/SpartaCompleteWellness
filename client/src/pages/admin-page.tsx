@@ -1523,8 +1523,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         {visibleOrganizations?.map((organization, index) => (
                           <Card key={organization.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
+                              <div className="space-y-2">
+                                <div>
                                   {editingOrganization?.id ===
                                   organization.id ? (
                                     <form
@@ -1667,34 +1667,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex gap-2">
-                                  {editingOrganization?.id !==
-                                    organization.id && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        setEditingOrganization(organization)
-                                      }
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() =>
-                                      deleteOrganizationMutation.mutate(
-                                        organization.id,
-                                      )
-                                    }
-                                    disabled={
-                                      deleteOrganizationMutation.isPending
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
                               </div>
                             </CardHeader>
                             <CardContent>
@@ -1704,6 +1676,34 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   (g) => g.organizationId === organization.id,
                                 ).length || 0}
                               </p>
+                              <div className="flex gap-2 justify-end mt-4">
+                                {editingOrganization?.id !==
+                                  organization.id && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingOrganization(organization)
+                                    }
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() =>
+                                    deleteOrganizationMutation.mutate(
+                                      organization.id,
+                                    )
+                                  }
+                                  disabled={
+                                    deleteOrganizationMutation.isPending
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </CardContent>
                           </Card>
                         ))}
@@ -1906,8 +1906,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         {(showInactiveGroups ? sortedGroups : sortedGroups.filter(g => g.status === 1))?.map((group, index) => (
                           <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
+                              <div className="space-y-2">
+                                <div>
                                   {editingGroup?.id === group.id ? (
                                     <form
                                       onSubmit={(e) => {
@@ -2244,27 +2244,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex gap-2">
-                                  {editingGroup?.id !== group.id && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setEditingGroup(group)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() =>
-                                      deleteGroupMutation.mutate(group.id)
-                                    }
-                                    disabled={deleteGroupMutation.isPending}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
                               </div>
                             </CardHeader>
                             <CardContent>
@@ -2293,6 +2272,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   (t) => t.groupId === group.id,
                                 ).length || 0}
                               </p>
+                              <div className="flex gap-2 justify-end mt-4">
+                                {editingGroup?.id !== group.id && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditingGroup(group)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() =>
+                                    deleteGroupMutation.mutate(group.id)
+                                  }
+                                  disabled={deleteGroupMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                               <div className="mt-4 pt-4 border-t">
                                 <p className="text-sm font-medium mb-2">Invite Codes:</p>
                                 <div className="space-y-2">
@@ -2801,27 +2801,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </>
                               )}
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingTeam(team);
-                                  setSelectedGroupId(
-                                    team.groupId?.toString() || "",
-                                  );
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleDeleteTeamClick(team.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
                           </div>
                         </CardHeader>
                         <CardContent>
@@ -2851,6 +2830,27 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               {team.status === 1 ? "Active" : "Inactive"}
                             </span>
                           </p>
+                          <div className="flex gap-2 justify-end mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingTeam(team);
+                                setSelectedGroupId(
+                                  team.groupId?.toString() || "",
+                                );
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleDeleteTeamClick(team.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                           <div className="mt-4 pt-4 border-t">
                             <p className="text-sm font-medium mb-2">Invite Codes:</p>
                             <div className="space-y-2">
@@ -3093,6 +3093,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           data: {
                                             preferredName: formData.get('preferredName') as string,
                                             email: formData.get('email') as string,
+                                            phoneNumber: formData.get('phoneNumber') as string || null,
                                             status: ((statusValue) => {
                                               const parsed = statusValue
                                                 ? parseInt(statusValue)
@@ -3132,6 +3133,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           name="email"
                                           defaultValue={user.email}
                                           type="email"
+                                          className="text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Phone Number</Label>
+                                        <Input
+                                          name="phoneNumber"
+                                          defaultValue={user.phoneNumber || ""}
+                                          type="tel"
+                                          placeholder="Enter phone number"
                                           className="text-sm"
                                         />
                                       </div>
@@ -3316,6 +3327,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       {user.email}
                                     </CardDescription>
                                     <div className="mt-1 text-sm text-muted-foreground">
+                                      Phone: {user.phoneNumber || 'Not provided'}
+                                    </div>
+                                    <div className="mt-1 text-sm text-muted-foreground">
                                       Date Joined:{" "}
                                       {format(new Date(user.createdAt!), "PPP")}
                                     </div>
@@ -3388,78 +3402,78 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   </>
                                 )}
                               </div>
-                              <div className="flex gap-2">
-                                {editingUser?.id !== user.id && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setEditingUser(user)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog 
-                                      open={deleteDialogOpen && userToDelete === user.id}
-                                      onOpenChange={(open) => {
-                                        setDeleteDialogOpen(open);
-                                        if (!open) setUserToDelete(null);
-                                      }}
-                                    >
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          variant="destructive"
-                                          size="sm"
-                                          onClick={() => {
-                                            setUserToDelete(user.id);
-                                            setDeleteDialogOpen(true);
-                                          }}
-                                          data-testid={`button-delete-user-${user.id}`}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogTitle>
-                                          Are you sure?
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          This action cannot be undone. This
-                                          will permanently delete the user
-                                          account and all associated data.
-                                        </AlertDialogDescription>
-                                        <div className="flex items-center justify-end gap-2 mt-4">
-                                          <AlertDialogCancel data-testid="button-cancel-delete">
-                                            Cancel
-                                          </AlertDialogCancel>
-                                          <Button
-                                            variant="destructive"
-                                            className="bg-red-600 hover:bg-red-700"
-                                            onClick={() => {
-                                              if (userToDelete) {
-                                                deleteUserMutation.mutate(userToDelete);
-                                              }
-                                            }}
-                                            disabled={deleteUserMutation.isPending}
-                                            data-testid="button-confirm-delete"
-                                          >
-                                            {deleteUserMutation.isPending ? (
-                                              <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Deleting...
-                                              </>
-                                            ) : (
-                                              "Delete User"
-                                            )}
-                                          </Button>
-                                        </div>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </>
-                                )}
-                              </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                          <div className="flex gap-2 justify-end -mt-2">
+                            {editingUser?.id !== user.id && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setEditingUser(user)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog 
+                                  open={deleteDialogOpen && userToDelete === user.id}
+                                  onOpenChange={(open) => {
+                                    setDeleteDialogOpen(open);
+                                    if (!open) setUserToDelete(null);
+                                  }}
+                                >
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => {
+                                        setUserToDelete(user.id);
+                                        setDeleteDialogOpen(true);
+                                      }}
+                                      data-testid={`button-delete-user-${user.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogTitle>
+                                      Are you sure?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This
+                                      will permanently delete the user
+                                      account and all associated data.
+                                    </AlertDialogDescription>
+                                    <div className="flex items-center justify-end gap-2 mt-4">
+                                      <AlertDialogCancel data-testid="button-cancel-delete">
+                                        Cancel
+                                      </AlertDialogCancel>
+                                      <Button
+                                        variant="destructive"
+                                        className="bg-red-600 hover:bg-red-700"
+                                        onClick={() => {
+                                          if (userToDelete) {
+                                            deleteUserMutation.mutate(userToDelete);
+                                          }
+                                        }}
+                                        disabled={deleteUserMutation.isPending}
+                                        data-testid="button-confirm-delete"
+                                      >
+                                        {deleteUserMutation.isPending ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Deleting...
+                                          </>
+                                        ) : (
+                                          "Delete User"
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </>
+                            )}
+                          </div>
                           <div className="space-y-2">
                             <p className="text-sm font-medium">
                               Team Assignment

@@ -343,7 +343,7 @@ export default function ActivityPage() {
                             // Match Bible verses - prioritize comma-separated chapters, then ranges, then single chapters/verses
                             const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+(?:\d+(?:\s*,\s*\d+)+|\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*)\b/gi;
 
-                            content = content.replace(bibleVerseRegex, (match) => {
+                            content = content.replace(bibleVerseRegex, (match: string) => {
                               const bookMap: { [key: string]: string } = {
                                 'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
                                 'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
@@ -370,10 +370,10 @@ export default function ActivityPage() {
 
                                 // Check for comma-separated chapters: "30, 60, 90, 120"
                                 if (reference.includes(',') && !reference.includes(':')) {
-                                  const chapters = reference.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
+                                  const chapters = reference.split(',').map((ch: string) => ch.trim()).filter((ch: string) => /^\d+$/.test(ch));
 
                                   if (chapters.length > 1) {
-                                    const links = chapters.map(chapter => {
+                                    const links = chapters.map((chapter: string) => {
                                       const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
                                       return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
                                     });
@@ -492,7 +492,7 @@ export default function ActivityPage() {
                                 // Match Bible verses - prioritize comma-separated chapters, then ranges, then single chapters/verses
                                 const bibleVerseRegex = /\b(?:(?:1|2|3)\s+)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|(?:1|2)\s*Samuel|(?:1|2)\s*Kings|(?:1|2)\s*Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+Songs?|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|(?:1|2)\s*Corinthians|Galatians?|Galation|Ephesians|Philippians|Colossians|(?:1|2)\s*Thessalonians|(?:1|2)\s*Timothy|Titus|Philemon|Hebrews|James|(?:1|2)\s*Peter|(?:1|2|3)\s*John|Jude|Revelation)\s+(?:\d+(?:\s*,\s*\d+)+|\d+(?:-\d+)?(?:\s*:\s*(?:Verses?\s+)?\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)?)*)\b/gi;
 
-                                content = content.replace(bibleVerseRegex, (match) => {
+                                content = content.replace(bibleVerseRegex, (match: string) => {
                                   const bookMap: { [key: string]: string } = {
                                     'Genesis': 'GEN', 'Exodus': 'EXO', 'Leviticus': 'LEV', 'Numbers': 'NUM', 'Deuteronomy': 'DEU',
                                     'Joshua': 'JOS', 'Judges': 'JDG', 'Ruth': 'RUT', '1 Samuel': '1SA', '2 Samuel': '2SA',
@@ -519,10 +519,10 @@ export default function ActivityPage() {
 
                                     // Check for comma-separated chapters: "30, 60, 90, 120"
                                     if (reference.includes(',') && !reference.includes(':')) {
-                                      const chapters = reference.split(',').map(ch => ch.trim()).filter(ch => /^\d+$/.test(ch));
+                                      const chapters = reference.split(',').map((ch: string) => ch.trim()).filter((ch: string) => /^\d+$/.test(ch));
 
                                       if (chapters.length > 1) {
-                                        const links = chapters.map(chapter => {
+                                        const links = chapters.map((chapter: string) => {
                                           const url = `https://www.bible.com/bible/111/${bookAbbr}.${chapter}.NIV`;
                                           return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: underline;">${chapter}</a>`;
                                         });
