@@ -1523,8 +1523,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         {visibleOrganizations?.map((organization, index) => (
                           <Card key={organization.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
+                              <div className="space-y-2">
+                                <div>
                                   {editingOrganization?.id ===
                                   organization.id ? (
                                     <form
@@ -1667,7 +1667,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 justify-end">
                                   {editingOrganization?.id !==
                                     organization.id && (
                                     <Button
@@ -1906,8 +1906,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         {(showInactiveGroups ? sortedGroups : sortedGroups.filter(g => g.status === 1))?.map((group, index) => (
                           <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
+                              <div className="space-y-2">
+                                <div>
                                   {editingGroup?.id === group.id ? (
                                     <form
                                       onSubmit={(e) => {
@@ -2244,7 +2244,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 justify-end">
                                   {editingGroup?.id !== group.id && (
                                     <Button
                                       variant="outline"
@@ -2801,7 +2801,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </>
                               )}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 justify-end">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -3402,7 +3402,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   </>
                                 )}
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 justify-end">
                                 {editingUser?.id !== user.id && (
                                   <>
                                     <Button
