@@ -3093,6 +3093,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           data: {
                                             preferredName: formData.get('preferredName') as string,
                                             email: formData.get('email') as string,
+                                            phoneNumber: formData.get('phoneNumber') as string || null,
                                             status: ((statusValue) => {
                                               const parsed = statusValue
                                                 ? parseInt(statusValue)
@@ -3132,6 +3133,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           name="email"
                                           defaultValue={user.email}
                                           type="email"
+                                          className="text-sm"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium mb-1 block">Phone Number</Label>
+                                        <Input
+                                          name="phoneNumber"
+                                          defaultValue={user.phoneNumber || ""}
+                                          type="tel"
+                                          placeholder="Enter phone number"
                                           className="text-sm"
                                         />
                                       </div>
@@ -3315,6 +3326,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     <CardDescription>
                                       {user.email}
                                     </CardDescription>
+                                    <div className="mt-1 text-sm text-muted-foreground">
+                                      Phone: {user.phoneNumber || 'Not provided'}
+                                    </div>
                                     <div className="mt-1 text-sm text-muted-foreground">
                                       Date Joined:{" "}
                                       {format(new Date(user.createdAt!), "PPP")}
