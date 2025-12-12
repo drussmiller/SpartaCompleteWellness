@@ -1667,34 +1667,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex gap-2 justify-end">
-                                  {editingOrganization?.id !==
-                                    organization.id && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        setEditingOrganization(organization)
-                                      }
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() =>
-                                      deleteOrganizationMutation.mutate(
-                                        organization.id,
-                                      )
-                                    }
-                                    disabled={
-                                      deleteOrganizationMutation.isPending
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
                               </div>
                             </CardHeader>
                             <CardContent>
@@ -1704,6 +1676,34 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   (g) => g.organizationId === organization.id,
                                 ).length || 0}
                               </p>
+                              <div className="flex gap-2 justify-end mt-4">
+                                {editingOrganization?.id !==
+                                  organization.id && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingOrganization(organization)
+                                    }
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() =>
+                                    deleteOrganizationMutation.mutate(
+                                      organization.id,
+                                    )
+                                  }
+                                  disabled={
+                                    deleteOrganizationMutation.isPending
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </CardContent>
                           </Card>
                         ))}
