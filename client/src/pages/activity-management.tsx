@@ -556,8 +556,8 @@ export default function ActivityManagementPage() {
                             });
                           } else {
                             // Fallback: try splitting by newlines if no paragraph structure
-                            const textContent = tempDiv.textContent || tempDiv.innerText || '';
-                            lines = textContent.split('\n').filter(line => line.trim().length > 0);
+                            const textContent = doc.body.textContent || doc.body.innerText || '';
+                            lines = textContent.split('\n').filter((line: string) => line.trim().length > 0);
                           }
 
                           console.log(`Processing BibleVerses.Doc with ${lines.length} lines:`, lines);
