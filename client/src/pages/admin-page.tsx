@@ -3405,7 +3405,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <div className="flex gap-2 justify-end mt-4">
+                          <div className="flex gap-2 justify-end -mt-2">
                             {editingUser?.id !== user.id && (
                               <>
                                 <Button
