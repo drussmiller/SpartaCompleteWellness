@@ -1201,10 +1201,10 @@ export function CreatePostDialog({
                                     const file = e.target.files?.[0];
                                     if (file) {
                                       // Apply the same file size limit as memory verse videos
-                                      if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                                      if (file.size > 500 * 1024 * 1024) { // 500MB limit
                                         toast({
                                           title: "Error",
-                                          description: "Video file is too large. Maximum size is 100MB.",
+                                          description: "Video file is too large. Maximum size is 500MB.",
                                           variant: "destructive",
                                         });
                                         return;
