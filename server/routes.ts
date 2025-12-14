@@ -77,7 +77,7 @@ import { uploadSessionManager } from "./upload-sessions";
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit for video uploads
+    fileSize: 500 * 1024 * 1024, // 500MB limit for video uploads
     fieldSize: 25 * 1024 * 1024, // 25MB per field
   },
   fileFilter: (req, file, cb) => {
