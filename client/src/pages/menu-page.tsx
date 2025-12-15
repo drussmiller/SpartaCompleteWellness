@@ -2,13 +2,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings, Trophy, Heart, Key, QrCode, Users, MessageSquare } from "lucide-react";
+import { Menu, Bell, Settings, Trophy, Heart, Key, QrCode, Users, MessageSquare, Shield } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
 import { LeaderboardPage } from "./leaderboard-page";
 import { SupportSpartaPage } from "./support-sparta-page";
 import { FeedbackPage } from "./feedback-page";
+import { PrivacyPolicyPage } from "./privacy-policy-page";
 import InviteCodePage from "./invite-code-page";
 import { NotificationSettings } from "@/components/notification-settings";
 import { WelcomePage } from "./welcome-page";
@@ -25,6 +26,7 @@ export default function MenuPage() {
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [supportSpartaOpen, setSupportSpartaOpen] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
@@ -130,6 +132,19 @@ export default function MenuPage() {
             </SheetTrigger>
             <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
               {supportSpartaOpen && <SupportSpartaPage onClose={() => setSupportSpartaOpen(false)} />}
+            </SheetContent>
+          </Sheet>
+
+          {/* Privacy Policy */}
+          <Sheet open={privacyPolicyOpen} onOpenChange={setPrivacyPolicyOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start" size="lg" data-testid="button-privacy-policy">
+                <Shield className="mr-2 h-5 w-5" />
+                Privacy Policy
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
+              {privacyPolicyOpen && <PrivacyPolicyPage onClose={() => setPrivacyPolicyOpen(false)} />}
             </SheetContent>
           </Sheet>
 
