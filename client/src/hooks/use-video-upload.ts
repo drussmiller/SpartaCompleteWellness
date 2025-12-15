@@ -30,7 +30,7 @@ export interface UseVideoUploadOptions {
 
 export function useVideoUpload(options: UseVideoUploadOptions = {}) {
   const {
-    maxSizeMB = 100,
+    maxSizeMB = 500,
     onProgress,
     onSuccess,
     onError,
