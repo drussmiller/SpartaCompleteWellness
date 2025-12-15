@@ -1,8 +1,8 @@
 ================================================================================
-TEAM FITNESS TRACKER - APP STORE SUBMISSION
+SPARTA COMPLETE WELLNESS - APP STORE SUBMISSION
 ================================================================================
 
-APP NAME: Team Fitness Tracker
+APP NAME: Spart Complete Wellness
 
 SUBTITLE: Track Fitness Goals Together
 
@@ -66,12 +66,22 @@ Secondary: Social Networking
 --------------------------------------------------------------------------------
 PRIVACY POLICY URL
 --------------------------------------------------------------------------------
-[Insert your privacy policy URL here]
+https://drussmiller.github.io/sparta-public-files/privacy-policy.html
 
 --------------------------------------------------------------------------------
 SUPPORT URL
 --------------------------------------------------------------------------------
 [Insert your support page URL here]
+
+NOTE: App stores require an actual webpage URL (not just an email address).
+Since you have email-based support, create a simple webpage that displays your
+support email address. Options:
+  - Add a support page to your GitHub Pages (e.g., https://drussmiller.github.io/sparta-public-files/support.html)
+  - Create a /support route in your app
+  - Use a free service like Google Sites or Carrd.co
+
+Example content for the support page:
+  "For questions, feedback, or support, please email us at: [your email]"
 
 --------------------------------------------------------------------------------
 MARKETING URL
