@@ -3002,19 +3002,60 @@ export const registerRoutes = async (
         if (userIds.length > 0) {
           // Get all posts with media to delete files from Object Storage
           const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
-          const mediaUrls = userPosts
-            .filter(p => p.mediaUrl)
-            .map(p => p.mediaUrl as string);
+          const postsWithMedia = userPosts.filter(p => p.mediaUrl);
+          
+          const objectStorage = new ObjectStorageClient();
 
-          // Delete media files from Object Storage
-          for (const mediaUrl of mediaUrls) {
+          // Delete media files with proper HLS and thumbnail handling
+          for (const post of postsWithMedia) {
+            const mediaUrl = post.mediaUrl as string;
             try {
-              await spartaStorage.deleteFile(mediaUrl);
-              logger.info(`Deleted media file: ${mediaUrl}`);
+              if (mediaUrl.includes('/api/hls/')) {
+                const hlsMatch = mediaUrl.match(/\/api\/hls\/([^/]+)\//);
+                if (hlsMatch) {
+                  const baseFilename = hlsMatch[1];
+                  const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+                  try {
+                    const listResult = await objectStorage.list({ prefix: hlsPrefix });
+                    const files = listResult.value || [];
+                    for (const fileItem of files) {
+                      const fileKey = fileItem.key || fileItem.name;
+                      try { await spartaObjectStorage.deleteFile(fileKey); } catch (err) {}
+                    }
+                  } catch (err) {}
+                  try { await spartaObjectStorage.deleteFile(`shared/uploads/${baseFilename}-hls-source.jpg`); } catch (err) {}
+                }
+              } else {
+                await spartaStorage.deleteFile(mediaUrl);
+                if (post.is_video) {
+                  let filename = '';
+                  if (mediaUrl.includes('shared/uploads/')) {
+                    filename = mediaUrl.split('shared/uploads/')[1]?.split('?')[0] || '';
+                  } else if (mediaUrl.includes('/api/serve-file')) {
+                    const match = mediaUrl.match(/filename=([^&]+)/);
+                    filename = match ? match[1] : '';
+                  } else {
+                    filename = mediaUrl.split('/').pop()?.split('?')[0] || '';
+                  }
+                  if (filename) {
+                    let baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '').replace(/^shared\/uploads\//, '');
+                    const thumbnailVariations = [
+                      `shared/uploads/${baseFilename}.poster.jpg`,
+                      `shared/uploads/${baseFilename}.jpg`,
+                      `shared/uploads/${baseFilename}.jpeg`,
+                      `shared/uploads/thumb-${baseFilename}.jpg`,
+                    ];
+                    for (const thumbnailKey of thumbnailVariations) {
+                      try { await spartaObjectStorage.deleteFile(thumbnailKey); } catch (err) {}
+                    }
+                  }
+                }
+              }
             } catch (err) {
               logger.error(`Failed to delete media file ${mediaUrl}:`, err);
             }
           }
+          logger.info(`Deleted media files for team ${teamId}`);
 
           // Get all messages sent or received by these users
           const userMessages = await tx.select().from(messages).where(
@@ -3204,15 +3245,90 @@ export const registerRoutes = async (
             if (userIds.length > 0) {
               // Get all posts with media to delete files from Object Storage
               const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
-              const mediaUrls = userPosts
-                .filter(p => p.mediaUrl)
-                .map(p => p.mediaUrl as string);
+              const postsWithMedia = userPosts.filter(p => p.mediaUrl);
+              
+              const objectStorage = new ObjectStorageClient();
 
-              // Delete media files from Object Storage
-              for (const mediaUrl of mediaUrls) {
+              // Delete media files from Object Storage with proper HLS and thumbnail handling
+              for (const post of postsWithMedia) {
+                const mediaUrl = post.mediaUrl as string;
                 try {
-                  await spartaStorage.deleteFile(mediaUrl);
-                  logger.info(`Deleted media file: ${mediaUrl}`);
+                  // Check if this is an HLS video
+                  if (mediaUrl.includes('/api/hls/')) {
+                    // Extract base filename from HLS URL: /api/hls/{baseFilename}/playlist.m3u8
+                    const hlsMatch = mediaUrl.match(/\/api\/hls\/([^/]+)\//);
+                    if (hlsMatch) {
+                      const baseFilename = hlsMatch[1];
+                      logger.info(`Deleting HLS video for org deletion: ${baseFilename}`);
+                      
+                      // Delete all files in the HLS directory
+                      const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+                      try {
+                        const listResult = await objectStorage.list({ prefix: hlsPrefix });
+                        const files = listResult.value || [];
+                        logger.info(`Found ${files.length} HLS files to delete for ${baseFilename}`);
+                        
+                        for (const fileItem of files) {
+                          const fileKey = fileItem.key || fileItem.name;
+                          try {
+                            await spartaObjectStorage.deleteFile(fileKey);
+                          } catch (err) {
+                            logger.error(`Failed to delete HLS file ${fileKey}: ${err}`);
+                          }
+                        }
+                      } catch (err) {
+                        logger.error(`Failed to list HLS files for ${baseFilename}: ${err}`);
+                      }
+                      
+                      // Delete the HLS source thumbnail
+                      const hlsSourceThumbnail = `shared/uploads/${baseFilename}-hls-source.jpg`;
+                      try {
+                        await spartaObjectStorage.deleteFile(hlsSourceThumbnail);
+                        logger.info(`Deleted HLS source thumbnail: ${hlsSourceThumbnail}`);
+                      } catch (err) {
+                        // Thumbnail may not exist, that's okay
+                      }
+                    }
+                  } else {
+                    // Regular video or image
+                    await spartaStorage.deleteFile(mediaUrl);
+                    logger.info(`Deleted media file: ${mediaUrl}`);
+                    
+                    // If it's a video, delete the thumbnail too
+                    if (post.is_video) {
+                      let filename = '';
+                      if (mediaUrl.includes('shared/uploads/')) {
+                        filename = mediaUrl.split('shared/uploads/')[1]?.split('?')[0] || '';
+                      } else if (mediaUrl.includes('/api/serve-file')) {
+                        const match = mediaUrl.match(/filename=([^&]+)/);
+                        filename = match ? match[1] : '';
+                      } else {
+                        filename = mediaUrl.split('/').pop()?.split('?')[0] || '';
+                      }
+                      
+                      if (filename) {
+                        let baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '');
+                        baseFilename = baseFilename.replace(/^shared\/uploads\//, '');
+                        
+                        // Try multiple thumbnail naming conventions
+                        const thumbnailVariations = [
+                          `shared/uploads/${baseFilename}.poster.jpg`,
+                          `shared/uploads/${baseFilename}.jpg`,
+                          `shared/uploads/${baseFilename}.jpeg`,
+                          `shared/uploads/thumb-${baseFilename}.jpg`,
+                        ];
+                        
+                        for (const thumbnailKey of thumbnailVariations) {
+                          try {
+                            await spartaObjectStorage.deleteFile(thumbnailKey);
+                            logger.info(`Deleted video thumbnail: ${thumbnailKey}`);
+                          } catch (err) {
+                            // Thumbnail may not exist with this naming, continue
+                          }
+                        }
+                      }
+                    }
+                  }
                 } catch (err) {
                   logger.error(`Failed to delete media file ${mediaUrl}:`, err);
                 }
@@ -3500,19 +3616,60 @@ export const registerRoutes = async (
           if (userIds.length > 0) {
             // Get all posts with media to delete files from Object Storage
             const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
-            const mediaUrls = userPosts
-              .filter(p => p.mediaUrl)
-              .map(p => p.mediaUrl as string);
+            const postsWithMedia = userPosts.filter(p => p.mediaUrl);
+            
+            const objectStorage = new ObjectStorageClient();
 
-            // Delete media files from Object Storage
-            for (const mediaUrl of mediaUrls) {
+            // Delete media files with proper HLS and thumbnail handling
+            for (const post of postsWithMedia) {
+              const mediaUrl = post.mediaUrl as string;
               try {
-                await spartaStorage.deleteFile(mediaUrl);
-                logger.info(`Deleted media file: ${mediaUrl}`);
+                if (mediaUrl.includes('/api/hls/')) {
+                  const hlsMatch = mediaUrl.match(/\/api\/hls\/([^/]+)\//);
+                  if (hlsMatch) {
+                    const baseFilename = hlsMatch[1];
+                    const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
+                    try {
+                      const listResult = await objectStorage.list({ prefix: hlsPrefix });
+                      const files = listResult.value || [];
+                      for (const fileItem of files) {
+                        const fileKey = fileItem.key || fileItem.name;
+                        try { await spartaObjectStorage.deleteFile(fileKey); } catch (err) {}
+                      }
+                    } catch (err) {}
+                    try { await spartaObjectStorage.deleteFile(`shared/uploads/${baseFilename}-hls-source.jpg`); } catch (err) {}
+                  }
+                } else {
+                  await spartaStorage.deleteFile(mediaUrl);
+                  if (post.is_video) {
+                    let filename = '';
+                    if (mediaUrl.includes('shared/uploads/')) {
+                      filename = mediaUrl.split('shared/uploads/')[1]?.split('?')[0] || '';
+                    } else if (mediaUrl.includes('/api/serve-file')) {
+                      const match = mediaUrl.match(/filename=([^&]+)/);
+                      filename = match ? match[1] : '';
+                    } else {
+                      filename = mediaUrl.split('/').pop()?.split('?')[0] || '';
+                    }
+                    if (filename) {
+                      let baseFilename = filename.replace(/\.(mp4|mov|avi|mkv|webm|mpg|mpeg)$/i, '').replace(/^shared\/uploads\//, '');
+                      const thumbnailVariations = [
+                        `shared/uploads/${baseFilename}.poster.jpg`,
+                        `shared/uploads/${baseFilename}.jpg`,
+                        `shared/uploads/${baseFilename}.jpeg`,
+                        `shared/uploads/thumb-${baseFilename}.jpg`,
+                      ];
+                      for (const thumbnailKey of thumbnailVariations) {
+                        try { await spartaObjectStorage.deleteFile(thumbnailKey); } catch (err) {}
+                      }
+                    }
+                  }
+                }
               } catch (err) {
                 logger.error(`Failed to delete media file ${mediaUrl}:`, err);
               }
             }
+            logger.info(`Deleted media files for group ${groupId}`);
 
             // Get all messages sent or received by these users
             const userMessages = await tx.select().from(messages).where(
