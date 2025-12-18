@@ -335,54 +335,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       <div
         className="p-6 space-y-6 pb-24 overflow-y-auto"
       >
-        {/* Daily Notifications toggle */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-medium">Daily Reminders</h3>
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="daily-notifications"
-              className="text-lg text-muted-foreground"
-            >
-              Enable daily notifications
-            </Label>
-            <Switch
-              id="daily-notifications"
-              checked={dailyNotificationsEnabled}
-              onCheckedChange={handleDailyNotificationsChange}
-            />
-          </div>
-          <p className="text-base text-muted-foreground mt-1">
-            {dailyNotificationsEnabled
-              ? "Daily reminder notifications are enabled. You will receive notifications if you miss posts."
-              : "Daily reminder notifications are disabled. You won't receive any daily reminder notifications."}
-          </p>
-        </div>
-
-        {/* SMS Notifications section */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-medium">SMS Notifications</h3>
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="sms-enabled"
-              className="text-lg text-muted-foreground"
-            >
-              Enable SMS notifications
-            </Label>
-            <Switch
-              id="sms-enabled"
-              checked={smsEnabled}
-              onCheckedChange={handleSmsEnabledChange}
-              disabled={!user?.phoneNumber}
-              data-testid="toggle-sms-enabled"
-            />
-          </div>
-          <p className="text-base text-muted-foreground mt-1">
-            {smsEnabled
-              ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
-              : "SMS notifications are disabled. Enable to receive text messages for daily reminders."}
-          </p>
-        </div>
-
         {/* Confirmation Messages toggle */}
         <div className="space-y-2">
           <h3 className="text-lg font-medium">Confirmation Messages</h3>
@@ -426,6 +378,58 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             {notificationsEnabled
               ? "Achievement notifications are enabled. You will see popups when you earn achievements."
               : "Achievement notifications are disabled. You will still earn achievements but will not see popups."}
+          </p>
+        </div>
+
+        {/* Daily Notifications toggle */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Daily Reminders</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="daily-notifications"
+              className="text-lg text-muted-foreground"
+            >
+              Enable daily notifications
+            </Label>
+            <Switch
+              id="daily-notifications"
+              checked={dailyNotificationsEnabled}
+              onCheckedChange={handleDailyNotificationsChange}
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {dailyNotificationsEnabled
+              ? "Daily reminder notifications are enabled. You will receive notifications if you miss posts."
+              : "Daily reminder notifications are disabled. You won't receive any daily reminder notifications."}
+          </p>
+        </div>
+
+        {/* SMS Notifications section */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">SMS Notifications</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="sms-enabled"
+              className="text-lg text-muted-foreground"
+            >
+              Enable SMS notifications
+            </Label>
+            <Switch
+              id="sms-enabled"
+              checked={smsEnabled}
+              onCheckedChange={handleSmsEnabledChange}
+              disabled={!user?.phoneNumber}
+              data-testid="toggle-sms-enabled"
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {smsEnabled
+              ? dailyNotificationsEnabled
+                ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
+                : "SMS notifications are enabled. You will receive text messages for important alerts."
+              : dailyNotificationsEnabled
+                ? "SMS notifications are disabled. Enable to receive text messages for daily reminders."
+                : "SMS notifications are disabled. Enable to receive text messages for important alerts."}
           </p>
         </div>
 

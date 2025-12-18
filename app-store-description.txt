@@ -1,0 +1,99 @@
+================================================================================
+SPARTA COMPLETE WELLNESS - APP STORE SUBMISSION
+================================================================================
+
+APP NAME: Spart Complete Wellness
+
+SUBTITLE: Track Fitness Goals Together
+
+--------------------------------------------------------------------------------
+SHORT DESCRIPTION (80 characters max)
+--------------------------------------------------------------------------------
+Team-based fitness tracking with real-time messaging and group accountability.
+
+--------------------------------------------------------------------------------
+FULL DESCRIPTION
+--------------------------------------------------------------------------------
+Team Fitness Tracker is your ultimate companion for achieving fitness goals together. Whether you're part of a workplace wellness program, fitness group, or faith-based community, our app brings teams together to support each other on their health journey.
+
+KEY FEATURES:
+
+Team-Based Organization
+Create and manage your fitness community with our flexible hierarchy system. Organize members into Organizations, Groups, and Teams to match your real-world structure.
+
+Personalized Progress Tracking
+Track your fitness journey with personalized weekly and daily progress based on your individual program start date. See exactly where you are in your fitness program and celebrate milestones along the way.
+
+Share Your Journey
+Post updates with text, photos, and videos to share your progress, workouts, and achievements with your team. Inspire others and stay motivated through community support.
+
+Real-Time Messaging
+Stay connected with instant messaging. Share encouragement, tips, and support with teammates in real-time. Attach photos and files to your messages for richer communication.
+
+Prayer Requests
+Share and support each other through a dedicated prayer request feature, perfect for faith-based fitness communities seeking spiritual growth alongside physical wellness.
+
+Comprehensive Admin Tools
+Team leaders and administrators have full control with powerful management features:
+- Manage organizations, groups, and teams
+- Track member progress and activity
+- Set program start dates for each member
+- Monitor team engagement and participation
+
+Instant Notifications
+Never miss an update with real-time notifications. Stay informed about new posts, messages, and team activity as it happens.
+
+--------------------------------------------------------------------------------
+WHAT'S NEW (for updates)
+--------------------------------------------------------------------------------
+- Personalized progress tracking based on individual program start dates
+- Enhanced media sharing with automatic image optimization
+- Improved real-time messaging with file attachments
+- Prayer request sharing across organizations
+- Performance improvements and bug fixes
+
+--------------------------------------------------------------------------------
+KEYWORDS
+--------------------------------------------------------------------------------
+fitness, tracker, team, group, workout, health, wellness, accountability, goals, exercise, community, messaging, progress, organization, prayer
+
+--------------------------------------------------------------------------------
+CATEGORIES
+--------------------------------------------------------------------------------
+Primary: Health & Fitness
+Secondary: Social Networking
+
+--------------------------------------------------------------------------------
+PRIVACY POLICY URL
+--------------------------------------------------------------------------------
+https://drussmiller.github.io/sparta-public-files/privacy-policy.html
+
+--------------------------------------------------------------------------------
+SUPPORT URL
+--------------------------------------------------------------------------------
+[Insert your support page URL here]
+
+--------------------------------------------------------------------------------
+MARKETING URL
+--------------------------------------------------------------------------------
+[Insert your marketing website URL here]
+
+--------------------------------------------------------------------------------
+AGE RATING
+--------------------------------------------------------------------------------
+13+ (No objectionable content)
+
+--------------------------------------------------------------------------------
+PRICING
+--------------------------------------------------------------------------------
+Free
+
+--------------------------------------------------------------------------------
+CONTACT INFORMATION
+--------------------------------------------------------------------------------
+Developer Name: [Your Company/Developer Name]
+Email: spartacompletewellnessapp@gmail.com
+Phone: [Your contact phone - optional]
+Address: [Your business address]
+
+================================================================================

@@ -169,15 +169,16 @@ export async function checkNotifications() {
 
               notificationsCreated++;
               logger.info(`[SCHEDULER] ✅ Created notification for ${user.username} (ID: ${user.id})`);
-            }
 
-            if (user.smsEnabled && user.phoneNumber) {
-              try {
-                await smsService.sendSMSToUser(user.phoneNumber, message);
-                smsNotificationsSent++;
-                logger.info(`[SCHEDULER] 📱 Sent SMS to ${user.username} at ${user.phoneNumber}`);
-              } catch (smsError) {
-                logger.error(`[SCHEDULER] Failed to send SMS to ${user.username}:`, smsError);
+              // Only send SMS for daily reminders if daily notifications are also enabled
+              if (user.smsEnabled && user.phoneNumber) {
+                try {
+                  await smsService.sendSMSToUser(user.phoneNumber, message);
+                  smsNotificationsSent++;
+                  logger.info(`[SCHEDULER] 📱 Sent SMS to ${user.username} at ${user.phoneNumber}`);
+                } catch (smsError) {
+                  logger.error(`[SCHEDULER] Failed to send SMS to ${user.username}:`, smsError);
+                }
               }
             }
           }
