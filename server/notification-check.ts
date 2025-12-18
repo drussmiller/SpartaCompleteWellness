@@ -3,6 +3,7 @@ import { users, posts, notifications, systemState } from "@shared/schema";
 import { eq, gte, lt, and, isNull, sql } from "drizzle-orm";
 import { logger } from "./logger";
 import { smsService } from "./sms-service";
+import { emailService } from "./email-service";
 
 export async function checkNotifications() {
   try {
@@ -40,6 +41,7 @@ export async function checkNotifications() {
 
     let notificationsCreated = 0;
     let smsNotificationsSent = 0;
+    let emailNotificationsSent = 0;
 
     for (const user of allUsers) {
       try {
@@ -170,7 +172,18 @@ export async function checkNotifications() {
               notificationsCreated++;
               logger.info(`[SCHEDULER] ✅ Created notification for ${user.username} (ID: ${user.id})`);
 
-              // Only send SMS for daily reminders if daily notifications are also enabled
+              // Send email for daily reminders (always when daily notifications are enabled)
+              if (user.email) {
+                try {
+                  await emailService.sendDailyReminderEmail(user.email, user.username, message);
+                  emailNotificationsSent++;
+                  logger.info(`[SCHEDULER] 📧 Sent email to ${user.username} at ${user.email}`);
+                } catch (emailError) {
+                  logger.error(`[SCHEDULER] Failed to send email to ${user.username}:`, emailError);
+                }
+              }
+
+              // Only send SMS for daily reminders if SMS is also enabled
               if (user.smsEnabled && user.phoneNumber) {
                 try {
                   await smsService.sendSMSToUser(user.phoneNumber, message);
@@ -193,6 +206,7 @@ export async function checkNotifications() {
       timestamp: now.toISOString(),
       utcTime: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
       notificationsCreated,
+      emailNotificationsSent,
       smsNotificationsSent,
       usersChecked: allUsers.length,
     };
@@ -213,6 +227,7 @@ export async function checkNotifications() {
 
     logger.info(`[SCHEDULER] ✅ Notification check completed successfully`);
     logger.info(`[SCHEDULER] Created ${notificationsCreated} in-app notifications`);
+    logger.info(`[SCHEDULER] Sent ${emailNotificationsSent} email notifications`);
     logger.info(`[SCHEDULER] Sent ${smsNotificationsSent} SMS notifications`);
 
     return summary;
