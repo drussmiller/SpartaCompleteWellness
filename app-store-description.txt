@@ -73,16 +73,6 @@ SUPPORT URL
 --------------------------------------------------------------------------------
 [Insert your support page URL here]
 
-NOTE: App stores require an actual webpage URL (not just an email address).
-Since you have email-based support, create a simple webpage that displays your
-support email address. Options:
-  - Add a support page to your GitHub Pages (e.g., https://drussmiller.github.io/sparta-public-files/support.html)
-  - Create a /support route in your app
-  - Use a free service like Google Sites or Carrd.co
-
-Example content for the support page:
-  "For questions, feedback, or support, please email us at: [your email]"
-
 --------------------------------------------------------------------------------
 MARKETING URL
 --------------------------------------------------------------------------------
@@ -91,18 +81,18 @@ MARKETING URL
 --------------------------------------------------------------------------------
 AGE RATING
 --------------------------------------------------------------------------------
-4+ (No objectionable content)
+13+ (No objectionable content)
 
 --------------------------------------------------------------------------------
 PRICING
 --------------------------------------------------------------------------------
-Free (or specify your pricing model)
+Free
 
 --------------------------------------------------------------------------------
 CONTACT INFORMATION
 --------------------------------------------------------------------------------
 Developer Name: [Your Company/Developer Name]
-Email: [Your support email]
+Email: spartacompletewellnessapp@gmail.com
 Phone: [Your contact phone - optional]
 Address: [Your business address]
 

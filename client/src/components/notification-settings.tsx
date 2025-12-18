@@ -335,6 +335,52 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       <div
         className="p-6 space-y-6 pb-24 overflow-y-auto"
       >
+        {/* Confirmation Messages toggle */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Confirmation Messages</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="confirmation-messages"
+              className="text-lg text-muted-foreground"
+            >
+              Show success messages
+            </Label>
+            <Switch
+              id="confirmation-messages"
+              checked={confirmationMessagesEnabled}
+              onCheckedChange={handleConfirmationMessagesChange}
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {confirmationMessagesEnabled
+              ? "You will see confirmation messages when you complete actions (e.g., 'Message sent successfully')."
+              : "Confirmation messages are disabled. Actions will complete silently without pop-up messages."}
+          </p>
+        </div>
+
+        {/* Achievement notification toggle */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Achievement Notifications</h3>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="achievement-notifications"
+              className="text-lg text-muted-foreground"
+            >
+              Show achievement popups
+            </Label>
+            <Switch
+              id="achievement-notifications"
+              checked={notificationsEnabled}
+              onCheckedChange={setNotificationsEnabled}
+            />
+          </div>
+          <p className="text-base text-muted-foreground mt-1">
+            {notificationsEnabled
+              ? "Achievement notifications are enabled. You will see popups when you earn achievements."
+              : "Achievement notifications are disabled. You will still earn achievements but will not see popups."}
+          </p>
+        </div>
+
         {/* Daily Notifications toggle */}
         <div className="space-y-2">
           <h3 className="text-lg font-medium">Daily Reminders</h3>
@@ -380,52 +426,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
             {smsEnabled
               ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
               : "SMS notifications are disabled. Enable to receive text messages for daily reminders."}
-          </p>
-        </div>
-
-        {/* Confirmation Messages toggle */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-medium">Confirmation Messages</h3>
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="confirmation-messages"
-              className="text-lg text-muted-foreground"
-            >
-              Show success messages
-            </Label>
-            <Switch
-              id="confirmation-messages"
-              checked={confirmationMessagesEnabled}
-              onCheckedChange={handleConfirmationMessagesChange}
-            />
-          </div>
-          <p className="text-base text-muted-foreground mt-1">
-            {confirmationMessagesEnabled
-              ? "You will see confirmation messages when you complete actions (e.g., 'Message sent successfully')."
-              : "Confirmation messages are disabled. Actions will complete silently without pop-up messages."}
-          </p>
-        </div>
-
-        {/* Achievement notification toggle */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-medium">Achievement Notifications</h3>
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="achievement-notifications"
-              className="text-lg text-muted-foreground"
-            >
-              Show achievement popups
-            </Label>
-            <Switch
-              id="achievement-notifications"
-              checked={notificationsEnabled}
-              onCheckedChange={setNotificationsEnabled}
-            />
-          </div>
-          <p className="text-base text-muted-foreground mt-1">
-            {notificationsEnabled
-              ? "Achievement notifications are enabled. You will see popups when you earn achievements."
-              : "Achievement notifications are disabled. You will still earn achievements but will not see popups."}
           </p>
         </div>
 
