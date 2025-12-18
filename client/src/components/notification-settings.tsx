@@ -424,8 +424,12 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           </div>
           <p className="text-base text-muted-foreground mt-1">
             {smsEnabled
-              ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
-              : "SMS notifications are disabled. Enable to receive text messages for daily reminders."}
+              ? dailyNotificationsEnabled
+                ? "SMS notifications are enabled. You will receive text messages for daily reminders and important alerts."
+                : "SMS notifications are enabled. You will receive text messages for important alerts."
+              : dailyNotificationsEnabled
+                ? "SMS notifications are disabled. Enable to receive text messages for daily reminders."
+                : "SMS notifications are disabled. Enable to receive text messages for important alerts."}
           </p>
         </div>
 
