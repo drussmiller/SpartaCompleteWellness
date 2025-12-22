@@ -450,7 +450,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="mr-2 scale-125"
+              className="mr-2 scale-125 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
             >
               <ChevronLeft className="h-8 w-8 scale-125" />
             </Button>
