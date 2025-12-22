@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings, Trophy, Heart, Key, QrCode, Users, MessageSquare, Shield } from "lucide-react";
+import { Menu, Bell, Settings, Trophy, Heart, QrCode, Users, MessageSquare, Shield } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
@@ -16,6 +16,7 @@ import { WelcomePage } from "./welcome-page";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQuery } from "@tanstack/react-query";
 
 export default function MenuPage() {
   const { user } = useAuth();
@@ -31,6 +32,24 @@ export default function MenuPage() {
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [location, setLocation] = useLocation();
+  
+  // Check if user has posted an introductory video
+  const { data: introVideoPosts = [] } = useQuery({
+    queryKey: ["/api/posts", "introductory_video", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const response = await fetch(`/api/posts?type=introductory_video&userId=${user.id}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.posts ?? []);
+    },
+    enabled: !!user,
+    staleTime: 30000,
+  });
+  
+  const hasPostedIntroVideo = introVideoPosts.length > 0;
 
   if (!user) return null;
 
@@ -161,13 +180,20 @@ export default function MenuPage() {
             </SheetContent>
           </Sheet>
 
-          {/* Invite Code - Hide for Group Admins, Team Leads, and users in teams */}
+          {/* Join a Team - Hide for Group Admins, Team Leads, and users in teams */}
           {!user.isGroupAdmin && !user.isTeamLead && !user.teamId && (
             <Sheet open={inviteCodeOpen} onOpenChange={setInviteCodeOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" className="w-full justify-start" size="lg" data-testid="button-invite-code">
-                  <Key className="mr-2 h-5 w-5" />
-                  Invite Code
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  size="lg" 
+                  data-testid="button-join-team"
+                  disabled={!hasPostedIntroVideo}
+                  title={!hasPostedIntroVideo ? "Post your intro video first" : ""}
+                >
+                  <Users className="mr-2 h-5 w-5" />
+                  Join a Team
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="p-0">
