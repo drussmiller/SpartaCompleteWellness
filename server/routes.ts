@@ -3973,11 +3973,12 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Team not found" });
       }
 
-      // Check if user is admin or group admin for this team's group
+      // Check if user is admin, group admin for this team's group, or team lead for this team
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+      const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.adminTeamId === teamId;
 
-      if (!isAdmin && !isGroupAdminForThisTeam) {
+      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4016,11 +4017,12 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Team not found" });
       }
 
-      // Check if user is admin or group admin for this team's group
+      // Check if user is admin, group admin for this team's group, or team lead for this team
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+      const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.adminTeamId === teamId;
 
-      if (!isAdmin && !isGroupAdminForThisTeam) {
+      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
