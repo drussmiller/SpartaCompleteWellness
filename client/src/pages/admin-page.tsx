@@ -10,6 +10,9 @@ import {
   Loader2,
   Edit,
   ChevronDown,
+  Building2,
+  Users,
+  UserPlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -132,6 +135,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all");
   const [userSearchQuery, setUserSearchQuery] = useState<string>("");
   const [showInactiveOrgs, setShowInactiveOrgs] = useState(false);
+  const [autonomousMode, setAutonomousMode] = useState(false);
   const [showInactiveGroups, setShowInactiveGroups] = useState(false);
   const [showInactiveTeams, setShowInactiveTeams] = useState(false);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
@@ -1435,7 +1439,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
-                        <div className="flex items-center space-x-2 mb-4">
+                        <div className="flex items-center space-x-2 mb-2">
                           <Checkbox
                             id="show-inactive-orgs"
                             checked={showInactiveOrgs}
@@ -1447,6 +1451,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Show inactive organizations
                           </Label>
                         </div>
+                        <div className="flex items-center space-x-2 mb-4">
+                          <Checkbox
+                            id="autonomous-mode"
+                            checked={autonomousMode}
+                            onCheckedChange={(checked) => setAutonomousMode(checked === true)}
+                            data-testid="checkbox-autonomous-mode"
+                          />
+                          <Label
+                            htmlFor="autonomous-mode"
+                          >
+                            Autonomous mode
+                          </Label>
+                        </div>
+                        
+                        {autonomousMode && (
+                          <AutonomousJoinPanel />
+                        )}
                         <Dialog open={createOrgDialogOpen} onOpenChange={setCreateOrgDialogOpen}>
                           <DialogTrigger asChild>
                             <Button
@@ -3928,5 +3949,344 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           <BottomNav />
         </div>
     </AppLayout>
+  );
+}
+
+function AutonomousJoinPanel() {
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newTeamName, setNewTeamName] = useState("");
+  const [showNewOrgInput, setShowNewOrgInput] = useState(false);
+  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
+  const [showNewTeamInput, setShowNewTeamInput] = useState(false);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const { data: organizations = [] } = useQuery<Organization[]>({
+    queryKey: ['/api/organizations'],
+  });
+
+  const { data: groups = [] } = useQuery<Group[]>({
+    queryKey: ['/api/groups', selectedOrgId],
+    queryFn: async () => {
+      if (!selectedOrgId) return [];
+      const res = await fetch(`/api/groups?organizationId=${selectedOrgId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch groups');
+      return res.json();
+    },
+    enabled: !!selectedOrgId,
+  });
+
+  const { data: teams = [] } = useQuery<Team[]>({
+    queryKey: ['/api/teams/by-group', selectedGroupId],
+    queryFn: async () => {
+      if (!selectedGroupId) return [];
+      const res = await fetch(`/api/teams/by-group/${selectedGroupId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch teams');
+      return res.json();
+    },
+    enabled: !!selectedGroupId,
+  });
+
+  const filteredOrganizations = organizations.filter(
+    org => !org.name.toLowerCase().includes('admin') && org.status === 1
+  );
+
+  const filteredGroups = groups.filter(
+    group => !group.name.toLowerCase().includes('admin') && group.status === 1
+  );
+
+  const filteredTeams = teams.filter(
+    team => !team.name.toLowerCase().includes('admin') && team.status === 1
+  );
+
+  const joinTeamMutation = useMutation({
+    mutationFn: async () => {
+      const payload: Record<string, unknown> = {};
+      
+      if (showNewOrgInput && newOrgName) {
+        payload.organizationName = newOrgName;
+      } else if (selectedOrgId) {
+        payload.organizationId = selectedOrgId;
+      }
+      
+      if (showNewGroupInput && newGroupName) {
+        payload.groupName = newGroupName;
+      } else if (selectedGroupId) {
+        payload.groupId = selectedGroupId;
+      }
+      
+      if (showNewTeamInput && newTeamName) {
+        payload.teamName = newTeamName;
+      } else if (selectedTeamId) {
+        payload.teamId = selectedTeamId;
+      }
+      
+      const res = await apiRequest("POST", "/api/self-service/join-team", payload);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to join team');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success!",
+        description: data.message || "You are now the Team Admin!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/teams'] });
+      setSelectedOrgId(null);
+      setSelectedGroupId(null);
+      setSelectedTeamId(null);
+      setNewOrgName("");
+      setNewGroupName("");
+      setNewTeamName("");
+      setShowNewOrgInput(false);
+      setShowNewGroupInput(false);
+      setShowNewTeamInput(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canSubmit = () => {
+    const hasOrg = selectedOrgId || (showNewOrgInput && newOrgName.trim());
+    const hasGroup = selectedGroupId || (showNewGroupInput && newGroupName.trim());
+    const hasTeam = selectedTeamId || (showNewTeamInput && newTeamName.trim());
+    return hasOrg && hasGroup && hasTeam;
+  };
+
+  const handleOrgChange = (value: string) => {
+    if (value === "add-new") {
+      setShowNewOrgInput(true);
+      setSelectedOrgId(null);
+    } else {
+      setShowNewOrgInput(false);
+      setNewOrgName("");
+      setSelectedOrgId(parseInt(value));
+    }
+    setSelectedGroupId(null);
+    setSelectedTeamId(null);
+    setShowNewGroupInput(false);
+    setShowNewTeamInput(false);
+  };
+
+  const handleGroupChange = (value: string) => {
+    if (value === "add-new") {
+      setShowNewGroupInput(true);
+      setSelectedGroupId(null);
+    } else {
+      setShowNewGroupInput(false);
+      setNewGroupName("");
+      setSelectedGroupId(parseInt(value));
+    }
+    setSelectedTeamId(null);
+    setShowNewTeamInput(false);
+  };
+
+  const handleTeamChange = (value: string) => {
+    if (value === "add-new") {
+      setShowNewTeamInput(true);
+      setSelectedTeamId(null);
+    } else {
+      setShowNewTeamInput(false);
+      setNewTeamName("");
+      setSelectedTeamId(parseInt(value));
+    }
+  };
+
+  return (
+    <Card className="mb-4 border-dashed border-2 border-primary/30 bg-primary/5">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <UserPlus className="h-5 w-5" />
+          Join a Team or Build Your Own
+        </CardTitle>
+        <CardDescription>
+          Select an existing team or create a new organization, group, and team
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Church or Organization
+            </Label>
+            {!showNewOrgInput ? (
+              <Select onValueChange={handleOrgChange} value={selectedOrgId?.toString() || ""}>
+                <SelectTrigger data-testid="select-organization-autonomous">
+                  <SelectValue placeholder="Select an organization..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredOrganizations.map((org) => (
+                    <SelectItem key={org.id} value={org.id.toString()} data-testid={`org-option-autonomous-${org.id}`}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="add-new" className="text-primary" data-testid="org-option-autonomous-add-new">
+                    <span className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add new organization...
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter organization name..."
+                  value={newOrgName}
+                  onChange={(e) => setNewOrgName(e.target.value)}
+                  data-testid="input-new-organization-autonomous"
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowNewOrgInput(false);
+                    setNewOrgName("");
+                  }}
+                  data-testid="button-cancel-new-org-autonomous"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Group
+            </Label>
+            {!showNewGroupInput ? (
+              <Select 
+                onValueChange={handleGroupChange} 
+                value={selectedGroupId?.toString() || ""}
+                disabled={!selectedOrgId && !showNewOrgInput}
+              >
+                <SelectTrigger data-testid="select-group-autonomous">
+                  <SelectValue placeholder={selectedOrgId || showNewOrgInput ? "Select a group..." : "Select organization first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id.toString()} data-testid={`group-option-autonomous-${group.id}`}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="add-new" className="text-primary" data-testid="group-option-autonomous-add-new">
+                    <span className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add new group...
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter group name..."
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  data-testid="input-new-group-autonomous"
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowNewGroupInput(false);
+                    setNewGroupName("");
+                  }}
+                  data-testid="button-cancel-new-group-autonomous"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team
+            </Label>
+            {!showNewTeamInput ? (
+              <Select 
+                onValueChange={handleTeamChange} 
+                value={selectedTeamId?.toString() || ""}
+                disabled={!selectedGroupId && !showNewGroupInput}
+              >
+                <SelectTrigger data-testid="select-team-autonomous">
+                  <SelectValue placeholder={selectedGroupId || showNewGroupInput ? "Select a team..." : "Select group first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredTeams.map((team) => (
+                    <SelectItem key={team.id} value={team.id.toString()} data-testid={`team-option-autonomous-${team.id}`}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="add-new" className="text-primary" data-testid="team-option-autonomous-add-new">
+                    <span className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add new team...
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter team name..."
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  data-testid="input-new-team-autonomous"
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowNewTeamInput(false);
+                    setNewTeamName("");
+                  }}
+                  data-testid="button-cancel-new-team-autonomous"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Button 
+          className="w-full" 
+          onClick={() => joinTeamMutation.mutate()}
+          disabled={!canSubmit() || joinTeamMutation.isPending}
+          data-testid="button-submit-join-team-autonomous"
+        >
+          {joinTeamMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <UserPlus className="mr-2 h-4 w-4" />
+          )}
+          Join Team as Admin
+        </Button>
+        
+        <p className="text-xs text-muted-foreground text-center">
+          You will become the Team Admin for the selected or newly created team.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
