@@ -2034,6 +2034,12 @@ export const registerRoutes = async (
           return res.status(400).json({ message: "Invalid post data format" });
         }
       }
+      
+      // Introductory video posts require a video upload - no text-only allowed
+      if (postData.type === 'introductory_video' && !uploadedFile && !postData.mediaUrl) {
+        logger.info("Rejecting intro video post without media");
+        return res.status(400).json({ message: "Intro video posts require a video upload" });
+      }
 
       // Calculate points based on post type
       let points = 0;
@@ -2686,6 +2692,7 @@ export const registerRoutes = async (
           userId: posts.userId,
           mediaUrl: posts.mediaUrl,
           thumbnailUrl: posts.thumbnailUrl,
+          type: posts.type,
         })
         .from(posts)
         .where(eq(posts.id, postId))
@@ -2699,6 +2706,11 @@ export const registerRoutes = async (
 
       if (post.userId !== req.user.id && !req.user.isAdmin) {
         return res.status(403).json({ message: "Not authorized to delete this post" });
+      }
+      
+      // Prevent users from deleting their intro video post (admins can still delete)
+      if (post.type === 'introductory_video' && !req.user.isAdmin) {
+        return res.status(403).json({ message: "You cannot delete your intro video post" });
       }
 
       // Delete associated media files

@@ -37,6 +37,24 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   const scannerRef = useRef<QrScanner | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { user } = useAuth();
+  
+  // Check if user has posted an introductory video
+  const { data: introVideoPosts = [] } = useQuery({
+    queryKey: ["/api/posts", "introductory_video", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const response = await fetch(`/api/posts?type=introductory_video&userId=${user.id}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.posts ?? []);
+    },
+    enabled: !!user,
+    staleTime: 30000,
+  });
+  
+  const hasPostedIntroVideo = introVideoPosts.length > 0;
 
   // If user is already a Group Admin, Team Lead, or in a team, redirect them
   useEffect(() => {
@@ -253,7 +271,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
           </CardContent>
         </Card>
         
-        <JoinOrBuildTeamPanel />
+        {hasPostedIntroVideo && <JoinOrBuildTeamPanel />}
       </div>
     </AppLayout>
   );
