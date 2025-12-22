@@ -2966,7 +2966,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </Select>
                             </div>
                           )}
-                          {/* Group Admins see their group name but can't change it */}
+                          {/* Group filter - Hide for Team Leads who are not admins/group admins */}
+                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Group
@@ -2997,6 +2998,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </Select>
                             )}
                           </div>
+                          )}
+                          {/* Team filter - Hide for Team Leads who are not admins/group admins */}
+                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Team
@@ -3022,6 +3026,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </SelectContent>
                             </Select>
                           </div>
+                          )}
                         </div>
                         <div className="mt-4">
                           <label className="block text-sm font-medium mb-2">
