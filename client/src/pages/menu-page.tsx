@@ -194,6 +194,7 @@ export default function MenuPage() {
                 >
                   <Users className="mr-2 h-5 w-5" />
                   Join a Team
+                  {!hasPostedIntroVideo && <span className="ml-auto text-xs text-muted-foreground">(Intro Video required)</span>}
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="p-0">
