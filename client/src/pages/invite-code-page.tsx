@@ -618,11 +618,13 @@ function JoinOrBuildTeamPanel() {
               ) : (
                 <UserPlus className="mr-2 h-4 w-4" />
               )}
-              Join Team as Admin
+              {showNewTeamInput && newTeamName.trim() ? "Create Team as Team Lead" : "Join Team"}
             </Button>
             
             <p className="text-xs text-muted-foreground text-center">
-              You will become the Team Admin for the selected or newly created team.
+              {showNewTeamInput && newTeamName.trim() 
+                ? "You will become the Team Lead for the newly created team."
+                : "You will join the selected team as a member."}
             </p>
           </CardContent>
         </CollapsibleContent>
