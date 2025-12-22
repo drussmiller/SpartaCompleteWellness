@@ -8522,5 +8522,183 @@ export const registerRoutes = async (
     }
   });
 
+  // Get teams filtered by group ID
+  router.get("/api/teams/by-group/:groupId", authenticate, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+      
+      const groupTeams = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.groupId, groupId));
+      
+      res.json(groupTeams);
+    } catch (error) {
+      logger.error(`Error fetching teams for group ${req.params.groupId}:`, error);
+      res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
+  // Self-service team join/create endpoint - allows users to create org/group/team and join as admin
+  // This is intentionally open to any authenticated user to enable self-service team creation
+  const selfServiceJoinSchema = z.object({
+    organizationId: z.number().optional(),
+    organizationName: z.string().min(1, "Organization name cannot be empty").max(100).optional(),
+    groupId: z.number().optional(),
+    groupName: z.string().min(1, "Group name cannot be empty").max(100).optional(),
+    teamId: z.number().optional(),
+    teamName: z.string().min(1, "Team name cannot be empty").max(100).optional(),
+  });
+
+  router.post("/api/self-service/join-team", authenticate, async (req, res) => {
+    try {
+      // Validate request body
+      const parseResult = selfServiceJoinSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: parseResult.error.errors 
+        });
+      }
+
+      const { 
+        organizationId, 
+        organizationName, 
+        groupId, 
+        groupName, 
+        teamId, 
+        teamName 
+      } = parseResult.data;
+      
+      logger.info(`[SELF-SERVICE] User ${req.user.id} attempting to join/create team`, parseResult.data);
+      
+      // Check if user is already in a team (check this first)
+      if (req.user.teamId) {
+        return res.status(400).json({ message: "You are already assigned to a team" });
+      }
+      
+      let finalOrgId = organizationId;
+      let finalGroupId = groupId;
+      let finalTeamId = teamId;
+      
+      // If new organization name is provided, create it
+      if (organizationName && !organizationId) {
+        const newOrg = await storage.createOrganization({
+          name: organizationName.trim(),
+          description: "",
+          status: 1
+        });
+        finalOrgId = newOrg.id;
+        logger.info(`[SELF-SERVICE] Created new organization: ${newOrg.name} (ID: ${newOrg.id})`);
+      }
+      
+      // Validate existing org if ID provided
+      if (organizationId && !organizationName) {
+        const [existingOrg] = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+        if (!existingOrg) {
+          return res.status(400).json({ message: "Selected organization does not exist" });
+        }
+      }
+      
+      // If new group name is provided, create it
+      if (groupName && !groupId) {
+        if (!finalOrgId) {
+          return res.status(400).json({ message: "Organization is required to create a group" });
+        }
+        const newGroup = await storage.createGroup({
+          name: groupName.trim(),
+          description: "",
+          organizationId: finalOrgId,
+          status: 1,
+          competitive: false
+        });
+        finalGroupId = newGroup.id;
+        logger.info(`[SELF-SERVICE] Created new group: ${newGroup.name} (ID: ${newGroup.id})`);
+      }
+      
+      // Validate existing group if ID provided
+      if (groupId && !groupName) {
+        const [existingGroup] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+        if (!existingGroup) {
+          return res.status(400).json({ message: "Selected group does not exist" });
+        }
+        // Verify group belongs to the selected organization
+        if (finalOrgId && existingGroup.organizationId !== finalOrgId) {
+          return res.status(400).json({ message: "Selected group does not belong to the selected organization" });
+        }
+      }
+      
+      // If new team name is provided, create it
+      if (teamName && !teamId) {
+        if (!finalGroupId) {
+          return res.status(400).json({ message: "Group is required to create a team" });
+        }
+        const newTeam = await storage.createTeam({
+          name: teamName.trim(),
+          description: "",
+          groupId: finalGroupId,
+          maxSize: 9,
+          status: 1
+        });
+        finalTeamId = newTeam.id;
+        logger.info(`[SELF-SERVICE] Created new team: ${newTeam.name} (ID: ${newTeam.id})`);
+      }
+      
+      // Validate existing team if ID provided
+      if (teamId && !teamName) {
+        const [existingTeam] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+        if (!existingTeam) {
+          return res.status(400).json({ message: "Selected team does not exist" });
+        }
+        // Verify team belongs to the selected group
+        if (finalGroupId && existingTeam.groupId !== finalGroupId) {
+          return res.status(400).json({ message: "Selected team does not belong to the selected group" });
+        }
+      }
+      
+      // If no team selected or created
+      if (!finalTeamId) {
+        return res.status(400).json({ message: "A team must be selected or created" });
+      }
+      
+      // Assign user to the team as Team Admin
+      const now = new Date();
+      await db
+        .update(users)
+        .set({ 
+          teamId: finalTeamId,
+          isTeamLead: true,
+          teamJoinedAt: now,
+          programStartDate: now
+        })
+        .where(eq(users.id, req.user.id));
+      
+      logger.info(`[SELF-SERVICE] User ${req.user.id} assigned to team ${finalTeamId} as Team Admin`);
+      
+      // Get updated user data
+      const [updatedUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      
+      res.json({
+        success: true,
+        message: "Successfully joined team as Team Admin",
+        user: updatedUser,
+        teamId: finalTeamId
+      });
+    } catch (error) {
+      logger.error(`[SELF-SERVICE] Error in join-team:`, error);
+      res.status(500).json({
+        message: "Failed to join team",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   return httpServer;
 };
