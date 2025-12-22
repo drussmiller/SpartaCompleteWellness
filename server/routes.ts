@@ -124,6 +124,57 @@ export const registerRoutes = async (
     }
   });
 
+  // Get autonomous mode setting
+  router.get("/api/settings/autonomous-mode", authenticate, async (req, res) => {
+    try {
+      const result = await db
+        .select()
+        .from(systemState)
+        .where(eq(systemState.key, "autonomous_mode"))
+        .limit(1);
+      
+      const enabled = result.length > 0 && result[0].value === "true";
+      res.json({ enabled });
+    } catch (error) {
+      console.error("Error fetching autonomous mode:", error);
+      res.status(500).json({ message: "Failed to fetch autonomous mode setting" });
+    }
+  });
+
+  // Set autonomous mode setting (admin only)
+  router.post("/api/settings/autonomous-mode", authenticate, express.json(), async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { enabled } = req.body;
+      
+      const existing = await db
+        .select()
+        .from(systemState)
+        .where(eq(systemState.key, "autonomous_mode"))
+        .limit(1);
+      
+      if (existing.length > 0) {
+        await db
+          .update(systemState)
+          .set({ value: enabled ? "true" : "false", updatedAt: new Date() })
+          .where(eq(systemState.key, "autonomous_mode"));
+      } else {
+        await db.insert(systemState).values({
+          key: "autonomous_mode",
+          value: enabled ? "true" : "false",
+        });
+      }
+      
+      res.json({ success: true, enabled });
+    } catch (error) {
+      console.error("Error saving autonomous mode:", error);
+      res.status(500).json({ message: "Failed to save autonomous mode setting" });
+    }
+  });
+
   // Modify the post counts endpoint to correctly handle timezones and counts
   router.get("/api/posts/counts", authenticate, async (req, res) => {
     try {

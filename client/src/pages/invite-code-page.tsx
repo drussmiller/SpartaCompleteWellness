@@ -55,6 +55,14 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   });
   
   const hasPostedIntroVideo = introVideoPosts.length > 0;
+  
+  // Check if autonomous mode is enabled (admin setting)
+  const { data: autonomousModeData } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/settings/autonomous-mode"],
+    staleTime: 60000,
+  });
+  
+  const isAutonomousModeEnabled = autonomousModeData?.enabled ?? false;
 
   // If user is already a Group Admin, Team Lead, or in a team, redirect them
   useEffect(() => {
@@ -271,7 +279,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
           </CardContent>
         </Card>
         
-        {hasPostedIntroVideo && <JoinOrBuildTeamPanel />}
+        {hasPostedIntroVideo && isAutonomousModeEnabled && <JoinOrBuildTeamPanel />}
       </div>
     </AppLayout>
   );
