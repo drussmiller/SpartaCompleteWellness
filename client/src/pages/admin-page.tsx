@@ -2339,23 +2339,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </div>
                 <CollapsibleContent>
                   <div className="space-y-4">
-                    {/* Hide inactive teams checkbox from Team Leads who are not admins */}
-                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Checkbox
-                          id="show-inactive-teams"
-                          checked={showInactiveTeams}
-                          onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
-                        />
-                        <Label
-                          htmlFor="show-inactive-teams"
-                        >
-                          Show inactive teams
-                        </Label>
-                      </div>
-                    )}
-                    {/* Hide New Team button from Team Leads who are not admins */}
-                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Checkbox
+                        id="show-inactive-teams"
+                        checked={showInactiveTeams}
+                        onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
+                      />
+                      <Label
+                        htmlFor="show-inactive-teams"
+                      >
+                        Show inactive teams
+                      </Label>
+                    </div>
                     <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -2496,7 +2491,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Form>
                       </DialogContent>
                     </Dialog>
-                    )}
                     {visibleTeams?.map((team) => (
                       <Card key={team.id}>
                         <CardHeader className="pb-2">
@@ -2839,52 +2833,46 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               {team.status === 1 ? "Active" : "Inactive"}
                             </span>
                           </p>
-                          {/* Hide Edit/Delete buttons from Team Leads who are not admins */}
-                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                            <div className="flex gap-2 justify-end mt-4">
-                              {editingTeam?.id !== team.id && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setEditingTeam(team);
-                                      setSelectedGroupId(
-                                        team.groupId?.toString() || "",
-                                      );
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="destructive" 
-                                    size="sm"
-                                    onClick={() => handleDeleteTeamClick(team.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
+                          <div className="flex gap-2 justify-end mt-4">
+                            {editingTeam?.id !== team.id && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingTeam(team);
+                                    setSelectedGroupId(
+                                      team.groupId?.toString() || "",
+                                    );
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => handleDeleteTeamClick(team.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-sm font-medium mb-2">Invite Codes:</p>
+                            <div className="space-y-2">
+                              <InviteQRCode
+                                type="team_admin"
+                                id={team.id}
+                                name={team.name}
+                              />
+                              <InviteQRCode
+                                type="team_member"
+                                id={team.id}
+                                name={team.name}
+                              />
                             </div>
-                          )}
-                          {/* Hide Invite Codes from Team Leads who are not admins */}
-                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
-                            <div className="mt-4 pt-4 border-t">
-                              <p className="text-sm font-medium mb-2">Invite Codes:</p>
-                              <div className="space-y-2">
-                                <InviteQRCode
-                                  type="team_admin"
-                                  id={team.id}
-                                  name={team.name}
-                                />
-                                <InviteQRCode
-                                  type="team_member"
-                                  id={team.id}
-                                  name={team.name}
-                                />
-                              </div>
-                            </div>
-                          )}
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -2893,8 +2881,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               </Collapsible>
               )}
 
-              {/* Users Section - Hide from Team Leads who are not admins */}
-              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
               <Collapsible 
                 open={usersPanelOpen} 
                 onOpenChange={setUsersPanelOpen}
@@ -3637,7 +3623,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </div>
               </CollapsibleContent>
             </Collapsible>
-            )}
             </div>
           </div>
         </div>
