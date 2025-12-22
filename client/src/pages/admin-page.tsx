@@ -1455,18 +1455,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       <div className="space-y-4">
                         <div className="flex items-center space-x-2 mb-2">
                           <Checkbox
-                            id="show-inactive-orgs"
-                            checked={showInactiveOrgs}
-                            onCheckedChange={(checked) => setShowInactiveOrgs(checked === true)}
-                          />
-                          <Label
-                            htmlFor="show-inactive-orgs"
-                          >
-                            Show inactive organizations
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Checkbox
                             id="autonomous-mode"
                             checked={autonomousMode}
                             onCheckedChange={async (checked) => {
@@ -1492,6 +1480,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             htmlFor="autonomous-mode"
                           >
                             Autonomous mode
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2 mb-4">
+                          <Checkbox
+                            id="show-inactive-orgs"
+                            checked={showInactiveOrgs}
+                            onCheckedChange={(checked) => setShowInactiveOrgs(checked === true)}
+                          />
+                          <Label
+                            htmlFor="show-inactive-orgs"
+                          >
+                            Show inactive organizations
                           </Label>
                         </div>
                         <Dialog open={createOrgDialogOpen} onOpenChange={setCreateOrgDialogOpen}>
