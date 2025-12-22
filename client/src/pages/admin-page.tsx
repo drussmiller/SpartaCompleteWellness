@@ -2351,6 +2351,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         Show inactive teams
                       </Label>
                     </div>
+                    {/* Hide New Team button for Team Leads who are not admins/group admins */}
+                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                     <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -2491,6 +2493,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Form>
                       </DialogContent>
                     </Dialog>
+                    )}
                     {visibleTeams?.map((team) => (
                       <Card key={team.id}>
                         <CardHeader className="pb-2">
@@ -2625,24 +2628,35 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Group</Label>
-                                      <Select
-                                        value={selectedGroupId}
-                                        onValueChange={setSelectedGroupId}
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Select a group" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {filteredGroups?.map((group) => (
-                                            <SelectItem
-                                              key={group.id}
-                                              value={group.id.toString()}
-                                            >
-                                              {group.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      {/* Team Leads only see their own group */}
+                                      {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isGroupAdmin ? (
+                                        <div className="px-3 py-2 border rounded-md bg-muted text-sm">
+                                          {(() => {
+                                            const userTeam = teams?.find(t => t.id === currentUser?.teamId);
+                                            const userGroup = groups?.find(g => g.id === userTeam?.groupId);
+                                            return userGroup?.name || 'Your Group';
+                                          })()}
+                                        </div>
+                                      ) : (
+                                        <Select
+                                          value={selectedGroupId}
+                                          onValueChange={setSelectedGroupId}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select a group" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {filteredGroups?.map((group) => (
+                                              <SelectItem
+                                                key={group.id}
+                                                value={group.id.toString()}
+                                              >
+                                                {group.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      )}
                                     </div>
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Maximum Team Size</Label>
