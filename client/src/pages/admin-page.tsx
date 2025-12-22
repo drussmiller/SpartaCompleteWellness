@@ -2339,18 +2339,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </div>
                 <CollapsibleContent>
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Checkbox
-                        id="show-inactive-teams"
-                        checked={showInactiveTeams}
-                        onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
-                      />
-                      <Label
-                        htmlFor="show-inactive-teams"
-                      >
-                        Show inactive teams
-                      </Label>
-                    </div>
+                    {/* Hide Show inactive teams checkbox for Team Leads who are not admins/group admins */}
+                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Checkbox
+                          id="show-inactive-teams"
+                          checked={showInactiveTeams}
+                          onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
+                        />
+                        <Label
+                          htmlFor="show-inactive-teams"
+                        >
+                          Show inactive teams
+                        </Label>
+                      </div>
+                    )}
                     {/* Hide New Team button for Team Leads who are not admins/group admins */}
                     {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                     <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
@@ -2732,6 +2735,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         When set, new members will inherit this date as their program start date (if it hasn't passed)
                                       </p>
                                     </div>
+                                    {/* Hide Status dropdown for Team Leads who are not admins/group admins */}
+                                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Status</Label>
                                       <Select
@@ -2753,6 +2758,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </SelectContent>
                                       </Select>
                                     </div>
+                                    )}
                                     <div className="flex gap-2 mt-4">
                                       <Button type="submit" size="sm">
                                         Save
