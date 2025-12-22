@@ -123,7 +123,7 @@ inviteCodeRouter.get("/api/invite-codes/team/:teamId", authenticate, async (req:
       (type === "team_member" && !team.teamMemberInviteCode);
 
     if (needsGeneration) {
-      const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.adminTeamId === teamId;
+      const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.teamId === teamId;
       if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId) && !isTeamLeadForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
