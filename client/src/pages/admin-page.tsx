@@ -247,7 +247,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       groupId: currentUser?.isGroupAdmin && !currentUser?.isAdmin
         ? currentUser.adminGroupId || 0
         : 0,
-      maxSize: 6,
+      maxSize: 9,
     },
   });
 

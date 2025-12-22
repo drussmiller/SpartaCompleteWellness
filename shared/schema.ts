@@ -69,7 +69,7 @@ export const teams = pgTable("teams", {
   name: text("name").notNull(),
   description: text("description"),
   groupId: integer("group_id").notNull(),
-  maxSize: integer("max_size").default(6), // Maximum number of people allowed in the team
+  maxSize: integer("max_size").default(9), // Maximum number of people allowed in the team
   status: integer("status").default(1), // 1 = active, 0 = inactive
   teamAdminInviteCode: text("team_admin_invite_code").unique(),
   teamMemberInviteCode: text("team_member_invite_code").unique(),
@@ -97,7 +97,7 @@ export const insertTeamSchema = createInsertSchema(teams).extend({
   name: z.string().min(1, "Team name is required"),
   description: z.string().optional(),
   groupId: z.number().min(1, "Group ID is required"),
-  maxSize: z.number().min(1, "Team max size must be at least 1").default(6),
+  maxSize: z.number().min(1, "Team max size must be at least 1").default(9),
   status: z.number().min(0).max(1).default(1),
   programStartDate: z.date().optional(),
 });
