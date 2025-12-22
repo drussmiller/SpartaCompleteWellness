@@ -65,7 +65,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      maxSize: 6,
+      maxSize: 9,
       programStartDate: undefined
     }
   });
@@ -76,7 +76,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
-      maxSize: 6,
+      maxSize: 9,
       programStartDate: undefined
     }
   });

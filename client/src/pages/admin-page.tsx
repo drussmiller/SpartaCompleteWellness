@@ -10,6 +10,9 @@ import {
   Loader2,
   Edit,
   ChevronDown,
+  Building2,
+  Users,
+  UserPlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -212,6 +215,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     queryKey: ["/api/users"],
   });
 
+  // Fetch autonomous mode setting
+  const { data: autonomousModeData } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/settings/autonomous-mode"],
+    staleTime: 60000,
+  });
+  
+  const [autonomousMode, setAutonomousMode] = useState(false);
+  
+  // Sync autonomous mode state with fetched data
+  useEffect(() => {
+    if (autonomousModeData?.enabled !== undefined) {
+      setAutonomousMode(autonomousModeData.enabled);
+    }
+  }, [autonomousModeData]);
+
   // Merge cached data with optimistic updates
   const mergedGroups = groups?.map(g => ({ ...g, ...optimisticGroups[g.id] }));
   const mergedTeams = teams?.map(t => ({ ...t, ...optimisticTeams[t.id] }));
@@ -247,7 +265,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       groupId: currentUser?.isGroupAdmin && !currentUser?.isAdmin
         ? currentUser.adminGroupId || 0
         : 0,
-      maxSize: 6,
+      maxSize: 9,
     },
   });
 
@@ -1435,6 +1453,35 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Checkbox
+                            id="autonomous-mode"
+                            checked={autonomousMode}
+                            onCheckedChange={async (checked) => {
+                              const newValue = checked === true;
+                              const previousValue = autonomousMode;
+                              setAutonomousMode(newValue);
+                              try {
+                                await apiRequest("POST", "/api/settings/autonomous-mode", { enabled: newValue });
+                                queryClient.invalidateQueries({ queryKey: ["/api/settings/autonomous-mode"] });
+                              } catch (error) {
+                                console.error("Failed to save autonomous mode setting:", error);
+                                setAutonomousMode(previousValue);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to save autonomous mode setting",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            data-testid="checkbox-autonomous-mode"
+                          />
+                          <Label
+                            htmlFor="autonomous-mode"
+                          >
+                            Autonomous mode
+                          </Label>
+                        </div>
                         <div className="flex items-center space-x-2 mb-4">
                           <Checkbox
                             id="show-inactive-orgs"
@@ -2319,8 +2366,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </Collapsible>
               )}
 
-              {/* Teams Section - Show for admins and group admins */}
-              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
+              {/* Teams Section - Show for admins, group admins, and team leads */}
+              {(currentUser?.isAdmin || currentUser?.isGroupAdmin || currentUser?.isTeamLead) && (
                 <Collapsible 
                   open={teamsPanelOpen} 
                   onOpenChange={setTeamsPanelOpen}
@@ -2339,18 +2386,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </div>
                 <CollapsibleContent>
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Checkbox
-                        id="show-inactive-teams"
-                        checked={showInactiveTeams}
-                        onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
-                      />
-                      <Label
-                        htmlFor="show-inactive-teams"
-                      >
-                        Show inactive teams
-                      </Label>
-                    </div>
+                    {/* Hide Show inactive teams checkbox for Team Leads who are not admins/group admins */}
+                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Checkbox
+                          id="show-inactive-teams"
+                          checked={showInactiveTeams}
+                          onCheckedChange={(checked) => setShowInactiveTeams(checked === true)}
+                        />
+                        <Label
+                          htmlFor="show-inactive-teams"
+                        >
+                          Show inactive teams
+                        </Label>
+                      </div>
+                    )}
+                    {/* Hide New Team button for Team Leads who are not admins/group admins */}
+                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                     <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -2491,6 +2543,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Form>
                       </DialogContent>
                     </Dialog>
+                    )}
                     {visibleTeams?.map((team) => (
                       <Card key={team.id}>
                         <CardHeader className="pb-2">
@@ -2625,24 +2678,35 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </div>
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Group</Label>
-                                      <Select
-                                        value={selectedGroupId}
-                                        onValueChange={setSelectedGroupId}
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="Select a group" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {filteredGroups?.map((group) => (
-                                            <SelectItem
-                                              key={group.id}
-                                              value={group.id.toString()}
-                                            >
-                                              {group.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      {/* Team Leads only see their own group */}
+                                      {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isGroupAdmin ? (
+                                        <div className="px-3 py-2 border rounded-md bg-muted text-sm">
+                                          {(() => {
+                                            const userTeam = teams?.find(t => t.id === currentUser?.teamId);
+                                            const userGroup = groups?.find(g => g.id === userTeam?.groupId);
+                                            return userGroup?.name || 'Your Group';
+                                          })()}
+                                        </div>
+                                      ) : (
+                                        <Select
+                                          value={selectedGroupId}
+                                          onValueChange={setSelectedGroupId}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select a group" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {filteredGroups?.map((group) => (
+                                              <SelectItem
+                                                key={group.id}
+                                                value={group.id.toString()}
+                                              >
+                                                {group.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      )}
                                     </div>
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Maximum Team Size</Label>
@@ -2718,6 +2782,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         When set, new members will inherit this date as their program start date (if it hasn't passed)
                                       </p>
                                     </div>
+                                    {/* Hide Status dropdown for Team Leads who are not admins/group admins */}
+                                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Status</Label>
                                       <Select
@@ -2739,6 +2805,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </SelectContent>
                                       </Select>
                                     </div>
+                                    )}
                                     <div className="flex gap-2 mt-4">
                                       <Button type="submit" size="sm">
                                         Save
@@ -2946,7 +3013,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </Select>
                             </div>
                           )}
-                          {/* Group Admins see their group name but can't change it */}
+                          {/* Group filter - Hide for Team Leads who are not admins/group admins */}
+                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Group
@@ -2977,6 +3045,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </Select>
                             )}
                           </div>
+                          )}
+                          {/* Team filter - Hide for Team Leads who are not admins/group admins */}
+                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Team
@@ -3002,6 +3073,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </SelectContent>
                             </Select>
                           </div>
+                          )}
                         </div>
                         <div className="mt-4">
                           <label className="block text-sm font-medium mb-2">

@@ -164,10 +164,58 @@ async function sendFeedbackEmail(
   }
 }
 
+async function sendDailyReminderEmail(
+  email: string,
+  username: string,
+  message: string
+): Promise<boolean> {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
+      logger.warn("Gmail credentials not configured. Logging daily reminder to console.");
+      console.log(`\n=== DAILY REMINDER EMAIL for ${username} (${email}) ===`);
+      console.log(`Message: ${message}`);
+      console.log(`=======================================\n`);
+      return true;
+    }
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: "Sparta Complete Wellness - Daily Accountability Reminder",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Daily Accountability Reminder</h2>
+          <p>Hi ${username},</p>
+          <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0; border-left: 4px solid #6366F1;">
+            ${message}
+          </div>
+          <p>Keep up the great work on your wellness journey!</p>
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            You're receiving this email because you have daily reminders enabled in the Sparta Complete Wellness app.
+            To adjust your notification preferences, visit the Notification Settings in the app.
+          </p>
+        </div>
+      `,
+      text: `Daily Accountability Reminder\n\nHi ${username},\n\n${message}\n\nKeep up the great work on your wellness journey!\n\nYou're receiving this email because you have daily reminders enabled in the Sparta Complete Wellness app.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info(`Daily reminder email sent to ${email}`);
+    return true;
+  } catch (error) {
+    logger.error("Error sending daily reminder email:", error);
+    console.log(`\n=== DAILY REMINDER EMAIL (Error occurred) for ${username} (${email}) ===`);
+    console.log(`Message: ${message}`);
+    console.log(`=======================================\n`);
+    return false;
+  }
+}
+
 // Export as both individual functions and as a service object for compatibility
-export { sendVerificationEmail, sendPasswordResetCode, sendFeedbackEmail };
+export { sendVerificationEmail, sendPasswordResetCode, sendFeedbackEmail, sendDailyReminderEmail };
 export const emailService = {
   sendVerificationEmail,
   sendPasswordResetCode,
   sendFeedbackEmail,
+  sendDailyReminderEmail,
 };

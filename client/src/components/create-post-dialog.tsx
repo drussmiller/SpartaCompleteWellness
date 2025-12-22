@@ -694,6 +694,22 @@ export function CreatePostDialog({
     });
     console.log("🔥 [SCOPE DEBUG] All form values from getValues():", form.getValues());
     console.log("============ FORM SUBMIT DEBUG END ============");
+    
+    // Intro video posts require a video - no text-only allowed
+    // Check for: mediaUrl (already uploaded), file in videoInputRef, or selectedExistingVideo
+    const hasVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
+    const hasExistingMedia = !!data.mediaUrl;
+    const hasSelectedExisting = !!selectedExistingVideo;
+    
+    if (data.type === "introductory_video" && !hasVideoFile && !hasExistingMedia && !hasSelectedExisting) {
+      toast({
+        title: "Video Required",
+        description: "Please upload a video for your intro post.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Only use selectedDate if it's different from today, otherwise let the server use current time
     const today = new Date();
     today.setHours(0, 0, 0, 0);
