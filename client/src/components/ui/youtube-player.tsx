@@ -106,26 +106,17 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
   return (
     <div 
       ref={wrapperRef}
-      className={`video-wrapper relative ${className}`} 
-      style={{ overflow: 'hidden' }}
+      className={`video-wrapper ${className}`} 
+      style={{ overflow: 'visible' }}
     >
       <iframe
         ref={iframeRef}
-        src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1`}
+        src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=0&modestbranding=1&rel=0&showinfo=0`}
         title="YouTube video player"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
-        className="w-full h-full"
       ></iframe>
-      {/* Invisible overlay to block header clicks while allowing controls */}
-      <div 
-        className="absolute top-0 left-0 w-full h-[60px] z-10 pointer-events-auto bg-transparent"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-      />
     </div>
   );
 }
