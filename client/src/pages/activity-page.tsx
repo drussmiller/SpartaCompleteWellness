@@ -307,7 +307,7 @@ export default function ActivityPage() {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent className="space-y-4 p-0 pt-4 pb-4">
+              <CardContent className="space-y-4 !p-0 pt-4 pb-4">
                 <div className="flex items-center justify-center gap-4 mb-4 px-6">
                   <Button
                     variant="outline"
@@ -455,7 +455,7 @@ export default function ActivityPage() {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent className="space-y-4 p-0 pt-4 pb-4">
+              <CardContent className="space-y-4 !p-0 pt-4 pb-4">
                 <div className="flex items-center justify-center gap-4 mb-4 px-6">
                   <Button
                     variant="outline"
