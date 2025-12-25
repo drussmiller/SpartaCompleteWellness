@@ -124,31 +124,38 @@ p > .youtube-video-container:only-child {
   margin-bottom: 1em;
 }
 
-/* Make embedded videos in padded rich-text-content break out to full width */
+/* Activity content: text elements get padding, videos don't */
+.activity-text-content {
+  padding: 0 !important;
+}
+
+.activity-text-content p,
+.activity-text-content h1,
+.activity-text-content h2,
+.activity-text-content h3,
+.activity-text-content h4,
+.activity-text-content h5,
+.activity-text-content h6,
+.activity-text-content ul,
+.activity-text-content ol,
+.activity-text-content li,
+.activity-text-content blockquote,
+.activity-text-content span,
+.activity-text-content strong,
+.activity-text-content em,
+.activity-text-content b,
+.activity-text-content i {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Videos in activity content - full width, no padding */
 .activity-text-content iframe,
 .activity-text-content .video-wrapper,
-.activity-text-content .youtube-video-container,
-.rich-text-content iframe,
-.daily-content iframe {
-  margin-left: -1.5rem !important;
-  margin-right: -1.5rem !important;
-  width: calc(100% + 3rem) !important;
-  max-width: calc(100% + 3rem) !important;
-  display: block !important;
-}
-
-/* Ensure parent containers don't clip the negative margins */
-.activity-text-content,
-.rich-text-content,
-.daily-content {
-  overflow: visible !important;
-}
-
-/* Also handle video wrappers inside rich text */
-.rich-text-content .video-wrapper,
-.daily-content .video-wrapper {
-  margin-left: -1.5rem !important;
-  margin-right: -1.5rem !important;
-  width: calc(100% + 3rem) !important;
-  max-width: calc(100% + 3rem) !important;
+.activity-text-content .youtube-video-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }

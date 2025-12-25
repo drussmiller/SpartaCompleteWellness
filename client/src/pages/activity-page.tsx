@@ -408,9 +408,7 @@ export default function ActivityPage() {
                                 className="rich-text-content daily-content activity-text-content"
                                 style={{
                                   wordBreak: 'break-word',
-                                  overflowWrap: 'break-word',
-                                  paddingLeft: '1.5rem',
-                                  paddingRight: '1.5rem'
+                                  overflowWrap: 'break-word'
                                 }}
                                 dangerouslySetInnerHTML={{ 
                                   __html: content
@@ -559,9 +557,7 @@ export default function ActivityPage() {
                                     className="rich-text-content daily-content activity-text-content"
                                     style={{
                                       wordBreak: 'break-word',
-                                      overflowWrap: 'break-word',
-                                      paddingLeft: '1.5rem',
-                                      paddingRight: '1.5rem'
+                                      overflowWrap: 'break-word'
                                     }}
                                     dangerouslySetInnerHTML={{ 
                                       __html: content
@@ -586,9 +582,7 @@ export default function ActivityPage() {
                                     className="rich-text-content daily-content activity-text-content"
                                     style={{
                                       wordBreak: 'break-word',
-                                      overflowWrap: 'break-word',
-                                      paddingLeft: '1.5rem',
-                                      paddingRight: '1.5rem'
+                                      overflowWrap: 'break-word'
                                     }}
                                     dangerouslySetInnerHTML={{ 
                                       __html: (item.content || '')
