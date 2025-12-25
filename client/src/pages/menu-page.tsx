@@ -55,7 +55,7 @@ export default function MenuPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col">
+      <div className="flex flex-col min-h-0">
         {/* Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
           <div className="max-w-2xl mx-auto p-4">
@@ -64,7 +64,7 @@ export default function MenuPage() {
         </div>
 
         {/* Navigation Section */}
-        <div className="max-w-2xl mx-auto w-full pl-6 pr-4 py-6 space-y-2 mt-[40px] md:mt-[100px]">
+        <div className="max-w-2xl mx-auto w-full pl-6 pr-4 py-6 space-y-2 mt-[40px] md:mt-[100px] mb-20">
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
