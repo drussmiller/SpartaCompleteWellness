@@ -8729,19 +8729,22 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "A team must be selected or created" });
       }
       
-      // Assign user to the team as Team Admin
+      // Only make user a Team Lead if they created a new team (not if they selected an existing one)
+      const isCreatingNewTeam = !!(teamName && !teamId);
+      
+      // Assign user to the team (as Team Lead only if creating new team)
       const now = new Date();
       await db
         .update(users)
         .set({ 
           teamId: finalTeamId,
-          isTeamLead: true,
+          isTeamLead: isCreatingNewTeam,
           teamJoinedAt: now,
           programStartDate: now
         })
         .where(eq(users.id, req.user.id));
       
-      logger.info(`[SELF-SERVICE] User ${req.user.id} assigned to team ${finalTeamId} as Team Admin`);
+      logger.info(`[SELF-SERVICE] User ${req.user.id} assigned to team ${finalTeamId}${isCreatingNewTeam ? ' as Team Lead' : ''}`);
       
       // Get updated user data
       const [updatedUser] = await db
@@ -8752,7 +8755,7 @@ export const registerRoutes = async (
       
       res.json({
         success: true,
-        message: "Successfully joined team as Team Admin",
+        message: isCreatingNewTeam ? "Successfully joined team as Team Lead" : "Successfully joined team",
         user: updatedUser,
         teamId: finalTeamId
       });
