@@ -121,18 +121,46 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
         style={{
           position: 'absolute',
           top: 0,
-          right: 0,
-          width: '25%',
-          height: '60px',
-          zIndex: 10,
-          pointerEvents: 'auto',
-          cursor: 'default'
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 5,
+          pointerEvents: 'none'
         }}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-      />
+      >
+        {/* Top "shield" for title and logo */}
+        <div 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '60px',
+            pointerEvents: 'auto',
+            cursor: 'default'
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        />
+        {/* Bottom-right "shield" for YouTube logo button */}
+        <div 
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: '100px',
+            height: '50px',
+            pointerEvents: 'auto',
+            cursor: 'default'
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        />
+      </div>
     </div>
   );
 }
