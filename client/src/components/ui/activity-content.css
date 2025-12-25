@@ -127,14 +127,28 @@ p > .youtube-video-container:only-child {
 /* Make embedded videos in padded rich-text-content break out to full width */
 .activity-text-content iframe,
 .activity-text-content .video-wrapper,
-.activity-text-content .youtube-video-container {
-  margin-left: -1.5rem;
-  margin-right: -1.5rem;
+.activity-text-content .youtube-video-container,
+.rich-text-content iframe,
+.daily-content iframe {
+  margin-left: -1.5rem !important;
+  margin-right: -1.5rem !important;
   width: calc(100% + 3rem) !important;
   max-width: calc(100% + 3rem) !important;
+  display: block !important;
 }
 
 /* Ensure parent containers don't clip the negative margins */
-.activity-text-content {
-  overflow: visible;
+.activity-text-content,
+.rich-text-content,
+.daily-content {
+  overflow: visible !important;
+}
+
+/* Also handle video wrappers inside rich text */
+.rich-text-content .video-wrapper,
+.daily-content .video-wrapper {
+  margin-left: -1.5rem !important;
+  margin-right: -1.5rem !important;
+  width: calc(100% + 3rem) !important;
+  max-width: calc(100% + 3rem) !important;
 }
