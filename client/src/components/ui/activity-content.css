@@ -125,11 +125,16 @@ p > .youtube-video-container:only-child {
 }
 
 /* Make embedded videos in padded rich-text-content break out to full width */
-.rich-text-content.px-6 iframe,
-.rich-text-content.px-6 .video-wrapper,
-.rich-text-content.px-6 .youtube-video-container {
+.activity-text-content iframe,
+.activity-text-content .video-wrapper,
+.activity-text-content .youtube-video-container {
   margin-left: -1.5rem;
   margin-right: -1.5rem;
   width: calc(100% + 3rem) !important;
   max-width: calc(100% + 3rem) !important;
+}
+
+/* Ensure parent containers don't clip the negative margins */
+.activity-text-content {
+  overflow: visible;
 }

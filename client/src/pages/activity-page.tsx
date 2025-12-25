@@ -404,10 +404,12 @@ export default function ActivityPage() {
                           return (
                             <div key={index}>
                               <div 
-                                className="rich-text-content daily-content px-6"
+                                className="rich-text-content daily-content activity-text-content"
                                 style={{
                                   wordBreak: 'break-word',
-                                  overflowWrap: 'break-word'
+                                  overflowWrap: 'break-word',
+                                  paddingLeft: '1.5rem',
+                                  paddingRight: '1.5rem'
                                 }}
                                 dangerouslySetInnerHTML={{ 
                                   __html: content
@@ -553,10 +555,12 @@ export default function ActivityPage() {
                               return (
                                 <div key={`bible-${index}`}>
                                   <div 
-                                    className="rich-text-content daily-content px-6"
+                                    className="rich-text-content daily-content activity-text-content"
                                     style={{
                                       wordBreak: 'break-word',
-                                      overflowWrap: 'break-word'
+                                      overflowWrap: 'break-word',
+                                      paddingLeft: '1.5rem',
+                                      paddingRight: '1.5rem'
                                     }}
                                     dangerouslySetInnerHTML={{ 
                                       __html: content
@@ -578,10 +582,12 @@ export default function ActivityPage() {
                               {item.type === 'text' && (
                                 <div>
                                   <div 
-                                    className="rich-text-content daily-content px-6"
+                                    className="rich-text-content daily-content activity-text-content"
                                     style={{
                                       wordBreak: 'break-word',
-                                      overflowWrap: 'break-word'
+                                      overflowWrap: 'break-word',
+                                      paddingLeft: '1.5rem',
+                                      paddingRight: '1.5rem'
                                     }}
                                     dangerouslySetInnerHTML={{ 
                                       __html: (item.content || '')
