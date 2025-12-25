@@ -55,7 +55,7 @@ export default function MenuPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col min-h-0">
+      <div className="flex flex-col min-h-0 select-none">
         {/* Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border pt-14">
           <div className="max-w-2xl mx-auto p-4">
@@ -68,7 +68,7 @@ export default function MenuPage() {
           {/* Profile Sheet */}
           <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start py-6" size="lg">
+              <Button variant="outline" className="w-full justify-start py-6 active:bg-background focus:bg-background" size="lg">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
                     {user.imageUrl && <AvatarImage src={user.imageUrl} alt={user.username} />}
@@ -93,7 +93,7 @@ export default function MenuPage() {
           {/* Welcome */}
           <Sheet open={welcomeOpen} onOpenChange={setWelcomeOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button variant="outline" className="w-full justify-start active:bg-background focus:bg-background" size="lg">
                 <Users className="mr-2 h-5 w-5" />
                 Welcome
               </Button>
@@ -108,7 +108,7 @@ export default function MenuPage() {
             <SheetTrigger asChild>
               <Button
                 variant="outline"
-                className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full justify-start active:bg-background focus:bg-background ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
                 size="lg"
                 disabled={!user?.teamId}
               >
@@ -127,7 +127,7 @@ export default function MenuPage() {
             <SheetTrigger asChild>
               <Button
                 variant="outline"
-                className={`w-full justify-start ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full justify-start active:bg-background focus:bg-background ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
                 size="lg"
                 disabled={!user?.teamId}
               >
@@ -144,7 +144,7 @@ export default function MenuPage() {
           {/* Support Sparta */}
           <Sheet open={supportSpartaOpen} onOpenChange={setSupportSpartaOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg">
+              <Button variant="outline" className="w-full justify-start active:bg-background focus:bg-background" size="lg">
                 <Heart className="mr-2 h-5 w-5" />
                 Support Sparta
               </Button>
@@ -157,7 +157,7 @@ export default function MenuPage() {
           {/* Privacy Policy */}
           <Sheet open={privacyPolicyOpen} onOpenChange={setPrivacyPolicyOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg" data-testid="button-privacy-policy">
+              <Button variant="outline" className="w-full justify-start active:bg-background focus:bg-background" size="lg" data-testid="button-privacy-policy">
                 <Shield className="mr-2 h-5 w-5" />
                 Privacy Policy
               </Button>
@@ -170,7 +170,7 @@ export default function MenuPage() {
           {/* Feedback */}
           <Sheet open={feedbackOpen} onOpenChange={setFeedbackOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start" size="lg" data-testid="button-feedback">
+              <Button variant="outline" className="w-full justify-start active:bg-background focus:bg-background" size="lg" data-testid="button-feedback">
                 <MessageSquare className="mr-2 h-5 w-5" />
                 Feedback
               </Button>
@@ -186,7 +186,7 @@ export default function MenuPage() {
               <SheetTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start" 
+                  className="w-full justify-start active:bg-background focus:bg-background" 
                   size="lg" 
                   data-testid="button-join-team"
                   disabled={!hasPostedIntroVideo}
@@ -207,7 +207,7 @@ export default function MenuPage() {
           {(user.isAdmin || user.isGroupAdmin || user.isTeamLead) && (
             <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" className="w-full justify-start" size="lg">
+                <Button variant="outline" className="w-full justify-start active:bg-background focus:bg-background" size="lg">
                   <Settings className="mr-2 h-5 w-5" />
                   Admin Dashboard
                 </Button>
