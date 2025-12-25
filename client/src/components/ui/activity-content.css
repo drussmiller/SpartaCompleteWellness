@@ -123,3 +123,13 @@ p > .youtube-video-container:only-child {
   margin-top: 1em;
   margin-bottom: 1em;
 }
+
+/* Make embedded videos in padded rich-text-content break out to full width */
+.rich-text-content.px-6 iframe,
+.rich-text-content.px-6 .video-wrapper,
+.rich-text-content.px-6 .youtube-video-container {
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  width: calc(100% + 3rem) !important;
+  max-width: calc(100% + 3rem) !important;
+}

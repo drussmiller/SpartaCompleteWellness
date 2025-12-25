@@ -553,7 +553,7 @@ export default function ActivityPage() {
                               return (
                                 <div key={`bible-${index}`}>
                                   <div 
-                                    className="rich-text-content daily-content prose prose-sm max-w-none px-6"
+                                    className="rich-text-content daily-content px-6"
                                     style={{
                                       wordBreak: 'break-word',
                                       overflowWrap: 'break-word'
@@ -578,7 +578,7 @@ export default function ActivityPage() {
                               {item.type === 'text' && (
                                 <div>
                                   <div 
-                                    className="rich-text-content daily-content prose prose-sm max-w-none px-6"
+                                    className="rich-text-content daily-content px-6"
                                     style={{
                                       wordBreak: 'break-word',
                                       overflowWrap: 'break-word'
