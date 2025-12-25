@@ -20,7 +20,7 @@ iframe {
   max-width: 100%;
   border: none !important;
   display: block;
-  margin: 15px 0;
+  margin: 0;
 }
 
 /* Video container styling - cleaner wrapper for embedded content */
@@ -29,7 +29,7 @@ iframe {
   width: 100%;
   max-width: 100%;
   aspect-ratio: 16 / 9;
-  margin: 15px 0;
+  margin: 0;
   display: block;
   clear: both;
 }
@@ -54,7 +54,7 @@ iframe {
   width: 100%;
   max-width: 100%;
   aspect-ratio: 16 / 9;
-  margin: 15px 0;
+  margin: 0;
   display: block;
 }
 
@@ -69,7 +69,7 @@ iframe {
   position: relative;
   width: 100%;
   max-width: 100%;
-  margin: 15px 0;
+  margin: 0;
   aspect-ratio: 16/9;
   display: block;
 }
@@ -85,7 +85,7 @@ iframe {
   position: relative;
   width: 100%;
   max-width: 100%;
-  margin: 15px 0;
+  margin: 0;
   aspect-ratio: 16/9;
   display: block;
 }
