@@ -117,50 +117,6 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
       ></iframe>
-      <div 
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: 5,
-          pointerEvents: 'none'
-        }}
-      >
-        {/* Top "shield" for title and logo - reduced height to avoid blocking playback toggle in center */}
-        <div 
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '45px',
-            pointerEvents: 'auto',
-            cursor: 'default'
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        />
-        {/* Bottom-right "shield" for YouTube logo button - positioned to avoid controls */}
-        <div 
-          style={{
-            position: 'absolute',
-            bottom: '5px',
-            right: '60px',
-            width: '60px',
-            height: '40px',
-            pointerEvents: 'auto',
-            cursor: 'default'
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        />
-      </div>
     </div>
   );
 }
