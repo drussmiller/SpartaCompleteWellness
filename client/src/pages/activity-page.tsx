@@ -402,9 +402,9 @@ export default function ActivityPage() {
                           }
 
                           return (
-                            <div key={index} className="px-6">
+                            <div key={index}>
                               <div 
-                                className="rich-text-content daily-content"
+                                className="rich-text-content daily-content px-6"
                                 style={{
                                   wordBreak: 'break-word',
                                   overflowWrap: 'break-word'
@@ -480,7 +480,7 @@ export default function ActivityPage() {
                     <div className="space-y-6">
                       {/* Display Bible verse first if it exists */}
                       {selectedBibleVerse && (
-                        <div className="bible-verse-section px-6">
+                        <div className="bible-verse-section">
                           {selectedBibleVerse.contentFields?.map((item: any, index: number) => {
                             if (item.type === 'text') {
                               let content = item.content || '';
@@ -553,7 +553,7 @@ export default function ActivityPage() {
                               return (
                                 <div key={`bible-${index}`}>
                                   <div 
-                                    className="rich-text-content daily-content prose prose-sm max-w-none"
+                                    className="rich-text-content daily-content prose prose-sm max-w-none px-6"
                                     style={{
                                       wordBreak: 'break-word',
                                       overflowWrap: 'break-word'
@@ -578,7 +578,7 @@ export default function ActivityPage() {
                               {item.type === 'text' && (
                                 <div>
                                   <div 
-                                    className="rich-text-content daily-content prose prose-sm max-w-none"
+                                    className="rich-text-content daily-content prose prose-sm max-w-none px-6"
                                     style={{
                                       wordBreak: 'break-word',
                                       overflowWrap: 'break-word'
@@ -591,7 +591,7 @@ export default function ActivityPage() {
                               )}
                               {item.type === 'video' && (
                                 <div>
-                                  <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                                  <h4 className="text-md font-medium mb-2 px-6">{item.title}</h4>
                                   <YouTubePlayer videoId={item.content} />
                                 </div>
                               )}
