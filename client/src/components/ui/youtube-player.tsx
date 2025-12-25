@@ -111,7 +111,7 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
     >
       <iframe
         ref={iframeRef}
-        src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=0&modestbranding=1`}
+        src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=0&modestbranding=1&rel=0&showinfo=0`}
         title="YouTube video player"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
