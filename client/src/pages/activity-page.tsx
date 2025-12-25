@@ -402,7 +402,7 @@ export default function ActivityPage() {
                           }
 
                           return (
-                            <div key={index}>
+                            <div key={index} className="px-6">
                               <div 
                                 className="rich-text-content daily-content"
                                 style={{
@@ -421,7 +421,7 @@ export default function ActivityPage() {
                         if (item.type === 'video') {
                           return (
                             <div key={index}>
-                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                              <h4 className="text-md font-medium mb-2 px-6">{item.title}</h4>
                               <YouTubePlayer videoId={item.content} />
                             </div>
                           );
@@ -480,7 +480,7 @@ export default function ActivityPage() {
                     <div className="space-y-6">
                       {/* Display Bible verse first if it exists */}
                       {selectedBibleVerse && (
-                        <div className="bible-verse-section">
+                        <div className="bible-verse-section px-6">
                           {selectedBibleVerse.contentFields?.map((item: any, index: number) => {
                             if (item.type === 'text') {
                               let content = item.content || '';
