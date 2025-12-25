@@ -14,6 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMemo } from "react";
+import "@/components/ui/activity-content.css";
 
 export default function ActivityPage() {
   const { user } = useAuth();
