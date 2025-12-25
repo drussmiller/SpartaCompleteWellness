@@ -111,7 +111,7 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
     >
       <iframe
         ref={iframeRef}
-        src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1&disablekb=1`}
+        src={`https://www.youtube.com/embed/${cleanVideoId}?fs=1&playsinline=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1&disablekb=1&origin=${window.location.origin}`}
         title="YouTube video player"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -128,14 +128,14 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
           pointerEvents: 'none'
         }}
       >
-        {/* Top "shield" for title and logo */}
+        {/* Top "shield" for title and logo - reduced height to avoid blocking playback toggle in center */}
         <div 
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
-            height: '60px',
+            height: '45px',
             pointerEvents: 'auto',
             cursor: 'default'
           }}
@@ -144,14 +144,14 @@ export function YouTubePlayer({ videoId, className = '' }: YouTubePlayerProps) {
             e.stopPropagation();
           }}
         />
-        {/* Bottom-right "shield" for YouTube logo button */}
+        {/* Bottom-right "shield" for YouTube logo button - positioned to avoid controls */}
         <div 
           style={{
             position: 'absolute',
-            bottom: 0,
-            right: 0,
-            width: '100px',
-            height: '50px',
+            bottom: '5px',
+            right: '60px',
+            width: '60px',
+            height: '40px',
             pointerEvents: 'auto',
             cursor: 'default'
           }}
