@@ -14,8 +14,9 @@
 
 /* Default iframe styles */
 iframe {
-  width: 560px !important;
-  height: 315px !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9;
   max-width: 100%;
   border: none !important;
   display: block;
@@ -25,9 +26,9 @@ iframe {
 /* Video container styling - cleaner wrapper for embedded content */
 .video-wrapper {
   position: relative;
-  width: 560px;
-  height: 315px;
+  width: 100%;
   max-width: 100%;
+  aspect-ratio: 16 / 9;
   margin: 15px 0;
   display: block;
   clear: both;
@@ -50,9 +51,9 @@ iframe {
 /* Basic styling for videos */
 .video-wrapper {
   position: relative;
-  width: 560px;
-  height: 315px;
+  width: 100%;
   max-width: 100%;
+  aspect-ratio: 16 / 9;
   margin: 15px 0;
   display: block;
 }
@@ -67,8 +68,8 @@ iframe {
 .youtube-video-container {
   position: relative;
   width: 100%;
-  max-width: 560px;
-  margin: 15px auto;
+  max-width: 100%;
+  margin: 15px 0;
   aspect-ratio: 16/9;
   display: block;
 }
@@ -83,8 +84,8 @@ iframe {
 .video-wrapper {
   position: relative;
   width: 100%;
-  max-width: 560px;
-  margin: 15px auto;
+  max-width: 100%;
+  margin: 15px 0;
   aspect-ratio: 16/9;
   display: block;
 }
