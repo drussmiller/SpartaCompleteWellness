@@ -6539,19 +6539,29 @@ export const registerRoutes = async (
       const userId = req.query.userId
         ? parseInt(req.query.userId as string)
         : req.user.id;
-      const now = new Date();
-
+      
+      // Get current date/time adjusted by user's timezone if available
+      const tzOffset = req.user.timezoneOffset || 0; // in minutes
+      const now = new Date(Date.now() + (tzOffset * 60000));
+      
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
-      startOfWeek.setDate(
-        now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1),
-      );
+      const day = now.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+      
+      // Adjust to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
+      const dayDiff = day === 0 ? 6 : day - 1;
+      
       startOfWeek.setHours(0, 0, 0, 0);
+      startOfWeek.setDate(now.getDate() - dayDiff);
 
       // Get end of week (Sunday)
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
+
+      // Convert back to UTC for database queries
+      const queryStart = new Date(startOfWeek.getTime() - (tzOffset * 60000));
+      const queryEnd = new Date(endOfWeek.getTime() - (tzOffset * 60000));
 
       const result = await db
         .select({
@@ -6561,8 +6571,8 @@ export const registerRoutes = async (
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, startOfWeek),
-            lte(posts.createdAt, endOfWeek),
+            gte(posts.createdAt, queryStart),
+            lte(posts.createdAt, queryEnd),
             isNull(posts.parentId), // Don't count comments
           ),
         );
@@ -6571,8 +6581,8 @@ export const registerRoutes = async (
       res.setHeader("Content-Type", "application/json");
       res.json({
         points: result[0]?.points || 0,
-        startDate: startOfWeek.toISOString(),
-        endDate: endOfWeek.toISOString(),
+        startDate: queryStart.toISOString(),
+        endDate: queryEnd.toISOString(),
       });
     } catch (error) {
       logger.error(
@@ -6591,19 +6601,27 @@ export const registerRoutes = async (
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      const now = new Date();
+      // Get current date/time adjusted by user's timezone if available
+      const tzOffset = req.user.timezoneOffset || 0; // in minutes
+      const now = new Date(Date.now() + (tzOffset * 60000));
 
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
-      startOfWeek.setDate(
-        now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1),
-      );
+      const day = now.getDay();
+      // Adjust to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
+      const dayDiff = day === 0 ? 6 : day - 1;
+      
       startOfWeek.setHours(0, 0, 0, 0);
+      startOfWeek.setDate(now.getDate() - dayDiff);
 
       // Get end of week (Sunday)
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
+
+      // Convert back to UTC for database queries
+      const queryStart = new Date(startOfWeek.getTime() - (tzOffset * 60000));
+      const queryEnd = new Date(endOfWeek.getTime() - (tzOffset * 60000));
 
       // First get the user's team ID and group information
       const [currentUser] = await db
@@ -6642,8 +6660,8 @@ export const registerRoutes = async (
             SELECT SUM(p.points)
             FROM posts p
             WHERE p.user_id = users.id
-            AND p.created_at >= ${startOfWeek}
-            AND p.created_at <= ${endOfWeek}
+            AND p.created_at >= ${queryStart}
+            AND p.created_at <= ${queryEnd}
             AND p.parent_id IS NULL
           ), 0)::integer AS points`,
         })
@@ -6664,7 +6682,7 @@ export const registerRoutes = async (
               u.id as user_id,
               COALESCE(SUM(p.points), 0) as total_points
             FROM users u
-            LEFT JOIN posts p ON p.user_id = u.id AND p.created_at >= ${startOfWeek} AND p.created_at <= ${endOfWeek} AND p.parent_id IS NULL
+            LEFT JOIN posts p ON p.user_id = u.id AND p.created_at >= ${queryStart} AND p.created_at <= ${queryEnd} AND p.parent_id IS NULL
             WHERE u.team_id IS NOT NULL
             GROUP BY u.id
           ) user_points ON user_points.team_id = t.id
@@ -6681,8 +6699,8 @@ export const registerRoutes = async (
         teamMembers,
         teamStats,
         weekRange: {
-          start: startOfWeek.toISOString(),
-          end: endOfWeek.toISOString(),
+          start: queryStart.toISOString(),
+          end: queryEnd.toISOString(),
         },
       });
     } catch (error) {
