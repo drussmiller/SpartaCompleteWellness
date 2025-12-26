@@ -6543,9 +6543,9 @@ export const registerRoutes = async (
 
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
-      startOfWeek.setDate(
-        now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1),
-      );
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
       startOfWeek.setHours(0, 0, 0, 0);
 
       // Get end of week (Sunday)
@@ -6595,9 +6595,9 @@ export const registerRoutes = async (
 
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
-      startOfWeek.setDate(
-        now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1),
-      );
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
       startOfWeek.setHours(0, 0, 0, 0);
 
       // Get end of week (Sunday)
