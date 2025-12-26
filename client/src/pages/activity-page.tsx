@@ -334,7 +334,7 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      <main className={`pb-24 space-y-4 max-w-3xl mx-auto w-full px-4 py-6 text-lg mt-[40px] md:mt-[100px] ${isAndroid ? 'pb-[calc(24+40)px]' : ''}`}>
+      <main className={`pb-24 space-y-4 max-w-3xl mx-auto w-full px-4 py-6 text-base mt-[40px] md:mt-[100px] ${isAndroid ? 'pb-[calc(24+40)px]' : ''}`}>
         {/* Week Content Dropdown - Defaults to Closed */}
         <Collapsible open={weekContentOpen} onOpenChange={setWeekContentOpen}>
           <Card className="mb-6">
