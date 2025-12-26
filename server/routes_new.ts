@@ -5016,7 +5016,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
       const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      // Adjust diff to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
+      const diff = now.getDate() - (day === 0 ? 6 : day - 1);
       startOfWeek.setDate(diff);
       startOfWeek.setHours(0, 0, 0, 0);
 
@@ -5065,7 +5066,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
       const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      // Adjust diff to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
+      const diff = now.getDate() - (day === 0 ? 6 : day - 1);
       startOfWeek.setDate(diff);
       startOfWeek.setHours(0, 0, 0, 0);
 
