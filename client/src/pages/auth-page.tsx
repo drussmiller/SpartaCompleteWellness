@@ -140,7 +140,7 @@ export default function AuthPage() {
                         name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Username or Email</FormLabel>
+                            <FormLabel>Name or Email</FormLabel>
                             <FormControl>
                               <Input 
                                 {...field} 
