@@ -124,8 +124,20 @@ p > .youtube-video-container:only-child {
   margin-bottom: 1em;
 }
 
-/* Activity text content - simple padding approach */
+/* Activity text content - padding with full-width videos */
 .activity-text-content {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
+}
+
+/* Pull videos out to full width using negative margins */
+.activity-text-content iframe,
+.activity-text-content .video-wrapper {
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  width: calc(100% + 3rem) !important;
+  max-width: calc(100% + 3rem) !important;
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 }
