@@ -92,7 +92,22 @@ export default function HomePage() {
         return data;
       }
 
-      // If user is not in a team, fetch only their own introductory video posts
+      // If user is not in a team and is an Admin, fetch all posts
+      if (!user?.teamId && user?.isAdmin) {
+        console.log("Admin user not in team, fetching all posts");
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?page=1&limit=50&exclude=prayer&teamOnly=true`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("All posts for team-less admin:", data.length);
+        return data;
+      }
+
+      // If user is not in a team (and not Admin), fetch only their own introductory video posts
       if (!user?.teamId) {
         console.log("User not in team, fetching only their introductory video");
         const response = await apiRequest(
