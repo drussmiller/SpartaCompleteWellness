@@ -1782,6 +1782,10 @@ export const registerRoutes = async (
         }
 
         logger.info(`[SCOPE FILTER] User ${req.user.id} (team ${req.user.teamId}) - Scope conditions count: ${scopeConditions.length}`);
+      } else if (req.user.isAdmin) {
+        // Admin with no team - can see ALL posts regardless of scope
+        logger.info(`[SCOPE FILTER] Admin user ${req.user.id} has no team - showing all posts`);
+        // No additional scope filter for admins without team
       } else {
         // User has no team - show 'everyone' posts OR their own posts (e.g., introductory videos)
         conditions.push(
