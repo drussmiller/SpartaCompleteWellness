@@ -6544,9 +6544,11 @@ export const registerRoutes = async (
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
       const day = now.getDay();
-      // Adjust diff to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
-      // For Dec 26 (Friday, day 5), diff should be 26 - (5-1) = 22
+      // Adjust to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
       const dayDiff = day === 0 ? 6 : day - 1;
+      
+      // We must use UTC methods or be very careful with local dates
+      // But more importantly, setting the date after setHours(0,0,0,0) ensures we land on the start of Monday
       startOfWeek.setHours(0, 0, 0, 0);
       startOfWeek.setDate(now.getDate() - dayDiff);
 
@@ -6554,6 +6556,10 @@ export const registerRoutes = async (
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
+
+      // Double check: if today is Dec 26 (Friday, day 5), dayDiff is 4.
+      // 26 - 4 = 22. startOfWeek is Dec 22.
+      // 22 + 6 = 28. endOfWeek is Dec 28.
 
       const result = await db
         .select({
@@ -6598,9 +6604,11 @@ export const registerRoutes = async (
       // Get start of week (Monday)
       const startOfWeek = new Date(now);
       const day = now.getDay();
-      // Adjust diff to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
-      // For Dec 26 (Friday, day 5), diff should be 26 - (5-1) = 22
+      // Adjust to get Monday: if Sunday (0), go back 6 days, otherwise go back (day-1) days
       const dayDiff = day === 0 ? 6 : day - 1;
+      
+      // We must use UTC methods or be very careful with local dates
+      // But more importantly, setting the date after setHours(0,0,0,0) ensures we land on the start of Monday
       startOfWeek.setHours(0, 0, 0, 0);
       startOfWeek.setDate(now.getDate() - dayDiff);
 
@@ -6608,6 +6616,10 @@ export const registerRoutes = async (
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
+
+      // Double check: if today is Dec 26 (Friday, day 5), dayDiff is 4.
+      // 26 - 4 = 22. startOfWeek is Dec 22.
+      // 22 + 6 = 28. endOfWeek is Dec 28.
 
       // First get the user's team ID and group information
       const [currentUser] = await db
