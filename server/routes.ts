@@ -1585,8 +1585,12 @@ export const registerRoutes = async (
       // Add team-only filter if specified
       // This includes posts from team members AND posts targeted to this team via scope
       if (teamOnly) {
-        if (!req.user.teamId) {
-          // If user has no team, show only their own introductory_video posts
+        if (!req.user.teamId && req.user.isAdmin) {
+          // Admin users with no team can see all posts from all team members
+          logger.info(`Admin user ${req.user.id} has no team, showing all posts from all users`);
+          // No additional filter needed - they see all posts
+        } else if (!req.user.teamId) {
+          // If user has no team (and is not Admin), show only their own introductory_video posts
           logger.info(`User ${req.user.id} has no team, showing only their introductory_video posts`);
           conditions.push(
             and(
@@ -1778,6 +1782,10 @@ export const registerRoutes = async (
         }
 
         logger.info(`[SCOPE FILTER] User ${req.user.id} (team ${req.user.teamId}) - Scope conditions count: ${scopeConditions.length}`);
+      } else if (req.user.isAdmin) {
+        // Admin with no team - can see ALL posts regardless of scope
+        logger.info(`[SCOPE FILTER] Admin user ${req.user.id} has no team - showing all posts`);
+        // No additional scope filter for admins without team
       } else {
         // User has no team - show 'everyone' posts OR their own posts (e.g., introductory videos)
         conditions.push(
