@@ -144,7 +144,7 @@ export default function AuthPage() {
                             <FormControl>
                               <Input 
                                 {...field} 
-                                placeholder="Enter your username or email" 
+                                placeholder="Enter your name or email" 
                                 autoComplete="username"
                                 data-testid="input-username"
                               />
