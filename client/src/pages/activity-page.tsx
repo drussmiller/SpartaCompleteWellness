@@ -14,6 +14,46 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMemo } from "react";
+import "@/components/ui/activity-content.css";
+
+// Helper function to split HTML content into text and video segments
+function splitContentByVideos(html: string): Array<{ type: 'text' | 'video', content: string }> {
+  const segments: Array<{ type: 'text' | 'video', content: string }> = [];
+  
+  // Match iframes and video-wrapper divs
+  const videoRegex = /<(?:iframe[^>]*>[\s\S]*?<\/iframe>|div[^>]*class="[^"]*video-wrapper[^"]*"[^>]*>[\s\S]*?<\/div>)/gi;
+  
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = videoRegex.exec(html)) !== null) {
+    // Add text before this video
+    if (match.index > lastIndex) {
+      const textContent = html.slice(lastIndex, match.index).trim();
+      if (textContent) {
+        segments.push({ type: 'text', content: textContent });
+      }
+    }
+    // Add the video
+    segments.push({ type: 'video', content: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text after last video
+  if (lastIndex < html.length) {
+    const textContent = html.slice(lastIndex).trim();
+    if (textContent) {
+      segments.push({ type: 'text', content: textContent });
+    }
+  }
+  
+  // If no videos found, return original as text
+  if (segments.length === 0 && html.trim()) {
+    segments.push({ type: 'text', content: html });
+  }
+  
+  return segments;
+}
 
 export default function ActivityPage() {
   const { user } = useAuth();
@@ -294,7 +334,7 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      <main className={`pb-24 space-y-4 max-w-2xl mx-auto w-full pl-8 pr-4 py-6 text-lg mt-[40px] md:mt-[100px] ${isAndroid ? 'pb-[calc(24+40)px]' : ''}`}>
+      <main className={`pb-24 space-y-4 max-w-3xl mx-auto w-full px-4 py-6 text-base mt-[40px] md:mt-[100px] ${isAndroid ? 'pb-[calc(24+40)px]' : ''}`}>
         {/* Week Content Dropdown - Defaults to Closed */}
         <Collapsible open={weekContentOpen} onOpenChange={setWeekContentOpen}>
           <Card className="mb-6">
@@ -307,8 +347,8 @@ export default function ActivityPage() {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-center gap-4 mb-4">
+              <CardContent className="space-y-4 !p-0 pt-4 pb-4">
+                <div className="flex items-center justify-center gap-4 mb-4 px-6">
                   <Button
                     variant="outline"
                     size="icon"
@@ -401,19 +441,30 @@ export default function ActivityPage() {
                             });
                           }
 
+                          // Split content into text and video segments for proper layout
+                          const segments = splitContentByVideos(content.replace(/(<\/div>)\\?">/g, '$1'));
+                          
                           return (
                             <div key={index}>
-                              <div 
-                                className="rich-text-content daily-content"
-                                style={{
-                                  wordBreak: 'break-word',
-                                  overflowWrap: 'break-word'
-                                }}
-                                dangerouslySetInnerHTML={{ 
-                                  __html: content
-                                    .replace(/(<\/div>)\\?">/g, '$1') // Remove \"> after closing div tags specifically
-                                }} 
-                              />
+                              {segments.map((segment, segIdx) => (
+                                segment.type === 'text' ? (
+                                  <div 
+                                    key={segIdx}
+                                    className="rich-text-content daily-content activity-text-content"
+                                    style={{
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word'
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: segment.content }} 
+                                  />
+                                ) : (
+                                  <div 
+                                    key={segIdx}
+                                    className="video-full-width"
+                                    dangerouslySetInnerHTML={{ __html: segment.content }}
+                                  />
+                                )
+                              ))}
                             </div>
                           );
                         }
@@ -421,7 +472,7 @@ export default function ActivityPage() {
                         if (item.type === 'video') {
                           return (
                             <div key={index}>
-                              <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                              <h4 className="text-md font-medium mb-2 px-6">{item.title}</h4>
                               <YouTubePlayer videoId={item.content} />
                             </div>
                           );
@@ -453,8 +504,8 @@ export default function ActivityPage() {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-center gap-4 mb-4">
+              <CardContent className="space-y-4 !p-0 pt-4 pb-4">
+                <div className="flex items-center justify-center gap-4 mb-4 px-6">
                   <Button
                     variant="outline"
                     size="icon"
@@ -550,18 +601,30 @@ export default function ActivityPage() {
                                 });
                               }
 
+                              // Split content into text and video segments
+                              const segments = splitContentByVideos(content);
+                              
                               return (
                                 <div key={`bible-${index}`}>
-                                  <div 
-                                    className="rich-text-content daily-content prose prose-sm max-w-none"
-                                    style={{
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'break-word'
-                                    }}
-                                    dangerouslySetInnerHTML={{ 
-                                      __html: content
-                                    }} 
-                                  />
+                                  {segments.map((segment, segIdx) => (
+                                    segment.type === 'text' ? (
+                                      <div 
+                                        key={segIdx}
+                                        className="rich-text-content daily-content activity-text-content"
+                                        style={{
+                                          wordBreak: 'break-word',
+                                          overflowWrap: 'break-word'
+                                        }}
+                                        dangerouslySetInnerHTML={{ __html: segment.content }} 
+                                      />
+                                    ) : (
+                                      <div 
+                                        key={segIdx}
+                                        className="video-full-width"
+                                        dangerouslySetInnerHTML={{ __html: segment.content }}
+                                      />
+                                    )
+                                  ))}
                                 </div>
                               );
                             }
@@ -575,23 +638,35 @@ export default function ActivityPage() {
                         <div className="workout-activity-section">
                           {selectedActivity.contentFields?.map((item: any, index: number) => (
                             <div key={`activity-${index}`}>
-                              {item.type === 'text' && (
-                                <div>
-                                  <div 
-                                    className="rich-text-content daily-content prose prose-sm max-w-none"
-                                    style={{
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'break-word'
-                                    }}
-                                    dangerouslySetInnerHTML={{ 
-                                      __html: (item.content || '')
-                                    }} 
-                                  />
-                                </div>
-                              )}
+                              {item.type === 'text' && (() => {
+                                const segments = splitContentByVideos(item.content || '');
+                                return (
+                                  <div>
+                                    {segments.map((segment, segIdx) => (
+                                      segment.type === 'text' ? (
+                                        <div 
+                                          key={segIdx}
+                                          className="rich-text-content daily-content activity-text-content"
+                                          style={{
+                                            wordBreak: 'break-word',
+                                            overflowWrap: 'break-word'
+                                          }}
+                                          dangerouslySetInnerHTML={{ __html: segment.content }} 
+                                        />
+                                      ) : (
+                                        <div 
+                                          key={segIdx}
+                                          className="video-full-width"
+                                          dangerouslySetInnerHTML={{ __html: segment.content }}
+                                        />
+                                      )
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                               {item.type === 'video' && (
                                 <div>
-                                  <h4 className="text-md font-medium mb-2">{item.title}</h4>
+                                  <h4 className="text-md font-medium mb-2 px-6">{item.title}</h4>
                                   <YouTubePlayer videoId={item.content} />
                                 </div>
                               )}
