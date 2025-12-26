@@ -140,11 +140,11 @@ export default function AuthPage() {
                         name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Username or Email</FormLabel>
+                            <FormLabel>Name or Email</FormLabel>
                             <FormControl>
                               <Input 
                                 {...field} 
-                                placeholder="Enter your username or email" 
+                                placeholder="Enter your name or email" 
                                 autoComplete="username"
                                 data-testid="input-username"
                               />

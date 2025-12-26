@@ -78,10 +78,10 @@ function RegistrationForm() {
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
       username: draft?.formValues.username || "",
+      preferredName: draft?.formValues.preferredName || "",
       email: draft?.formValues.email || "",
       password: "",
       confirmPassword: "",
-      preferredName: draft?.formValues.preferredName || "",
       verificationCode: "",
     },
   });
@@ -291,9 +291,23 @@ function RegistrationForm() {
             name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Username</FormLabel>
+                <FormLabel>Full Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="username" {...field} data-testid="input-username" />
+                  <Input placeholder="Full Name" {...field} data-testid="input-username" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="preferredName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Preferred Name (optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="How you'd like to be called" {...field} data-testid="input-preferred-name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -406,20 +420,6 @@ function RegistrationForm() {
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
                   <Input type="password" placeholder="Confirm password" {...field} data-testid="input-confirm-password" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="preferredName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Preferred Name (optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="How you'd like to be called" {...field} data-testid="input-preferred-name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
