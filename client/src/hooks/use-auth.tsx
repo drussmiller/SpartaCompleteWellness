@@ -78,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: SelectUser) => {
       console.log('Login successful:', user);
       queryClient.setQueryData(["/api/user"], user);
+      // Reset filter mode to "team" on new login
+      sessionStorage.removeItem("homePageFilterMode");
     },
     onError: (error: Error) => {
       console.error('Login error:', error);
