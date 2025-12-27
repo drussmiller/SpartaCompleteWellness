@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, primaryKey, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -16,7 +16,7 @@ export const users = pgTable("users", {
   adminGroupId: integer("admin_group_id"), // Group they are admin of (if isGroupAdmin is true)
   points: integer("points").default(0),
   weight: integer("weight"),
-  waist: integer("waist"),
+  waist: real("waist"),
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
   teamJoinedAt: timestamp("team_joined_at"), // When user joined their team
@@ -205,7 +205,7 @@ export const measurements = pgTable("measurements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   weight: integer("weight"),
-  waist: integer("waist"),
+  waist: real("waist"),
   date: timestamp("date").defaultNow(),
 });
 

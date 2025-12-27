@@ -388,7 +388,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
         ...(data.weight &&
           data.weight !== "" && { weight: parseInt(String(data.weight)) }),
         ...(data.waist &&
-          data.waist !== "" && { waist: parseInt(String(data.waist)) }),
+          data.waist !== "" && { waist: parseFloat(String(data.waist)) }),
       };
 
       console.log("Submitting measurement:", payload);
