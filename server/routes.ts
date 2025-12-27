@@ -1527,6 +1527,124 @@ export const registerRoutes = async (
       const excludeType = req.query.exclude as string;
       const teamOnly = req.query.teamOnly === "true";
       const teamlessIntroOnly = req.query.teamlessIntroOnly === "true";
+      const allUsers = req.query.allUsers === "true";
+      const groupAllUsers = req.query.groupAllUsers === "true";
+
+      // Group Admin filter: show all posts from users in their group
+      if (groupAllUsers && req.user.isGroupAdmin && req.user.adminGroupId) {
+        logger.info(`[GROUP ALL USERS] Group Admin ${req.user.id} fetching all posts from group ${req.user.adminGroupId}`);
+
+        // Find all teams in the group admin's group
+        const groupTeams = await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.groupId, req.user.adminGroupId));
+
+        const teamIds = groupTeams.map(t => t.id);
+
+        // Find all users in those teams
+        const groupUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.teamId, teamIds));
+
+        const userIds = groupUsers.map(u => u.id);
+
+        if (userIds.length === 0) {
+          logger.info(`[GROUP ALL USERS] No users found in group ${req.user.adminGroupId}`);
+          return res.json([]);
+        }
+
+        // Fetch all posts from users in the group (excluding prayer posts)
+        const groupPosts = await db
+          .select({
+            id: posts.id,
+            content: posts.content,
+            type: posts.type,
+            mediaUrl: posts.mediaUrl,
+            thumbnailUrl: posts.thumbnailUrl,
+            is_video: posts.is_video,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            points: posts.points,
+            userId: posts.userId,
+            postScope: posts.postScope,
+            targetOrganizationId: posts.targetOrganizationId,
+            targetGroupId: posts.targetGroupId,
+            targetTeamId: posts.targetTeamId,
+            author: {
+              id: users.id,
+              username: users.username,
+              email: users.email,
+              imageUrl: users.imageUrl,
+              avatarColor: users.avatarColor,
+              isAdmin: users.isAdmin,
+              teamId: users.teamId,
+            },
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              isNull(posts.parentId),
+              inArray(posts.userId, userIds),
+              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+        logger.info(`[GROUP ALL USERS] Returning ${groupPosts.length} posts from ${userIds.length} users in group ${req.user.adminGroupId}`);
+        return res.json(groupPosts);
+      }
+
+      // Admin filter: show all posts from all users (when allUsers is true)
+      if (allUsers && req.user.isAdmin) {
+        logger.info(`[ALL USERS] Admin ${req.user.id} fetching all posts from all users`);
+
+        // Fetch all posts from all users (excluding prayer posts if specified)
+        const allPosts = await db
+          .select({
+            id: posts.id,
+            content: posts.content,
+            type: posts.type,
+            mediaUrl: posts.mediaUrl,
+            thumbnailUrl: posts.thumbnailUrl,
+            is_video: posts.is_video,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            points: posts.points,
+            userId: posts.userId,
+            postScope: posts.postScope,
+            targetOrganizationId: posts.targetOrganizationId,
+            targetGroupId: posts.targetGroupId,
+            targetTeamId: posts.targetTeamId,
+            author: {
+              id: users.id,
+              username: users.username,
+              email: users.email,
+              imageUrl: users.imageUrl,
+              avatarColor: users.avatarColor,
+              isAdmin: users.isAdmin,
+              teamId: users.teamId,
+            },
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              isNull(posts.parentId),
+              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+        logger.info(`[ALL USERS] Returning ${allPosts.length} posts from all users`);
+        return res.json(allPosts);
+      }
 
       // Admin/Group Admin filter: show only introductory videos from team-less users
       if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin)) {
@@ -1550,10 +1668,27 @@ export const registerRoutes = async (
         // Build query for introductory videos from team-less users
         const introVideos = await db
           .select({
-            post: posts,
+            id: posts.id,
+            content: posts.content,
+            type: posts.type,
+            mediaUrl: posts.mediaUrl,
+            thumbnailUrl: posts.thumbnailUrl,
+            is_video: posts.is_video,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            points: posts.points,
+            userId: posts.userId,
+            postScope: posts.postScope,
+            targetOrganizationId: posts.targetOrganizationId,
+            targetGroupId: posts.targetGroupId,
+            targetTeamId: posts.targetTeamId,
             author: {
               id: users.id,
               username: users.username,
+              email: users.email,
+              imageUrl: users.imageUrl,
+              avatarColor: users.avatarColor,
+              isAdmin: users.isAdmin,
               teamId: users.teamId,
             },
           })
@@ -1570,13 +1705,8 @@ export const registerRoutes = async (
           .limit(limit)
           .offset(offset);
 
-        const formattedPosts = introVideos.map(({ post, author }) => ({
-          ...post,
-          author,
-        }));
-
-        logger.info(`[TEAMLESS INTRO FILTER] Returning ${formattedPosts.length} introductory videos from ${teamlessUserIds.length} team-less users`);
-        return res.json(formattedPosts);
+        logger.info(`[TEAMLESS INTRO FILTER] Returning ${introVideos.length} introductory videos from ${teamlessUserIds.length} team-less users`);
+        return res.json(introVideos);
       }
 
       // Build the query conditions
