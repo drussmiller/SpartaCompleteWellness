@@ -175,7 +175,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
 
   return (
     <AppLayout>
-      <div className="flex flex-col items-center p-4 pt-2">
+      <div className="flex flex-col items-center p-4 pt-2 pb-20">
         <Card className="w-full max-w-md">
           <CardHeader className="relative pb-4">
             {onClose && (
