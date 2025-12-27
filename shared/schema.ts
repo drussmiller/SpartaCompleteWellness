@@ -15,7 +15,7 @@ export const users = pgTable("users", {
   teamId: integer("team_id"), // Users belong to teams
   adminGroupId: integer("admin_group_id"), // Group they are admin of (if isGroupAdmin is true)
   points: integer("points").default(0),
-  weight: integer("weight"),
+  weight: real("weight"),
   waist: real("waist"),
   createdAt: timestamp("created_at").defaultNow(),
   imageUrl: text("image_url"),
@@ -204,7 +204,7 @@ export const postRelations = relations(posts, ({ one, many }) => ({
 export const measurements = pgTable("measurements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  weight: integer("weight"),
+  weight: real("weight"),
   waist: real("waist"),
   date: timestamp("date").defaultNow(),
 });
