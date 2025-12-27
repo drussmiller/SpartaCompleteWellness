@@ -181,7 +181,7 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
             Share this QR code or invite code to add someone as {roleLabel} to {name}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col items-center space-y-4 py-4">
+        <div className="flex flex-col items-center space-y-4 py-4 pb-8">
           {isLoading ? (
             <Loader2 className="h-8 w-8 animate-spin" />
           ) : currentCode ? (

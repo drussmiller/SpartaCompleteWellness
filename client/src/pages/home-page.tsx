@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
-import { Loader2, Filter, RefreshCw } from "lucide-react";
+import { Loader2, Filter, RefreshCw, ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
@@ -16,6 +16,15 @@ import { useLocation } from "wouter";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
 import { useRestoreScroll } from "@/hooks/use-restore-scroll";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+
+type FilterMode = "team" | "all_users" | "new_users";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -27,8 +36,16 @@ export default function HomePage() {
   const loadingRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef(1);
   const [_, navigate] = useLocation();
-  const [showIntroVideosOnly, setShowIntroVideosOnly] = useState(false);
+  const [filterMode, setFilterMode] = useState<FilterMode>(() => {
+    const saved = sessionStorage.getItem("homePageFilterMode");
+    return (saved as FilterMode) || "team";
+  });
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    sessionStorage.setItem("homePageFilterMode", filterMode);
+  }, [filterMode]);
   
   // Use scroll direction hook for header/nav animations
   const { isHeaderVisible, isBottomNavVisible, scrollY } = useScrollDirection({
@@ -75,10 +92,10 @@ export default function HomePage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, showIntroVideosOnly], // v2: includes thumbnailUrl field
+    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode], // v2: includes thumbnailUrl field
     queryFn: async () => {
-      // Admin/Group Admin filter for introductory videos from team-less users
-      if (showIntroVideosOnly && (user?.isAdmin || user?.isGroupAdmin)) {
+      // Admin/Group Admin filter for introductory videos from team-less users (New Users mode)
+      if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin)) {
         console.log("Fetching introductory videos from team-less users");
         const response = await apiRequest(
           "GET",
@@ -89,6 +106,36 @@ export default function HomePage() {
         }
         const data = await response.json();
         console.log("Introductory videos from team-less users:", data.length);
+        return data;
+      }
+
+      // Admin "All Users" mode - see all posts from all users
+      if (filterMode === "all_users" && user?.isAdmin) {
+        console.log("Admin fetching all posts from all users");
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?page=1&limit=50&exclude=prayer&allUsers=true`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("All posts for admin:", data.length);
+        return data;
+      }
+
+      // Group Admin "All Users" mode - see all posts from users in their group
+      if (filterMode === "all_users" && user?.isGroupAdmin) {
+        console.log("Group Admin fetching all posts from their group");
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?page=1&limit=50&exclude=prayer&groupAllUsers=true`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("All posts for group admin:", data.length);
         return data;
       }
 
@@ -122,8 +169,8 @@ export default function HomePage() {
         return data;
       }
 
-      // Make sure to exclude prayer posts from Team page
-      console.log("Fetching posts...");
+      // Default: Team mode - Make sure to exclude prayer posts from Team page
+      console.log("Fetching posts for team...");
       const response = await apiRequest(
         "GET",
         `/api/posts?page=1&limit=50&exclude=prayer&teamOnly=true`,
@@ -267,18 +314,45 @@ export default function HomePage() {
                     <CreatePostDialog remaining={remaining} initialType="food" />
                     {user?.teamId && <MessageSlideCard />}
                   </div>
-                  {/* Admin/Group Admin filter for introductory videos */}
+                  {/* Admin/Group Admin filter popup */}
                   {(user?.isAdmin || user?.isGroupAdmin) && (
-                    <Button
-                      variant={showIntroVideosOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowIntroVideosOnly(!showIntroVideosOnly)}
-                      className="text-xs h-7"
-                      data-testid="button-filter-intro-videos"
-                    >
-                      <Filter className="h-3 w-3 mr-1" />
-                      {showIntroVideosOnly ? "Show All Posts" : "New Users"}
-                    </Button>
+                    <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={filterMode !== "team" ? "default" : "outline"}
+                          size="sm"
+                          className="text-xs h-7"
+                          data-testid="button-filter-posts"
+                        >
+                          <Filter className="h-3 w-3 mr-1" />
+                          {filterMode === "team" ? "Team" : filterMode === "all_users" ? "All Users" : "New Users"}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-3" align="end">
+                        <RadioGroup
+                          value={filterMode}
+                          onValueChange={(value: FilterMode) => {
+                            setFilterMode(value);
+                            setFilterPopoverOpen(false);
+                          }}
+                          className="space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="team" id="filter-team" data-testid="radio-filter-team" />
+                            <Label htmlFor="filter-team" className="text-sm cursor-pointer">Team</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="all_users" id="filter-all-users" data-testid="radio-filter-all-users" />
+                            <Label htmlFor="filter-all-users" className="text-sm cursor-pointer">All Users</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="new_users" id="filter-new-users" data-testid="radio-filter-new-users" />
+                            <Label htmlFor="filter-new-users" className="text-sm cursor-pointer">New Users</Label>
+                          </div>
+                        </RadioGroup>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               </div>
