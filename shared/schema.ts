@@ -402,7 +402,10 @@ export const insertUserSchema = createInsertSchema(users)
     waiverSignature: z.string().optional(),
   });
 
-export const insertMeasurementSchema = createInsertSchema(measurements);
+export const insertMeasurementSchema = createInsertSchema(measurements).extend({
+  weight: z.number().nullable().optional(),
+  waist: z.number().nullable().optional(),
+});
 export const insertNotificationSchema = createInsertSchema(notifications)
   .extend({
     title: z.string().min(1, "Notification title is required"),
