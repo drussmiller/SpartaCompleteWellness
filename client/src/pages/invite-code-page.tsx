@@ -63,6 +63,10 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   });
   
   const isAutonomousModeEnabled = autonomousModeData?.enabled ?? false;
+  
+  // Check if user has donated (allows autonomous mode for that specific user)
+  const userHasDonated = user?.hasDonated ?? false;
+  const userHasNoTeam = !user?.teamId;
 
   // If user is already a Group Admin, Team Lead, or in a team, redirect them
   useEffect(() => {
@@ -279,7 +283,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
           </CardContent>
         </Card>
         
-        {hasPostedIntroVideo && isAutonomousModeEnabled && <JoinOrBuildTeamPanel />}
+        {hasPostedIntroVideo && (isAutonomousModeEnabled || (userHasDonated && userHasNoTeam)) && <JoinOrBuildTeamPanel />}
       </div>
     </AppLayout>
   );
