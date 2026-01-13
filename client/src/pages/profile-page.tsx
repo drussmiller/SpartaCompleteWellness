@@ -1048,15 +1048,22 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                               (a, b) =>
                                 new Date(a.date!).getTime() -
                                 new Date(b.date!).getTime(),
-                            )}
+                            )
+                            .map((m) => ({
+                              ...m,
+                              timestamp: new Date(m.date!).getTime(),
+                            }))}
                           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
-                            dataKey="date"
+                            dataKey="timestamp"
+                            type="number"
+                            scale="time"
+                            domain={["dataMin", "dataMax"]}
                             tick={{ fontSize: 12 }}
-                            tickFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
+                            tickFormatter={(ts) =>
+                              new Date(ts).toLocaleDateString()
                             }
                           />
                           <YAxis
@@ -1065,8 +1072,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                             domain={["auto", "auto"]}
                           />
                           <Tooltip
-                            labelFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
+                            labelFormatter={(ts) =>
+                              new Date(ts).toLocaleDateString()
                             }
                             formatter={(value) => [`${value} lbs`, "Weight"]}
                           />
@@ -1093,15 +1100,22 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                               (a, b) =>
                                 new Date(a.date!).getTime() -
                                 new Date(b.date!).getTime(),
-                            )}
+                            )
+                            .map((m) => ({
+                              ...m,
+                              timestamp: new Date(m.date!).getTime(),
+                            }))}
                           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
-                            dataKey="date"
+                            dataKey="timestamp"
+                            type="number"
+                            scale="time"
+                            domain={["dataMin", "dataMax"]}
                             tick={{ fontSize: 12 }}
-                            tickFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
+                            tickFormatter={(ts) =>
+                              new Date(ts).toLocaleDateString()
                             }
                           />
                           <YAxis
@@ -1110,8 +1124,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                             domain={["auto", "auto"]}
                           />
                           <Tooltip
-                            labelFormatter={(date) =>
-                              new Date(date).toLocaleDateString()
+                            labelFormatter={(ts) =>
+                              new Date(ts).toLocaleDateString()
                             }
                             formatter={(value) => [`${value} inches`, "Waist"]}
                           />
