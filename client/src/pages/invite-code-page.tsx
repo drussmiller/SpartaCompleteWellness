@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus } from "lucide-react";
+import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus, Heart } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import QrScanner from "qr-scanner";
@@ -241,6 +241,27 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                     Scan QR Code
                   </Button>
                 </div>
+                
+                {/* Donation link for users without a team */}
+                {userHasNoTeam && !userHasDonated && (
+                  <div className="mt-6 pt-6 border-t">
+                    <p className="text-sm text-muted-foreground text-center mb-4">
+                      Want to start your own team? Make a donation to unlock the ability to create your own Organization, Group, and Team.
+                    </p>
+                    <Button
+                      variant="default"
+                      className="w-full"
+                      onClick={() => window.open('https://donorbox.org/sparta-complete-wellness-sponsorship-donation', '_blank')}
+                      data-testid="button-donate"
+                    >
+                      <Heart className="mr-2 h-4 w-4" />
+                      Make a Donation
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Please use the same email address you registered with.
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
               <div className="space-y-3">
