@@ -46,6 +46,7 @@ The application uses a monorepo structure, separating client, server, and shared
 - **Onboarding**: Introductory video onboarding for team-less users, restricting posts to video only until team assignment.
 - **Notifications**: Daily reminders for missed posts via external cron service (cron-job.org calls `/api/check-notifications` endpoint hourly), SMS notifications via Twilio (opt-in only), user-configurable daily and confirmation message toggles. Works reliably with Autoscale deployments. See `EXTERNAL_CRON_SETUP.md` for setup instructions.
 - **Mobile UI**: Dedicated scroll container architecture for iOS momentum scrolling, header/nav auto-hide on scroll, pull-to-refresh on Home page (80px threshold), scroll position restoration when returning from video player.
+- **Donations & Autonomous Mode**: Stripe integration for donation processing. Users without a team can donate any amount ($1 minimum) to unlock "autonomous mode" allowing them to create their own Organization, Group, and Team. Donation matching via email address. Uses stripe-replit-sync for webhook management. Key files: `stripeClient.ts`, `stripeWebhookHandlers.ts`, `stripe-donation-routes.ts`, donation success page at `/donation-success`.
 
 ### Data Flow
 - **File Upload**: Client uploads, server validates, stores in Object Storage, generates thumbnail, records in DB, responds to client.
