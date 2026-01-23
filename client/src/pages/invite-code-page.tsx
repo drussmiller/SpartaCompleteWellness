@@ -675,7 +675,7 @@ function JoinOrBuildTeamPanel() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Church or Organization Name
+                  1. Church or Organization Name
                 </Label>
                 <Input
                   placeholder="Enter organization name..."
@@ -688,12 +688,13 @@ function JoinOrBuildTeamPanel() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Group Name
+                  2. Group Name
                 </Label>
                 <Input
-                  placeholder="Enter group name..."
+                  placeholder={newOrgName.trim() ? "Enter group name..." : "Enter organization first"}
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
+                  disabled={!newOrgName.trim()}
                   data-testid="input-new-group"
                 />
               </div>
@@ -701,12 +702,13 @@ function JoinOrBuildTeamPanel() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Team Name
+                  3. Team Name
                 </Label>
                 <Input
-                  placeholder="Enter team name..."
+                  placeholder={newGroupName.trim() ? "Enter team name..." : "Enter group first"}
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
+                  disabled={!newGroupName.trim()}
                   data-testid="input-new-team"
                 />
               </div>
