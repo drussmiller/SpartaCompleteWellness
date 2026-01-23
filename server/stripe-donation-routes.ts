@@ -31,6 +31,7 @@ stripeDonationRouter.post('/api/stripe/create-payment-intent', authenticate, asy
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
       currency: 'usd',
+      receipt_email: user.email,
       metadata: {
         userId: String(user.id),
         email: user.email,
