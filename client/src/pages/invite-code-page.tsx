@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/collapsible";
 import type { Organization, Group, Team } from "@shared/schema";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 interface InviteCodePageProps {
   onClose?: () => void;
@@ -382,7 +382,8 @@ function DonationSection() {
         </p>
         <Elements stripe={stripePromise} options={{ clientSecret }}>
           <PaymentForm 
-            paymentIntentId={paymentIntentId} 
+            paymentIntentId={paymentIntentId}
+            clientSecret={clientSecret}
             onSuccess={handlePaymentSuccess}
             onCancel={() => {
               setClientSecret(null);
@@ -445,11 +446,13 @@ function DonationSection() {
 }
 
 function PaymentForm({ 
-  paymentIntentId, 
+  paymentIntentId,
+  clientSecret,
   onSuccess, 
   onCancel 
 }: { 
-  paymentIntentId: string; 
+  paymentIntentId: string;
+  clientSecret: string;
   onSuccess: () => void; 
   onCancel: () => void;
 }) {
@@ -466,12 +469,19 @@ function PaymentForm({
       return;
     }
 
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setErrorMessage('Card element not found');
+      return;
+    }
+
     setIsProcessing(true);
     setErrorMessage(null);
 
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: cardElement,
+      },
     });
 
     if (error) {
@@ -504,12 +514,26 @@ function PaymentForm({
     setIsProcessing(false);
   };
 
+  const cardStyle = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: '#424770',
+        '::placeholder': {
+          color: '#aab7c4',
+        },
+        padding: '12px',
+      },
+      invalid: {
+        color: '#9e2146',
+      },
+    },
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="min-h-[350px] overflow-visible">
-        <PaymentElement options={{
-          layout: 'accordion'
-        }} />
+      <div className="p-4 border rounded-md bg-white">
+        <CardElement options={cardStyle} />
       </div>
       {errorMessage && (
         <p className="text-sm text-red-500 text-center">{errorMessage}</p>
