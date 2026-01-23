@@ -506,9 +506,9 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="min-h-[200px]">
+      <div className="min-h-[350px] overflow-visible">
         <PaymentElement options={{
-          layout: 'tabs'
+          layout: 'accordion'
         }} />
       </div>
       {errorMessage && (
