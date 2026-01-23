@@ -460,6 +460,7 @@ function PaymentForm({
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cardholderName, setCardholderName] = useState("");
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -481,6 +482,9 @@ function PaymentForm({
     const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
       payment_method: {
         card: cardNumberElement,
+        billing_details: {
+          name: cardholderName || undefined,
+        },
       },
     });
 
@@ -530,25 +534,35 @@ function PaymentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="space-y-2">
         <div>
-          <label className="text-sm font-medium mb-1 block">Card Number</label>
-          <div className="p-3 border rounded-md bg-white">
-            <CardNumberElement options={elementStyle} />
+          <label className="text-xs font-medium mb-1 block text-muted-foreground">Name on Card</label>
+          <Input
+            type="text"
+            placeholder="John Smith"
+            value={cardholderName}
+            onChange={(e) => setCardholderName(e.target.value)}
+            className="h-9"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium mb-1 block text-muted-foreground">Card Number</label>
+          <div className="px-3 py-2 border rounded-md bg-white h-9 flex items-center">
+            <CardNumberElement options={elementStyle} className="w-full" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-sm font-medium mb-1 block">Expiry Date</label>
-            <div className="p-3 border rounded-md bg-white">
-              <CardExpiryElement options={elementStyle} />
+            <label className="text-xs font-medium mb-1 block text-muted-foreground">Expiry</label>
+            <div className="px-3 py-2 border rounded-md bg-white h-9 flex items-center">
+              <CardExpiryElement options={elementStyle} className="w-full" />
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium mb-1 block">CVC</label>
-            <div className="p-3 border rounded-md bg-white">
-              <CardCvcElement options={elementStyle} />
+            <label className="text-xs font-medium mb-1 block text-muted-foreground">CVC</label>
+            <div className="px-3 py-2 border rounded-md bg-white h-9 flex items-center">
+              <CardCvcElement options={elementStyle} className="w-full" />
             </div>
           </div>
         </div>
