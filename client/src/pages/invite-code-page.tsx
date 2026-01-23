@@ -506,7 +506,11 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
+      <div className="min-h-[200px]">
+        <PaymentElement options={{
+          layout: 'tabs'
+        }} />
+      </div>
       {errorMessage && (
         <p className="text-sm text-red-500 text-center">{errorMessage}</p>
       )}
