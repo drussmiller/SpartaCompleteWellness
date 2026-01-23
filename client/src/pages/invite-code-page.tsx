@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/collapsible";
 import type { Organization, Group, Team } from "@shared/schema";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 interface InviteCodePageProps {
   onClose?: () => void;
@@ -469,8 +469,8 @@ function PaymentForm({
       return;
     }
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
+    const cardNumberElement = elements.getElement(CardNumberElement);
+    if (!cardNumberElement) {
       setErrorMessage('Card element not found');
       return;
     }
@@ -480,7 +480,7 @@ function PaymentForm({
 
     const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
       payment_method: {
-        card: cardElement,
+        card: cardNumberElement,
       },
     });
 
@@ -514,7 +514,7 @@ function PaymentForm({
     setIsProcessing(false);
   };
 
-  const cardStyle = {
+  const elementStyle = {
     style: {
       base: {
         fontSize: '16px',
@@ -522,7 +522,6 @@ function PaymentForm({
         '::placeholder': {
           color: '#aab7c4',
         },
-        padding: '12px',
       },
       invalid: {
         color: '#9e2146',
@@ -532,8 +531,27 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="p-4 border rounded-md bg-white">
-        <CardElement options={cardStyle} />
+      <div className="space-y-3">
+        <div>
+          <label className="text-sm font-medium mb-1 block">Card Number</label>
+          <div className="p-3 border rounded-md bg-white">
+            <CardNumberElement options={elementStyle} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium mb-1 block">Expiry Date</label>
+            <div className="p-3 border rounded-md bg-white">
+              <CardExpiryElement options={elementStyle} />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">CVC</label>
+            <div className="p-3 border rounded-md bg-white">
+              <CardCvcElement options={elementStyle} />
+            </div>
+          </div>
+        </div>
       </div>
       {errorMessage && (
         <p className="text-sm text-red-500 text-center">{errorMessage}</p>
