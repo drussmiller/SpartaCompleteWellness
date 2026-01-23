@@ -380,7 +380,10 @@ function DonationSection() {
         <p className="text-sm text-muted-foreground text-center mb-4">
           Complete your ${donationAmount} donation
         </p>
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <Elements stripe={stripePromise} options={{ 
+          clientSecret,
+          appearance: { theme: 'stripe' }
+        }}>
           <PaymentForm 
             paymentIntentId={paymentIntentId}
             clientSecret={clientSecret}
@@ -531,36 +534,38 @@ function PaymentForm({
         color: '#9e2146',
       },
     },
+    disableLink: true,
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
-          <Label className="text-sm mb-2 block">Name on Card</Label>
+          <Label className="text-sm mb-1 block">Name on Card</Label>
           <Input
             type="text"
             placeholder="John Smith"
             value={cardholderName}
             onChange={(e) => setCardholderName(e.target.value)}
+            className="h-10"
           />
         </div>
         <div>
-          <Label className="text-sm mb-2 block">Card Number</Label>
-          <div className="px-3 py-3 border rounded-md bg-white">
+          <Label className="text-sm mb-1 block">Card Number</Label>
+          <div className="px-3 py-2.5 border rounded-md bg-white">
             <CardNumberElement options={elementStyle} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label className="text-sm mb-2 block">Expiry</Label>
-            <div className="px-3 py-3 border rounded-md bg-white">
+            <Label className="text-sm mb-1 block">Expiry</Label>
+            <div className="px-3 py-2.5 border rounded-md bg-white">
               <CardExpiryElement options={elementStyle} />
             </div>
           </div>
           <div>
-            <Label className="text-sm mb-2 block">CVC</Label>
-            <div className="px-3 py-3 border rounded-md bg-white">
+            <Label className="text-sm mb-1 block">CVC</Label>
+            <div className="px-3 py-2.5 border rounded-md bg-white">
               <CardCvcElement options={elementStyle} />
             </div>
           </div>
