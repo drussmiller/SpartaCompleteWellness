@@ -405,7 +405,7 @@ function DonationSection() {
       </p>
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
-          <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             type="number"
             min="1"
