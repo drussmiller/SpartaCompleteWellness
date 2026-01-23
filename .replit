@@ -114,3 +114,4 @@ defaultBucketID = "replit-objstore-4b249457-61b0-4fe4-bc15-0408c0209445"
 
 [agent]
 expertMode = true
+integrations = ["stripe:2.0.0"]
