@@ -33,6 +33,7 @@ import { VideoPlayerPage } from "./pages/video-player-page";
 import CommentsPage from "@/pages/comments-page";
 import { lazy } from "react";
 import WaiverPage from "@/pages/waiver-page";
+import DonationSuccessPage from "@/pages/donation-success-page";
 
 // Separate auth-dependent rendering
 function MainContent() {
@@ -136,6 +137,7 @@ function MainContent() {
           <Route path="/comments/:postId">
             <CommentsPage />
           </Route>
+          <Route path="/donation-success" component={DonationSuccessPage} />
           {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
           {user.isGroupAdmin && <Route path="/group-admin" component={() => <GroupAdminPage />} />}
           <Route path="*">Not found</Route>

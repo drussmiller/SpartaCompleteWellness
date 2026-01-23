@@ -38,6 +38,8 @@ export const users = pgTable("users", {
   status: integer("status").default(1), // 1 = active, 0 = inactive
   isBlocked: boolean("is_blocked").default(false), // Block users from logging in (for abuse)
   avatarColor: text("avatar_color"), // Color for avatar fallback background
+  hasDonated: boolean("has_donated").default(false), // Whether user has made a donation via Donorbox
+  donatedAt: timestamp("donated_at"), // When the donation was made
 });
 
 // Organizations table (top level)

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus } from "lucide-react";
+import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus, Heart, DollarSign, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import QrScanner from "qr-scanner";
@@ -24,6 +24,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { Organization, Group, Team } from "@shared/schema";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 interface InviteCodePageProps {
   onClose?: () => void;
@@ -63,6 +65,10 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   });
   
   const isAutonomousModeEnabled = autonomousModeData?.enabled ?? false;
+  
+  // Check if user has donated (allows autonomous mode for that specific user)
+  const userHasDonated = user?.hasDonated ?? false;
+  const userHasNoTeam = !user?.teamId;
 
   // If user is already a Group Admin, Team Lead, or in a team, redirect them
   useEffect(() => {
@@ -237,6 +243,11 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                     Scan QR Code
                   </Button>
                 </div>
+                
+                {/* Donation section for users without a team */}
+                {userHasNoTeam && !userHasDonated && (
+                  <DonationSection />
+                )}
               </>
             ) : (
               <div className="space-y-3">
@@ -279,91 +290,343 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
           </CardContent>
         </Card>
         
-        {hasPostedIntroVideo && isAutonomousModeEnabled && <JoinOrBuildTeamPanel />}
+        {hasPostedIntroVideo && (isAutonomousModeEnabled || (userHasDonated && userHasNoTeam)) && <JoinOrBuildTeamPanel />}
       </div>
     </AppLayout>
   );
 }
 
+function DonationSection() {
+  const [donationAmount, setDonationAmount] = useState("25");
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+  const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetch('/api/stripe/publishable-key')
+      .then(res => res.json())
+      .then(data => {
+        if (data.publishableKey) {
+          setStripePromise(loadStripe(data.publishableKey));
+        }
+      })
+      .catch(err => console.error('Failed to load Stripe key:', err));
+  }, []);
+
+  const handleStartPayment = async () => {
+    const amount = parseFloat(donationAmount);
+    if (isNaN(amount) || amount < 1) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a donation amount of at least $1.00",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreatingIntent(true);
+    try {
+      const response = await apiRequest('POST', '/api/stripe/create-payment-intent', {
+        amount: Math.round(amount * 100),
+      });
+      const data = await response.json();
+
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret);
+        setPaymentIntentId(data.paymentIntentId);
+      } else {
+        throw new Error(data.error || 'Failed to initialize payment');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingIntent(false);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentSuccess(true);
+    queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+    toast({
+      title: "Thank you!",
+      description: "Your donation was successful. You can now create your own team!",
+    });
+  };
+
+  if (paymentSuccess) {
+    return (
+      <div className="mt-6 pt-6 border-t">
+        <div className="text-center py-4">
+          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+          <p className="text-lg font-medium text-green-700">Thank you for your donation!</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            You can now create your own Organization, Group, and Team.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (clientSecret && stripePromise && paymentIntentId) {
+    return (
+      <div className="mt-6 pt-6 border-t">
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          Complete your ${donationAmount} donation
+        </p>
+        <Elements stripe={stripePromise} options={{ 
+          clientSecret,
+          appearance: { theme: 'stripe' }
+        }}>
+          <PaymentForm 
+            paymentIntentId={paymentIntentId}
+            clientSecret={clientSecret}
+            onSuccess={handlePaymentSuccess}
+            onCancel={() => {
+              setClientSecret(null);
+              setPaymentIntentId(null);
+            }}
+          />
+        </Elements>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 pt-6 border-t">
+      <p className="text-sm text-muted-foreground text-center mb-4">
+        Want to start your own team? Make a donation to unlock the ability to create your own Organization, Group, and Team.
+      </p>
+      <div className="flex gap-2 mb-3">
+        <div className="relative flex-1">
+          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={donationAmount}
+            onChange={(e) => setDonationAmount(e.target.value)}
+            placeholder="Amount"
+            className="pl-8"
+            disabled={isCreatingIntent}
+          />
+        </div>
+        <Button
+          variant="default"
+          onClick={handleStartPayment}
+          disabled={isCreatingIntent || !stripePromise}
+          data-testid="button-donate"
+        >
+          {isCreatingIntent ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Heart className="mr-2 h-4 w-4" />
+          )}
+          Donate
+        </Button>
+      </div>
+      <div className="flex gap-2 justify-center">
+        {[10, 25, 50, 100].map((amount) => (
+          <Button
+            key={amount}
+            variant="outline"
+            size="sm"
+            onClick={() => setDonationAmount(String(amount))}
+            disabled={isCreatingIntent}
+          >
+            ${amount}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PaymentForm({ 
+  paymentIntentId,
+  clientSecret,
+  onSuccess, 
+  onCancel 
+}: { 
+  paymentIntentId: string;
+  clientSecret: string;
+  onSuccess: () => void; 
+  onCancel: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cardholderName, setCardholderName] = useState("");
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    const cardNumberElement = elements.getElement(CardNumberElement);
+    if (!cardNumberElement) {
+      setErrorMessage('Card element not found');
+      return;
+    }
+
+    if (!cardholderName.trim()) {
+      setErrorMessage('Name on card is required');
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: cardNumberElement,
+        billing_details: {
+          name: cardholderName || undefined,
+        },
+      },
+    });
+
+    if (error) {
+      setErrorMessage(error.message || 'Payment failed');
+      setIsProcessing(false);
+      return;
+    }
+
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      try {
+        const response = await apiRequest('POST', '/api/stripe/confirm-donation', {
+          paymentIntentId: paymentIntentId,
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          onSuccess();
+        } else {
+          throw new Error(data.error || 'Failed to confirm donation');
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Payment succeeded but failed to update your account. Please contact support.",
+          variant: "destructive",
+        });
+      }
+    }
+
+    setIsProcessing(false);
+  };
+
+  const elementStyle = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: '#424770',
+        '::placeholder': {
+          color: '#aab7c4',
+        },
+      },
+      invalid: {
+        color: '#9e2146',
+      },
+    },
+    disableLink: true,
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="space-y-2">
+        <div>
+          <Label className="text-sm mb-1 block">Name on Card <span className="text-red-500">*</span></Label>
+          <Input
+            type="text"
+            placeholder="John Smith"
+            value={cardholderName}
+            onChange={(e) => setCardholderName(e.target.value)}
+            className="h-10"
+            required
+          />
+        </div>
+        <div>
+          <Label className="text-sm mb-1 block">Card Number</Label>
+          <div className="px-3 pt-2.5 border rounded-md bg-white h-10 overflow-hidden">
+            <CardNumberElement options={elementStyle} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-sm mb-1 block">Expiry</Label>
+            <div className="px-3 pt-2.5 border rounded-md bg-white h-10 overflow-hidden">
+              <CardExpiryElement options={elementStyle} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm mb-1 block">CVC</Label>
+            <div className="px-3 pt-2.5 border rounded-md bg-white h-10 overflow-hidden">
+              <CardCvcElement options={elementStyle} />
+            </div>
+          </div>
+        </div>
+      </div>
+      {errorMessage && (
+        <p className="text-sm text-red-500 text-center">{errorMessage}</p>
+      )}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isProcessing}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="flex-1"
+        >
+          {isProcessing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Heart className="mr-2 h-4 w-4" />
+          )}
+          Complete Donation
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function JoinOrBuildTeamPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [newOrgName, setNewOrgName] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
-  const [showNewOrgInput, setShowNewOrgInput] = useState(false);
-  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
-  const [showNewTeamInput, setShowNewTeamInput] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: organizations = [] } = useQuery<Organization[]>({
-    queryKey: ['/api/organizations'],
-    enabled: isExpanded,
-  });
-
-  const { data: groups = [] } = useQuery<Group[]>({
-    queryKey: ['/api/groups', selectedOrgId],
-    queryFn: async () => {
-      if (!selectedOrgId) return [];
-      const res = await fetch(`/api/groups?organizationId=${selectedOrgId}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch groups');
-      return res.json();
-    },
-    enabled: isExpanded && !!selectedOrgId,
-  });
-
-  const { data: teams = [] } = useQuery<Team[]>({
-    queryKey: ['/api/teams/by-group', selectedGroupId],
-    queryFn: async () => {
-      if (!selectedGroupId) return [];
-      const res = await fetch(`/api/teams/by-group/${selectedGroupId}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch teams');
-      return res.json();
-    },
-    enabled: isExpanded && !!selectedGroupId,
-  });
-
-  const filteredOrganizations = organizations.filter(
-    org => !org.name.toLowerCase().includes('admin') && org.status === 1
-  );
-
-  const filteredGroups = groups.filter(
-    group => !group.name.toLowerCase().includes('admin') && group.status === 1
-  );
-
-  const filteredTeams = teams.filter(
-    team => !team.name.toLowerCase().includes('admin') && team.status === 1
-  );
-
   const joinTeamMutation = useMutation({
     mutationFn: async () => {
-      const payload: Record<string, unknown> = {};
-      
-      if (showNewOrgInput && newOrgName) {
-        payload.organizationName = newOrgName;
-      } else if (selectedOrgId) {
-        payload.organizationId = selectedOrgId;
-      }
-      
-      if (showNewGroupInput && newGroupName) {
-        payload.groupName = newGroupName;
-      } else if (selectedGroupId) {
-        payload.groupId = selectedGroupId;
-      }
-      
-      if (showNewTeamInput && newTeamName) {
-        payload.teamName = newTeamName;
-      } else if (selectedTeamId) {
-        payload.teamId = selectedTeamId;
-      }
+      const payload: Record<string, unknown> = {
+        organizationName: newOrgName,
+        groupName: newGroupName,
+        teamName: newTeamName,
+      };
       
       const res = await apiRequest("POST", "/api/self-service/join-team", payload);
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to join team');
+        throw new Error(errorData.message || 'Failed to create team');
       }
       return res.json();
     },
@@ -387,49 +650,7 @@ function JoinOrBuildTeamPanel() {
   });
 
   const canSubmit = () => {
-    const hasOrg = selectedOrgId || (showNewOrgInput && newOrgName.trim());
-    const hasGroup = selectedGroupId || (showNewGroupInput && newGroupName.trim());
-    const hasTeam = selectedTeamId || (showNewTeamInput && newTeamName.trim());
-    return hasOrg && hasGroup && hasTeam;
-  };
-
-  const handleOrgChange = (value: string) => {
-    if (value === "add-new") {
-      setShowNewOrgInput(true);
-      setSelectedOrgId(null);
-    } else {
-      setShowNewOrgInput(false);
-      setNewOrgName("");
-      setSelectedOrgId(parseInt(value));
-    }
-    setSelectedGroupId(null);
-    setSelectedTeamId(null);
-    setShowNewGroupInput(false);
-    setShowNewTeamInput(false);
-  };
-
-  const handleGroupChange = (value: string) => {
-    if (value === "add-new") {
-      setShowNewGroupInput(true);
-      setSelectedGroupId(null);
-    } else {
-      setShowNewGroupInput(false);
-      setNewGroupName("");
-      setSelectedGroupId(parseInt(value));
-    }
-    setSelectedTeamId(null);
-    setShowNewTeamInput(false);
-  };
-
-  const handleTeamChange = (value: string) => {
-    if (value === "add-new") {
-      setShowNewTeamInput(true);
-      setSelectedTeamId(null);
-    } else {
-      setShowNewTeamInput(false);
-      setNewTeamName("");
-      setSelectedTeamId(parseInt(value));
-    }
+    return newOrgName.trim() && newGroupName.trim() && newTeamName.trim();
   };
 
   return (
@@ -440,7 +661,7 @@ function JoinOrBuildTeamPanel() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
-                <CardTitle className="text-lg">Join a Team or Build Your Own</CardTitle>
+                <CardTitle className="text-lg">Build Your Own Team</CardTitle>
               </div>
               {isExpanded ? (
                 <ChevronUp className="h-5 w-5" />
@@ -449,7 +670,7 @@ function JoinOrBuildTeamPanel() {
               )}
             </div>
             <CardDescription>
-              Select an existing team or create a new organization, group, and team
+              Create a new organization, group, and team
             </CardDescription>
           </CardHeader>
         </CollapsibleTrigger>
@@ -460,150 +681,42 @@ function JoinOrBuildTeamPanel() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Church or Organization
+                  1. Church or Organization Name
                 </Label>
-                {!showNewOrgInput ? (
-                  <Select onValueChange={handleOrgChange} value={selectedOrgId?.toString() || ""}>
-                    <SelectTrigger data-testid="select-organization">
-                      <SelectValue placeholder="Select an organization..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredOrganizations.map((org) => (
-                        <SelectItem key={org.id} value={org.id.toString()} data-testid={`org-option-${org.id}`}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="add-new" className="text-primary" data-testid="org-option-add-new">
-                        <span className="flex items-center gap-2">
-                          <Plus className="h-4 w-4" />
-                          Add new organization...
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter organization name..."
-                      value={newOrgName}
-                      onChange={(e) => setNewOrgName(e.target.value)}
-                      data-testid="input-new-organization"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setShowNewOrgInput(false);
-                        setNewOrgName("");
-                      }}
-                      data-testid="button-cancel-new-org"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+                <Input
+                  placeholder="Enter organization name..."
+                  value={newOrgName}
+                  onChange={(e) => setNewOrgName(e.target.value)}
+                  data-testid="input-new-organization"
+                />
               </div>
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Group
+                  2. Group Name
                 </Label>
-                {!showNewGroupInput ? (
-                  <Select 
-                    onValueChange={handleGroupChange} 
-                    value={selectedGroupId?.toString() || ""}
-                    disabled={!selectedOrgId && !showNewOrgInput}
-                  >
-                    <SelectTrigger data-testid="select-group">
-                      <SelectValue placeholder={selectedOrgId || showNewOrgInput ? "Select a group..." : "Select organization first"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredGroups.map((group) => (
-                        <SelectItem key={group.id} value={group.id.toString()} data-testid={`group-option-${group.id}`}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="add-new" className="text-primary" data-testid="group-option-add-new">
-                        <span className="flex items-center gap-2">
-                          <Plus className="h-4 w-4" />
-                          Add new group...
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter group name..."
-                      value={newGroupName}
-                      onChange={(e) => setNewGroupName(e.target.value)}
-                      data-testid="input-new-group"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setShowNewGroupInput(false);
-                        setNewGroupName("");
-                      }}
-                      data-testid="button-cancel-new-group"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+                <Input
+                  placeholder={newOrgName.trim() ? "Enter group name..." : "Enter organization first"}
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  disabled={!newOrgName.trim()}
+                  data-testid="input-new-group"
+                />
               </div>
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Team
+                  3. Team Name
                 </Label>
-                {!showNewTeamInput ? (
-                  <Select 
-                    onValueChange={handleTeamChange} 
-                    value={selectedTeamId?.toString() || ""}
-                    disabled={!selectedGroupId && !showNewGroupInput}
-                  >
-                    <SelectTrigger data-testid="select-team">
-                      <SelectValue placeholder={selectedGroupId || showNewGroupInput ? "Select a team..." : "Select group first"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredTeams.map((team) => (
-                        <SelectItem key={team.id} value={team.id.toString()} data-testid={`team-option-${team.id}`}>
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="add-new" className="text-primary" data-testid="team-option-add-new">
-                        <span className="flex items-center gap-2">
-                          <Plus className="h-4 w-4" />
-                          Add new team...
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter team name..."
-                      value={newTeamName}
-                      onChange={(e) => setNewTeamName(e.target.value)}
-                      data-testid="input-new-team"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setShowNewTeamInput(false);
-                        setNewTeamName("");
-                      }}
-                      data-testid="button-cancel-new-team"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+                <Input
+                  placeholder={newGroupName.trim() ? "Enter team name..." : "Enter group first"}
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  disabled={!newGroupName.trim()}
+                  data-testid="input-new-team"
+                />
               </div>
             </div>
 
@@ -618,13 +731,11 @@ function JoinOrBuildTeamPanel() {
               ) : (
                 <UserPlus className="mr-2 h-4 w-4" />
               )}
-              {showNewTeamInput && newTeamName.trim() ? "Create Team as Team Lead" : "Join Team"}
+              Create Team as Team Lead
             </Button>
             
             <p className="text-xs text-muted-foreground text-center">
-              {showNewTeamInput && newTeamName.trim() 
-                ? "You will become the Team Lead for the newly created team."
-                : "You will join the selected team as a member."}
+              You will become the Team Lead for the newly created team.
             </p>
           </CardContent>
         </CollapsibleContent>
