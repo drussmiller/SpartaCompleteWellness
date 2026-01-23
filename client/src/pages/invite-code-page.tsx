@@ -535,34 +535,33 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div>
-          <label className="text-xs font-medium mb-1 block text-muted-foreground">Name on Card</label>
+          <Label className="text-sm mb-2 block">Name on Card</Label>
           <Input
             type="text"
             placeholder="John Smith"
             value={cardholderName}
             onChange={(e) => setCardholderName(e.target.value)}
-            className="h-9"
           />
         </div>
         <div>
-          <label className="text-xs font-medium mb-1 block text-muted-foreground">Card Number</label>
-          <div className="px-3 py-2 border rounded-md bg-white h-9 flex items-center">
-            <CardNumberElement options={elementStyle} className="w-full" />
+          <Label className="text-sm mb-2 block">Card Number</Label>
+          <div className="px-3 py-3 border rounded-md bg-white">
+            <CardNumberElement options={elementStyle} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium mb-1 block text-muted-foreground">Expiry</label>
-            <div className="px-3 py-2 border rounded-md bg-white h-9 flex items-center">
-              <CardExpiryElement options={elementStyle} className="w-full" />
+            <Label className="text-sm mb-2 block">Expiry</Label>
+            <div className="px-3 py-3 border rounded-md bg-white">
+              <CardExpiryElement options={elementStyle} />
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium mb-1 block text-muted-foreground">CVC</label>
-            <div className="px-3 py-2 border rounded-md bg-white h-9 flex items-center">
-              <CardCvcElement options={elementStyle} className="w-full" />
+            <Label className="text-sm mb-2 block">CVC</Label>
+            <div className="px-3 py-3 border rounded-md bg-white">
+              <CardCvcElement options={elementStyle} />
             </div>
           </div>
         </div>
