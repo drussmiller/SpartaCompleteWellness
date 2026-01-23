@@ -479,6 +479,11 @@ function PaymentForm({
       return;
     }
 
+    if (!cardholderName.trim()) {
+      setErrorMessage('Name on card is required');
+      return;
+    }
+
     setIsProcessing(true);
     setErrorMessage(null);
 
@@ -541,13 +546,14 @@ function PaymentForm({
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-2">
         <div>
-          <Label className="text-sm mb-1 block">Name on Card</Label>
+          <Label className="text-sm mb-1 block">Name on Card <span className="text-red-500">*</span></Label>
           <Input
             type="text"
             placeholder="John Smith"
             value={cardholderName}
             onChange={(e) => setCardholderName(e.target.value)}
             className="h-10"
+            required
           />
         </div>
         <div>
