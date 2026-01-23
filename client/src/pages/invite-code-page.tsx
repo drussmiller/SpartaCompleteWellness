@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus, Heart } from "lucide-react";
+import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus, Heart, DollarSign } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import QrScanner from "qr-scanner";
@@ -242,25 +242,9 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                   </Button>
                 </div>
                 
-                {/* Donation link for users without a team */}
+                {/* Donation section for users without a team */}
                 {userHasNoTeam && !userHasDonated && (
-                  <div className="mt-6 pt-6 border-t">
-                    <p className="text-sm text-muted-foreground text-center mb-4">
-                      Want to start your own team? Make a donation to unlock the ability to create your own Organization, Group, and Team.
-                    </p>
-                    <Button
-                      variant="default"
-                      className="w-full"
-                      onClick={() => window.open('https://donorbox.org/sparta-complete-wellness-sponsorship-donation', '_blank')}
-                      data-testid="button-donate"
-                    >
-                      <Heart className="mr-2 h-4 w-4" />
-                      Make a Donation
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      Please use the same email address you registered with.
-                    </p>
-                  </div>
+                  <DonationSection />
                 )}
               </>
             ) : (
@@ -307,6 +291,95 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
         {hasPostedIntroVideo && (isAutonomousModeEnabled || (userHasDonated && userHasNoTeam)) && <JoinOrBuildTeamPanel />}
       </div>
     </AppLayout>
+  );
+}
+
+function DonationSection() {
+  const [donationAmount, setDonationAmount] = useState("25");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleDonate = async () => {
+    const amount = parseFloat(donationAmount);
+    if (isNaN(amount) || amount < 1) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a donation amount of at least $1.00",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiRequest('POST', '/api/stripe/create-donation-checkout', {
+        amount: Math.round(amount * 100),
+      });
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start checkout. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 pt-6 border-t">
+      <p className="text-sm text-muted-foreground text-center mb-4">
+        Want to start your own team? Make a donation to unlock the ability to create your own Organization, Group, and Team.
+      </p>
+      <div className="flex gap-2 mb-3">
+        <div className="relative flex-1">
+          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={donationAmount}
+            onChange={(e) => setDonationAmount(e.target.value)}
+            placeholder="Amount"
+            className="pl-8"
+            disabled={isLoading}
+          />
+        </div>
+        <Button
+          variant="default"
+          onClick={handleDonate}
+          disabled={isLoading}
+          data-testid="button-donate"
+        >
+          {isLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Heart className="mr-2 h-4 w-4" />
+          )}
+          Donate
+        </Button>
+      </div>
+      <div className="flex gap-2 justify-center">
+        {[10, 25, 50, 100].map((amount) => (
+          <Button
+            key={amount}
+            variant="outline"
+            size="sm"
+            onClick={() => setDonationAmount(String(amount))}
+            disabled={isLoading}
+          >
+            ${amount}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }
 

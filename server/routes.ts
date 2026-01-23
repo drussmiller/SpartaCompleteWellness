@@ -68,7 +68,7 @@ import { userRoleRouter } from "./user-role-route";
 import { groupAdminRouter } from "./group-admin-routes";
 import { inviteCodeRouter } from "./invite-code-routes";
 import { emailVerificationRouter } from "./email-verification-routes";
-import { donorboxWebhookRouter } from "./donorbox-webhook";
+import { stripeDonationRouter } from "./stripe-donation-routes";
 import { spartaStorage } from "./sparta-object-storage";
 import { spartaObjectStorage } from "./sparta-object-storage-final";
 import { smsService } from "./sms-service";
@@ -5607,7 +5607,7 @@ export const registerRoutes = async (
   app.use(groupAdminRouter);
   app.use(inviteCodeRouter);
   app.use(emailVerificationRouter);
-  app.use(donorboxWebhookRouter);
+  app.use(stripeDonationRouter);
 
   app.use(router);
 
