@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus, Heart, DollarSign } from "lucide-react";
+import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus, Heart, DollarSign, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import QrScanner from "qr-scanner";
@@ -24,6 +24,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { Organization, Group, Team } from "@shared/schema";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 interface InviteCodePageProps {
   onClose?: () => void;
@@ -296,10 +298,25 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
 
 function DonationSection() {
   const [donationAmount, setDonationAmount] = useState("25");
-  const [isLoading, setIsLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+  const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const { toast } = useToast();
 
-  const handleDonate = async () => {
+  useEffect(() => {
+    fetch('/api/stripe/publishable-key')
+      .then(res => res.json())
+      .then(data => {
+        if (data.publishableKey) {
+          setStripePromise(loadStripe(data.publishableKey));
+        }
+      })
+      .catch(err => console.error('Failed to load Stripe key:', err));
+  }, []);
+
+  const handleStartPayment = async () => {
     const amount = parseFloat(donationAmount);
     if (isNaN(amount) || amount < 1) {
       toast({
@@ -310,28 +327,72 @@ function DonationSection() {
       return;
     }
 
-    setIsLoading(true);
+    setIsCreatingIntent(true);
     try {
-      const response = await apiRequest('POST', '/api/stripe/create-donation-checkout', {
+      const response = await apiRequest('POST', '/api/stripe/create-payment-intent', {
         amount: Math.round(amount * 100),
       });
       const data = await response.json();
 
-      if (data.url) {
-        window.location.href = data.url;
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret);
+        setPaymentIntentId(data.paymentIntentId);
       } else {
-        throw new Error('No checkout URL received');
+        throw new Error(data.error || 'Failed to initialize payment');
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to start checkout. Please try again.",
+        description: error.message || "Failed to start payment. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsCreatingIntent(false);
     }
   };
+
+  const handlePaymentSuccess = () => {
+    setPaymentSuccess(true);
+    queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+    toast({
+      title: "Thank you!",
+      description: "Your donation was successful. You can now create your own team!",
+    });
+  };
+
+  if (paymentSuccess) {
+    return (
+      <div className="mt-6 pt-6 border-t">
+        <div className="text-center py-4">
+          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+          <p className="text-lg font-medium text-green-700">Thank you for your donation!</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            You can now create your own Organization, Group, and Team.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (clientSecret && stripePromise && paymentIntentId) {
+    return (
+      <div className="mt-6 pt-6 border-t">
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          Complete your ${donationAmount} donation
+        </p>
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <PaymentForm 
+            paymentIntentId={paymentIntentId} 
+            onSuccess={handlePaymentSuccess}
+            onCancel={() => {
+              setClientSecret(null);
+              setPaymentIntentId(null);
+            }}
+          />
+        </Elements>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-6 pt-6 border-t">
@@ -349,16 +410,16 @@ function DonationSection() {
             onChange={(e) => setDonationAmount(e.target.value)}
             placeholder="Amount"
             className="pl-8"
-            disabled={isLoading}
+            disabled={isCreatingIntent}
           />
         </div>
         <Button
           variant="default"
-          onClick={handleDonate}
-          disabled={isLoading}
+          onClick={handleStartPayment}
+          disabled={isCreatingIntent || !stripePromise}
           data-testid="button-donate"
         >
-          {isLoading ? (
+          {isCreatingIntent ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Heart className="mr-2 h-4 w-4" />
@@ -373,13 +434,106 @@ function DonationSection() {
             variant="outline"
             size="sm"
             onClick={() => setDonationAmount(String(amount))}
-            disabled={isLoading}
+            disabled={isCreatingIntent}
           >
             ${amount}
           </Button>
         ))}
       </div>
     </div>
+  );
+}
+
+function PaymentForm({ 
+  paymentIntentId, 
+  onSuccess, 
+  onCancel 
+}: { 
+  paymentIntentId: string; 
+  onSuccess: () => void; 
+  onCancel: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: 'if_required',
+    });
+
+    if (error) {
+      setErrorMessage(error.message || 'Payment failed');
+      setIsProcessing(false);
+      return;
+    }
+
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      try {
+        const response = await apiRequest('POST', '/api/stripe/confirm-donation', {
+          paymentIntentId: paymentIntentId,
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          onSuccess();
+        } else {
+          throw new Error(data.error || 'Failed to confirm donation');
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Payment succeeded but failed to update your account. Please contact support.",
+          variant: "destructive",
+        });
+      }
+    }
+
+    setIsProcessing(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      {errorMessage && (
+        <p className="text-sm text-red-500 text-center">{errorMessage}</p>
+      )}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isProcessing}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="flex-1"
+        >
+          {isProcessing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Heart className="mr-2 h-4 w-4" />
+          )}
+          Complete Donation
+        </Button>
+      </div>
+    </form>
   );
 }
 

@@ -27,36 +27,54 @@ export class StripeWebhookHandlers {
       
       if (session.metadata?.donationType === 'autonomous_mode_unlock' && 
           session.payment_status === 'paid') {
-        await this.handleDonationSuccess(session);
+        await this.handleDonationSuccess(session.customer_email || session.metadata?.email, session.metadata?.userId);
+      }
+    }
+
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object as any;
+      
+      if (paymentIntent.metadata?.donationType === 'autonomous_mode_unlock') {
+        await this.handleDonationSuccess(paymentIntent.metadata?.email, paymentIntent.metadata?.userId);
       }
     }
 
     await sync.processWebhook(payload, signature);
   }
 
-  static async handleDonationSuccess(session: any): Promise<void> {
-    const customerEmail = session.customer_email || session.metadata?.email;
-    
-    if (!customerEmail) {
-      console.log('[Stripe Donation] No email found in checkout session, cannot match to user');
+  static async handleDonationSuccess(email: string | undefined, userId: string | undefined): Promise<void> {
+    if (!email && !userId) {
+      console.log('[Stripe Donation] No email or userId found, cannot match to user');
       return;
     }
 
-    console.log(`[Stripe Donation] Processing successful donation from: ${customerEmail}`);
+    console.log(`[Stripe Donation] Processing successful donation - email: ${email}, userId: ${userId}`);
 
-    const result = await db
-      .update(users)
-      .set({
-        hasDonated: true,
-        donatedAt: new Date(),
-      })
-      .where(sql`LOWER(${users.email}) = LOWER(${customerEmail})`)
-      .returning({ id: users.id, username: users.username });
+    let result;
+    if (userId) {
+      result = await db
+        .update(users)
+        .set({
+          hasDonated: true,
+          donatedAt: new Date(),
+        })
+        .where(sql`${users.id} = ${parseInt(userId)}`)
+        .returning({ id: users.id, username: users.username });
+    } else if (email) {
+      result = await db
+        .update(users)
+        .set({
+          hasDonated: true,
+          donatedAt: new Date(),
+        })
+        .where(sql`LOWER(${users.email}) = LOWER(${email})`)
+        .returning({ id: users.id, username: users.username });
+    }
 
-    if (result.length > 0) {
-      console.log(`[Stripe Donation] Successfully marked user ${result[0].username} (ID: ${result[0].id}) as donor`);
+    if (result && result.length > 0) {
+      console.log(`[Stripe Donation] Successfully marked user ${result[0].username} (ID: ${result[0].id}) as donor via webhook`);
     } else {
-      console.log(`[Stripe Donation] No user found with email: ${customerEmail}`);
+      console.log(`[Stripe Donation] No user found with email: ${email} or userId: ${userId}`);
     }
   }
 }
