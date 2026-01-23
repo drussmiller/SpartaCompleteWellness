@@ -552,20 +552,20 @@ function PaymentForm({
         </div>
         <div>
           <Label className="text-sm mb-1 block">Card Number</Label>
-          <div className="px-3 py-2.5 border rounded-md bg-white">
+          <div className="px-3 pt-2.5 border rounded-md bg-white h-10 overflow-hidden">
             <CardNumberElement options={elementStyle} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-sm mb-1 block">Expiry</Label>
-            <div className="px-3 py-2.5 border rounded-md bg-white">
+            <div className="px-3 pt-2.5 border rounded-md bg-white h-10 overflow-hidden">
               <CardExpiryElement options={elementStyle} />
             </div>
           </div>
           <div>
             <Label className="text-sm mb-1 block">CVC</Label>
-            <div className="px-3 py-2.5 border rounded-md bg-white">
+            <div className="px-3 pt-2.5 border rounded-md bg-white h-10 overflow-hidden">
               <CardCvcElement options={elementStyle} />
             </div>
           </div>
