@@ -552,21 +552,21 @@ function PaymentForm({
         </div>
         <div>
           <Label className="text-sm mb-1 block">Card Number</Label>
-          <div className="px-3 border rounded-md bg-white h-10 flex items-center">
-            <CardNumberElement options={elementStyle} className="w-full" />
+          <div className="px-3 border rounded-md bg-white h-10 flex items-center [&>div]:flex-1 [&>div]:h-full [&>div>iframe]:h-full">
+            <CardNumberElement options={elementStyle} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-sm mb-1 block">Expiry</Label>
-            <div className="px-3 border rounded-md bg-white h-10 flex items-center">
-              <CardExpiryElement options={elementStyle} className="w-full" />
+            <div className="px-3 border rounded-md bg-white h-10 flex items-center [&>div]:flex-1 [&>div]:h-full [&>div>iframe]:h-full">
+              <CardExpiryElement options={elementStyle} />
             </div>
           </div>
           <div>
             <Label className="text-sm mb-1 block">CVC</Label>
-            <div className="px-3 border rounded-md bg-white h-10 flex items-center">
-              <CardCvcElement options={elementStyle} className="w-full" />
+            <div className="px-3 border rounded-md bg-white h-10 flex items-center [&>div]:flex-1 [&>div]:h-full [&>div>iframe]:h-full">
+              <CardCvcElement options={elementStyle} />
             </div>
           </div>
         </div>
