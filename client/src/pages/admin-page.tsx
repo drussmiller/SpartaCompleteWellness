@@ -1559,7 +1559,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </Label>
                         </div>
                         {/* Search box for Organizations */}
-                        <div className="mb-4">
+                        <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                          <h3 className="text-lg font-medium">Search & Filter Organizations</h3>
                           <Input
                             type="text"
                             placeholder="Search organizations..."
@@ -1868,40 +1869,41 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </Label>
                         </div>
                         {/* Org dropdown and search box for Groups */}
-                        {currentUser?.isAdmin && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <label className="block text-sm font-medium mb-2">Organization</label>
-                              <Select
-                                value={groupOrgFilter}
-                                onValueChange={setGroupOrgFilter}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="All Organizations" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All Organizations</SelectItem>
-                                  {sortedOrganizations?.filter(org => showInactiveOrgs ? true : org.status === 1).map((org) => (
-                                    <SelectItem key={org.id} value={org.id.toString()}>
-                                      {org.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                        <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                          <h3 className="text-lg font-medium">Search & Filter Groups</h3>
+                          {currentUser?.isAdmin && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium mb-2">Organization</label>
+                                <Select
+                                  value={groupOrgFilter}
+                                  onValueChange={setGroupOrgFilter}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="All Organizations" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="all">All Organizations</SelectItem>
+                                    {sortedOrganizations?.filter(org => showInactiveOrgs ? true : org.status === 1).map((org) => (
+                                      <SelectItem key={org.id} value={org.id.toString()}>
+                                        {org.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium mb-2">Search</label>
+                                <Input
+                                  type="text"
+                                  placeholder="Search groups..."
+                                  value={groupSearchQuery}
+                                  onChange={(e) => setGroupSearchQuery(e.target.value)}
+                                />
+                              </div>
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium mb-2">Search</label>
-                              <Input
-                                type="text"
-                                placeholder="Search groups..."
-                                value={groupSearchQuery}
-                                onChange={(e) => setGroupSearchQuery(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                        )}
-                        {!currentUser?.isAdmin && (
-                          <div className="mb-4">
+                          )}
+                          {!currentUser?.isAdmin && (
                             <Input
                               type="text"
                               placeholder="Search groups..."
@@ -1909,8 +1911,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               onChange={(e) => setGroupSearchQuery(e.target.value)}
                               className="w-full"
                             />
-                          </div>
-                        )}
+                          )}
+                        </div>
                         <Dialog open={createGroupDialogOpen} onOpenChange={setCreateGroupDialogOpen}>
                           <DialogTrigger asChild>
                             <Button
@@ -2520,94 +2522,95 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       </div>
                     )}
                     {/* Org dropdown, Group dropdown, and search box for Teams */}
-                    {currentUser?.isAdmin && (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Organization</label>
-                          <Select
-                            value={teamOrgFilter}
-                            onValueChange={(value) => {
-                              setTeamOrgFilter(value);
-                              setTeamGroupFilter("all");
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Organizations" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Organizations</SelectItem>
-                              {sortedOrganizations?.filter(org => showInactiveOrgs ? true : org.status === 1).map((org) => (
-                                <SelectItem key={org.id} value={org.id.toString()}>
-                                  {org.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                    <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                      <h3 className="text-lg font-medium">Search & Filter Teams</h3>
+                      {currentUser?.isAdmin && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Organization</label>
+                            <Select
+                              value={teamOrgFilter}
+                              onValueChange={(value) => {
+                                setTeamOrgFilter(value);
+                                setTeamGroupFilter("all");
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Organizations" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Organizations</SelectItem>
+                                {sortedOrganizations?.filter(org => showInactiveOrgs ? true : org.status === 1).map((org) => (
+                                  <SelectItem key={org.id} value={org.id.toString()}>
+                                    {org.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Group</label>
+                            <Select
+                              value={teamGroupFilter}
+                              onValueChange={setTeamGroupFilter}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Groups" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Groups</SelectItem>
+                                {groupsForTeamFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
+                                  <SelectItem key={group.id} value={group.id.toString()}>
+                                    {group.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Search</label>
+                            <Input
+                              type="text"
+                              placeholder="Search teams..."
+                              value={teamSearchQuery}
+                              onChange={(e) => setTeamSearchQuery(e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Group</label>
-                          <Select
-                            value={teamGroupFilter}
-                            onValueChange={setTeamGroupFilter}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Groups" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Groups</SelectItem>
-                              {groupsForTeamFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
-                                <SelectItem key={group.id} value={group.id.toString()}>
-                                  {group.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      )}
+                      {currentUser?.isGroupAdmin && !currentUser?.isAdmin && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Group</label>
+                            <Select
+                              value={teamGroupFilter}
+                              onValueChange={setTeamGroupFilter}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Groups" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Groups</SelectItem>
+                                {filteredGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
+                                  <SelectItem key={group.id} value={group.id.toString()}>
+                                    {group.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Search</label>
+                            <Input
+                              type="text"
+                              placeholder="Search teams..."
+                              value={teamSearchQuery}
+                              onChange={(e) => setTeamSearchQuery(e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Search</label>
-                          <Input
-                            type="text"
-                            placeholder="Search teams..."
-                            value={teamSearchQuery}
-                            onChange={(e) => setTeamSearchQuery(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {currentUser?.isGroupAdmin && !currentUser?.isAdmin && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Group</label>
-                          <Select
-                            value={teamGroupFilter}
-                            onValueChange={setTeamGroupFilter}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Groups" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Groups</SelectItem>
-                              {filteredGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
-                                <SelectItem key={group.id} value={group.id.toString()}>
-                                  {group.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Search</label>
-                          <Input
-                            type="text"
-                            placeholder="Search teams..."
-                            value={teamSearchQuery}
-                            onChange={(e) => setTeamSearchQuery(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isGroupAdmin && (
-                      <div className="mb-4">
+                      )}
+                      {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isGroupAdmin && (
                         <Input
                           type="text"
                           placeholder="Search teams..."
@@ -2615,8 +2618,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           onChange={(e) => setTeamSearchQuery(e.target.value)}
                           className="w-full"
                         />
-                      </div>
-                    )}
+                      )}
+                    </div>
                     {/* Hide New Team button for Team Leads who are not admins/group admins */}
                     {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
                     <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
