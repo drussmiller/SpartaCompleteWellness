@@ -183,7 +183,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
     <AppLayout>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="flex items-center px-4 py-2">
+        <div className="flex items-center px-4 py-1">
           {onClose && (
             <Button
               variant="ghost"
