@@ -157,6 +157,11 @@ await bootstrapAdmin();
 // Initialize Stripe after database is verified
 await initStripe();
 
+// Serve privacy policy publicly (before auth middleware)
+app.get('/privacy-policy.html', (req, res) => {
+  res.sendFile(path.resolve(process.cwd(), 'public', 'privacy-policy.html'));
+});
+
 // Setup auth after migrations complete (includes session middleware)
 setupAuth(app);
 
