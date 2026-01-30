@@ -244,8 +244,8 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
                   </Button>
                 </div>
                 
-                {/* Donation section for users without a team */}
-                {userHasNoTeam && !userHasDonated && (
+                {/* Donation section for users without a team - hide if autonomous mode is enabled */}
+                {userHasNoTeam && !userHasDonated && !isAutonomousModeEnabled && (
                   <DonationSection />
                 )}
               </>
