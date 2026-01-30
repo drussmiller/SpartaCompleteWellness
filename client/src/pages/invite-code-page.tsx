@@ -182,7 +182,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   return (
     <AppLayout>
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border pt-4">
+      <header className="sticky top-0 z-50 bg-background border-b border-border pt-2">
         <div className="flex items-center p-4">
           {onClose && (
             <Button
