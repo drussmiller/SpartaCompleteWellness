@@ -1322,12 +1322,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           (group) => group.organizationId.toString() === selectedOrgFilter,
         );
 
-  const filteredTeamsForFilter =
-    selectedGroupFilter === "all"
-      ? sortedTeams
-      : sortedTeams.filter(
-          (team) => team.groupId.toString() === selectedGroupFilter,
-        );
+  const filteredTeamsForFilter = sortedTeams.filter((team) => {
+    // If a specific group is selected, filter by that group
+    if (selectedGroupFilter !== "all") {
+      return team.groupId.toString() === selectedGroupFilter;
+    }
+    // If no group selected but org is selected, filter by teams in that org's groups
+    if (selectedOrgFilter !== "all") {
+      const teamGroup = filteredGroups.find((g) => g.id === team.groupId);
+      return teamGroup?.organizationId.toString() === selectedOrgFilter;
+    }
+    // No filters, show all teams
+    return true;
+  });
 
   // Apply filters to users for display
   const filteredUsersForDisplay = sortedUsers.filter((user) => {
@@ -2992,7 +2999,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </label>
                               <Select
                                 value={selectedOrgFilter}
-                                onValueChange={setSelectedOrgFilter}
+                                onValueChange={(value) => {
+                                  setSelectedOrgFilter(value);
+                                  setSelectedGroupFilter("all");
+                                  setSelectedTeamFilter("all");
+                                }}
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="All Organizations" />
@@ -3026,14 +3037,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             ) : (
                               <Select
                                 value={selectedGroupFilter}
-                                onValueChange={setSelectedGroupFilter}
+                                onValueChange={(value) => {
+                                  setSelectedGroupFilter(value);
+                                  setSelectedTeamFilter("all");
+                                }}
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="All Groups" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="all">All Groups</SelectItem>
-                                  {sortedGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
+                                  {filteredGroupsForFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                     <SelectItem
                                       key={group.id}
                                       value={group.id.toString()}
