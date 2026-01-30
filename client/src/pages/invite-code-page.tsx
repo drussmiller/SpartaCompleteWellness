@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, X, ChevronDown, ChevronUp, Plus, Building2, Users, UserPlus, Heart, DollarSign, CheckCircle } from "lucide-react";
+import { Loader2, X, ChevronDown, ChevronUp, ChevronLeft, Plus, Building2, Users, UserPlus, Heart, DollarSign, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import QrScanner from "qr-scanner";
@@ -181,20 +181,27 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
 
   return (
     <AppLayout>
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background border-b border-border pt-12">
+        <div className="flex items-center p-4">
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-2 scale-125"
+              onClick={onClose}
+              data-testid="button-close-invite-code"
+            >
+              <ChevronLeft className="h-8 w-8 scale-125" />
+            </Button>
+          )}
+          <h1 className="text-lg font-semibold">Join a Team</h1>
+        </div>
+      </header>
+
       <div className="flex flex-col items-center p-4 pt-2 pb-24">
         <Card className="w-full max-w-md">
-          <CardHeader className="relative pb-4">
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="absolute right-4 top-4 h-8 w-8"
-                data-testid="button-close-invite-code"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+          <CardHeader className="pb-4">
             <CardTitle>Join with Invite Code</CardTitle>
             <CardDescription className="mb-0">
               Enter the invite code you received or scan a QR code to join the program.
