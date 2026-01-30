@@ -2071,7 +2071,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Dialog>
                       </div>
                       <div className="space-y-4">
-                        {(showInactiveGroups ? sortedGroups : sortedGroups.filter(g => g.status === 1))?.map((group, index) => (
+                        {visibleGroups?.map((group, index) => (
                           <Card key={group.id} className={index === 0 ? "mt-4" : ""}>
                             <CardHeader className="pb-2">
                               <div className="space-y-2">
