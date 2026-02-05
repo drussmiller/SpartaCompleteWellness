@@ -1430,7 +1430,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   // Groups filtered by org dropdown and search
-  const filteredGroupsForSection = filteredGroups.filter((group) => {
+  const filteredGroupsForSection = sortedGroups.filter((group) => {
     // Apply org filter
     if (groupOrgFilter !== "all" && group.organizationId.toString() !== groupOrgFilter) {
       return false;
