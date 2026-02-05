@@ -138,7 +138,7 @@ function MainContent() {
             <CommentsPage />
           </Route>
           <Route path="/donation-success" component={DonationSuccessPage} />
-          {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
+          {(user.isAdmin || user.isOrganizationAdmin || user.isGroupAdmin || user.isTeamLead) && <Route path="/admin" component={() => <AdminPage />} />}
           {user.isGroupAdmin && <Route path="/group-admin" component={() => <GroupAdminPage />} />}
           <Route path="*">Not found</Route>
         </Switch>

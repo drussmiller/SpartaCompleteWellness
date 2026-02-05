@@ -6006,6 +6006,22 @@ export const registerRoutes = async (
       if (req.user.isAdmin) {
         // Admins can see all users - no filtering needed
       }
+      // Filter users for organization admins - only show users in their org's teams
+      else if (req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
+        const orgGroups = await db
+          .select({ id: groups.id })
+          .from(groups)
+          .where(eq(groups.organizationId, req.user.adminOrganizationId));
+        const orgGroupIds = orgGroups.map(g => g.id);
+
+        const orgTeams = await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(inArray(teams.groupId, orgGroupIds.length > 0 ? orgGroupIds : [-1]));
+        const orgTeamIds = orgTeams.map(t => t.id);
+
+        users = users.filter(user => user.teamId && orgTeamIds.includes(user.teamId));
+      }
       // Filter users for group admins - only show users in their group's teams
       else if (req.user.isGroupAdmin && req.user.adminGroupId) {
         // Get teams in the admin's group
@@ -8427,7 +8443,8 @@ export const registerRoutes = async (
       }
 
       const { role, value } = req.body;
-      if (!role || typeof value !== 'boolean') {
+      const validRoles = ['isAdmin', 'isOrganizationAdmin', 'isTeamLead', 'isGroupAdmin'];
+      if (!role || typeof value !== 'boolean' || !validRoles.includes(role)) {
         logger.warn(`[ROLE UPDATE] Invalid role or value: role=${role}, value=${value}`);
         return res.status(400).json({ message: "Invalid role or value" });
       }
@@ -8446,6 +8463,28 @@ export const registerRoutes = async (
       // Authorization checks
       if (req.user.isAdmin) {
         // Admins can update any role
+      } else if (req.user.isOrganizationAdmin) {
+        // Organization Admins can update roles for users in their organization's groups
+        if (role === 'isAdmin' || role === 'isOrganizationAdmin') {
+          return res.status(403).json({ message: "Organization Admins cannot assign Admin or Organization Admin roles" });
+        }
+        if (targetUser.teamId) {
+          const [team] = await db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, targetUser.teamId))
+            .limit(1);
+          if (team) {
+            const [group] = await db
+              .select()
+              .from(groups)
+              .where(eq(groups.id, team.groupId))
+              .limit(1);
+            if (!group || group.organizationId !== req.user.adminOrganizationId) {
+              return res.status(403).json({ message: "Not authorized" });
+            }
+          }
+        }
       } else if (req.user.isGroupAdmin) {
         // Group Admins can update roles for users in their group
         if (targetUser.teamId) {
@@ -8474,10 +8513,36 @@ export const registerRoutes = async (
         return res.status(403).json({ message: "Not authorized" });
       }
 
+      // Build update payload
+      const updatePayload: Record<string, any> = { [role]: value };
+
+      // When setting Organization Admin, auto-set adminOrganizationId from user's team
+      if (role === 'isOrganizationAdmin') {
+        if (value && targetUser.teamId) {
+          const [team] = await db
+            .select()
+            .from(teams)
+            .where(eq(teams.id, targetUser.teamId))
+            .limit(1);
+          if (team) {
+            const [group] = await db
+              .select()
+              .from(groups)
+              .where(eq(groups.id, team.groupId))
+              .limit(1);
+            if (group) {
+              updatePayload.adminOrganizationId = group.organizationId;
+            }
+          }
+        } else if (!value) {
+          updatePayload.adminOrganizationId = null;
+        }
+      }
+
       // Update the role
       const [updatedUser] = await db
         .update(users)
-        .set({ [role]: value })
+        .set(updatePayload)
         .where(eq(users.id, userId))
         .returning();
 
@@ -8497,8 +8562,8 @@ export const registerRoutes = async (
     try {
       logger.info(`[GENERAL USER UPDATE] Endpoint hit - path: ${req.path}, userId: ${req.params.userId}`);
 
-      if (!req.user?.isAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
-        logger.warn(`[GENERAL USER UPDATE] Not authorized - user: ${req.user?.id}, isAdmin: ${req.user?.isAdmin}, isGroupAdmin: ${req.user?.isGroupAdmin}, isTeamLead: ${req.user?.isTeamLead}`);
+      if (!req.user?.isAdmin && !req.user?.isOrganizationAdmin && !req.user?.isGroupAdmin && !req.user?.isTeamLead) {
+        logger.warn(`[GENERAL USER UPDATE] Not authorized - user: ${req.user?.id}, isAdmin: ${req.user?.isAdmin}, isOrganizationAdmin: ${req.user?.isOrganizationAdmin}, isGroupAdmin: ${req.user?.isGroupAdmin}, isTeamLead: ${req.user?.isTeamLead}`);
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -8508,7 +8573,7 @@ export const registerRoutes = async (
       }
 
       // For Team Leads, check that they're updating a user in their own team
-      if (req.user?.isTeamLead && !req.user?.isAdmin && !req.user?.isGroupAdmin) {
+      if (req.user?.isTeamLead && !req.user?.isAdmin && !req.user?.isOrganizationAdmin && !req.user?.isGroupAdmin) {
         const [targetUser] = await db
           .select()
           .from(users)
