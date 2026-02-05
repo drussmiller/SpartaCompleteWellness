@@ -247,16 +247,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Note: User progress is now shown directly from user.currentWeek and user.currentDay
   // No need to fetch separately for each user
 
-  // Auto-set filters for Group Admins to their specific group
+  // Auto-set filters for Organization Admins and Group Admins
   useEffect(() => {
-    if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups && organizations) {
+    if (currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && currentUser?.adminOrganizationId) {
+      if (selectedOrgFilter === "all") {
+        setSelectedOrgFilter(currentUser.adminOrganizationId.toString());
+      }
+    } else if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups && organizations) {
       const adminGroup = groups.find(g => g.id === currentUser.adminGroupId);
       if (adminGroup) {
-        // Set organization filter
         if (selectedOrgFilter === "all") {
           setSelectedOrgFilter(adminGroup.organizationId.toString());
         }
-        // Set group filter to their specific group
         if (selectedGroupFilter === "all") {
           setSelectedGroupFilter(adminGroup.id.toString());
         }
@@ -578,7 +580,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       value,
     }: {
       userId: number;
-      role: "isAdmin" | "isTeamLead" | "isGroupAdmin";
+      role: "isAdmin" | "isOrganizationAdmin" | "isTeamLead" | "isGroupAdmin";
       value: boolean;
     }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}/role`, {
@@ -1238,8 +1240,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     );
   }
 
-  // Access control: Only Admins and Group Admins can access the dashboard. Team Leads can see their team's users.
-  if (!currentUser?.isAdmin && !currentUser?.isGroupAdmin && !currentUser?.isTeamLead) {
+  // Access control: Admins, Organization Admins, Group Admins, and Team Leads can access the dashboard.
+  if (!currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && !currentUser?.isGroupAdmin && !currentUser?.isTeamLead) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -1264,14 +1266,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   );
 
   // Filter groups based on the current user's role first
-  const filteredGroups = currentUser?.isGroupAdmin && !currentUser?.isAdmin
-    ? (() => {
-        const adminGroup = (groups || []).find(
-          (g) => g.id === currentUser.adminGroupId,
-        );
-        return adminGroup ? [adminGroup] : [];
-      })()
-    : (groups || []);
+  const filteredGroups = currentUser?.isAdmin
+    ? (groups || [])
+    : currentUser?.isOrganizationAdmin
+      ? (groups || []).filter((g) => g.organizationId === currentUser.adminOrganizationId)
+      : currentUser?.isGroupAdmin
+        ? (() => {
+            const adminGroup = (groups || []).find(
+              (g) => g.id === currentUser.adminGroupId,
+            );
+            return adminGroup ? [adminGroup] : [];
+          })()
+        : (groups || []);
 
   // Sort the filtered groups
   const sortedGroups = [...filteredGroups].sort((a, b) =>
@@ -1281,11 +1287,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || []
-    : currentUser?.isGroupAdmin
-      ? (teams || []).filter((team) => team.groupId === currentUser.adminGroupId)
-      : currentUser?.isTeamLead
-        ? (teams || []).filter((team) => team.id === currentUser.teamId)
-        : [];
+    : currentUser?.isOrganizationAdmin
+      ? (teams || []).filter((team) => {
+          const group = (groups || []).find((g) => g.id === team.groupId);
+          return group && group.organizationId === currentUser.adminOrganizationId;
+        })
+      : currentUser?.isGroupAdmin
+        ? (teams || []).filter((team) => team.groupId === currentUser.adminGroupId)
+        : currentUser?.isTeamLead
+          ? (teams || []).filter((team) => team.id === currentUser.teamId)
+          : [];
 
   const sortedTeams = [...filteredTeams].sort((a, b) =>
     a.name.localeCompare(b.name),
@@ -1294,29 +1305,40 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Filter users based on user role
   const filteredUsers = currentUser?.isAdmin
     ? users || []
-    : currentUser?.isGroupAdmin
+    : currentUser?.isOrganizationAdmin
       ? (() => {
-          const adminGroupId = currentUser.adminGroupId;
-          if (!adminGroupId) {
-            return [];
-          }
-          const groupTeams = (teams || []).filter((team) => team.groupId === adminGroupId);
-          const groupTeamIds = groupTeams.map((team) => team.id);
+          const adminOrgId = currentUser.adminOrganizationId;
+          if (!adminOrgId) return [];
+          const orgGroups = (groups || []).filter((g) => g.organizationId === adminOrgId);
+          const orgGroupIds = orgGroups.map((g) => g.id);
+          const orgTeams = (teams || []).filter((t) => orgGroupIds.includes(t.groupId));
+          const orgTeamIds = orgTeams.map((t) => t.id);
           return (users || []).filter((u) => {
-            // Include users in the admin's groups' teams, or users not assigned to any team
-            if (u.teamId && groupTeamIds.includes(u.teamId)) {
-              return true;
-            }
-            if (!u.teamId) {
-              return true;
-            }
+            if (u.teamId && orgTeamIds.includes(u.teamId)) return true;
             return false;
           });
         })()
-      : currentUser?.isTeamLead
-        ? // Team Leads see only users in their own team
-          (users || []).filter((u) => u.teamId === currentUser.teamId)
-        : []; // Default case, should not be reached if access control is correct
+      : currentUser?.isGroupAdmin
+        ? (() => {
+            const adminGroupId = currentUser.adminGroupId;
+            if (!adminGroupId) {
+              return [];
+            }
+            const groupTeams = (teams || []).filter((team) => team.groupId === adminGroupId);
+            const groupTeamIds = groupTeams.map((team) => team.id);
+            return (users || []).filter((u) => {
+              if (u.teamId && groupTeamIds.includes(u.teamId)) {
+                return true;
+              }
+              if (!u.teamId) {
+                return true;
+              }
+              return false;
+            });
+          })()
+        : currentUser?.isTeamLead
+          ? (users || []).filter((u) => u.teamId === currentUser.teamId)
+          : [];
 
   const sortedUsers = [...filteredUsers].sort((a, b) =>
     (a.username || "").localeCompare(b.username || ""),
@@ -1398,6 +1420,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? sortedOrganizations
     : sortedOrganizations.filter((org) => org.status === 1)
   ).filter((org) => {
+    if (currentUser?.isOrganizationAdmin && !currentUser?.isAdmin) {
+      return org.id === currentUser.adminOrganizationId;
+    }
     if (orgSearchQuery.trim() === "") return true;
     const searchLower = orgSearchQuery.toLowerCase();
     return org.name.toLowerCase().includes(searchLower) ||
@@ -1405,7 +1430,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   });
 
   // Groups filtered by org dropdown and search
-  const filteredGroupsForSection = filteredGroups.filter((group) => {
+  const filteredGroupsForSection = sortedGroups.filter((group) => {
     // Apply org filter
     if (groupOrgFilter !== "all" && group.organizationId.toString() !== groupOrgFilter) {
       return false;
@@ -1496,8 +1521,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             )}
 
             <div className="grid grid-cols-1 gap-6 mt-3">
-              {/* Organizations Section - Only show for full admins */}
-              {currentUser?.isAdmin && !currentUser?.isTeamLead && (
+              {/* Organizations Section - Show for Admins and Organization Admins */}
+              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin) && !currentUser?.isTeamLead && (
                 <Collapsible 
                   open={organizationsPanelOpen} 
                   onOpenChange={setOrganizationsPanelOpen}
@@ -1517,6 +1542,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
+                        {currentUser?.isAdmin && (
                         <div className="flex items-center space-x-2 mb-2">
                           <Checkbox
                             id="autonomous-mode"
@@ -1546,6 +1572,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Autonomous mode
                           </Label>
                         </div>
+                        )}
+                        {!currentUser?.isOrganizationAdmin && (
                         <div className="flex items-center space-x-2 mb-4">
                           <Checkbox
                             id="show-inactive-orgs"
@@ -1558,7 +1586,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Show inactive organizations
                           </Label>
                         </div>
-                        {/* Search box for Organizations */}
+                        )}
+                        {!currentUser?.isOrganizationAdmin && (
                         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
                           <h3 className="text-lg font-medium">Search & Filter Organizations</h3>
                           <Input
@@ -1569,7 +1598,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             className="w-full"
                           />
                         </div>
+                        )}
                         <Dialog open={createOrgDialogOpen} onOpenChange={setCreateOrgDialogOpen}>
+                          {currentUser?.isAdmin && (
                           <DialogTrigger asChild>
                             <Button
                               size="sm"
@@ -1579,6 +1610,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               New Organization
                             </Button>
                           </DialogTrigger>
+                          )}
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>Create New Organization</DialogTitle>
@@ -1835,8 +1867,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </Collapsible>
               )}
 
-              {/* Groups Section - Show for full admins and group admins */}
-              {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
+              {/* Groups Section - Show for Admins, Organization Admins, and Group Admins */}
+              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
                 <Collapsible 
                   open={groupsPanelOpen} 
                   onOpenChange={setGroupsPanelOpen}
@@ -1856,6 +1888,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
+                        {!currentUser?.isGroupAdmin && (
                         <div className="flex items-center space-x-2 mb-4">
                           <Checkbox
                             id="show-inactive-groups"
@@ -1868,7 +1901,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Show inactive groups
                           </Label>
                         </div>
-                        {/* Org dropdown and search box for Groups */}
+                        )}
+                        {!currentUser?.isGroupAdmin && (
                         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
                           <h3 className="text-lg font-medium">Search & Filter Groups</h3>
                           {currentUser?.isAdmin && (
@@ -1913,7 +1947,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             />
                           )}
                         </div>
+                        )}
                         <Dialog open={createGroupDialogOpen} onOpenChange={setCreateGroupDialogOpen}>
+                          {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && !currentUser?.isGroupAdmin)) && (
                           <DialogTrigger asChild>
                             <Button
                               size="sm"
@@ -1923,6 +1959,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               New Group
                             </Button>
                           </DialogTrigger>
+                          )}
                           <DialogContent>
                             <div className="flex items-center mb-2 relative">
                               <DialogPrimitive.Close asChild>
@@ -1958,6 +1995,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       return;
                                     }
                                     orgId = selectedOrganizationId;
+                                  } else if (
+                                    currentUser?.isOrganizationAdmin &&
+                                    currentUser?.adminOrganizationId
+                                  ) {
+                                    orgId = currentUser.adminOrganizationId;
                                   } else if (
                                     currentUser?.isGroupAdmin &&
                                     currentUser?.adminGroupId
@@ -2040,7 +2082,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </Select>
                                   </div>
                                 )}
-                                {currentUser?.isGroupAdmin && (
+                                {currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && (
+                                  <div className="text-sm text-muted-foreground">
+                                    Groups will be created in your organization:{" "}
+                                    {sortedOrganizations?.find(o => o.id === currentUser.adminOrganizationId)?.name || "Unknown"}
+                                  </div>
+                                )}
+                                {currentUser?.isGroupAdmin && !currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && (
                                   <div className="text-sm text-muted-foreground">
                                     Groups will be created in your organization:{" "}
                                     {(() => {
@@ -2486,8 +2534,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </Collapsible>
               )}
 
-              {/* Teams Section - Show for admins, group admins, and team leads */}
-              {(currentUser?.isAdmin || currentUser?.isGroupAdmin || currentUser?.isTeamLead) && (
+              {/* Teams Section - Show for Admins, Organization Admins, Group Admins, and Team Leads */}
+              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin || currentUser?.isTeamLead) && (
                 <Collapsible 
                   open={teamsPanelOpen} 
                   onOpenChange={setTeamsPanelOpen}
@@ -2506,8 +2554,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 </div>
                 <CollapsibleContent>
                   <div className="space-y-4">
-                    {/* Hide Show inactive teams checkbox for Team Leads who are not admins/group admins */}
-                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                    {/* Hide Show inactive teams checkbox for Team Leads */}
+                    {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                       <div className="flex items-center space-x-2 mb-4">
                         <Checkbox
                           id="show-inactive-teams"
@@ -2521,7 +2569,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Label>
                       </div>
                     )}
-                    {/* Org dropdown, Group dropdown, and search box for Teams */}
+                    {!currentUser?.isTeamLead && (
                     <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
                       <h3 className="text-lg font-medium">Search & Filter Teams</h3>
                       {currentUser?.isAdmin && (
@@ -2610,18 +2658,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </div>
                         </div>
                       )}
-                      {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isGroupAdmin && (
-                        <Input
-                          type="text"
-                          placeholder="Search teams..."
-                          value={teamSearchQuery}
-                          onChange={(e) => setTeamSearchQuery(e.target.value)}
-                          className="w-full"
-                        />
-                      )}
                     </div>
-                    {/* Hide New Team button for Team Leads who are not admins/group admins */}
-                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                    )}
+                    {/* Hide New Team button for Team Leads */}
+                    {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
                     <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -2898,7 +2938,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Group</Label>
                                       {/* Team Leads only see their own group */}
-                                      {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isGroupAdmin ? (
+                                      {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && !currentUser?.isGroupAdmin ? (
                                         <div className="px-3 py-2 border rounded-md bg-muted text-sm">
                                           {(() => {
                                             const userTeam = teams?.find(t => t.id === currentUser?.teamId);
@@ -3001,8 +3041,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         When set, new members will inherit this date as their program start date (if it hasn't passed)
                                       </p>
                                     </div>
-                                    {/* Hide Status dropdown for Team Leads who are not admins/group admins */}
-                                    {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                                    {/* Hide Status dropdown for Team Leads */}
+                                    {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                                     <div>
                                       <Label className="text-sm font-medium mb-1 block">Status</Label>
                                       <Select
@@ -3046,7 +3086,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               ) : (
                                 <>
                                   <div className="flex items-center gap-2">
-                                    <CardTitle className="text-lg">
+                                    <CardTitle>
                                       {team.name}
                                     </CardTitle>
                                   </div>
@@ -3236,8 +3276,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </Select>
                             </div>
                           )}
-                          {/* Group filter - Hide for Team Leads who are not admins/group admins */}
-                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                          {/* Group filter - Hide for Team Leads */}
+                          {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Group
@@ -3272,8 +3312,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             )}
                           </div>
                           )}
-                          {/* Team filter - Hide for Team Leads who are not admins/group admins */}
-                          {(currentUser?.isAdmin || currentUser?.isGroupAdmin) && (
+                          {/* Team filter - Hide for Team Leads */}
+                          {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
                               Team
@@ -3323,8 +3363,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                // For Group Admins, reset to their group's defaults
-                                if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups) {
+                                if (currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && currentUser?.adminOrganizationId) {
+                                  setSelectedOrgFilter(currentUser.adminOrganizationId.toString());
+                                  setSelectedGroupFilter("all");
+                                } else if (currentUser?.isGroupAdmin && !currentUser?.isAdmin && groups) {
                                   const adminGroup = groups.find(g => g.id === currentUser.adminGroupId);
                                   if (adminGroup) {
                                     setSelectedOrgFilter(adminGroup.organizationId.toString());
@@ -3814,90 +3856,114 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
                           <div className="space-y-2">
                             <p className="text-sm font-medium">Roles</p>
-                            <div className="flex gap-2 mr-24">
-                              {/* Admin button - only show if current logged-in user is Admin */}
-                              {currentUser?.isAdmin && (
-                                <Button
-                                  variant={
-                                    user.isAdmin ? "default" : "outline"
-                                  }
-                                  size="sm"
-                                  className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                                  onClick={() => {
-                                    // Prevent removing admin from the admin user with username "admin"
-                                    if (
-                                      user.username === "admin" &&
-                                      user.isAdmin
-                                    ) {
-                                      toast({
-                                        title: "Cannot Remove Admin",
-                                        description:
-                                          "This is the main administrator account and cannot have admin rights removed.",
-                                        variant: "destructive",
-                                      });
-                                      return;
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                {/* Admin button - only show if current logged-in user is Admin */}
+                                {currentUser?.isAdmin && (
+                                  <Button
+                                    variant={
+                                      user.isAdmin ? "default" : "outline"
                                     }
-                                    updateUserRoleMutation.mutate({
-                                      userId: user.id,
-                                      role: "isAdmin",
-                                      value: !user.isAdmin,
-                                    });
-                                  }}
-                                >
-                                  Admin
-                                </Button>
-                              )}
-                              {/* Group Admin button - show if current logged-in user is Admin or Group Admin */}
-                              {(currentUser?.isAdmin ||
-                                currentUser?.isGroupAdmin) && (
-                                <Button
-                                  variant={
-                                    user.isGroupAdmin ? "default" : "outline"
-                                  }
-                                  size="sm"
-                                  className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                                  onClick={() => {
-                                    updateUserRoleMutation.mutate({
-                                      userId: user.id,
-                                      role: "isGroupAdmin",
-                                      value: !user.isGroupAdmin,
-                                    });
-                                  }}
-                                >
-                                  Group Admin
-                                </Button>
-                              )}
-                              {/* Team Lead button - show for Admin, Group Admin, or Team Lead */}
-                              {(currentUser?.isAdmin ||
-                                currentUser?.isGroupAdmin ||
-                                currentUser?.isTeamLead) && (
-                                <Button
-                                  variant={
-                                    user.isTeamLead ? "default" : "outline"
-                                  }
-                                  size="sm"
-                                  className={`text-xs ${user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
-                                  disabled={!user.teamId}
-                                  onClick={() => {
-                                    if (!user.teamId) {
-                                      toast({
-                                        title: "Team Required",
-                                        description:
-                                          "User must be assigned to a team before becoming a Team Lead.",
-                                        variant: "destructive",
+                                    size="sm"
+                                    className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    onClick={() => {
+                                      if (
+                                        user.username === "admin" &&
+                                        user.isAdmin
+                                      ) {
+                                        toast({
+                                          title: "Cannot Remove Admin",
+                                          description:
+                                            "This is the main administrator account and cannot have admin rights removed.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+                                      updateUserRoleMutation.mutate({
+                                        userId: user.id,
+                                        role: "isAdmin",
+                                        value: !user.isAdmin,
                                       });
-                                      return;
+                                    }}
+                                  >
+                                    Admin
+                                  </Button>
+                                )}
+                                {/* Organization Admin button - show only for Admins */}
+                                {currentUser?.isAdmin && (
+                                  <Button
+                                    variant={
+                                      user.isOrganizationAdmin ? "default" : "outline"
                                     }
-                                    updateUserRoleMutation.mutate({
-                                      userId: user.id,
-                                      role: "isTeamLead",
-                                      value: !user.isTeamLead,
-                                    });
-                                  }}
-                                >
-                                  Team Lead
-                                </Button>
-                              )}
+                                    size="sm"
+                                    className={`text-xs ${user.isOrganizationAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    onClick={() => {
+                                      updateUserRoleMutation.mutate({
+                                        userId: user.id,
+                                        role: "isOrganizationAdmin",
+                                        value: !user.isOrganizationAdmin,
+                                      });
+                                    }}
+                                  >
+                                    Org Admin
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                {/* Group Admin button - show if current logged-in user is Admin, Organization Admin, or Group Admin */}
+                                {(currentUser?.isAdmin ||
+                                  currentUser?.isOrganizationAdmin ||
+                                  currentUser?.isGroupAdmin) && (
+                                  <Button
+                                    variant={
+                                      user.isGroupAdmin ? "default" : "outline"
+                                    }
+                                    size="sm"
+                                    className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    onClick={() => {
+                                      updateUserRoleMutation.mutate({
+                                        userId: user.id,
+                                        role: "isGroupAdmin",
+                                        value: !user.isGroupAdmin,
+                                      });
+                                    }}
+                                  >
+                                    Group Admin
+                                  </Button>
+                                )}
+                                {/* Team Lead button - show for Admin, Organization Admin, Group Admin, or Team Lead */}
+                                {(currentUser?.isAdmin ||
+                                  currentUser?.isOrganizationAdmin ||
+                                  currentUser?.isGroupAdmin ||
+                                  currentUser?.isTeamLead) && (
+                                  <Button
+                                    variant={
+                                      user.isTeamLead ? "default" : "outline"
+                                    }
+                                    size="sm"
+                                    className={`text-xs ${user.isTeamLead ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    disabled={!user.teamId}
+                                    onClick={() => {
+                                      if (!user.teamId) {
+                                        toast({
+                                          title: "Team Required",
+                                          description:
+                                            "User must be assigned to a team before becoming a Team Lead.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+                                      updateUserRoleMutation.mutate({
+                                        userId: user.id,
+                                        role: "isTeamLead",
+                                        value: !user.isTeamLead,
+                                      });
+                                    }}
+                                  >
+                                    Team Lead
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
 

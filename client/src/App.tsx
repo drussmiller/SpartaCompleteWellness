@@ -138,7 +138,7 @@ function MainContent() {
             <CommentsPage />
           </Route>
           <Route path="/donation-success" component={DonationSuccessPage} />
-          {user.isAdmin && <Route path="/admin" component={() => <AdminPage />} />}
+          {(user.isAdmin || user.isOrganizationAdmin || user.isGroupAdmin || user.isTeamLead) && <Route path="/admin" component={() => <AdminPage />} />}
           {user.isGroupAdmin && <Route path="/group-admin" component={() => <GroupAdminPage />} />}
           <Route path="*">Not found</Route>
         </Switch>
@@ -149,6 +149,28 @@ function MainContent() {
 
 function App() {
   console.log('App component rendering');
+
+  // Global visibility change handler for app resume - works on all devices
+  useEffect(() => {
+    let backgroundedAt: number | null = null;
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        backgroundedAt = Date.now();
+      } else if (document.visibilityState === 'visible' && backgroundedAt) {
+        const backgroundDuration = Date.now() - backgroundedAt;
+        // If backgrounded for more than 30 seconds, refresh all data
+        if (backgroundDuration > 30 * 1000) {
+          console.log('App resumed after', Math.round(backgroundDuration / 1000), 'seconds, refreshing data...');
+          queryClient.invalidateQueries();
+        }
+        backgroundedAt = null;
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // Android-specific: Set CSS custom property for safe padding that persists across component remounts
   useEffect(() => {
@@ -166,11 +188,24 @@ function App() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         sessionStorage.setItem('androidBackgrounded', 'true');
+        sessionStorage.setItem('appBackgroundedAt', Date.now().toString());
         root.style.setProperty('--android-textbox-padding', '12px');
       } else if (document.visibilityState === 'visible') {
         // Re-apply on visible in case it was cleared
         if (sessionStorage.getItem('androidBackgrounded') === 'true') {
           root.style.setProperty('--android-textbox-padding', '12px');
+        }
+        
+        // Check how long app was backgrounded
+        const backgroundedAt = sessionStorage.getItem('appBackgroundedAt');
+        if (backgroundedAt) {
+          const backgroundDuration = Date.now() - parseInt(backgroundedAt, 10);
+          // If backgrounded for more than 2 minutes, refresh all data
+          if (backgroundDuration > 2 * 60 * 1000) {
+            console.log('App was backgrounded for', Math.round(backgroundDuration / 1000), 'seconds, refreshing data...');
+            queryClient.invalidateQueries();
+          }
+          sessionStorage.removeItem('appBackgroundedAt');
         }
       }
     };

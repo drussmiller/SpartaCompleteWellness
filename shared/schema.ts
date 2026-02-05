@@ -10,10 +10,12 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false),
+  isOrganizationAdmin: boolean("is_organization_admin").default(false),
   isTeamLead: boolean("is_team_lead").default(false),
   isGroupAdmin: boolean("is_group_admin").default(false),
   teamId: integer("team_id"), // Users belong to teams
   adminGroupId: integer("admin_group_id"), // Group they are admin of (if isGroupAdmin is true)
+  adminOrganizationId: integer("admin_organization_id"), // Organization they are admin of (if isOrganizationAdmin is true)
   points: integer("points").default(0),
   weight: real("weight"),
   waist: real("waist"),

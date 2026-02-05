@@ -204,7 +204,7 @@ export default function MenuPage() {
           )}
 
           {/* Admin Sheet - Only shown for admin users */}
-          {(user.isAdmin || user.isGroupAdmin || user.isTeamLead) && (
+          {(user.isAdmin || user.isOrganizationAdmin || user.isGroupAdmin || user.isTeamLead) && (
             <Sheet open={adminOpen} onOpenChange={setAdminOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" className="w-full justify-start active:bg-background focus:bg-background" size="lg">
