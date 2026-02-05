@@ -1888,6 +1888,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     {/* Moved Dialog Trigger inside the CollapsibleContent */}
                     <CollapsibleContent>
                       <div className="space-y-4">
+                        {!currentUser?.isGroupAdmin && (
                         <div className="flex items-center space-x-2 mb-4">
                           <Checkbox
                             id="show-inactive-groups"
@@ -1900,7 +1901,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Show inactive groups
                           </Label>
                         </div>
-                        {/* Org dropdown and search box for Groups */}
+                        )}
+                        {!currentUser?.isGroupAdmin && (
                         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
                           <h3 className="text-lg font-medium">Search & Filter Groups</h3>
                           {currentUser?.isAdmin && (
@@ -1945,6 +1947,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             />
                           )}
                         </div>
+                        )}
                         <Dialog open={createGroupDialogOpen} onOpenChange={setCreateGroupDialogOpen}>
                           {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && !currentUser?.isGroupAdmin)) && (
                           <DialogTrigger asChild>
@@ -2566,7 +2569,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </Label>
                       </div>
                     )}
-                    {/* Org dropdown, Group dropdown, and search box for Teams */}
+                    {!currentUser?.isTeamLead && (
                     <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
                       <h3 className="text-lg font-medium">Search & Filter Teams</h3>
                       {currentUser?.isAdmin && (
@@ -2655,16 +2658,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </div>
                         </div>
                       )}
-                      {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && !currentUser?.isGroupAdmin && (
-                        <Input
-                          type="text"
-                          placeholder="Search teams..."
-                          value={teamSearchQuery}
-                          onChange={(e) => setTeamSearchQuery(e.target.value)}
-                          className="w-full"
-                        />
-                      )}
                     </div>
+                    )}
                     {/* Hide New Team button for Team Leads */}
                     {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
                     <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
