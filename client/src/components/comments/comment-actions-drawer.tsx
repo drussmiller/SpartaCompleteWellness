@@ -119,7 +119,6 @@ export function CommentActionsDrawer({
             className="w-full h-14 text-destructive hover:text-destructive hover:bg-gray-100 rounded-none border-b text-xl"
             onClick={() => {
               onDelete();
-              onClose();
             }}
           >
             Delete

@@ -774,7 +774,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
       />
 
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent className="z-[99999]">
+        <AlertDialogContent className="z-[2147483647]">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
