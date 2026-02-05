@@ -3091,7 +3091,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               ) : (
                                 <>
                                   <div className="flex items-center gap-2">
-                                    <CardTitle className="text-lg">
+                                    <CardTitle>
                                       {team.name}
                                     </CardTitle>
                                   </div>
