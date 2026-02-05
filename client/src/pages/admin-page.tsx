@@ -1420,6 +1420,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? sortedOrganizations
     : sortedOrganizations.filter((org) => org.status === 1)
   ).filter((org) => {
+    if (currentUser?.isOrganizationAdmin && !currentUser?.isAdmin) {
+      return org.id === currentUser.adminOrganizationId;
+    }
     if (orgSearchQuery.trim() === "") return true;
     const searchLower = orgSearchQuery.toLowerCase();
     return org.name.toLowerCase().includes(searchLower) ||
