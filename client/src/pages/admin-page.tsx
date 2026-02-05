@@ -1570,6 +1570,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           </Label>
                         </div>
                         )}
+                        {!currentUser?.isOrganizationAdmin && (
                         <div className="flex items-center space-x-2 mb-4">
                           <Checkbox
                             id="show-inactive-orgs"
@@ -1582,7 +1583,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             Show inactive organizations
                           </Label>
                         </div>
-                        {/* Search box for Organizations */}
+                        )}
+                        {!currentUser?.isOrganizationAdmin && (
                         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
                           <h3 className="text-lg font-medium">Search & Filter Organizations</h3>
                           <Input
@@ -1593,6 +1595,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             className="w-full"
                           />
                         </div>
+                        )}
                         <Dialog open={createOrgDialogOpen} onOpenChange={setCreateOrgDialogOpen}>
                           {currentUser?.isAdmin && (
                           <DialogTrigger asChild>
