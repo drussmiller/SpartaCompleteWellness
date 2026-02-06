@@ -1,37 +1,13 @@
-import { objectStorageClient } from './replit_integrations/object_storage/objectStorage';
+import { Client } from '@replit/object-storage';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { createMovThumbnail } from './mov-frame-extractor-new.js';
 import { Readable } from 'stream';
 
-const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-
-async function getSignedUploadUrl(bucketName: string, objectName: string): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method: "PUT",
-    expires_at: new Date(Date.now() + 900 * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to sign upload URL, status: ${response.status}`);
-  }
-  const { signed_url: signedURL } = await response.json();
-  return signedURL;
-}
+const replitStorageClient = new Client();
 
 export class SpartaObjectStorageFinal {
-  private bucket: ReturnType<typeof objectStorageClient.bucket>;
   private allowedTypes: string[];
   private maxRetries: number = 3;
   private retryDelay: number = 1000;
@@ -43,8 +19,7 @@ export class SpartaObjectStorageFinal {
     ]
   ) {
     this.allowedTypes = allowedTypes;
-    this.bucket = objectStorageClient.bucket(BUCKET_ID);
-    console.log(`Object Storage Final client initialized with GCS bucket: ${BUCKET_ID}`);
+    console.log(`Object Storage Final client initialized with @replit/object-storage Client`);
   }
 
   private async retryOperation<T>(
@@ -70,20 +45,12 @@ export class SpartaObjectStorageFinal {
   }
 
   async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
-    console.log(`[UPLOAD-V2] Starting presigned URL upload for ${key}, buffer size: ${buffer.length}`);
+    console.log(`[UPLOAD-V2] Starting upload for ${key}, buffer size: ${buffer.length}`);
     await this.retryOperation(
       async () => {
-        const signedUrl = await getSignedUploadUrl(BUCKET_ID, key);
-        console.log(`[UPLOAD-V2] Got signed URL for ${key}, uploading ${buffer.length} bytes...`);
-        const response = await fetch(signedUrl, {
-          method: "PUT",
-          body: buffer,
-          headers: { "Content-Type": "application/octet-stream" },
-        });
-        console.log(`[UPLOAD-V2] Upload response status: ${response.status} for ${key}`);
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => '');
-          throw new Error(`Upload via signed URL failed with status ${response.status}: ${errorText}`);
+        const result = await replitStorageClient.uploadFromBytes(key, buffer);
+        if (!result.ok) {
+          throw new Error(`Upload failed: ${(result as any).error?.message || 'Unknown error'}`);
         }
       },
       `Upload ${key}`
@@ -235,8 +202,10 @@ export class SpartaObjectStorageFinal {
   async deleteFile(storageKey: string): Promise<void> {
     await this.retryOperation(
       async () => {
-        const file = this.bucket.file(storageKey);
-        await file.delete();
+        const result = await replitStorageClient.delete(storageKey);
+        if (!result.ok) {
+          throw new Error(`Delete failed: ${(result as any).error?.message || 'Unknown error'}`);
+        }
       },
       `Delete ${storageKey}`
     );
@@ -245,9 +214,11 @@ export class SpartaObjectStorageFinal {
 
   async fileExists(storageKey: string): Promise<boolean> {
     try {
-      const file = this.bucket.file(storageKey);
-      const [exists] = await file.exists();
-      return exists;
+      const result = await replitStorageClient.exists(storageKey);
+      if (result.ok) {
+        return result.value;
+      }
+      return false;
     } catch (error) {
       console.log(`File existence check failed for ${storageKey}:`, (error as Error).message);
       return false;
@@ -259,9 +230,11 @@ export class SpartaObjectStorageFinal {
     
     const result = await this.retryOperation(
       async () => {
-        const file = this.bucket.file(storageKey);
-        const [contents] = await file.download();
-        return contents;
+        const dl = await replitStorageClient.downloadAsBytes(storageKey);
+        if (!dl.ok) {
+          throw new Error(`Download failed: ${(dl as any).error?.message || 'Unknown error'}`);
+        }
+        return Buffer.from(dl.value[0]);
       },
       `Download ${storageKey}`
     );
@@ -272,15 +245,29 @@ export class SpartaObjectStorageFinal {
 
   downloadAsStream(storageKey: string): NodeJS.ReadableStream {
     console.log(`Streaming file from Object Storage: ${storageKey}`);
-    const file = this.bucket.file(storageKey);
-    return file.createReadStream();
+    const passthrough = new (require('stream').PassThrough)();
+    
+    replitStorageClient.downloadAsBytes(storageKey).then((dl: any) => {
+      if (dl.ok) {
+        passthrough.end(Buffer.from(dl.value[0]));
+      } else {
+        passthrough.destroy(new Error(`Stream download failed: ${dl.error?.message || 'Unknown error'}`));
+      }
+    }).catch((err: any) => {
+      passthrough.destroy(err);
+    });
+    
+    return passthrough;
   }
 
   async listFiles(prefix?: string): Promise<string[]> {
     try {
       const options = prefix ? { prefix } : {};
-      const [files] = await this.bucket.getFiles(options);
-      return files.map(f => f.name);
+      const result = await replitStorageClient.list(options as any);
+      if (result.ok) {
+        return result.value.map((obj: any) => typeof obj === 'string' ? obj : obj.name);
+      }
+      return [];
     } catch (error) {
       console.error(`Failed to list files:`, (error as Error).message);
       return [];
