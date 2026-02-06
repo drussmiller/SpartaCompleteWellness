@@ -7,18 +7,6 @@ import { Readable } from 'stream';
 
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-const LOCAL_FALLBACK_DIR = '/tmp/local-object-storage';
-
-let useLocalFallback = false;
-
-function ensureLocalDir(key: string) {
-  const fullPath = path.join(LOCAL_FALLBACK_DIR, key);
-  const dir = path.dirname(fullPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  return fullPath;
-}
 
 async function getSignedUploadUrl(bucketName: string, objectName: string): Promise<string> {
   const request = {
@@ -82,44 +70,25 @@ export class SpartaObjectStorageFinal {
   }
 
   async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
-    if (useLocalFallback) {
-      const localPath = ensureLocalDir(key);
-      fs.writeFileSync(localPath, buffer);
-      console.log(`[UPLOAD-LOCAL] Saved ${key} locally (${buffer.length} bytes)`);
-      return;
-    }
-
     console.log(`[UPLOAD-V2] Starting presigned URL upload for ${key}, buffer size: ${buffer.length}`);
-    try {
-      await this.retryOperation(
-        async () => {
-          const signedUrl = await getSignedUploadUrl(BUCKET_ID, key);
-          console.log(`[UPLOAD-V2] Got signed URL for ${key}, uploading ${buffer.length} bytes...`);
-          const response = await fetch(signedUrl, {
-            method: "PUT",
-            body: buffer,
-            headers: { "Content-Type": "application/octet-stream" },
-          });
-          console.log(`[UPLOAD-V2] Upload response status: ${response.status} for ${key}`);
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => '');
-            throw new Error(`Upload via signed URL failed with status ${response.status}: ${errorText}`);
-          }
-        },
-        `Upload ${key}`
-      );
-      console.log(`[UPLOAD-V2] Successfully uploaded ${key} to Object Storage`);
-    } catch (error: any) {
-      if (error.message?.includes('401') || error.message?.includes('403')) {
-        console.log(`[UPLOAD-FALLBACK] Object Storage unavailable, switching to local storage`);
-        useLocalFallback = true;
-        const localPath = ensureLocalDir(key);
-        fs.writeFileSync(localPath, buffer);
-        console.log(`[UPLOAD-LOCAL] Saved ${key} locally (${buffer.length} bytes)`);
-      } else {
-        throw error;
-      }
-    }
+    await this.retryOperation(
+      async () => {
+        const signedUrl = await getSignedUploadUrl(BUCKET_ID, key);
+        console.log(`[UPLOAD-V2] Got signed URL for ${key}, uploading ${buffer.length} bytes...`);
+        const response = await fetch(signedUrl, {
+          method: "PUT",
+          body: buffer,
+          headers: { "Content-Type": "application/octet-stream" },
+        });
+        console.log(`[UPLOAD-V2] Upload response status: ${response.status} for ${key}`);
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          throw new Error(`Upload via signed URL failed with status ${response.status}: ${errorText}`);
+        }
+      },
+      `Upload ${key}`
+    );
+    console.log(`[UPLOAD-V2] Successfully uploaded ${key} to Object Storage`);
   }
 
   async storeFile(
