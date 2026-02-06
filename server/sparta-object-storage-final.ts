@@ -70,14 +70,17 @@ export class SpartaObjectStorageFinal {
   }
 
   async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
+    console.log(`[UPLOAD-V2] Starting presigned URL upload for ${key}, buffer size: ${buffer.length}`);
     await this.retryOperation(
       async () => {
         const signedUrl = await getSignedUploadUrl(BUCKET_ID, key);
+        console.log(`[UPLOAD-V2] Got signed URL for ${key}, uploading ${buffer.length} bytes...`);
         const response = await fetch(signedUrl, {
           method: "PUT",
           body: buffer,
           headers: { "Content-Type": "application/octet-stream" },
         });
+        console.log(`[UPLOAD-V2] Upload response status: ${response.status} for ${key}`);
         if (!response.ok) {
           const errorText = await response.text().catch(() => '');
           throw new Error(`Upload via signed URL failed with status ${response.status}: ${errorText}`);
@@ -85,7 +88,7 @@ export class SpartaObjectStorageFinal {
       },
       `Upload ${key}`
     );
-    console.log(`Successfully uploaded ${key} to Object Storage`);
+    console.log(`[UPLOAD-V2] Successfully uploaded ${key} to Object Storage`);
   }
 
   async storeFile(

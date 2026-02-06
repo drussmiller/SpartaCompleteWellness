@@ -430,7 +430,7 @@ export const storage = {
   async deleteUser(userId: number): Promise<void> {
     try {
       // Import the SpartaObjectStorage utility for media deletion
-      const { spartaStorage } = await import('./sparta-object-storage');
+      const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
       // First, get all posts by this user that have media to delete
       const postsWithMedia = await db
@@ -489,7 +489,6 @@ export const storage = {
       });
 
       // After the transaction completes successfully, clean up the media files
-      const { spartaObjectStorage } = await import('./sparta-object-storage-final');
       const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
       const storageBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
       const storageBucket = objectStorageClient.bucket(storageBucketId);

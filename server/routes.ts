@@ -68,7 +68,6 @@ import { groupAdminRouter } from "./group-admin-routes";
 import { inviteCodeRouter } from "./invite-code-routes";
 import { emailVerificationRouter } from "./email-verification-routes";
 import { stripeDonationRouter } from "./stripe-donation-routes";
-import { spartaStorage } from "./sparta-object-storage";
 import { spartaObjectStorage } from "./sparta-object-storage-final";
 import { smsService } from "./sms-service";
 import { uploadSessionManager } from "./upload-sessions";
@@ -878,7 +877,7 @@ export const registerRoutes = async (
         } else if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaStorage: spartaObjectStorage } = await import("./sparta-object-storage");
+            const { spartaObjectStorage } = await import("./sparta-object-storage-final");
 
             // Determine if this is a video file
             const originalFilename = req.file.originalname.toLowerCase();
@@ -2295,7 +2294,7 @@ export const registerRoutes = async (
         else if (uploadedFile && uploadedFile.buffer) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaStorage } = await import('./sparta-object-storage');
+            const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
             // With memory storage, work directly with the buffer
             logger.info(`Processing comment file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
@@ -2325,7 +2324,7 @@ export const registerRoutes = async (
 
             logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${commentIsVideo}, size: ${uploadedFile.size}`);
 
-            const fileInfo = await spartaStorage.storeFile(
+            const fileInfo = await spartaObjectStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               uploadedFile.mimetype,
@@ -2420,7 +2419,7 @@ export const registerRoutes = async (
       } else if (uploadedFile && uploadedFile.buffer) {
         try {
           // Use SpartaObjectStorage for file handling
-          const { spartaStorage } = await import('./sparta-object-storage');
+          const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
           // With memory storage, we work directly with the buffer
           logger.info(`Processing file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
@@ -2526,7 +2525,7 @@ export const registerRoutes = async (
               formDataKeys: Object.keys(req.body || {})
             });
 
-            const fileInfo = await spartaStorage.storeFile(
+            const fileInfo = await spartaObjectStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
@@ -3224,7 +3223,7 @@ export const registerRoutes = async (
                   try { await spartaObjectStorage.deleteFile(`shared/uploads/${baseFilename}-hls-source.jpg`); } catch (err) {}
                 }
               } else {
-                await spartaStorage.deleteFile(mediaUrl);
+                await spartaObjectStorage.deleteFile(mediaUrl);
                 if (post.is_video) {
                   let filename = '';
                   if (mediaUrl.includes('shared/uploads/')) {
@@ -3269,7 +3268,7 @@ export const registerRoutes = async (
           // Delete message media files from Object Storage
           for (const mediaUrl of messageMediaUrls) {
             try {
-              await spartaStorage.deleteFile(mediaUrl);
+              await spartaObjectStorage.deleteFile(mediaUrl);
               logger.info(`Deleted message media file: ${mediaUrl}`);
             } catch (err) {
               logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
@@ -3490,7 +3489,7 @@ export const registerRoutes = async (
                     }
                   } else {
                     // Regular video or image
-                    await spartaStorage.deleteFile(mediaUrl);
+                    await spartaObjectStorage.deleteFile(mediaUrl);
                     logger.info(`Deleted media file: ${mediaUrl}`);
                     
                     // If it's a video, delete the thumbnail too
@@ -3547,7 +3546,7 @@ export const registerRoutes = async (
               // Delete message media files from Object Storage
               for (const mediaUrl of messageMediaUrls) {
                 try {
-                  await spartaStorage.deleteFile(mediaUrl);
+                  await spartaObjectStorage.deleteFile(mediaUrl);
                   logger.info(`Deleted message media file: ${mediaUrl}`);
                 } catch (err) {
                   logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
@@ -3840,7 +3839,7 @@ export const registerRoutes = async (
                     try { await spartaObjectStorage.deleteFile(`shared/uploads/${baseFilename}-hls-source.jpg`); } catch (err) {}
                   }
                 } else {
-                  await spartaStorage.deleteFile(mediaUrl);
+                  await spartaObjectStorage.deleteFile(mediaUrl);
                   if (post.is_video) {
                     let filename = '';
                     if (mediaUrl.includes('shared/uploads/')) {
@@ -3885,7 +3884,7 @@ export const registerRoutes = async (
             // Delete message media files from Object Storage
             for (const mediaUrl of messageMediaUrls) {
               try {
-                await spartaStorage.deleteFile(mediaUrl);
+                await spartaObjectStorage.deleteFile(mediaUrl);
                 logger.info(`Deleted message media file: ${mediaUrl}`);
               } catch (err) {
                 logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
@@ -5399,7 +5398,7 @@ export const registerRoutes = async (
 
       // Delete media files for each post before deleting the posts
       if (postsToDelete.length > 0) {
-        const { spartaStorage } = await import('./sparta-object-storage');
+        const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
         for (const post of postsToDelete) {
           if (post.mediaUrl) {
@@ -5418,7 +5417,7 @@ export const registerRoutes = async (
 
                 // Delete main media file
                 try {
-                  await spartaStorage.deleteFile(filePath);
+                  await spartaObjectStorage.deleteFile(filePath);
                   logger.info(`Deleted media file: ${filePath} for post ${post.id}`);
                 } catch (err) {
                   logger.error(`Could not delete media file ${filePath}: ${err}`);
@@ -5430,7 +5429,7 @@ export const registerRoutes = async (
                   const thumbnailPath = `shared/uploads/${baseName}.jpg`;
 
                   try {
-                    await spartaStorage.deleteFile(thumbnailPath);
+                    await spartaObjectStorage.deleteFile(thumbnailPath);
                     logger.info(`Deleted video thumbnail: ${thumbnailPath} for post ${post.id}`);
                   } catch (err) {
                     logger.error(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
