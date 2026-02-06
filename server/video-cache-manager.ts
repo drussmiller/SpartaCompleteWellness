@@ -134,19 +134,12 @@ export class VideoCacheManager {
 
     console.log(`[DOWNLOAD v4] File paths - temp: ${tempPath}, final: ${finalPath}`);
 
-    // Import Object Storage client
-    const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
-    const cacheBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
-    const cacheBucket = objectStorageClient.bucket(cacheBucketId);
+    const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
     try {
-      // Use createReadStream for large files to avoid timeout - stream to file manually
-      console.log(`[DOWNLOAD v4] Using stream download for ${storageKey}`);
-      const readStream = cacheBucket.file(storageKey).createReadStream();
-      const writeStream = fs.createWriteStream(tempPath);
-
-      // Pipe the read stream to write stream
-      await pipeline(readStream, writeStream);
+      console.log(`[DOWNLOAD v4] Using @replit/object-storage download for ${storageKey}`);
+      const fileBuffer = await spartaObjectStorage.downloadFile(storageKey);
+      fs.writeFileSync(tempPath, fileBuffer);
 
       // Get file size
       const stats = fs.statSync(tempPath);

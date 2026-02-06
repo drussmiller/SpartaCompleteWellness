@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { logger } from './logger';
+import { Client } from '@replit/object-storage';
 
 /**
  * Extract a frame from a MOV file and create a single JPG thumbnail
@@ -76,35 +77,11 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
           const jpgBuffer = fs.readFileSync(tempJpgPath);
 
           try {
-          const SIDECAR = "http://127.0.0.1:1106";
-          const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
           const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
-
-          const signResp = await fetch(
-            `${SIDECAR}/object-storage/signed-object-url`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                bucket_name: bucketId,
-                object_name: thumbnailKey,
-                method: "PUT",
-                expires_at: new Date(Date.now() + 900 * 1000).toISOString(),
-              }),
-            }
-          );
-          if (!signResp.ok) {
-            throw new Error(`Failed to get signed URL, status: ${signResp.status}`);
-          }
-          const { signed_url } = await signResp.json();
-
-          const uploadResp = await fetch(signed_url, {
-            method: "PUT",
-            body: jpgBuffer,
-            headers: { "Content-Type": "image/jpeg" },
-          });
-          if (!uploadResp.ok) {
-            throw new Error(`Upload failed with status ${uploadResp.status}`);
+          const storageClient = new Client();
+          const uploadResult = await storageClient.uploadFromBytes(thumbnailKey, jpgBuffer);
+          if (!uploadResult.ok) {
+            throw new Error(`Upload failed: ${(uploadResult as any).error?.message || 'Unknown error'}`);
           }
 
           logger.info(`Successfully created and uploaded thumbnail: ${thumbnailFilename} from position ${position}s`);
