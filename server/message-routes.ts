@@ -597,8 +597,9 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
     // Delete associated media files if they exist
     if (existingMessage.imageUrl) {
       try {
-        const { Client } = await import("@replit/object-storage");
-        const client = new Client();
+        const { objectStorageClient } = await import("./replit_integrations/object_storage/objectStorage");
+        const msgBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+        const msgBucket = objectStorageClient.bucket(msgBucketId);
         
         // Handle HLS videos
         if (existingMessage.imageUrl.includes('/api/hls/')) {
@@ -623,12 +624,8 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
             
             try {
               // List all files with the HLS prefix
-              console.log(`[MESSAGE HLS DELETE] Calling client.list() with prefix...`);
-              const listResult = await client.list({ prefix: hlsPrefix });
-              console.log(`[MESSAGE HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
-              
-              // Extract the file array from the result
-              const files = listResult.value || [];
+              console.log(`[MESSAGE HLS DELETE] Calling bucket.getFiles() with prefix...`);
+              const [files] = await msgBucket.getFiles({ prefix: hlsPrefix });
               console.log(`[MESSAGE HLS DELETE] Found ${files.length} files to delete`);
               
               // Delete all files in the HLS directory
@@ -637,11 +634,11 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
                 const fileKey = fileItem.name;
                 console.log(`[MESSAGE HLS DELETE] Attempting to delete: ${fileKey}`);
                 try {
-                  await client.delete(fileKey);
+                  await msgBucket.file(fileKey).delete();
                   deletedCount++;
-                  console.log(`[MESSAGE HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                  console.log(`[MESSAGE HLS DELETE] Successfully deleted: ${fileKey}`);
                 } catch (deleteError) {
-                  console.error(`[MESSAGE HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                  console.error(`[MESSAGE HLS DELETE] Error deleting ${fileKey}:`, deleteError);
                 }
               }
               
@@ -683,8 +680,8 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
           if (storageKey) {
             console.log(`[MESSAGE DELETE] Deleting media file: ${storageKey}`);
             try {
-              await client.delete(storageKey);
-              console.log(`[MESSAGE DELETE] ✅ Successfully deleted media file for message ${messageId}`);
+              await msgBucket.file(storageKey).delete();
+              console.log(`[MESSAGE DELETE] Successfully deleted media file for message ${messageId}`);
               
               // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
               if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
@@ -694,8 +691,8 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
                 if (validatedThumbnailKey) {
                   console.log(`[MESSAGE DELETE] Attempting to delete video thumbnail: ${validatedThumbnailKey}`);
                   try {
-                    await client.delete(validatedThumbnailKey);
-                    console.log(`[MESSAGE DELETE] ✅ Successfully deleted video thumbnail`);
+                    await msgBucket.file(validatedThumbnailKey).delete();
+                    console.log(`[MESSAGE DELETE] Successfully deleted video thumbnail`);
                   } catch (thumbError) {
                     console.log(`[MESSAGE DELETE] Video thumbnail not found or already deleted: ${validatedThumbnailKey}`);
                   }
@@ -716,8 +713,9 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
     // Delete associated poster/thumbnail if it exists
     if (existingMessage.posterUrl) {
       try {
-        const { Client } = await import("@replit/object-storage");
-        const client = new Client();
+        const { objectStorageClient: posterOsClient } = await import("./replit_integrations/object_storage/objectStorage");
+        const posterBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+        const posterBucket = posterOsClient.bucket(posterBucketId);
         
         let posterStorageKey = null;
         
@@ -732,7 +730,7 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
         if (posterStorageKey) {
           logger.info(`[MESSAGE DELETE] Deleting poster: ${posterStorageKey}`);
           try {
-            await client.delete(posterStorageKey);
+            await posterBucket.file(posterStorageKey).delete();
             logger.info(`[MESSAGE DELETE] Successfully deleted poster for message ${messageId}`);
           } catch (posterError) {
             logger.error(`[MESSAGE DELETE] Error deleting poster:`, posterError);

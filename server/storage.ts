@@ -430,7 +430,7 @@ export const storage = {
   async deleteUser(userId: number): Promise<void> {
     try {
       // Import the SpartaObjectStorage utility for media deletion
-      const { spartaStorage } = await import('./sparta-object-storage');
+      const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
       // First, get all posts by this user that have media to delete
       const postsWithMedia = await db
@@ -489,9 +489,9 @@ export const storage = {
       });
 
       // After the transaction completes successfully, clean up the media files
-      const { spartaObjectStorage } = await import('./sparta-object-storage-final');
-      const { Client } = await import('@replit/object-storage');
-      const objectStorage = new Client();
+      const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
+      const storageBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+      const storageBucket = objectStorageClient.bucket(storageBucketId);
       
       console.log(`[DELETE USER] Found ${postsWithMedia.length} posts with media for user ${userId}`);
       
@@ -512,13 +512,12 @@ export const storage = {
                 const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
                 try {
                   // List all files in the HLS directory
-                  const listResult = await objectStorage.list({ prefix: hlsPrefix });
-                  const files = listResult.value || [];
+                  const [files] = await storageBucket.getFiles({ prefix: hlsPrefix });
                   logger.info(`Found ${files.length} HLS files to delete for ${baseFilename}`);
                   
                   // Delete each segment and playlist file
                   for (const fileItem of files) {
-                    const fileKey = fileItem.key || fileItem.name;
+                    const fileKey = fileItem.name;
                     try {
                       await spartaObjectStorage.deleteFile(fileKey);
                       logger.debug(`Deleted HLS file: ${fileKey}`);

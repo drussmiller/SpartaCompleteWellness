@@ -39,7 +39,7 @@ The application uses a monorepo structure, separating client, server, and shared
 - **Email Service**: Gmail integration for transactional emails (verification codes, password resets), automatic fallback to console logging for development.
 - **Invite Codes**: Group-level invite codes (admin and member), team-level invite codes (admin and member), QR code support for easy onboarding. Both admin and member codes displayed in Admin Dashboard.
 - **User Blocking**: Admin-only feature to block users from logging in via `isBlocked` field. Blocked users cannot authenticate even if their status is active. Checkbox UI in Admin Dashboard under each user's Status section.
-- **File Storage**: Replit Object Storage for media (images, videos), automatic thumbnail generation, `shared/uploads/` path strategy.
+- **File Storage**: Google Cloud Storage via Replit sidecar (bucket: DEFAULT_OBJECT_STORAGE_BUCKET_ID env var), automatic thumbnail generation, `shared/uploads/` path strategy. Storage client initialized in `server/replit_integrations/object_storage/objectStorage.ts`.
 - **Media Processing**: Sharp for images, custom MOV extractor for video thumbnails, MIME type validation.
 - **Real-time**: WebSocket for notifications, presence tracking, automatic reconnection.
 - **Post Management**: Create text, image, or video posts; support for general, memory_verse, and workout tracking types; reaction system; post deletion with cascade cleanup.
@@ -58,7 +58,7 @@ The application uses a monorepo structure, separating client, server, and shared
 
 ### Core
 - **@neondatabase/serverless**: PostgreSQL connection.
-- **@replit/object-storage**: Cloud file storage.
+- **@google-cloud/storage**: Cloud file storage via Replit sidecar endpoint.
 - **drizzle-orm**: ORM.
 - **passport**: Authentication.
 - **sharp**: Image processing.

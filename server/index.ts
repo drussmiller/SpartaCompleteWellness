@@ -158,7 +158,8 @@ await bootstrapAdmin();
 await initStripe();
 
 // Serve privacy policy publicly (before auth middleware)
-app.get('/privacy-policy.html', (req, res) => {
+// Handle both /privacy-policy and /privacy-policy.html
+app.get(['/privacy-policy', '/privacy-policy.html'], (req, res) => {
   res.sendFile(path.resolve(process.cwd(), 'public', 'privacy-policy.html'));
 });
 

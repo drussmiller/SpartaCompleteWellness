@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
-import { Client as ObjectStorageClient } from "@replit/object-storage";
 import { db } from "./db";
 import {
   eq,
@@ -69,7 +68,6 @@ import { groupAdminRouter } from "./group-admin-routes";
 import { inviteCodeRouter } from "./invite-code-routes";
 import { emailVerificationRouter } from "./email-verification-routes";
 import { stripeDonationRouter } from "./stripe-donation-routes";
-import { spartaStorage } from "./sparta-object-storage";
 import { spartaObjectStorage } from "./sparta-object-storage-final";
 import { smsService } from "./sms-service";
 import { uploadSessionManager } from "./upload-sessions";
@@ -879,7 +877,7 @@ export const registerRoutes = async (
         } else if (req.file) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaStorage: spartaObjectStorage } = await import("./sparta-object-storage");
+            const { spartaObjectStorage } = await import("./sparta-object-storage-final");
 
             // Determine if this is a video file
             const originalFilename = req.file.originalname.toLowerCase();
@@ -1080,8 +1078,9 @@ export const registerRoutes = async (
       // Delete associated media files if they exist
       if (comment.mediaUrl) {
         try {
-          const { Client } = await import("@replit/object-storage");
-          const client = new Client();
+          const { objectStorageClient } = await import("./replit_integrations/object_storage/objectStorage");
+          const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+          const bucket = objectStorageClient.bucket(bucketId);
           
           // Handle HLS videos
           if (comment.mediaUrl.includes('/api/hls/')) {
@@ -1100,12 +1099,8 @@ export const registerRoutes = async (
               
               try {
                 // List all files with the HLS prefix
-                console.log(`[COMMENT HLS DELETE] Calling client.list() with prefix...`);
-                const listResult = await client.list({ prefix: hlsPrefix });
-                console.log(`[COMMENT HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
-                
-                // Extract the file array from the result
-                const files = listResult.value || [];
+                console.log(`[COMMENT HLS DELETE] Calling bucket.getFiles() with prefix...`);
+                const [files] = await bucket.getFiles({ prefix: hlsPrefix });
                 console.log(`[COMMENT HLS DELETE] Found ${files.length} files to delete`);
                 
                 // Delete all files in the HLS directory
@@ -1114,11 +1109,11 @@ export const registerRoutes = async (
                   const fileKey = fileItem.name;
                   console.log(`[COMMENT HLS DELETE] Attempting to delete: ${fileKey}`);
                   try {
-                    await client.delete(fileKey);
+                    await bucket.file(fileKey).delete();
                     deletedCount++;
-                    console.log(`[COMMENT HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                    console.log(`[COMMENT HLS DELETE] Successfully deleted: ${fileKey}`);
                   } catch (deleteError) {
-                    console.error(`[COMMENT HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                    console.error(`[COMMENT HLS DELETE] Error deleting ${fileKey}:`, deleteError);
                   }
                 }
                 
@@ -1156,22 +1151,22 @@ export const registerRoutes = async (
             if (storageKey) {
               console.log(`[COMMENT DELETE] Deleting media file: ${storageKey}`);
               try {
-                await client.delete(storageKey);
-                console.log(`[COMMENT DELETE] ✅ Successfully deleted media file for comment ${commentId}`);
+                await bucket.file(storageKey).delete();
+                console.log(`[COMMENT DELETE] Successfully deleted media file for comment ${commentId}`);
                 
                 // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
                 if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
                   const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
                   console.log(`[COMMENT DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
                   try {
-                    await client.delete(thumbnailKey);
-                    console.log(`[COMMENT DELETE] ✅ Successfully deleted video thumbnail`);
+                    await bucket.file(thumbnailKey).delete();
+                    console.log(`[COMMENT DELETE] Successfully deleted video thumbnail`);
                   } catch (thumbError) {
                     console.log(`[COMMENT DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
                   }
                 }
               } catch (mediaError) {
-                console.error(`[COMMENT DELETE] ❌ Error deleting media file:`, mediaError);
+                console.error(`[COMMENT DELETE] Error deleting media file:`, mediaError);
               }
             } else {
               console.log(`[COMMENT DELETE] Could not extract storage key from mediaUrl: ${comment.mediaUrl}`);
@@ -1185,8 +1180,9 @@ export const registerRoutes = async (
       // Delete associated thumbnail if it exists
       if (comment.thumbnailUrl) {
         try {
-          const { Client } = await import("@replit/object-storage");
-          const client = new Client();
+          const { objectStorageClient: osClient } = await import("./replit_integrations/object_storage/objectStorage");
+          const thumbBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+          const thumbBucket = osClient.bucket(thumbBucketId);
           
           let thumbnailStorageKey = null;
           
@@ -1198,7 +1194,7 @@ export const registerRoutes = async (
           if (thumbnailStorageKey) {
             logger.info(`[COMMENT DELETE] Deleting thumbnail: ${thumbnailStorageKey}`);
             try {
-              await client.delete(thumbnailStorageKey);
+              await thumbBucket.file(thumbnailStorageKey).delete();
               logger.info(`[COMMENT DELETE] Successfully deleted thumbnail for comment ${commentId}`);
             } catch (thumbError) {
               logger.error(`[COMMENT DELETE] Error deleting thumbnail:`, thumbError);
@@ -2298,7 +2294,7 @@ export const registerRoutes = async (
         else if (uploadedFile && uploadedFile.buffer) {
           try {
             // Use SpartaObjectStorage for file handling
-            const { spartaStorage } = await import('./sparta-object-storage');
+            const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
             // With memory storage, work directly with the buffer
             logger.info(`Processing comment file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
@@ -2328,7 +2324,7 @@ export const registerRoutes = async (
 
             logger.info(`Processing comment media file: ${uploadedFile.originalname}, type: ${uploadedFile.mimetype}, isVideo: ${commentIsVideo}, size: ${uploadedFile.size}`);
 
-            const fileInfo = await spartaStorage.storeFile(
+            const fileInfo = await spartaObjectStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               uploadedFile.mimetype,
@@ -2423,7 +2419,7 @@ export const registerRoutes = async (
       } else if (uploadedFile && uploadedFile.buffer) {
         try {
           // Use SpartaObjectStorage for file handling
-          const { spartaStorage } = await import('./sparta-object-storage');
+          const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
           // With memory storage, we work directly with the buffer
           logger.info(`Processing file from memory buffer: ${uploadedFile.originalname}, size: ${uploadedFile.buffer.length} bytes`);
@@ -2529,7 +2525,7 @@ export const registerRoutes = async (
               formDataKeys: Object.keys(req.body || {})
             });
 
-            const fileInfo = await spartaStorage.storeFile(
+            const fileInfo = await spartaObjectStorage.storeFile(
               uploadedFile.buffer,
               uploadedFile.originalname,
               effectiveMimeType, // Use potentially corrected mimetype
@@ -2907,8 +2903,9 @@ export const registerRoutes = async (
       console.log(`[DELETE] Checking media URL: ${post.mediaUrl}`);
       if (post.mediaUrl) {
         try {
-          const { Client } = await import("@replit/object-storage");
-          const client = new Client();
+          const { objectStorageClient: osClient2 } = await import("./replit_integrations/object_storage/objectStorage");
+          const postBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+          const postBucket = osClient2.bucket(postBucketId);
           
           // Handle HLS videos
           if (post.mediaUrl.includes('/api/hls/')) {
@@ -2927,12 +2924,8 @@ export const registerRoutes = async (
               
               try {
                 // List all files with the HLS prefix
-                console.log(`[HLS DELETE] Calling client.list() with prefix...`);
-                const listResult = await client.list({ prefix: hlsPrefix });
-                console.log(`[HLS DELETE] List result:`, JSON.stringify(listResult, null, 2));
-                
-                // Extract the file array from the result
-                const files = listResult.value || [];
+                console.log(`[HLS DELETE] Calling bucket.getFiles() with prefix...`);
+                const [files] = await postBucket.getFiles({ prefix: hlsPrefix });
                 console.log(`[HLS DELETE] Found ${files.length} files to delete`);
                 
                 // Delete all files in the HLS directory
@@ -2941,11 +2934,11 @@ export const registerRoutes = async (
                   const fileKey = fileItem.name;
                   console.log(`[HLS DELETE] Attempting to delete: ${fileKey}`);
                   try {
-                    await client.delete(fileKey);
+                    await postBucket.file(fileKey).delete();
                     deletedCount++;
-                    console.log(`[HLS DELETE] ✅ Successfully deleted: ${fileKey}`);
+                    console.log(`[HLS DELETE] Successfully deleted: ${fileKey}`);
                   } catch (deleteError) {
-                    console.error(`[HLS DELETE] ❌ Error deleting ${fileKey}:`, deleteError);
+                    console.error(`[HLS DELETE] Error deleting ${fileKey}:`, deleteError);
                   }
                 }
                 
@@ -2983,22 +2976,22 @@ export const registerRoutes = async (
             if (storageKey) {
               console.log(`[POST DELETE] Deleting media file: ${storageKey}`);
               try {
-                await client.delete(storageKey);
-                console.log(`[POST DELETE] ✅ Successfully deleted media file for post ${postId}`);
+                await postBucket.file(storageKey).delete();
+                console.log(`[POST DELETE] Successfully deleted media file for post ${postId}`);
                 
                 // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
                 if (storageKey.match(/\.(mov|mp4|webm|avi|mkv)$/i)) {
                   const thumbnailKey = storageKey.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
                   console.log(`[POST DELETE] Attempting to delete video thumbnail: ${thumbnailKey}`);
                   try {
-                    await client.delete(thumbnailKey);
-                    console.log(`[POST DELETE] ✅ Successfully deleted video thumbnail`);
+                    await postBucket.file(thumbnailKey).delete();
+                    console.log(`[POST DELETE] Successfully deleted video thumbnail`);
                   } catch (thumbError) {
                     console.log(`[POST DELETE] Video thumbnail not found or already deleted: ${thumbnailKey}`);
                   }
                 }
               } catch (mediaError) {
-                console.error(`[POST DELETE] ❌ Error deleting media file:`, mediaError);
+                console.error(`[POST DELETE] Error deleting media file:`, mediaError);
                 // Continue with post deletion even if media cleanup fails
               }
             } else {
@@ -3014,8 +3007,9 @@ export const registerRoutes = async (
       // Delete associated thumbnail if it exists
       if (post.thumbnailUrl) {
         try {
-          const { Client } = await import("@replit/object-storage");
-          const client = new Client();
+          const { objectStorageClient: osClient3 } = await import("./replit_integrations/object_storage/objectStorage");
+          const thumbBucketId2 = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+          const thumbBucket2 = osClient3.bucket(thumbBucketId2);
           
           // Extract the storage path from the thumbnail URL
           let thumbnailStorageKey = null;
@@ -3036,7 +3030,7 @@ export const registerRoutes = async (
             logger.info(`[POST DELETE] Deleting thumbnail: ${thumbnailStorageKey}`);
             
             try {
-              await client.delete(thumbnailStorageKey);
+              await thumbBucket2.file(thumbnailStorageKey).delete();
               logger.info(`[POST DELETE] Successfully deleted thumbnail for post ${postId}`);
             } catch (thumbError) {
               logger.error(`[POST DELETE] Error deleting thumbnail:`, thumbError);
@@ -3206,7 +3200,9 @@ export const registerRoutes = async (
           const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
           const postsWithMedia = userPosts.filter(p => p.mediaUrl);
           
-          const objectStorage = new ObjectStorageClient();
+          const { objectStorageClient: teamOsClient } = await import("./replit_integrations/object_storage/objectStorage");
+          const teamBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+          const teamBucket = teamOsClient.bucket(teamBucketId);
 
           // Delete media files with proper HLS and thumbnail handling
           for (const post of postsWithMedia) {
@@ -3218,17 +3214,16 @@ export const registerRoutes = async (
                   const baseFilename = hlsMatch[1];
                   const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
                   try {
-                    const listResult = await objectStorage.list({ prefix: hlsPrefix });
-                    const files = listResult.value || [];
+                    const [files] = await teamBucket.getFiles({ prefix: hlsPrefix });
                     for (const fileItem of files) {
-                      const fileKey = fileItem.key || fileItem.name;
+                      const fileKey = fileItem.name;
                       try { await spartaObjectStorage.deleteFile(fileKey); } catch (err) {}
                     }
                   } catch (err) {}
                   try { await spartaObjectStorage.deleteFile(`shared/uploads/${baseFilename}-hls-source.jpg`); } catch (err) {}
                 }
               } else {
-                await spartaStorage.deleteFile(mediaUrl);
+                await spartaObjectStorage.deleteFile(mediaUrl);
                 if (post.is_video) {
                   let filename = '';
                   if (mediaUrl.includes('shared/uploads/')) {
@@ -3273,7 +3268,7 @@ export const registerRoutes = async (
           // Delete message media files from Object Storage
           for (const mediaUrl of messageMediaUrls) {
             try {
-              await spartaStorage.deleteFile(mediaUrl);
+              await spartaObjectStorage.deleteFile(mediaUrl);
               logger.info(`Deleted message media file: ${mediaUrl}`);
             } catch (err) {
               logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
@@ -3449,7 +3444,9 @@ export const registerRoutes = async (
               const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
               const postsWithMedia = userPosts.filter(p => p.mediaUrl);
               
-              const objectStorage = new ObjectStorageClient();
+              const { objectStorageClient: orgOsClient } = await import("./replit_integrations/object_storage/objectStorage");
+              const orgBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+              const orgBucket = orgOsClient.bucket(orgBucketId);
 
               // Delete media files from Object Storage with proper HLS and thumbnail handling
               for (const post of postsWithMedia) {
@@ -3466,12 +3463,11 @@ export const registerRoutes = async (
                       // Delete all files in the HLS directory
                       const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
                       try {
-                        const listResult = await objectStorage.list({ prefix: hlsPrefix });
-                        const files = listResult.value || [];
+                        const [files] = await orgBucket.getFiles({ prefix: hlsPrefix });
                         logger.info(`Found ${files.length} HLS files to delete for ${baseFilename}`);
                         
                         for (const fileItem of files) {
-                          const fileKey = fileItem.key || fileItem.name;
+                          const fileKey = fileItem.name;
                           try {
                             await spartaObjectStorage.deleteFile(fileKey);
                           } catch (err) {
@@ -3493,7 +3489,7 @@ export const registerRoutes = async (
                     }
                   } else {
                     // Regular video or image
-                    await spartaStorage.deleteFile(mediaUrl);
+                    await spartaObjectStorage.deleteFile(mediaUrl);
                     logger.info(`Deleted media file: ${mediaUrl}`);
                     
                     // If it's a video, delete the thumbnail too
@@ -3550,7 +3546,7 @@ export const registerRoutes = async (
               // Delete message media files from Object Storage
               for (const mediaUrl of messageMediaUrls) {
                 try {
-                  await spartaStorage.deleteFile(mediaUrl);
+                  await spartaObjectStorage.deleteFile(mediaUrl);
                   logger.info(`Deleted message media file: ${mediaUrl}`);
                 } catch (err) {
                   logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
@@ -3820,7 +3816,9 @@ export const registerRoutes = async (
             const userPosts = await tx.select().from(posts).where(inArray(posts.userId, userIds));
             const postsWithMedia = userPosts.filter(p => p.mediaUrl);
             
-            const objectStorage = new ObjectStorageClient();
+            const { objectStorageClient: grpOsClient } = await import("./replit_integrations/object_storage/objectStorage");
+            const grpBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+            const grpBucket = grpOsClient.bucket(grpBucketId);
 
             // Delete media files with proper HLS and thumbnail handling
             for (const post of postsWithMedia) {
@@ -3832,17 +3830,16 @@ export const registerRoutes = async (
                     const baseFilename = hlsMatch[1];
                     const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
                     try {
-                      const listResult = await objectStorage.list({ prefix: hlsPrefix });
-                      const files = listResult.value || [];
+                      const [files] = await grpBucket.getFiles({ prefix: hlsPrefix });
                       for (const fileItem of files) {
-                        const fileKey = fileItem.key || fileItem.name;
+                        const fileKey = fileItem.name;
                         try { await spartaObjectStorage.deleteFile(fileKey); } catch (err) {}
                       }
                     } catch (err) {}
                     try { await spartaObjectStorage.deleteFile(`shared/uploads/${baseFilename}-hls-source.jpg`); } catch (err) {}
                   }
                 } else {
-                  await spartaStorage.deleteFile(mediaUrl);
+                  await spartaObjectStorage.deleteFile(mediaUrl);
                   if (post.is_video) {
                     let filename = '';
                     if (mediaUrl.includes('shared/uploads/')) {
@@ -3887,7 +3884,7 @@ export const registerRoutes = async (
             // Delete message media files from Object Storage
             for (const mediaUrl of messageMediaUrls) {
               try {
-                await spartaStorage.deleteFile(mediaUrl);
+                await spartaObjectStorage.deleteFile(mediaUrl);
                 logger.info(`Deleted message media file: ${mediaUrl}`);
               } catch (err) {
                 logger.error(`Failed to delete message media file ${mediaUrl}:`, err);
@@ -4768,8 +4765,9 @@ export const registerRoutes = async (
         );
 
         // Use Object Storage client
-        const { Client } = await import("@replit/object-storage");
-        const objectStorage = new Client();
+        const { objectStorageClient: vidOsClient } = await import("./replit_integrations/object_storage/objectStorage");
+        const vidBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+        const vidBucket = vidOsClient.bucket(vidBucketId);
 
         // Download the video file temporarily to extract thumbnail
         const videoKey = filename.startsWith("shared/")
@@ -4779,33 +4777,7 @@ export const registerRoutes = async (
           `Attempting to download video from Object Storage: ${videoKey}`,
         );
 
-        const videoResult = await objectStorage.downloadFile(videoKey);
-
-        // Handle Object Storage response format
-        let videoBuffer: Buffer;
-        if (Buffer.isBuffer(videoResult)) {
-          videoBuffer = videoResult;
-        } else if (videoResult && typeof videoResult === "object") {
-          if ("value" in videoResult && videoResult.value) {
-            if (Buffer.isBuffer(videoResult.value)) {
-              videoBuffer = videoResult.value;
-            } else if (Array.isArray(videoResult.value)) {
-              videoBuffer = Buffer.from(videoResult.value);
-            } else if (typeof videoResult.value === "string") {
-              videoBuffer = Buffer.from(videoResult.value, "base64");
-            } else {
-              throw new Error("Invalid video data format from Object Storage");
-            }
-          } else if ("ok" in videoResult && !videoResult.ok) {
-            throw new Error(
-              `Video file not found in Object Storage: ${videoKey}`,
-            );
-          } else {
-            throw new Error("Unexpected Object Storage response format");
-          }
-        } else {
-          throw new Error("Could not retrieve video data from Object Storage");
-        }
+        const [videoBuffer] = await vidBucket.file(videoKey).download();
 
         console.log(
           `Successfully downloaded video buffer, size: ${videoBuffer.length} bytes`,
@@ -5426,7 +5398,7 @@ export const registerRoutes = async (
 
       // Delete media files for each post before deleting the posts
       if (postsToDelete.length > 0) {
-        const { spartaStorage } = await import('./sparta-object-storage');
+        const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
         for (const post of postsToDelete) {
           if (post.mediaUrl) {
@@ -5445,7 +5417,7 @@ export const registerRoutes = async (
 
                 // Delete main media file
                 try {
-                  await spartaStorage.deleteFile(filePath);
+                  await spartaObjectStorage.deleteFile(filePath);
                   logger.info(`Deleted media file: ${filePath} for post ${post.id}`);
                 } catch (err) {
                   logger.error(`Could not delete media file ${filePath}: ${err}`);
@@ -5457,7 +5429,7 @@ export const registerRoutes = async (
                   const thumbnailPath = `shared/uploads/${baseName}.jpg`;
 
                   try {
-                    await spartaStorage.deleteFile(thumbnailPath);
+                    await spartaObjectStorage.deleteFile(thumbnailPath);
                     logger.info(`Deleted video thumbnail: ${thumbnailPath} for post ${post.id}`);
                   } catch (err) {
                     logger.error(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
