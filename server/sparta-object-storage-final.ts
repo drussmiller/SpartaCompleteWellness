@@ -6,6 +6,29 @@ import { createMovThumbnail } from './mov-frame-extractor-new.js';
 import { Readable } from 'stream';
 
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+
+async function getSignedUploadUrl(bucketName: string, objectName: string): Promise<string> {
+  const request = {
+    bucket_name: bucketName,
+    object_name: objectName,
+    method: "PUT",
+    expires_at: new Date(Date.now() + 900 * 1000).toISOString(),
+  };
+  const response = await fetch(
+    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to sign upload URL, status: ${response.status}`);
+  }
+  const { signed_url: signedURL } = await response.json();
+  return signedURL;
+}
 
 export class SpartaObjectStorageFinal {
   private bucket: ReturnType<typeof objectStorageClient.bucket>;
@@ -49,8 +72,16 @@ export class SpartaObjectStorageFinal {
   async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
     await this.retryOperation(
       async () => {
-        const file = this.bucket.file(key);
-        await file.save(buffer);
+        const signedUrl = await getSignedUploadUrl(BUCKET_ID, key);
+        const response = await fetch(signedUrl, {
+          method: "PUT",
+          body: buffer,
+          headers: { "Content-Type": "application/octet-stream" },
+        });
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          throw new Error(`Upload via signed URL failed with status ${response.status}: ${errorText}`);
+        }
       },
       `Upload ${key}`
     );
