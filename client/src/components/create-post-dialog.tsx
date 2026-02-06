@@ -650,7 +650,8 @@ export function CreatePostDialog({
       queryClient.invalidateQueries({
         predicate: (query) => {
           const queryKey = query.queryKey as (string | number)[];
-          if (queryKey[0] === "/api/posts") {
+          const key0 = typeof queryKey[0] === 'string' ? queryKey[0] : '';
+          if (key0.startsWith("/api/posts")) {
             return true;
           }
           return false;

@@ -597,10 +597,6 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
     // Delete associated media files if they exist
     if (existingMessage.imageUrl) {
       try {
-        const { objectStorageClient } = await import("./replit_integrations/object_storage/objectStorage");
-        const msgBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
-        const msgBucket = objectStorageClient.bucket(msgBucketId);
-        
         // Handle HLS videos
         if (existingMessage.imageUrl.includes('/api/hls/')) {
           console.log(`[MESSAGE HLS DELETE] Starting HLS deletion for imageUrl: ${existingMessage.imageUrl}`);
@@ -624,17 +620,16 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
             
             try {
               // List all files with the HLS prefix
-              console.log(`[MESSAGE HLS DELETE] Calling bucket.getFiles() with prefix...`);
-              const [files] = await msgBucket.getFiles({ prefix: hlsPrefix });
+              console.log(`[MESSAGE HLS DELETE] Listing files with prefix...`);
+              const files = await spartaObjectStorage.listFiles(hlsPrefix);
               console.log(`[MESSAGE HLS DELETE] Found ${files.length} files to delete`);
               
               // Delete all files in the HLS directory
               let deletedCount = 0;
-              for (const fileItem of files) {
-                const fileKey = fileItem.name;
+              for (const fileKey of files) {
                 console.log(`[MESSAGE HLS DELETE] Attempting to delete: ${fileKey}`);
                 try {
-                  await msgBucket.file(fileKey).delete();
+                  await spartaObjectStorage.deleteFile(fileKey);
                   deletedCount++;
                   console.log(`[MESSAGE HLS DELETE] Successfully deleted: ${fileKey}`);
                 } catch (deleteError) {
@@ -680,7 +675,7 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
           if (storageKey) {
             console.log(`[MESSAGE DELETE] Deleting media file: ${storageKey}`);
             try {
-              await msgBucket.file(storageKey).delete();
+              await spartaObjectStorage.deleteFile(storageKey);
               console.log(`[MESSAGE DELETE] Successfully deleted media file for message ${messageId}`);
               
               // Also try to delete corresponding thumbnail for videos (.mov -> .jpg)
@@ -691,7 +686,7 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
                 if (validatedThumbnailKey) {
                   console.log(`[MESSAGE DELETE] Attempting to delete video thumbnail: ${validatedThumbnailKey}`);
                   try {
-                    await msgBucket.file(validatedThumbnailKey).delete();
+                    await spartaObjectStorage.deleteFile(validatedThumbnailKey);
                     console.log(`[MESSAGE DELETE] Successfully deleted video thumbnail`);
                   } catch (thumbError) {
                     console.log(`[MESSAGE DELETE] Video thumbnail not found or already deleted: ${validatedThumbnailKey}`);
@@ -713,10 +708,6 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
     // Delete associated poster/thumbnail if it exists
     if (existingMessage.posterUrl) {
       try {
-        const { objectStorageClient: posterOsClient } = await import("./replit_integrations/object_storage/objectStorage");
-        const posterBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
-        const posterBucket = posterOsClient.bucket(posterBucketId);
-        
         let posterStorageKey = null;
         
         const serveFileMatch = existingMessage.posterUrl.match(/filename=([^&]+)/);
@@ -730,7 +721,7 @@ messageRouter.delete("/api/messages/:messageId", authenticate, async (req, res) 
         if (posterStorageKey) {
           logger.info(`[MESSAGE DELETE] Deleting poster: ${posterStorageKey}`);
           try {
-            await posterBucket.file(posterStorageKey).delete();
+            await spartaObjectStorage.deleteFile(posterStorageKey);
             logger.info(`[MESSAGE DELETE] Successfully deleted poster for message ${messageId}`);
           } catch (posterError) {
             logger.error(`[MESSAGE DELETE] Error deleting poster:`, posterError);
