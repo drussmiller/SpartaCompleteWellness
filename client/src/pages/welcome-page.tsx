@@ -101,7 +101,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
               <div>
                 <h3 className="font-semibold mb-2">2) Weigh Yourself</h3>
                 <p className="text-muted-foreground text-sm">
-                  Weigh yourself in pounds and take a picture of the reading. We know that this is not a true measuring tool of fitness, but it is a measuring tool that we like to track. We will remind you to weigh yourself again each time you go to the next level.
+                  Weigh yourself and take a picture of the reading. We know that this is not a true measuring tool of fitness, but it is a measuring tool that we like to track. We will remind you to weigh yourself again each time you go to the next level.
                 </p>
                 <p className="text-muted-foreground text-sm italic mt-1">
                   (You are not required to post this photo.)
