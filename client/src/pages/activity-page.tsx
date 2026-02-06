@@ -342,7 +342,7 @@ export default function ActivityPage() {
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <CardTitle>Week Content</CardTitle>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${weekContentOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-5 w-5 transition-transform ${weekContentOpen ? 'rotate-180' : ''}`} />
                 </div>
               </CardHeader>
             </CollapsibleTrigger>
@@ -499,7 +499,7 @@ export default function ActivityPage() {
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <CardTitle>Week and Day Content</CardTitle>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${weekDayContentOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-5 w-5 transition-transform ${weekDayContentOpen ? 'rotate-180' : ''}`} />
                 </div>
               </CardHeader>
             </CollapsibleTrigger>
@@ -720,7 +720,7 @@ export default function ActivityPage() {
               <CollapsibleTrigger asChild>
                 <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Re-engage</CardTitle>
+                    <CardTitle>Re-engage</CardTitle>
                     <ChevronDown
                       className={`h-5 w-5 transition-transform ${
                         reengageOpen ? "transform rotate-180" : ""
