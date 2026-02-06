@@ -115,3 +115,8 @@ defaultBucketID = "replit-objstore-461f016b-44f0-43e5-85a6-c066bf877995"
 [agent]
 expertMode = true
 integrations = ["stripe:2.0.0", "javascript_object_storage:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+DEFAULT_OBJECT_STORAGE_BUCKET_ID = "replit-objstore-461f016b-44f0-43e5-85a6-c066bf877995"
