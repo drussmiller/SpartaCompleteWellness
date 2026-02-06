@@ -139,15 +139,12 @@ export class MovConversionCacheManager {
     // Final destination in cache directory
     const mp4FinalPath = path.join(this.cacheDir, filename.replace(/\.MOV$/i, '.mp4'));
 
-    // Import Object Storage client
-    const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
-    const convBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
-    const convBucket = objectStorageClient.bucket(convBucketId);
+    const { spartaObjectStorage } = await import('./sparta-object-storage-final');
 
     try {
       // Step 1: Download original MOV file
       console.log(`[MOV DOWNLOAD START] ${storageKey}`);
-      const [fileData] = await convBucket.file(storageKey).download();
+      const fileData = await spartaObjectStorage.downloadFile(storageKey);
       fs.writeFileSync(movTempPath, fileData);
 
       const downloadTime = ((Date.now() - startTime) / 1000).toFixed(2);

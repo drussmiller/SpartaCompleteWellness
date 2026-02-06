@@ -489,9 +489,6 @@ export const storage = {
       });
 
       // After the transaction completes successfully, clean up the media files
-      const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
-      const storageBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
-      const storageBucket = objectStorageClient.bucket(storageBucketId);
       
       console.log(`[DELETE USER] Found ${postsWithMedia.length} posts with media for user ${userId}`);
       
@@ -511,13 +508,10 @@ export const storage = {
                 // Delete all files in the HLS directory
                 const hlsPrefix = `shared/uploads/hls/${baseFilename}/`;
                 try {
-                  // List all files in the HLS directory
-                  const [files] = await storageBucket.getFiles({ prefix: hlsPrefix });
+                  const files = await spartaObjectStorage.listFiles(hlsPrefix);
                   logger.info(`Found ${files.length} HLS files to delete for ${baseFilename}`);
                   
-                  // Delete each segment and playlist file
-                  for (const fileItem of files) {
-                    const fileKey = fileItem.name;
+                  for (const fileKey of files) {
                     try {
                       await spartaObjectStorage.deleteFile(fileKey);
                       logger.debug(`Deleted HLS file: ${fileKey}`);
