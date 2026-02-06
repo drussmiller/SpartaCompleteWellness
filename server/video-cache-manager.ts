@@ -135,13 +135,14 @@ export class VideoCacheManager {
     console.log(`[DOWNLOAD v4] File paths - temp: ${tempPath}, final: ${finalPath}`);
 
     // Import Object Storage client
-    const { Client } = await import('@replit/object-storage');
-    const client = new Client();
+    const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
+    const cacheBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+    const cacheBucket = objectStorageClient.bucket(cacheBucketId);
 
     try {
-      // Use downloadAsStream for large files to avoid timeout - stream to file manually
+      // Use createReadStream for large files to avoid timeout - stream to file manually
       console.log(`[DOWNLOAD v4] Using stream download for ${storageKey}`);
-      const readStream = client.downloadAsStream(storageKey);
+      const readStream = cacheBucket.file(storageKey).createReadStream();
       const writeStream = fs.createWriteStream(tempPath);
 
       // Pipe the read stream to write stream

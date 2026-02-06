@@ -75,13 +75,14 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
           // Read the valid JPG data
           const jpgBuffer = fs.readFileSync(tempJpgPath);
 
-          // Upload the single JPG thumbnail to Object Storage in main uploads directory
-        try {
-          const { Client } = await import('@replit/object-storage');
-          const client = new Client();
+          try {
+          const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
+          const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+          const bucket = objectStorageClient.bucket(bucketId);
 
           const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
-          await client.uploadFromBytes(thumbnailKey, jpgBuffer);
+          const file = bucket.file(thumbnailKey);
+          await file.save(jpgBuffer);
 
           logger.info(`Successfully created and uploaded thumbnail: ${thumbnailFilename} from position ${position}s`);
         } catch (objStorageError) {

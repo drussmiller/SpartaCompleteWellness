@@ -1,18 +1,17 @@
-import { Client } from '@replit/object-storage';
+import { objectStorageClient } from './replit_integrations/object_storage/objectStorage';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { createMovThumbnail } from './mov-frame-extractor-new.js';
+import { Readable } from 'stream';
 
-/**
- * Final Object Storage implementation - Object Storage ONLY
- * No fallback to local filesystem - all files must be in Object Storage
- */
+const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+
 export class SpartaObjectStorageFinal {
-  private objectStorage: Client;
+  private bucket: ReturnType<typeof objectStorageClient.bucket>;
   private allowedTypes: string[];
   private maxRetries: number = 3;
-  private retryDelay: number = 1000; // 1 second
+  private retryDelay: number = 1000;
 
   constructor(
     allowedTypes: string[] = [
@@ -21,15 +20,10 @@ export class SpartaObjectStorageFinal {
     ]
   ) {
     this.allowedTypes = allowedTypes;
-
-    // Initialize Object Storage client (default config that was working)
-    this.objectStorage = new Client();
-    console.log('Object Storage Final client initialized - OBJECT STORAGE ONLY mode');
+    this.bucket = objectStorageClient.bucket(BUCKET_ID);
+    console.log(`Object Storage Final client initialized with GCS bucket: ${BUCKET_ID}`);
   }
 
-  /**
-   * Retry wrapper for Object Storage operations
-   */
   private async retryOperation<T>(
     operation: () => Promise<T>,
     operationName: string
@@ -38,34 +32,7 @@ export class SpartaObjectStorageFinal {
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        const result = await operation();
-
-        // Check if result has the error format we've seen
-        if (result && typeof result === 'object' && 'ok' in result) {
-          const typedResult = result as { ok: boolean; error?: any; errorExtras?: any };
-          if (typedResult.ok === false) {
-            // Better error message handling for different error formats
-            let errorMessage = 'Unknown error';
-            if (typedResult.error) {
-              if (typeof typedResult.error === 'string') {
-                errorMessage = typedResult.error;
-              } else if (typedResult.error.message) {
-                errorMessage = typedResult.error.message;
-              } else if (typedResult.error.code) {
-                errorMessage = `Error code: ${typedResult.error.code}`;
-              } else {
-                errorMessage = JSON.stringify(typedResult.error);
-              }
-            }
-            throw new Error(`Object Storage operation failed: ${errorMessage}`);
-          }
-          // If ok is true or undefined, assume success and return the result
-          return result;
-        }
-
-        // For operations that don't return the ok/error format, return as-is
-        return result;
-
+        return await operation();
       } catch (error) {
         lastError = error;
         console.log(`${operationName} attempt ${attempt}/${this.maxRetries} failed:`, (error as Error).message);
@@ -79,20 +46,17 @@ export class SpartaObjectStorageFinal {
     throw new Error(`${operationName} failed after ${this.maxRetries} attempts: ${(lastError as Error).message}`);
   }
 
-  /**
-   * Upload file to Object Storage with retries
-   */
   async uploadToObjectStorage(key: string, buffer: Buffer): Promise<void> {
     await this.retryOperation(
-      () => this.objectStorage.uploadFromBytes(key, buffer),
+      async () => {
+        const file = this.bucket.file(key);
+        await file.save(buffer);
+      },
       `Upload ${key}`
     );
     console.log(`Successfully uploaded ${key} to Object Storage`);
   }
 
-  /**
-   * Store file in Object Storage ONLY
-   */
   async storeFile(
     fileData: Buffer | string,
     originalFilename: string,
@@ -117,17 +81,14 @@ export class SpartaObjectStorageFinal {
       throw new Error('Invalid file data: must be Buffer or file path string');
     }
 
-    // Capture original file size BEFORE any processing for HLS threshold check
     const originalFileSize = fileBuffer.length;
 
-    // Generate unique filename
     const timestamp = Date.now();
     let fileExt = path.extname(originalFilename);
     const baseName = path.basename(originalFilename, fileExt);
     let uniqueFilename = `${timestamp}-${baseName}${fileExt}`;
     let finalBuffer = fileBuffer;
 
-    // PATH 1: Large video (>30MB) → Direct HLS conversion (no MP4 step)
     if (isVideo) {
       const { HLSConverter } = await import('./hls-converter');
       
@@ -138,51 +99,43 @@ export class SpartaObjectStorageFinal {
         fs.writeFileSync(tempSourcePath, fileBuffer);
         
         try {
-          // Convert directly to HLS from original
           const { hlsConverter } = await import('./hls-converter');
           const baseFilename = `${timestamp}-${baseName}`;
           const hlsResult = await hlsConverter.convertToHLS(tempSourcePath, baseFilename);
           
           console.log(`[Video Upload] HLS conversion complete: ${hlsResult.segmentKeys.length} segments`);
           
-          // Create thumbnail from original source
-          let thumbnailUrl = null;
+          let thumbnailUrl: string | undefined = undefined;
           try {
             const createdThumbnailFilename = await createMovThumbnail(tempSourcePath);
             if (createdThumbnailFilename) {
-              // Include full storage key for /api/serve-file
               thumbnailUrl = `/api/serve-file?filename=shared/uploads/${createdThumbnailFilename}`;
               console.log(`[Video Upload] HLS thumbnail created: ${createdThumbnailFilename}`);
             }
           } catch (error) {
             console.error(`[Video Upload] HLS thumbnail creation failed: ${error}`);
           } finally {
-            // Clean up temp source file after thumbnail creation
             if (fs.existsSync(tempSourcePath)) {
               fs.unlinkSync(tempSourcePath);
             }
           }
           
-          // Return HLS result (use logical MP4 filename for backward compatibility)
           return {
-            filename: `${baseFilename}.mp4`, // Logical filename (not actual storage key)
+            filename: `${baseFilename}.mp4`,
             url: `/api/hls/${baseFilename}/playlist.m3u8`,
             thumbnailUrl,
             isHLS: true,
           };
         } catch (error) {
           console.error(`[Video Upload] HLS conversion failed: ${error}`);
-          // Clean up on error
           if (fs.existsSync(tempSourcePath)) {
             fs.unlinkSync(tempSourcePath);
           }
-          // Fall through to regular MP4 upload
           console.log(`[Video Upload] Falling back to MP4 upload`);
         }
       }
     }
 
-    // PATH 2: Small video (<30MB) or image → MP4 conversion with faststart
     if (isVideo) {
       const { convertToMp4WithFaststart } = await import('./video-converter');
       
@@ -199,20 +152,17 @@ export class SpartaObjectStorageFinal {
         finalBuffer = fs.readFileSync(tempMp4Path);
         uniqueFilename = mp4Filename;
         
-        // Clean up temp files
         fs.unlinkSync(tempMp4Path);
         fs.unlinkSync(tempSourcePath);
         
         console.log(`[Video Upload] MP4 conversion complete: ${uniqueFilename}`);
       } catch (error) {
-        // Clean up on error
         if (fs.existsSync(tempSourcePath)) fs.unlinkSync(tempSourcePath);
         if (fs.existsSync(tempMp4Path)) fs.unlinkSync(tempMp4Path);
         throw error;
       }
     }
 
-    // Upload main file to Object Storage (regular MP4 or small video)
     const mainKey = `shared/uploads/${uniqueFilename}`;
     await this.uploadToObjectStorage(mainKey, finalBuffer);
 
@@ -222,163 +172,81 @@ export class SpartaObjectStorageFinal {
       isHLS: false,
     } as any;
 
-    // Create and upload thumbnail if needed
     if (mimeType.startsWith('image/') || isVideo) {
       try {
-        let thumbnailBuffer: Buffer;
-        // Create thumbnail filename to match the video filename
-        let thumbnailFilename: string;
-
         if (isVideo) {
-          // Create temporary file for video processing (use converted file)
           const tempVideoPath = `/tmp/${uniqueFilename}`;
-
           fs.writeFileSync(tempVideoPath, finalBuffer);
 
-          // Call createMovThumbnail which will create a thumbnail with matching filename
           const createdThumbnailFilename = await createMovThumbnail(tempVideoPath);
 
           if (createdThumbnailFilename) {
-            // The thumbnail should already be uploaded to Object Storage by createMovThumbnail
             console.log(`Video thumbnail created successfully: ${createdThumbnailFilename}`);
-            
-            // Set the thumbnail URL - include full storage key
             result.thumbnailUrl = `/api/serve-file?filename=shared/uploads/${createdThumbnailFilename}`;
-
-            // Clean up temp video file
             fs.unlinkSync(tempVideoPath);
           } else {
-            // Clean up temp video file
             fs.unlinkSync(tempVideoPath);
             throw new Error('Video thumbnail creation failed');
           }
         }
-        // No thumbnail creation for images - they will be displayed as-is
-
       } catch (error) {
         console.error(`Failed to create thumbnail for ${uniqueFilename}:`, (error as Error).message);
-        // Don't fail the upload if thumbnail creation fails
-        result.thumbnailUrl = result.url; // Use main file as fallback
+        result.thumbnailUrl = result.url;
       }
     }
 
     return result;
   }
 
-  /**
-   * Delete file from Object Storage
-   */
   async deleteFile(storageKey: string): Promise<void> {
     await this.retryOperation(
-      () => this.objectStorage.delete(storageKey),
+      async () => {
+        const file = this.bucket.file(storageKey);
+        await file.delete();
+      },
       `Delete ${storageKey}`
     );
     console.log(`Deleted from Object Storage: ${storageKey}`);
   }
 
-  /**
-   * Check if file exists in Object Storage
-   */
   async fileExists(storageKey: string): Promise<boolean> {
     try {
-      const result = await this.retryOperation(
-        () => this.objectStorage.exists(storageKey),
-        `Check exists ${storageKey}`
-      );
-      return Boolean(result);
+      const file = this.bucket.file(storageKey);
+      const [exists] = await file.exists();
+      return exists;
     } catch (error) {
       console.log(`File existence check failed for ${storageKey}:`, (error as Error).message);
       return false;
     }
   }
 
-  /**
-   * Download file from Object Storage
-   */
   async downloadFile(storageKey: string): Promise<Buffer> {
     console.log(`Attempting to download file from Object Storage: ${storageKey}`);
     
     const result = await this.retryOperation(
-      () => this.objectStorage.downloadAsBytes(storageKey),
+      async () => {
+        const file = this.bucket.file(storageKey);
+        const [contents] = await file.download();
+        return contents;
+      },
       `Download ${storageKey}`
     );
 
-    console.log(`Download result for ${storageKey}:`, {
-      type: typeof result,
-      hasOkProperty: result && typeof result === 'object' && 'ok' in result,
-      isBuffer: Buffer.isBuffer(result)
-    });
-
-    // Handle the result format from Object Storage API
-    if (result && typeof result === 'object' && 'ok' in result) {
-      const typedResult = result as { ok: boolean; data?: Buffer | Buffer[]; value?: Buffer | Buffer[]; error?: any };
-      if (typedResult.ok) {
-        // Try different property names for the data
-        let data = typedResult.data || typedResult.value;
-        
-        // Check if data is an array (Object Storage returns value as [Buffer])
-        if (Array.isArray(data) && data.length > 0 && Buffer.isBuffer(data[0])) {
-          data = data[0];
-        }
-        
-        if (data && Buffer.isBuffer(data)) {
-          console.log(`Successfully downloaded ${storageKey}, size: ${data.length} bytes`);
-          return data;
-        }
-        throw new Error(`Download successful but no valid data found for ${storageKey}`);
-      }
-      
-      // Handle error case with better error message
-      let errorMessage = 'Unknown download error';
-      if (typedResult.error) {
-        if (typeof typedResult.error === 'string') {
-          errorMessage = typedResult.error;
-        } else if (typedResult.error.message) {
-          errorMessage = typedResult.error.message;
-        } else {
-          errorMessage = JSON.stringify(typedResult.error);
-        }
-      }
-      throw new Error(`Download failed for ${storageKey}: ${errorMessage}`);
-    }
-
-    // Assume it's a Buffer if not in the ok/error format
-    if (Buffer.isBuffer(result)) {
-      console.log(`Successfully downloaded ${storageKey}, size: ${result.length} bytes (direct buffer)`);
-      return result;
-    }
-
-    throw new Error(`Unexpected download result format for ${storageKey}: ${typeof result}`);
+    console.log(`Successfully downloaded ${storageKey}, size: ${result.length} bytes`);
+    return result;
   }
 
-  /**
-   * Download file as a stream (for large files like videos)
-   * This avoids loading the entire file into memory
-   */
   downloadAsStream(storageKey: string): NodeJS.ReadableStream {
     console.log(`Streaming file from Object Storage: ${storageKey}`);
-    return this.objectStorage.downloadAsStream(storageKey);
+    const file = this.bucket.file(storageKey);
+    return file.createReadStream();
   }
 
-  /**
-   * List files in Object Storage
-   */
   async listFiles(prefix?: string): Promise<string[]> {
     try {
-      const options = prefix ? { prefix } : undefined;
-      const result = await this.retryOperation(
-        () => this.objectStorage.list(options),
-        `List files ${prefix || 'all'}`
-      );
-
-      // Handle different possible return formats
-      if (Array.isArray(result)) {
-        return result;
-      } else if (result && typeof result === 'object' && 'objects' in result) {
-        return (result as any).objects || [];
-      } else {
-        return [];
-      }
+      const options = prefix ? { prefix } : {};
+      const [files] = await this.bucket.getFiles(options);
+      return files.map(f => f.name);
     } catch (error) {
       console.error(`Failed to list files:`, (error as Error).message);
       return [];
@@ -386,5 +254,4 @@ export class SpartaObjectStorageFinal {
   }
 }
 
-// Export singleton instance
 export const spartaObjectStorage = new SpartaObjectStorageFinal();

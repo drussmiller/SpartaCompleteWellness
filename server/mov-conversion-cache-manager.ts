@@ -140,17 +140,15 @@ export class MovConversionCacheManager {
     const mp4FinalPath = path.join(this.cacheDir, filename.replace(/\.MOV$/i, '.mp4'));
 
     // Import Object Storage client
-    const { Client } = await import('@replit/object-storage');
-    const client = new Client();
+    const { objectStorageClient } = await import('./replit_integrations/object_storage/objectStorage');
+    const convBucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || '';
+    const convBucket = objectStorageClient.bucket(convBucketId);
 
     try {
       // Step 1: Download original MOV file
       console.log(`[MOV DOWNLOAD START] ${storageKey}`);
-      const downloadResult = await client.downloadToFilename(storageKey, movTempPath);
-
-      if (!downloadResult.ok) {
-        throw new Error(`Failed to download ${storageKey}: ${downloadResult.error.message}`);
-      }
+      const [fileData] = await convBucket.file(storageKey).download();
+      fs.writeFileSync(movTempPath, fileData);
 
       const downloadTime = ((Date.now() - startTime) / 1000).toFixed(2);
       const movStats = fs.statSync(movTempPath);
