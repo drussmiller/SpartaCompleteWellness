@@ -3289,6 +3289,87 @@ export const registerRoutes = async (
     }
   });
 
+  router.patch("/api/teams/:id", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const teamId = parseInt(req.params.id);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ message: "Invalid team ID" });
+      }
+
+      const { name, description, groupId, maxSize, status, programStartDate, currentWeek, currentDay } = req.body;
+      const updateData: any = {};
+
+      if (name !== undefined) {
+        if (typeof name !== 'string' || name.trim().length === 0) {
+          return res.status(400).json({ message: "Team name must be a non-empty string" });
+        }
+        updateData.name = name.trim();
+      }
+
+      if (description !== undefined) updateData.description = description;
+
+      if (groupId !== undefined) {
+        updateData.groupId = typeof groupId === 'string' ? parseInt(groupId) : groupId;
+      }
+
+      if (maxSize !== undefined) {
+        const parsedMaxSize = typeof maxSize === 'string' ? parseInt(maxSize) : maxSize;
+        if (isNaN(parsedMaxSize) || parsedMaxSize < 1) {
+          return res.status(400).json({ message: "Max size must be a positive number" });
+        }
+        updateData.maxSize = parsedMaxSize;
+      }
+
+      if (status !== undefined) {
+        updateData.status = typeof status === 'string' ? parseInt(status) : status;
+      }
+
+      if (programStartDate !== undefined) {
+        if (programStartDate === null || programStartDate === '') {
+          updateData.programStartDate = null;
+        } else {
+          updateData.programStartDate = new Date(programStartDate);
+        }
+      }
+
+      if (currentWeek !== undefined) updateData.currentWeek = currentWeek;
+      if (currentDay !== undefined) updateData.currentDay = currentDay;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      let usersUpdated = 0;
+
+      if (updateData.status === 0) {
+        const teamUsers = await db.select().from(users).where(
+          and(eq(users.teamId, teamId), eq(users.status, 1))
+        );
+        if (teamUsers.length > 0) {
+          await db.update(users)
+            .set({ status: 0 })
+            .where(and(eq(users.teamId, teamId), eq(users.status, 1)));
+          usersUpdated = teamUsers.length;
+          logger.info(`Set ${usersUpdated} users to inactive when team ${teamId} was set to inactive`);
+        }
+      }
+
+      const updatedTeam = await storage.updateTeam(teamId, updateData);
+
+      res.json({ ...updatedTeam, usersUpdated });
+    } catch (error) {
+      logger.error(`Error updating team ${req.params.id}:`, error);
+      res.status(500).json({
+        message: "Failed to update team",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Organizations endpoints
   router.get("/api/organizations", authenticate, async (req, res) => {
     try {
