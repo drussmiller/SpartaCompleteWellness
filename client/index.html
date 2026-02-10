@@ -2,27 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Team Fitness Tracker</title>
     <script>
       (function() {
-        function adjustFontSize() {
-          const width = window.innerWidth;
-          let baseSize = 16;
-          
-          // Boost base font size for higher resolution/wider mobile screens
-          if (width > 400) {
-            baseSize = 17;
-          }
-          if (width > 450) {
-            baseSize = 18;
-          }
-          
-          document.documentElement.style.fontSize = baseSize + 'px';
-        }
-        
-        adjustFontSize();
-        window.addEventListener('resize', adjustFontSize);
+        var width = window.screen.width || window.innerWidth;
+        var baseSize = 16;
+        if (width > 400) baseSize = 17;
+        if (width > 450) baseSize = 18;
+        document.documentElement.style.fontSize = baseSize + 'px';
       })();
     </script>
   </head>

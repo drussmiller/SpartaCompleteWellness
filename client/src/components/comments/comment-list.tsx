@@ -475,7 +475,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                       </div>
                     ) : (
                       <img 
-                        src={getThumbnailUrl(comment.mediaUrl, 'medium')}
+                        src={createMediaUrl(comment.mediaUrl)}
                         alt="Comment image" 
                         className="w-full h-auto object-contain rounded-md max-h-[300px]"
                         onLoad={(e) => {

@@ -16,7 +16,7 @@ import { Post, User } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { MessageCircle, Trash2, ImageOff } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
@@ -99,6 +99,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
@@ -373,6 +374,11 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                   }}
                 />
               </div>
+            ) : imageLoadFailed ? (
+              <div className="w-full h-48 bg-gray-100 flex flex-col items-center justify-center text-gray-400 rounded-md">
+                <ImageOff className="h-10 w-10 mb-2" />
+                <span className="text-sm">Image unavailable</span>
+              </div>
             ) : (
               <img
                 src={imageUrl || undefined}
@@ -388,6 +394,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
                     postType: post.type,
                     error: 'Image failed to load'
                   });
+                  setImageLoadFailed(true);
                 }}
                 onLoad={() => {
                   console.log('[Image Load Success]', {
