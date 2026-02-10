@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ImageOff } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useCommentCount } from "@/hooks/use-comment-count";
@@ -16,6 +17,7 @@ interface PostViewProps {
 
 export function PostView({ post }: PostViewProps) {
   const { count: commentCount } = useCommentCount(post.id);
+  const [imageError, setImageError] = useState(false);
   
   // Helper function to get video thumbnail URL (same logic as post-card.tsx)
   const getVideoThumbnailUrl = () => {
@@ -78,14 +80,21 @@ export function PostView({ post }: PostViewProps) {
               }}
             />
 
-          {/* Show image if present and not a video */}
           {post.mediaUrl && !post.is_video && (
             <div className="mt-3 mb-3 flex justify-center">
-              <img
-                src={getThumbnailUrl(post.mediaUrl, 'medium')}
-                alt={post.type}
-                className="max-w-full h-auto object-contain rounded-md"
-              />
+              {imageError ? (
+                <div className="w-full h-32 bg-gray-100 flex flex-col items-center justify-center text-gray-400 rounded-md">
+                  <ImageOff className="h-8 w-8 mb-1" />
+                  <span className="text-sm">Image unavailable</span>
+                </div>
+              ) : (
+                <img
+                  src={createMediaUrl(post.mediaUrl)}
+                  alt={post.type}
+                  className="max-w-full h-auto object-contain rounded-md"
+                  onError={() => setImageError(true)}
+                />
+              )}
             </div>
           )}
 
