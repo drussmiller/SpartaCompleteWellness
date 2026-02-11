@@ -8,6 +8,7 @@ import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
 import { Link } from "wouter";
@@ -153,10 +154,10 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                             style={{ backgroundColor: member.avatarColor || '#6366F1' }}
                             className="text-white"
                           >
-                            {member.username.charAt(0).toUpperCase()}
+                            {getDisplayInitial(member)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="font-medium">{member.username}</div>
+                        <div className="font-medium">{getDisplayName(member)}</div>
                       </div>
                       <div className="font-bold text-primary">{member.points} pts</div>
                     </div>

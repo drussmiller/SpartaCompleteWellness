@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
+import { getDisplayName } from "@/lib/utils";
 import { MessageCircle, ImageOff } from "lucide-react";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
@@ -68,7 +69,7 @@ export function PostView({ post }: PostViewProps) {
           <div>
             <div className="flex justify-between">
               <div className="flex items-center">
-                <p className="font-medium">{post.author?.username}</p>
+                <p className="font-medium">{getDisplayName(post.author)}</p>
               </div>
             </div>
             <div className="mt-2 border-t border-gray-200"></div>

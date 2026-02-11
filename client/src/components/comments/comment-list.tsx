@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
+import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { MessageCircle, X } from "lucide-react";
 import { CommentForm } from "./comment-form";
 import { useMutation } from "@tanstack/react-query";
@@ -428,7 +429,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               style={{ backgroundColor: comment.author?.avatarColor || '#6366F1' }}
               className="text-white"
             >
-              {comment.author?.username?.[0].toUpperCase()}
+              {getDisplayInitial(comment.author)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 flex flex-col gap-2 min-w-0">
@@ -457,7 +458,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
               )}
               <CardContent className="pt-3 px-4 pb-3 overflow-hidden max-w-full">
                 <div className="flex justify-between">
-                  <p className="font-medium">{comment.author?.username}</p>
+                  <p className="font-medium">{getDisplayName(comment.author)}</p>
                 </div>
                 <p 
                   className="mt-1 whitespace-pre-wrap"
@@ -706,7 +707,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
           >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
-              Replying to {replyingToComment.author?.username}
+              Replying to {getDisplayName(replyingToComment.author)}
             </p>
             <Button
               variant="ghost"
@@ -730,7 +731,7 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                 }
               }}
             isSubmitting={createReplyMutation.isPending}
-            placeholder={`Reply to ${replyingToComment.author?.username}...`}
+            placeholder={`Reply to ${getDisplayName(replyingToComment.author)}...`}
             inputRef={replyInputRef}
             disableAutoScroll={false}
             onCancel={() => {
