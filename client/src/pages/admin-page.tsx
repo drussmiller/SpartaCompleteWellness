@@ -2519,6 +2519,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     id={group.id}
                                     name={group.name}
                                   />
+                                  <InviteQRCode
+                                    type="group_member"
+                                    id={group.id}
+                                    name={group.name}
+                                  />
                                 </div>
                               </div>
                             </CardContent>
