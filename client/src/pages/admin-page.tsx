@@ -1315,6 +1315,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           const orgTeamIds = orgTeams.map((t) => t.id);
           return (users || []).filter((u) => {
             if (u.teamId && orgTeamIds.includes(u.teamId)) return true;
+            if (!u.teamId) return true;
             return false;
           });
         })()
@@ -1381,25 +1382,37 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
     }
 
+    // When "No Team" is selected, skip org/group filters for teamless users
+    // since they have no team/group/org chain
+    const isNoTeamFilter = selectedTeamFilter === "none";
+
     // Organization filter
     if (selectedOrgFilter !== "all") {
-      const userTeam = sortedTeams.find((t) => t.id === user.teamId);
-      const userGroup = userTeam
-        ? sortedGroups.find((g) => g.id === userTeam.groupId)
-        : null;
-      if (
-        !userGroup ||
-        userGroup.organizationId.toString() !== selectedOrgFilter
-      ) {
-        return false;
+      if (isNoTeamFilter && !user.teamId) {
+        // Teamless users pass through org filter when "No Team" is selected
+      } else {
+        const userTeam = sortedTeams.find((t) => t.id === user.teamId);
+        const userGroup = userTeam
+          ? sortedGroups.find((g) => g.id === userTeam.groupId)
+          : null;
+        if (
+          !userGroup ||
+          userGroup.organizationId.toString() !== selectedOrgFilter
+        ) {
+          return false;
+        }
       }
     }
 
     // Group filter
     if (selectedGroupFilter !== "all") {
-      const userTeam = sortedTeams.find((t) => t.id === user.teamId);
-      if (!userTeam || userTeam.groupId.toString() !== selectedGroupFilter) {
-        return false;
+      if (isNoTeamFilter && !user.teamId) {
+        // Teamless users pass through group filter when "No Team" is selected
+      } else {
+        const userTeam = sortedTeams.find((t) => t.id === user.teamId);
+        if (!userTeam || userTeam.groupId.toString() !== selectedGroupFilter) {
+          return false;
+        }
       }
     }
 
