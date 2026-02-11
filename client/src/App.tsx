@@ -9,8 +9,11 @@ import { Loader2 } from "lucide-react";
 import { Route, Switch } from "wouter";
 import { useEffect } from "react";
 import { ProtectedRoute } from "./lib/protected-route";
+import { initDisplaySettings } from "@/hooks/use-display-settings";
 import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
+
+initDisplaySettings();
 import HomePage from "@/pages/home-page";
 import ActivityPage from "@/pages/activity-page";
 import ActivityManagementPage from "@/pages/activity-management";
