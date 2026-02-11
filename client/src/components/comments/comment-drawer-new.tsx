@@ -3,6 +3,7 @@ import { PostView } from "./post-view";
 import { CommentList } from "./comment-list";
 import { CommentForm } from "./comment-form";
 import { Post, User } from "@shared/schema";
+import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -384,15 +385,15 @@ export function CommentDrawer({ postId, isOpen, onClose }: CommentDrawerProps) {
                 {/* User info and time */}
                 <div className="flex items-center gap-2">
                   <Avatar className="h-10 w-10">
-                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={originalPost.author.username} />}
+                    {originalPost.author.imageUrl && <AvatarImage src={originalPost.author.imageUrl} alt={getDisplayName(originalPost.author)} />}
                     <AvatarFallback
                       style={{ backgroundColor: originalPost.author.avatarColor || '#6366F1' }}
                       className="text-white"
                     >
-                      {originalPost.author.username?.[0].toUpperCase()}
+                      {getDisplayInitial(originalPost.author)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xl font-semibold">{originalPost.author.username}</span>
+                  <span className="text-xl font-semibold">{getDisplayName(originalPost.author)}</span>
                   {originalPost?.createdAt && (
                     <>
                       <span className="text-muted-foreground">-</span>

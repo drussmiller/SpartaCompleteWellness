@@ -9,6 +9,7 @@ import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement, User as SelectUser } from "@shared/schema";
+import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import ChangePasswordForm from "@/components/change-password-form";
 import { insertMeasurementSchema } from "@shared/schema";
@@ -465,12 +466,12 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
             <CardContent className="flex flex-col items-center p-6 space-y-4">
               <div className="relative">
                 <Avatar className="h-16 w-16">
-                  {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={user?.username} />}
+                  {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={getDisplayName(user)} />}
                   <AvatarFallback
                     style={{ backgroundColor: user?.avatarColor || '#6366F1' }}
                     className="text-white text-2xl"
                   >
-                    {user?.username?.[0].toUpperCase()}
+                    {getDisplayInitial(user)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-full">
@@ -540,7 +541,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 </div>
               </div>
               
-              <h2 className="text-xl font-semibold text-center">{user?.username}</h2>
+              <h2 className="text-xl font-semibold text-center">{getDisplayName(user)}</h2>
               
               <div className="w-full space-y-3">
                 <div>

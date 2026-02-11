@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Post, User } from "@shared/schema";
+import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -296,16 +297,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex gap-2 items-center">
           <Avatar className="h-10 w-10 border">
-            <AvatarImage src={post.author?.imageUrl || undefined} alt={post.author?.username || "User"} key={avatarKey} />
+            <AvatarImage src={post.author?.imageUrl || undefined} alt={getDisplayName(post.author)} key={avatarKey} />
             <AvatarFallback
               style={{ backgroundColor: post.author?.avatarColor || '#6366F1' }}
               className="text-white"
             >
-              {post.author?.username?.[0]?.toUpperCase() || "U"}
+              {getDisplayInitial(post.author)}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="text-sm font-medium">{post.author?.username || "Unknown User"}</span>
+            <span className="text-sm font-medium">{getDisplayName(post.author)}</span>
             <span className="text-xs text-muted-foreground">
               {new Date(post.createdAt || "").toLocaleString()}
             </span>

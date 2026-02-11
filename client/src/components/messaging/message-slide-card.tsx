@@ -10,6 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Post, User } from "@shared/schema";
 import { convertUrlsToLinks } from "@/lib/url-utils";
+import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { MessageForm, type ChunkedUploadInfo } from "./message-form";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { createMediaUrl } from "@/lib/media-utils";
@@ -845,7 +846,7 @@ export function MessageSlideCard() {
               <ChevronLeft className="text-black" style={{ width: '24px', height: '24px' }} />
             </Button>
             <h2 className="text-2xl font-bold text-black flex-1">
-              {selectedMember ? selectedMember.username : "Messages"}
+              {selectedMember ? getDisplayName(selectedMember) : "Messages"}
             </h2>
           </div>
 
@@ -871,17 +872,17 @@ export function MessageSlideCard() {
                       onClick={() => setSelectedMember(member)}
                     >
                       <Avatar>
-                        {member.imageUrl && <AvatarImage src={member.imageUrl} alt={member.username} />}
+                        {member.imageUrl && <AvatarImage src={member.imageUrl} alt={getDisplayName(member)} />}
                         <AvatarFallback
                           style={{ backgroundColor: member.avatarColor || '#6366F1' }}
                           className="text-white"
                         >
-                          {member.username[0].toUpperCase()}
+                          {getDisplayInitial(member)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-black`}>
-                          {member.username}
+                          {getDisplayName(member)}
                         </p>
                       </div>
                     </div>
@@ -910,12 +911,12 @@ export function MessageSlideCard() {
                     >
                       {message.sender.id !== user?.id && (
                         <Avatar className="mr-2">
-                          {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={message.sender.username || "Unknown User"} />}
+                          {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={getDisplayName(message.sender)} />}
                           <AvatarFallback
                             style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
                             className="text-white"
                           >
-                            {message.sender.username?.[0].toUpperCase() || "?"}
+                            {getDisplayInitial(message.sender)}
                           </AvatarFallback>
                         </Avatar>
                       )}

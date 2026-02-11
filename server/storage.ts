@@ -632,6 +632,7 @@ export const storage = {
             id: users.id,
             username: users.username,
             imageUrl: users.imageUrl,
+            preferredName: users.preferredName,
           }
         })
         .from(posts)

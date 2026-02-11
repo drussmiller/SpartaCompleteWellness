@@ -2519,11 +2519,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     id={group.id}
                                     name={group.name}
                                   />
-                                  <InviteQRCode
-                                    type="group_member"
-                                    id={group.id}
-                                    name={group.name}
-                                  />
                                 </div>
                               </div>
                             </CardContent>
@@ -3889,14 +3884,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     Admin
                                   </Button>
                                 )}
-                                {/* Organization Admin button - show only for Admins */}
-                                {currentUser?.isAdmin && (
+                                {/* Organization Admin button - show for Admins and Organization Admins */}
+                                {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin) && (
                                   <Button
                                     variant={
                                       user.isOrganizationAdmin ? "default" : "outline"
                                     }
                                     size="sm"
                                     className={`text-xs ${user.isOrganizationAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    disabled={!!currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && user.id === currentUser?.id}
                                     onClick={() => {
                                       updateUserRoleMutation.mutate({
                                         userId: user.id,

@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -71,16 +72,16 @@ export default function MenuPage() {
               <Button variant="outline" className="w-full justify-start py-6 active:bg-background focus:bg-background" size="lg">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
-                    {user.imageUrl && <AvatarImage src={user.imageUrl} alt={user.username} />}
+                    {user.imageUrl && <AvatarImage src={user.imageUrl} alt={getDisplayName(user)} />}
                     <AvatarFallback
                       style={{ backgroundColor: user.avatarColor || '#6366F1' }}
                       className="text-white"
                     >
-                      {user.username?.[0].toUpperCase()}
+                      {getDisplayInitial(user)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="text-left">
-                    <div className="font-medium">{user.preferredName || user.username}</div>
+                    <div className="font-medium">{getDisplayName(user)}</div>
                   </div>
                 </div>
               </Button>

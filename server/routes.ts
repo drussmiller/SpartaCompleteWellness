@@ -1563,6 +1563,7 @@ export const registerRoutes = async (
             author: {
               id: users.id,
               username: users.username,
+              preferredName: users.preferredName,
               email: users.email,
               imageUrl: users.imageUrl,
               avatarColor: users.avatarColor,
@@ -1611,6 +1612,7 @@ export const registerRoutes = async (
             author: {
               id: users.id,
               username: users.username,
+              preferredName: users.preferredName,
               email: users.email,
               imageUrl: users.imageUrl,
               avatarColor: users.avatarColor,
@@ -1673,6 +1675,7 @@ export const registerRoutes = async (
             author: {
               id: users.id,
               username: users.username,
+              preferredName: users.preferredName,
               email: users.email,
               imageUrl: users.imageUrl,
               avatarColor: users.avatarColor,
@@ -1951,6 +1954,7 @@ export const registerRoutes = async (
           author: {
             id: users.id,
             username: users.username,
+            preferredName: users.preferredName,
             email: users.email,
             imageUrl: users.imageUrl,
             avatarColor: users.avatarColor,
@@ -2666,6 +2670,7 @@ export const registerRoutes = async (
           author: {
             id: users.id,
             username: users.username,
+            preferredName: users.preferredName,
             email: users.email,
             imageUrl: users.imageUrl,
             avatarColor: users.avatarColor,
@@ -3993,16 +3998,30 @@ export const registerRoutes = async (
       const isFullAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
 
+      // Check if user is Organization Admin for the org that owns this group
+      let isOrgAdminForThisGroup = false;
+      if (req.user?.isOrganizationAdmin && req.user?.adminOrganizationId) {
+        const [groupRecord] = await db
+          .select({ organizationId: groups.organizationId })
+          .from(groups)
+          .where(eq(groups.id, groupId))
+          .limit(1);
+        if (groupRecord && groupRecord.organizationId === req.user.adminOrganizationId) {
+          isOrgAdminForThisGroup = true;
+        }
+      }
+
       logger.info(`Group update attempt by user ${req.user?.id}:`, {
         groupId,
         isFullAdmin,
         isGroupAdmin: req.user?.isGroupAdmin,
         adminGroupId: req.user?.adminGroupId,
         isGroupAdminForThisGroup,
+        isOrgAdminForThisGroup,
         requestBody: req.body
       });
 
-      if (!isFullAdmin && !isGroupAdminForThisGroup) {
+      if (!isFullAdmin && !isGroupAdminForThisGroup && !isOrgAdminForThisGroup) {
         logger.warn(`Authorization failed for user ${req.user?.id} on group ${groupId}`);
 
         // Set content type before any response
@@ -4038,10 +4057,10 @@ export const registerRoutes = async (
         }
       }
 
-      // Group Admins can only update certain fields (not organizationId or status)
+      // Group Admins and Org Admins can only update certain fields (not organizationId or status)
       let updateData: any = {};
-      if (isGroupAdminForThisGroup && !isFullAdmin) {
-        // Group admins can only update name, description, competitive status, and program start date
+      if ((isGroupAdminForThisGroup || isOrgAdminForThisGroup) && !isFullAdmin) {
+        // Group admins and org admins can only update name, description, competitive status, and program start date
         const { name, description, competitive, programStartDate } = req.body;
         if (name !== undefined) updateData.name = name;
         if (description !== undefined) updateData.description = description;
@@ -4128,11 +4147,15 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      // Check if user is admin or group admin for this group
+      // Check if user is admin, group admin for this group, or org admin for this group's org
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+      
+      // Look up group to check org admin
+      const [groupRecord] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+      const isOrgAdminForThisGroup = req.user?.isOrganizationAdmin && groupRecord?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisGroup) {
+      if (!isAdmin && !isGroupAdminForThisGroup && !isOrgAdminForThisGroup) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4165,11 +4188,14 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      // Check if user is admin or group admin for this group
+      // Check if user is admin, group admin for this group, or org admin for this group's org
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+      
+      const [groupRecord] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+      const isOrgAdminForThisGroup = req.user?.isOrganizationAdmin && groupRecord?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisGroup) {
+      if (!isAdmin && !isGroupAdminForThisGroup && !isOrgAdminForThisGroup) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4208,12 +4234,15 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Team not found" });
       }
 
-      // Check if user is admin, group admin for this team's group, or team lead for this team
+      // Check if user is admin, group admin for this team's group, org admin, or team lead for this team
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
       const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.teamId === teamId;
+      
+      const [teamGroup] = await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1);
+      const isOrgAdminForThisTeam = req.user?.isOrganizationAdmin && teamGroup?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam) {
+      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam && !isOrgAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4252,12 +4281,15 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Team not found" });
       }
 
-      // Check if user is admin, group admin for this team's group, or team lead for this team
+      // Check if user is admin, group admin for this team's group, org admin, or team lead for this team
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
       const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.teamId === teamId;
+      
+      const [teamGroup2] = await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1);
+      const isOrgAdminForThisTeam = req.user?.isOrganizationAdmin && teamGroup2?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam) {
+      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam && !isOrgAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4955,6 +4987,7 @@ export const registerRoutes = async (
 
       // Process and compress the image
       const processedImage = await sharp(req.file.buffer)
+        .rotate()
         .resize(300, 300, {
           fit: "cover",
           position: "center",
@@ -6826,6 +6859,7 @@ export const registerRoutes = async (
         .select({
           id: users.id,
           username: users.username,
+          preferredName: users.preferredName,
           imageUrl: users.imageUrl,
           avatarColor: users.avatarColor,
           points: sql<number>`COALESCE((
@@ -8480,9 +8514,13 @@ export const registerRoutes = async (
       if (req.user.isAdmin) {
         // Admins can update any role
       } else if (req.user.isOrganizationAdmin) {
-        // Organization Admins can update roles for users in their organization's groups
-        if (role === 'isAdmin' || role === 'isOrganizationAdmin') {
-          return res.status(403).json({ message: "Organization Admins cannot assign Admin or Organization Admin roles" });
+        // Organization Admins cannot assign full Admin role
+        if (role === 'isAdmin') {
+          return res.status(403).json({ message: "Organization Admins cannot assign Admin roles" });
+        }
+        // Organization Admins cannot remove their own Organization Admin role
+        if (role === 'isOrganizationAdmin' && !value && userId === req.user.id) {
+          return res.status(403).json({ message: "You cannot remove your own Organization Admin role" });
         }
         if (targetUser.teamId) {
           const [team] = await db
@@ -8887,6 +8925,7 @@ export const registerRoutes = async (
       let finalOrgId = organizationId;
       let finalGroupId = groupId;
       let finalTeamId = teamId;
+      let createdNewOrg = false;
       
       // If new organization name is provided, create it
       if (organizationName && !organizationId) {
@@ -8896,6 +8935,7 @@ export const registerRoutes = async (
           status: 1
         });
         finalOrgId = newOrg.id;
+        createdNewOrg = true;
         logger.info(`[SELF-SERVICE] Created new organization: ${newOrg.name} (ID: ${newOrg.id})`);
       }
       
@@ -8973,14 +9013,69 @@ export const registerRoutes = async (
       
       // Assign user to the team (as Team Lead only if creating new team)
       const now = new Date();
+
+      // Calculate programStartDate using priority logic:
+      // Priority 1: Team's start date
+      // Priority 2: Group's start date
+      // Priority 3: Current date if Monday, otherwise next Monday
+      let computedProgramStartDate: Date | null = null;
+
+      const [assignedTeam] = await db
+        .select({
+          teamStartDate: teams.programStartDate,
+          groupId: teams.groupId,
+        })
+        .from(teams)
+        .where(eq(teams.id, finalTeamId))
+        .limit(1);
+
+      if (assignedTeam?.teamStartDate) {
+        computedProgramStartDate = new Date(assignedTeam.teamStartDate);
+        logger.info(`[SELF-SERVICE] Setting programStartDate from team start date: ${computedProgramStartDate.toISOString()}`);
+      } else if (assignedTeam?.groupId) {
+        const [grp] = await db
+          .select({ groupStartDate: groups.programStartDate })
+          .from(groups)
+          .where(eq(groups.id, assignedTeam.groupId))
+          .limit(1);
+
+        if (grp?.groupStartDate) {
+          computedProgramStartDate = new Date(grp.groupStartDate);
+          logger.info(`[SELF-SERVICE] Setting programStartDate from group start date: ${computedProgramStartDate.toISOString()}`);
+        }
+      }
+
+      if (!computedProgramStartDate) {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        if (dayOfWeek === 1) {
+          computedProgramStartDate = new Date(today);
+          computedProgramStartDate.setHours(0, 0, 0, 0);
+        } else {
+          const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+          computedProgramStartDate = new Date(today);
+          computedProgramStartDate.setDate(today.getDate() + daysUntilMonday);
+          computedProgramStartDate.setHours(0, 0, 0, 0);
+        }
+        logger.info(`[SELF-SERVICE] Setting programStartDate to computed Monday: ${computedProgramStartDate.toISOString()}`);
+      }
+
+      const userUpdateData: any = { 
+        teamId: finalTeamId,
+        isTeamLead: isCreatingNewTeam,
+        teamJoinedAt: now,
+        programStartDate: computedProgramStartDate
+      };
+
+      if (createdNewOrg && finalOrgId) {
+        userUpdateData.isOrganizationAdmin = true;
+        userUpdateData.adminOrganizationId = finalOrgId;
+        logger.info(`[SELF-SERVICE] Making user ${req.user.id} an Organization Admin for org ${finalOrgId}`);
+      }
+
       await db
         .update(users)
-        .set({ 
-          teamId: finalTeamId,
-          isTeamLead: isCreatingNewTeam,
-          teamJoinedAt: now,
-          programStartDate: now
-        })
+        .set(userUpdateData)
         .where(eq(users.id, req.user.id));
       
       logger.info(`[SELF-SERVICE] User ${req.user.id} assigned to team ${finalTeamId}${isCreatingNewTeam ? ' as Team Lead' : ''}`);
