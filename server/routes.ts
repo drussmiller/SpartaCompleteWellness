@@ -6084,9 +6084,23 @@ export const registerRoutes = async (
         // Filter users to only those in the group's teams
         users = users.filter(user => user.teamId && teamIds.includes(user.teamId));
       }
-      // Filter users for team leads - only show users in their team
+      // Filter users for team leads - show users in their org if they have adminOrganizationId, otherwise just their team
       else if (req.user.isTeamLead && req.user.teamId) {
-        users = users.filter(user => user.teamId === req.user.teamId);
+        if (req.user.adminOrganizationId) {
+          const orgGroups = await db
+            .select({ id: groups.id })
+            .from(groups)
+            .where(eq(groups.organizationId, req.user.adminOrganizationId));
+          const orgGroupIds = orgGroups.map(g => g.id);
+          const orgTeams = await db
+            .select({ id: teams.id })
+            .from(teams)
+            .where(inArray(teams.groupId, orgGroupIds.length > 0 ? orgGroupIds : [-1]));
+          const orgTeamIds = orgTeams.map(t => t.id);
+          users = users.filter(user => user.teamId && orgTeamIds.includes(user.teamId));
+        } else {
+          users = users.filter(user => user.teamId === req.user.teamId);
+        }
       }
       // Filter users forregular users - only show users in their team (excluding themselves)
       else if (req.user.teamId) {
@@ -9067,10 +9081,11 @@ export const registerRoutes = async (
         programStartDate: computedProgramStartDate
       };
 
+      // Store the org ID on the user for data scoping, but do NOT make them an Organization Admin
+      // Autonomous users only get Team Lead role
       if (createdNewOrg && finalOrgId) {
-        userUpdateData.isOrganizationAdmin = true;
         userUpdateData.adminOrganizationId = finalOrgId;
-        logger.info(`[SELF-SERVICE] Making user ${req.user.id} an Organization Admin for org ${finalOrgId}`);
+        logger.info(`[SELF-SERVICE] Setting adminOrganizationId for user ${req.user.id} to org ${finalOrgId} (Team Lead only, not Org Admin)`);
       }
 
       await db
