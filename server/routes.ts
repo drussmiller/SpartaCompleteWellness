@@ -8501,9 +8501,13 @@ export const registerRoutes = async (
       if (req.user.isAdmin) {
         // Admins can update any role
       } else if (req.user.isOrganizationAdmin) {
-        // Organization Admins can update roles for users in their organization's groups
-        if (role === 'isAdmin' || role === 'isOrganizationAdmin') {
-          return res.status(403).json({ message: "Organization Admins cannot assign Admin or Organization Admin roles" });
+        // Organization Admins cannot assign full Admin role
+        if (role === 'isAdmin') {
+          return res.status(403).json({ message: "Organization Admins cannot assign Admin roles" });
+        }
+        // Organization Admins cannot remove their own Organization Admin role
+        if (role === 'isOrganizationAdmin' && !value && userId === req.user.id) {
+          return res.status(403).json({ message: "You cannot remove your own Organization Admin role" });
         }
         if (targetUser.teamId) {
           const [team] = await db
