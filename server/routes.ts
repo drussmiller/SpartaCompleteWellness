@@ -8980,13 +8980,60 @@ export const registerRoutes = async (
       
       // Assign user to the team (as Team Lead only if creating new team)
       const now = new Date();
+
+      // Calculate programStartDate using priority logic:
+      // Priority 1: Team's start date
+      // Priority 2: Group's start date
+      // Priority 3: Current date if Monday, otherwise next Monday
+      let computedProgramStartDate: Date | null = null;
+
+      const [assignedTeam] = await db
+        .select({
+          teamStartDate: teams.programStartDate,
+          groupId: teams.groupId,
+        })
+        .from(teams)
+        .where(eq(teams.id, finalTeamId))
+        .limit(1);
+
+      if (assignedTeam?.teamStartDate) {
+        computedProgramStartDate = new Date(assignedTeam.teamStartDate);
+        logger.info(`[SELF-SERVICE] Setting programStartDate from team start date: ${computedProgramStartDate.toISOString()}`);
+      } else if (assignedTeam?.groupId) {
+        const [grp] = await db
+          .select({ groupStartDate: groups.programStartDate })
+          .from(groups)
+          .where(eq(groups.id, assignedTeam.groupId))
+          .limit(1);
+
+        if (grp?.groupStartDate) {
+          computedProgramStartDate = new Date(grp.groupStartDate);
+          logger.info(`[SELF-SERVICE] Setting programStartDate from group start date: ${computedProgramStartDate.toISOString()}`);
+        }
+      }
+
+      if (!computedProgramStartDate) {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        if (dayOfWeek === 1) {
+          computedProgramStartDate = new Date(today);
+          computedProgramStartDate.setHours(0, 0, 0, 0);
+        } else {
+          const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+          computedProgramStartDate = new Date(today);
+          computedProgramStartDate.setDate(today.getDate() + daysUntilMonday);
+          computedProgramStartDate.setHours(0, 0, 0, 0);
+        }
+        logger.info(`[SELF-SERVICE] Setting programStartDate to computed Monday: ${computedProgramStartDate.toISOString()}`);
+      }
+
       await db
         .update(users)
         .set({ 
           teamId: finalTeamId,
           isTeamLead: isCreatingNewTeam,
           teamJoinedAt: now,
-          programStartDate: now
+          programStartDate: computedProgramStartDate
         })
         .where(eq(users.id, req.user.id));
       
