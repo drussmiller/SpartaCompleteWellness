@@ -6826,6 +6826,7 @@ export const registerRoutes = async (
         .select({
           id: users.id,
           username: users.username,
+          preferredName: users.preferredName,
           imageUrl: users.imageUrl,
           avatarColor: users.avatarColor,
           points: sql<number>`COALESCE((
