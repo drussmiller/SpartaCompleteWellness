@@ -247,9 +247,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Note: User progress is now shown directly from user.currentWeek and user.currentDay
   // No need to fetch separately for each user
 
-  // Auto-set filters for Organization Admins, Team Leads with adminOrganizationId, and Group Admins
+  // Auto-set filters for Organization Admins and Group Admins
   useEffect(() => {
-    if ((currentUser?.isOrganizationAdmin || (currentUser?.isTeamLead && currentUser?.adminOrganizationId)) && !currentUser?.isAdmin && currentUser?.adminOrganizationId) {
+    if (currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && currentUser?.adminOrganizationId) {
       if (selectedOrgFilter === "all") {
         setSelectedOrgFilter(currentUser.adminOrganizationId.toString());
       }
@@ -1270,16 +1270,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? (groups || [])
     : currentUser?.isOrganizationAdmin
       ? (groups || []).filter((g) => g.organizationId === currentUser.adminOrganizationId)
-      : (currentUser?.isTeamLead && currentUser?.adminOrganizationId)
-        ? (groups || []).filter((g) => g.organizationId === currentUser.adminOrganizationId)
-        : currentUser?.isGroupAdmin
-          ? (() => {
-              const adminGroup = (groups || []).find(
-                (g) => g.id === currentUser.adminGroupId,
-              );
-              return adminGroup ? [adminGroup] : [];
-            })()
-          : (groups || []);
+      : currentUser?.isGroupAdmin
+        ? (() => {
+            const adminGroup = (groups || []).find(
+              (g) => g.id === currentUser.adminGroupId,
+            );
+            return adminGroup ? [adminGroup] : [];
+          })()
+        : (groups || []);
 
   // Sort the filtered groups
   const sortedGroups = [...filteredGroups].sort((a, b) =>
@@ -1294,16 +1292,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           const group = (groups || []).find((g) => g.id === team.groupId);
           return group && group.organizationId === currentUser.adminOrganizationId;
         })
-      : (currentUser?.isTeamLead && currentUser?.adminOrganizationId)
-        ? (teams || []).filter((team) => {
-            const group = (groups || []).find((g) => g.id === team.groupId);
-            return group && group.organizationId === currentUser.adminOrganizationId;
-          })
-        : currentUser?.isGroupAdmin
-          ? (teams || []).filter((team) => team.groupId === currentUser.adminGroupId)
-          : currentUser?.isTeamLead
-            ? (teams || []).filter((team) => team.id === currentUser.teamId)
-            : [];
+      : currentUser?.isGroupAdmin
+        ? (teams || []).filter((team) => team.groupId === currentUser.adminGroupId)
+        : currentUser?.isTeamLead
+          ? (teams || []).filter((team) => team.id === currentUser.teamId)
+          : [];
 
   const sortedTeams = [...filteredTeams].sort((a, b) =>
     a.name.localeCompare(b.name),
@@ -1325,20 +1318,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             return false;
           });
         })()
-      : (currentUser?.isTeamLead && currentUser?.adminOrganizationId)
-        ? (() => {
-            const adminOrgId = currentUser.adminOrganizationId;
-            if (!adminOrgId) return [];
-            const orgGroups = (groups || []).filter((g) => g.organizationId === adminOrgId);
-            const orgGroupIds = orgGroups.map((g) => g.id);
-            const orgTeams = (teams || []).filter((t) => orgGroupIds.includes(t.groupId));
-            const orgTeamIds = orgTeams.map((t) => t.id);
-            return (users || []).filter((u) => {
-              if (u.teamId && orgTeamIds.includes(u.teamId)) return true;
-              return false;
-            });
-          })()
-        : currentUser?.isGroupAdmin
+      : currentUser?.isGroupAdmin
           ? (() => {
               const adminGroupId = currentUser.adminGroupId;
               if (!adminGroupId) {
@@ -1440,7 +1420,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     ? sortedOrganizations
     : sortedOrganizations.filter((org) => org.status === 1)
   ).filter((org) => {
-    if ((currentUser?.isOrganizationAdmin || (currentUser?.isTeamLead && currentUser?.adminOrganizationId)) && !currentUser?.isAdmin) {
+    if (currentUser?.isOrganizationAdmin && !currentUser?.isAdmin) {
       return org.id === currentUser.adminOrganizationId;
     }
     if (orgSearchQuery.trim() === "") return true;
@@ -1541,8 +1521,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             )}
 
             <div className="grid grid-cols-1 gap-6 mt-3">
-              {/* Organizations Section - Show for Admins, Organization Admins, and Team Leads with adminOrganizationId */}
-              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || (currentUser?.isTeamLead && currentUser?.adminOrganizationId)) && (
+              {/* Organizations Section - Show for Admins and Organization Admins */}
+              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin) && (
                 <Collapsible 
                   open={organizationsPanelOpen} 
                   onOpenChange={setOrganizationsPanelOpen}
@@ -1887,8 +1867,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </Collapsible>
               )}
 
-              {/* Groups Section - Show for Admins, Organization Admins, Group Admins, and Team Leads with adminOrganizationId */}
-              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin || (currentUser?.isTeamLead && currentUser?.adminOrganizationId)) && (
+              {/* Groups Section - Show for Admins, Organization Admins, and Group Admins */}
+              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                 <Collapsible 
                   open={groupsPanelOpen} 
                   onOpenChange={setGroupsPanelOpen}
