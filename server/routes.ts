@@ -8894,6 +8894,7 @@ export const registerRoutes = async (
       let finalOrgId = organizationId;
       let finalGroupId = groupId;
       let finalTeamId = teamId;
+      let createdNewOrg = false;
       
       // If new organization name is provided, create it
       if (organizationName && !organizationId) {
@@ -8903,6 +8904,7 @@ export const registerRoutes = async (
           status: 1
         });
         finalOrgId = newOrg.id;
+        createdNewOrg = true;
         logger.info(`[SELF-SERVICE] Created new organization: ${newOrg.name} (ID: ${newOrg.id})`);
       }
       
@@ -9027,14 +9029,22 @@ export const registerRoutes = async (
         logger.info(`[SELF-SERVICE] Setting programStartDate to computed Monday: ${computedProgramStartDate.toISOString()}`);
       }
 
+      const userUpdateData: any = { 
+        teamId: finalTeamId,
+        isTeamLead: isCreatingNewTeam,
+        teamJoinedAt: now,
+        programStartDate: computedProgramStartDate
+      };
+
+      if (createdNewOrg && finalOrgId) {
+        userUpdateData.isOrganizationAdmin = true;
+        userUpdateData.adminOrganizationId = finalOrgId;
+        logger.info(`[SELF-SERVICE] Making user ${req.user.id} an Organization Admin for org ${finalOrgId}`);
+      }
+
       await db
         .update(users)
-        .set({ 
-          teamId: finalTeamId,
-          isTeamLead: isCreatingNewTeam,
-          teamJoinedAt: now,
-          programStartDate: computedProgramStartDate
-        })
+        .set(userUpdateData)
         .where(eq(users.id, req.user.id));
       
       logger.info(`[SELF-SERVICE] User ${req.user.id} assigned to team ${finalTeamId}${isCreatingNewTeam ? ' as Team Lead' : ''}`);
