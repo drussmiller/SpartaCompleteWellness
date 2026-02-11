@@ -350,10 +350,15 @@ div[data-post-id] .video-container {
 .dark .active\:bg-gray-100:active { background-color: hsl(217 33% 22%) !important; }
 
 html {
-  font-size: 16px;
+  --app-font-size: 16px;
+  font-size: var(--app-font-size) !important;
   transition: font-size 0.2s ease;
 }
-html.font-small { font-size: 14px; }
-html.font-medium { font-size: 16px; }
-html.font-large { font-size: 18px; }
-html.font-extra-large { font-size: 20px; }
+html.font-small { --app-font-size: 13px; font-size: 13px !important; }
+html.font-medium { --app-font-size: 16px; font-size: 16px !important; }
+html.font-large { --app-font-size: 19px; font-size: 19px !important; }
+html.font-extra-large { --app-font-size: 22px; font-size: 22px !important; }
+
+body {
+  font-size: var(--app-font-size) !important;
+}
