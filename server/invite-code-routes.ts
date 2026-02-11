@@ -60,7 +60,8 @@ inviteCodeRouter.get("/api/invite-codes/group/:groupId", authenticate, async (re
       (type === "group_member" && !group.groupMemberInviteCode);
 
     if (needsGeneration) {
-      if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === groupId)) {
+      const isOrgAdminForThisGroup = req.user?.isOrganizationAdmin && group.organizationId === req.user?.adminOrganizationId;
+      if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === groupId) && !isOrgAdminForThisGroup) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -124,7 +125,8 @@ inviteCodeRouter.get("/api/invite-codes/team/:teamId", authenticate, async (req:
 
     if (needsGeneration) {
       const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.teamId === teamId;
-      if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId) && !isTeamLeadForThisTeam) {
+      const isOrgAdminForThisTeam = req.user?.isOrganizationAdmin && group.organizationId === req.user?.adminOrganizationId;
+      if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId) && !isTeamLeadForThisTeam && !isOrgAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
 

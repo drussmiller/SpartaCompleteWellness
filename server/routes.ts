@@ -4147,11 +4147,15 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      // Check if user is admin or group admin for this group
+      // Check if user is admin, group admin for this group, or org admin for this group's org
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+      
+      // Look up group to check org admin
+      const [groupRecord] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+      const isOrgAdminForThisGroup = req.user?.isOrganizationAdmin && groupRecord?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisGroup) {
+      if (!isAdmin && !isGroupAdminForThisGroup && !isOrgAdminForThisGroup) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4184,11 +4188,14 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Invalid group ID" });
       }
 
-      // Check if user is admin or group admin for this group
+      // Check if user is admin, group admin for this group, or org admin for this group's org
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
+      
+      const [groupRecord] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+      const isOrgAdminForThisGroup = req.user?.isOrganizationAdmin && groupRecord?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisGroup) {
+      if (!isAdmin && !isGroupAdminForThisGroup && !isOrgAdminForThisGroup) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4227,12 +4234,15 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Team not found" });
       }
 
-      // Check if user is admin, group admin for this team's group, or team lead for this team
+      // Check if user is admin, group admin for this team's group, org admin, or team lead for this team
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
       const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.teamId === teamId;
+      
+      const [teamGroup] = await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1);
+      const isOrgAdminForThisTeam = req.user?.isOrganizationAdmin && teamGroup?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam) {
+      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam && !isOrgAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
@@ -4271,12 +4281,15 @@ export const registerRoutes = async (
         return res.status(404).json({ message: "Team not found" });
       }
 
-      // Check if user is admin, group admin for this team's group, or team lead for this team
+      // Check if user is admin, group admin for this team's group, org admin, or team lead for this team
       const isAdmin = req.user?.isAdmin;
       const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
       const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.teamId === teamId;
+      
+      const [teamGroup2] = await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1);
+      const isOrgAdminForThisTeam = req.user?.isOrganizationAdmin && teamGroup2?.organizationId === req.user?.adminOrganizationId;
 
-      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam) {
+      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam && !isOrgAdminForThisTeam) {
         return res.status(403).json({ message: "Not authorized" });
       }
 
