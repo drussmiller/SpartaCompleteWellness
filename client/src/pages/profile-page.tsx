@@ -661,8 +661,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     </div>
                   ) : (
                     <div>
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-wrap justify-between items-center gap-1">
                         <span className="text-lg text-muted-foreground">Email</span>
+                        <span className="font-medium break-all min-w-0">
+                          {user?.email}
+                        </span>
+                      </div>
+                      <div className="flex justify-end mt-1">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -675,9 +680,6 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                           Edit
                         </Button>
                       </div>
-                      <span className="font-medium break-all">
-                        {user?.email}
-                      </span>
                     </div>
                   )}
                 </div>
