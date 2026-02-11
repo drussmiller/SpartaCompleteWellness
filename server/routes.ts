@@ -3998,16 +3998,30 @@ export const registerRoutes = async (
       const isFullAdmin = req.user?.isAdmin;
       const isGroupAdminForThisGroup = req.user?.isGroupAdmin && req.user?.adminGroupId === groupId;
 
+      // Check if user is Organization Admin for the org that owns this group
+      let isOrgAdminForThisGroup = false;
+      if (req.user?.isOrganizationAdmin && req.user?.adminOrganizationId) {
+        const [groupRecord] = await db
+          .select({ organizationId: groups.organizationId })
+          .from(groups)
+          .where(eq(groups.id, groupId))
+          .limit(1);
+        if (groupRecord && groupRecord.organizationId === req.user.adminOrganizationId) {
+          isOrgAdminForThisGroup = true;
+        }
+      }
+
       logger.info(`Group update attempt by user ${req.user?.id}:`, {
         groupId,
         isFullAdmin,
         isGroupAdmin: req.user?.isGroupAdmin,
         adminGroupId: req.user?.adminGroupId,
         isGroupAdminForThisGroup,
+        isOrgAdminForThisGroup,
         requestBody: req.body
       });
 
-      if (!isFullAdmin && !isGroupAdminForThisGroup) {
+      if (!isFullAdmin && !isGroupAdminForThisGroup && !isOrgAdminForThisGroup) {
         logger.warn(`Authorization failed for user ${req.user?.id} on group ${groupId}`);
 
         // Set content type before any response
@@ -4043,10 +4057,10 @@ export const registerRoutes = async (
         }
       }
 
-      // Group Admins can only update certain fields (not organizationId or status)
+      // Group Admins and Org Admins can only update certain fields (not organizationId or status)
       let updateData: any = {};
-      if (isGroupAdminForThisGroup && !isFullAdmin) {
-        // Group admins can only update name, description, competitive status, and program start date
+      if ((isGroupAdminForThisGroup || isOrgAdminForThisGroup) && !isFullAdmin) {
+        // Group admins and org admins can only update name, description, competitive status, and program start date
         const { name, description, competitive, programStartDate } = req.body;
         if (name !== undefined) updateData.name = name;
         if (description !== undefined) updateData.description = description;
