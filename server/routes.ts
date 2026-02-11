@@ -1563,6 +1563,7 @@ export const registerRoutes = async (
             author: {
               id: users.id,
               username: users.username,
+              preferredName: users.preferredName,
               email: users.email,
               imageUrl: users.imageUrl,
               avatarColor: users.avatarColor,
@@ -1611,6 +1612,7 @@ export const registerRoutes = async (
             author: {
               id: users.id,
               username: users.username,
+              preferredName: users.preferredName,
               email: users.email,
               imageUrl: users.imageUrl,
               avatarColor: users.avatarColor,
@@ -1673,6 +1675,7 @@ export const registerRoutes = async (
             author: {
               id: users.id,
               username: users.username,
+              preferredName: users.preferredName,
               email: users.email,
               imageUrl: users.imageUrl,
               avatarColor: users.avatarColor,
@@ -1951,6 +1954,7 @@ export const registerRoutes = async (
           author: {
             id: users.id,
             username: users.username,
+            preferredName: users.preferredName,
             email: users.email,
             imageUrl: users.imageUrl,
             avatarColor: users.avatarColor,
@@ -2666,6 +2670,7 @@ export const registerRoutes = async (
           author: {
             id: users.id,
             username: users.username,
+            preferredName: users.preferredName,
             email: users.email,
             imageUrl: users.imageUrl,
             avatarColor: users.avatarColor,
