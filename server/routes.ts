@@ -4960,6 +4960,7 @@ export const registerRoutes = async (
 
       // Process and compress the image
       const processedImage = await sharp(req.file.buffer)
+        .rotate()
         .resize(300, 300, {
           fit: "cover",
           position: "center",
