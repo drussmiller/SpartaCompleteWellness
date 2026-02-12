@@ -26,6 +26,7 @@ export async function checkNotifications() {
         phoneNumber: users.phoneNumber,
         dailyNotificationsEnabled: users.dailyNotificationsEnabled,
         smsEnabled: users.smsEnabled,
+        programStartDate: users.programStartDate,
       })
       .from(users);
 
@@ -45,6 +46,22 @@ export async function checkNotifications() {
 
     for (const user of allUsers) {
       try {
+        if (!user.teamId) {
+          logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - not in a team`);
+          continue;
+        }
+
+        if (user.programStartDate) {
+          const startDateStr = String(user.programStartDate).split('T')[0];
+          const [year, month, day] = startDateStr.split('-').map(Number);
+          const programStart = new Date(year, month - 1, day);
+          programStart.setHours(0, 0, 0, 0);
+          if (programStart > today) {
+            logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - program start date hasn't passed yet`);
+            continue;
+          }
+        }
+
         const userPostsResult = await db
           .select({
             points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
