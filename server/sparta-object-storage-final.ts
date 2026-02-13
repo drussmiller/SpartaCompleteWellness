@@ -5,7 +5,9 @@ import sharp from 'sharp';
 import { createMovThumbnail } from './mov-frame-extractor-new.js';
 import { Readable } from 'stream';
 
-const replitStorageClient = new Client();
+const replitStorageClient = new Client({
+  bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+});
 
 export class SpartaObjectStorageFinal {
   private allowedTypes: string[];
