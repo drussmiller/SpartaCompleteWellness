@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { BottomNav } from "@/components/bottom-nav";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { useMemo } from "react";
+import { YouTubePlayer } from "@/components/ui/youtube-player";
 
 interface WelcomePageProps {
   onClose?: () => void;
@@ -74,6 +75,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
               <CardTitle className="text-xl">Welcome to Sparta Complete Wellness!</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <YouTubePlayer videoId="31VqAraWk_w" />
               <p className="text-base">
                 Thank you for having the courage and conviction to start this life changing experience. This is the first step of many in the process of getting fit physically, mentally, emotionally, and spiritually.
               </p>

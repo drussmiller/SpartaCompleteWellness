@@ -8570,26 +8570,50 @@ export const registerRoutes = async (
       // Build update payload
       const updatePayload: Record<string, any> = { [role]: value };
 
-      // When setting Organization Admin, auto-set adminOrganizationId from user's team
+      // When setting Organization Admin, auto-set adminOrganizationId from user's team or from request body
       if (role === 'isOrganizationAdmin') {
-        if (value && targetUser.teamId) {
-          const [team] = await db
-            .select()
-            .from(teams)
-            .where(eq(teams.id, targetUser.teamId))
-            .limit(1);
-          if (team) {
-            const [group] = await db
+        if (value) {
+          if (req.body.adminOrganizationId) {
+            updatePayload.adminOrganizationId = req.body.adminOrganizationId;
+          } else if (targetUser.teamId) {
+            const [team] = await db
               .select()
-              .from(groups)
-              .where(eq(groups.id, team.groupId))
+              .from(teams)
+              .where(eq(teams.id, targetUser.teamId))
               .limit(1);
-            if (group) {
-              updatePayload.adminOrganizationId = group.organizationId;
+            if (team) {
+              const [group] = await db
+                .select()
+                .from(groups)
+                .where(eq(groups.id, team.groupId))
+                .limit(1);
+              if (group) {
+                updatePayload.adminOrganizationId = group.organizationId;
+              }
             }
           }
-        } else if (!value) {
+        } else {
           updatePayload.adminOrganizationId = null;
+        }
+      }
+
+      // When setting Group Admin, auto-set adminGroupId from user's team or from request body
+      if (role === 'isGroupAdmin') {
+        if (value) {
+          if (req.body.adminGroupId) {
+            updatePayload.adminGroupId = req.body.adminGroupId;
+          } else if (targetUser.teamId) {
+            const [team] = await db
+              .select()
+              .from(teams)
+              .where(eq(teams.id, targetUser.teamId))
+              .limit(1);
+            if (team) {
+              updatePayload.adminGroupId = team.groupId;
+            }
+          }
+        } else {
+          updatePayload.adminGroupId = null;
         }
       }
 
@@ -9069,8 +9093,9 @@ export const registerRoutes = async (
 
       if (createdNewOrg && finalOrgId) {
         userUpdateData.isOrganizationAdmin = true;
+        userUpdateData.isTeamLead = false;
         userUpdateData.adminOrganizationId = finalOrgId;
-        logger.info(`[SELF-SERVICE] Making user ${req.user.id} an Organization Admin for org ${finalOrgId}`);
+        logger.info(`[SELF-SERVICE] Making user ${req.user.id} an Organization Admin for org ${finalOrgId} (not Team Lead)`);
       }
 
       await db

@@ -44,8 +44,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit } from "lucide-react";
+import { Edit, Sun, Moon, Type } from "lucide-react";
 import { useMemo } from "react";
+import { useDisplaySettings, FontSize } from "@/hooks/use-display-settings";
+import { Switch } from "@/components/ui/switch";
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -56,6 +58,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [uploading, setUploading] = useState(false);
+  const { fontSize, setFontSize, isDark, toggleTheme } = useDisplaySettings();
   
   // Detect Android device for bottom padding adjustment
   const isAndroid = useMemo(() => {
@@ -658,9 +661,9 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     </div>
                   ) : (
                     <div>
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-wrap justify-between items-center gap-1">
                         <span className="text-lg text-muted-foreground">Email</span>
-                        <span className="font-medium">
+                        <span className="font-medium break-all min-w-0">
                           {user?.email}
                         </span>
                       </div>
@@ -1147,10 +1150,62 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
           </Card>
 
           <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4" data-testid="text-display-heading">Display & Accessibility</h3>
+              <div className="space-y-5">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Type className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Font Size</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {([
+                      { value: "small" as FontSize, label: "S" },
+                      { value: "medium" as FontSize, label: "M" },
+                      { value: "large" as FontSize, label: "L" },
+                      { value: "extra-large" as FontSize, label: "XL" },
+                    ]).map((option) => (
+                      <Button
+                        key={option.value}
+                        variant={fontSize === option.value ? "default" : "outline"}
+                        onClick={() => setFontSize(option.value)}
+                        data-testid={`button-font-${option.value}`}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {fontSize === "small" && "Smaller text for more content on screen"}
+                    {fontSize === "medium" && "Default text size"}
+                    {fontSize === "large" && "Larger text for easier reading"}
+                    {fontSize === "extra-large" && "Extra large text for maximum readability"}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {isDark ? (
+                      <Moon className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Sun className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="text-sm font-medium">Dark Mode</span>
+                  </div>
+                  <Switch
+                    checked={isDark}
+                    onCheckedChange={toggleTheme}
+                    data-testid="switch-dark-mode"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardContent>
               <h3 className="text-lg font-semibold mb-4">Account Security</h3>
               <div className="mb-4">
-                {/* Import and render the change password form */}
                 <ChangePasswordForm />
               </div>
             </CardContent>

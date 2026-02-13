@@ -413,6 +413,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
+  const [roleAssignDialog, setRoleAssignDialog] = useState<{
+    open: boolean;
+    userId: number | null;
+    role: "isOrganizationAdmin" | "isGroupAdmin" | "isTeamLead" | null;
+  }>({ open: false, userId: null, role: null });
+  const [selectedRoleTarget, setSelectedRoleTarget] = useState<string>("");
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -578,14 +584,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       userId,
       role,
       value,
+      adminOrganizationId,
+      adminGroupId,
     }: {
       userId: number;
       role: "isAdmin" | "isOrganizationAdmin" | "isTeamLead" | "isGroupAdmin";
       value: boolean;
+      adminOrganizationId?: number;
+      adminGroupId?: number;
     }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}/role`, {
         role,
         value,
+        adminOrganizationId,
+        adminGroupId,
       });
       if (!res.ok) {
         throw new Error(await res.text());
@@ -1315,30 +1327,31 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           const orgTeamIds = orgTeams.map((t) => t.id);
           return (users || []).filter((u) => {
             if (u.teamId && orgTeamIds.includes(u.teamId)) return true;
+            if (!u.teamId) return true;
             return false;
           });
         })()
       : currentUser?.isGroupAdmin
-        ? (() => {
-            const adminGroupId = currentUser.adminGroupId;
-            if (!adminGroupId) {
-              return [];
-            }
-            const groupTeams = (teams || []).filter((team) => team.groupId === adminGroupId);
-            const groupTeamIds = groupTeams.map((team) => team.id);
-            return (users || []).filter((u) => {
-              if (u.teamId && groupTeamIds.includes(u.teamId)) {
-                return true;
+          ? (() => {
+              const adminGroupId = currentUser.adminGroupId;
+              if (!adminGroupId) {
+                return [];
               }
-              if (!u.teamId) {
-                return true;
-              }
-              return false;
-            });
-          })()
-        : currentUser?.isTeamLead
-          ? (users || []).filter((u) => u.teamId === currentUser.teamId)
-          : [];
+              const groupTeams = (teams || []).filter((team) => team.groupId === adminGroupId);
+              const groupTeamIds = groupTeams.map((team) => team.id);
+              return (users || []).filter((u) => {
+                if (u.teamId && groupTeamIds.includes(u.teamId)) {
+                  return true;
+                }
+                if (!u.teamId) {
+                  return true;
+                }
+                return false;
+              });
+            })()
+          : currentUser?.isTeamLead
+            ? (users || []).filter((u) => u.teamId === currentUser.teamId)
+            : [];
 
   const sortedUsers = [...filteredUsers].sort((a, b) =>
     (a.username || "").localeCompare(b.username || ""),
@@ -1381,25 +1394,37 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       }
     }
 
+    // When "No Team" is selected, skip org/group filters for teamless users
+    // since they have no team/group/org chain
+    const isNoTeamFilter = selectedTeamFilter === "none";
+
     // Organization filter
     if (selectedOrgFilter !== "all") {
-      const userTeam = sortedTeams.find((t) => t.id === user.teamId);
-      const userGroup = userTeam
-        ? sortedGroups.find((g) => g.id === userTeam.groupId)
-        : null;
-      if (
-        !userGroup ||
-        userGroup.organizationId.toString() !== selectedOrgFilter
-      ) {
-        return false;
+      if (isNoTeamFilter && !user.teamId) {
+        // Teamless users pass through org filter when "No Team" is selected
+      } else {
+        const userTeam = sortedTeams.find((t) => t.id === user.teamId);
+        const userGroup = userTeam
+          ? sortedGroups.find((g) => g.id === userTeam.groupId)
+          : null;
+        if (
+          !userGroup ||
+          userGroup.organizationId.toString() !== selectedOrgFilter
+        ) {
+          return false;
+        }
       }
     }
 
     // Group filter
     if (selectedGroupFilter !== "all") {
-      const userTeam = sortedTeams.find((t) => t.id === user.teamId);
-      if (!userTeam || userTeam.groupId.toString() !== selectedGroupFilter) {
-        return false;
+      if (isNoTeamFilter && !user.teamId) {
+        // Teamless users pass through group filter when "No Team" is selected
+      } else {
+        const userTeam = sortedTeams.find((t) => t.id === user.teamId);
+        if (!userTeam || userTeam.groupId.toString() !== selectedGroupFilter) {
+          return false;
+        }
       }
     }
 
@@ -1522,7 +1547,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
             <div className="grid grid-cols-1 gap-6 mt-3">
               {/* Organizations Section - Show for Admins and Organization Admins */}
-              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin) && !currentUser?.isTeamLead && (
+              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin) && (
                 <Collapsible 
                   open={organizationsPanelOpen} 
                   onOpenChange={setOrganizationsPanelOpen}
@@ -1868,7 +1893,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
               )}
 
               {/* Groups Section - Show for Admins, Organization Admins, and Group Admins */}
-              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
+              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                 <Collapsible 
                   open={groupsPanelOpen} 
                   onOpenChange={setGroupsPanelOpen}
@@ -2516,6 +2541,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 <div className="space-y-2">
                                   <InviteQRCode
                                     type="group_admin"
+                                    id={group.id}
+                                    name={group.name}
+                                  />
+                                  <InviteQRCode
+                                    type="group_member"
                                     id={group.id}
                                     name={group.name}
                                   />
@@ -3741,6 +3771,33 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           : "Inactive"}
                                       </span>
                                     </p>
+                                    {user.isOrganizationAdmin && (
+                                      <div className="mt-1 text-sm text-muted-foreground">
+                                        <span className="font-medium">Org Admin of: </span>
+                                        {(() => {
+                                          const org = (organizations || []).find(o => o.id === user.adminOrganizationId);
+                                          return org ? org.name : "Not assigned";
+                                        })()}
+                                      </div>
+                                    )}
+                                    {user.isGroupAdmin && (
+                                      <div className="mt-1 text-sm text-muted-foreground">
+                                        <span className="font-medium">Group Admin of: </span>
+                                        {(() => {
+                                          const grp = (groups || []).find(g => g.id === user.adminGroupId);
+                                          return grp ? grp.name : "Not assigned";
+                                        })()}
+                                      </div>
+                                    )}
+                                    {user.isTeamLead && (
+                                      <div className="mt-1 text-sm text-muted-foreground">
+                                        <span className="font-medium">Team Lead of: </span>
+                                        {(() => {
+                                          const tm = (teams || []).find(t => t.id === user.teamId);
+                                          return tm ? tm.name : "Not assigned";
+                                        })()}
+                                      </div>
+                                    )}
                                   </>
                                 )}
                               </div>
@@ -3894,6 +3951,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     className={`text-xs ${user.isOrganizationAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
                                     disabled={!!currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && user.id === currentUser?.id}
                                     onClick={() => {
+                                      if (!user.isOrganizationAdmin) {
+                                        const userTeam = (teams || []).find(t => t.id === user.teamId);
+                                        const userGroup = userTeam ? (groups || []).find(g => g.id === userTeam.groupId) : null;
+                                        if (!userGroup) {
+                                          setRoleAssignDialog({ open: true, userId: user.id, role: "isOrganizationAdmin" });
+                                          setSelectedRoleTarget("");
+                                          return;
+                                        }
+                                      }
                                       updateUserRoleMutation.mutate({
                                         userId: user.id,
                                         role: "isOrganizationAdmin",
@@ -3917,6 +3983,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     size="sm"
                                     className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
                                     onClick={() => {
+                                      if (!user.isGroupAdmin) {
+                                        const userTeam = (teams || []).find(t => t.id === user.teamId);
+                                        if (!userTeam) {
+                                          setRoleAssignDialog({ open: true, userId: user.id, role: "isGroupAdmin" });
+                                          setSelectedRoleTarget("");
+                                          return;
+                                        }
+                                      }
                                       updateUserRoleMutation.mutate({
                                         userId: user.id,
                                         role: "isGroupAdmin",
@@ -4258,6 +4332,104 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog
+          open={roleAssignDialog.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRoleAssignDialog({ open: false, userId: null, role: null });
+              setSelectedRoleTarget("");
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {roleAssignDialog.role === "isOrganizationAdmin"
+                  ? "Select Organization"
+                  : roleAssignDialog.role === "isGroupAdmin"
+                    ? "Select Group"
+                    : "Select Team"}
+              </DialogTitle>
+              <DialogDescription>
+                {roleAssignDialog.role === "isOrganizationAdmin"
+                  ? "This user is not in a team, so we can't determine which organization to assign. Please select one."
+                  : roleAssignDialog.role === "isGroupAdmin"
+                    ? "This user is not in a team, so we can't determine which group to assign. Please select one."
+                    : "This user is not in a team. Please select which team to assign them as lead."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Select value={selectedRoleTarget} onValueChange={setSelectedRoleTarget}>
+                <SelectTrigger>
+                  <SelectValue placeholder={
+                    roleAssignDialog.role === "isOrganizationAdmin"
+                      ? "Choose an organization..."
+                      : roleAssignDialog.role === "isGroupAdmin"
+                        ? "Choose a group..."
+                        : "Choose a team..."
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleAssignDialog.role === "isOrganizationAdmin" &&
+                    sortedOrganizations
+                      .filter(org => org.status === 1)
+                      .map(org => (
+                        <SelectItem key={org.id} value={org.id.toString()}>
+                          {org.name}
+                        </SelectItem>
+                      ))
+                  }
+                  {roleAssignDialog.role === "isGroupAdmin" &&
+                    sortedGroups.map(grp => (
+                      <SelectItem key={grp.id} value={grp.id.toString()}>
+                        {grp.name}
+                      </SelectItem>
+                    ))
+                  }
+                  {roleAssignDialog.role === "isTeamLead" &&
+                    sortedTeams
+                      .filter(t => t.status === 1)
+                      .map(tm => (
+                        <SelectItem key={tm.id} value={tm.id.toString()}>
+                          {tm.name}
+                        </SelectItem>
+                      ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRoleAssignDialog({ open: false, userId: null, role: null });
+                  setSelectedRoleTarget("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={!selectedRoleTarget || updateUserRoleMutation.isPending}
+                onClick={() => {
+                  if (!roleAssignDialog.userId || !roleAssignDialog.role || !selectedRoleTarget) return;
+                  const targetId = parseInt(selectedRoleTarget);
+                  updateUserRoleMutation.mutate({
+                    userId: roleAssignDialog.userId,
+                    role: roleAssignDialog.role,
+                    value: true,
+                    ...(roleAssignDialog.role === "isOrganizationAdmin" && { adminOrganizationId: targetId }),
+                    ...(roleAssignDialog.role === "isGroupAdmin" && { adminGroupId: targetId }),
+                  });
+                  setRoleAssignDialog({ open: false, userId: null, role: null });
+                  setSelectedRoleTarget("");
+                }}
+              >
+                Assign Role
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-background">
           <BottomNav />
