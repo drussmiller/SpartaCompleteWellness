@@ -2217,7 +2217,7 @@ export const registerRoutes = async (
       }
       
       // Introductory video posts require a video upload - no text-only allowed
-      if (postData.type === 'introductory_video' && !uploadedFile && !postData.mediaUrl) {
+      if (postData.type === 'introductory_video' && !uploadedFile && !postData.mediaUrl && !postData.chunkedUploadMediaUrl) {
         logger.info("Rejecting intro video post without media");
         return res.status(400).json({ message: "Intro video posts require a video upload" });
       }
