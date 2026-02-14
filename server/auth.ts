@@ -7,7 +7,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { db } from "./db";
-import { users, organizations } from "@shared/schema";
+import { users } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { emailService } from "./email-service";
 
@@ -241,21 +241,6 @@ export function setupAuth(app: Express) {
       });
 
       console.log('User created successfully:', user.id);
-
-      if (!user.teamId && !user.pendingOrganizationId) {
-        try {
-          const allOrgs = await db.select({ id: organizations.id }).from(organizations);
-          if (allOrgs.length === 1) {
-            await db
-              .update(users)
-              .set({ pendingOrganizationId: allOrgs[0].id })
-              .where(eq(users.id, user.id));
-            console.log(`Auto-associated user ${user.id} with the only organization (id: ${allOrgs[0].id})`);
-          }
-        } catch (orgError) {
-          console.error('Failed to auto-associate user with organization:', orgError);
-        }
-      }
 
       // Notify all admins about the new user
       try {
