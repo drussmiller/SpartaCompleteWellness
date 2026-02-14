@@ -853,6 +853,18 @@ export const storage = {
         .insert(organizations)
         .values({ ...data, createdAt: new Date() })
         .returning();
+      
+      await db
+        .insert(groups)
+        .values({
+          name: organization.name,
+          description: `Default division for ${organization.name}`,
+          organizationId: organization.id,
+          status: 1,
+          competitive: false,
+        });
+      logger.info(`Auto-created default division "${organization.name}" for organization ${organization.id}`);
+      
       return organization;
     } catch (error) {
       logger.error(`Failed to create organization: ${error}`);

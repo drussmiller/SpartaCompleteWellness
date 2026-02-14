@@ -163,6 +163,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const [createGroupDialogOpen, setCreateGroupDialogOpen] = useState(false);
   const [createTeamDialogOpen, setCreateTeamDialogOpen] = useState(false);
+  const [createDivisionForOrgId, setCreateDivisionForOrgId] = useState<number | null>(null);
+  const [expandedOrgDivisions, setExpandedOrgDivisions] = useState<Record<number, boolean>>({});
 
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
@@ -1849,23 +1851,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </div>
                             </CardHeader>
                             <CardContent>
-                              <p className="text-sm">
-                                <span className="font-medium">Divisions: </span>
-                                {sortedGroups?.filter(
-                                  (g) => g.organizationId === organization.id,
-                                ).length || 0}
-                              </p>
-                              <div className="mt-4 pt-4 border-t">
-                                <p className="text-sm font-medium mb-2">Invite Code:</p>
-                                <div className="space-y-2">
-                                  <InviteQRCode
-                                    type="organization"
-                                    id={organization.id}
-                                    name={organization.name}
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex gap-2 justify-end mt-4">
+                              <div className="flex gap-2 justify-end mb-2">
                                 {editingOrganization?.id !== organization.id && (
                                   <>
                                     <Button
@@ -1894,6 +1880,270 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   </>
                                 )}
                               </div>
+                              <div className="mt-2 pt-2 border-t">
+                                <p className="text-sm font-medium mb-2">Invite Code:</p>
+                                <div className="space-y-2">
+                                  <InviteQRCode
+                                    type="organization"
+                                    id={organization.id}
+                                    name={organization.name}
+                                  />
+                                </div>
+                              </div>
+                              <div className="mt-4 pt-4 border-t">
+                                <div className="flex items-center justify-between mb-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="p-0 h-auto font-medium text-sm hover:bg-transparent"
+                                    onClick={() => setExpandedOrgDivisions(prev => ({ ...prev, [organization.id]: !prev[organization.id] }))}
+                                  >
+                                    Divisions ({sortedGroups?.filter(g => g.organizationId === organization.id).length || 0})
+                                    <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${expandedOrgDivisions[organization.id] ? 'rotate-180' : ''}`} />
+                                  </Button>
+                                  {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && currentUser?.adminOrganizationId === organization.id)) && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setCreateDivisionForOrgId(organization.id)}
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      Create Division
+                                    </Button>
+                                  )}
+                                </div>
+                                {expandedOrgDivisions[organization.id] && (
+                                  <div className="space-y-2 mt-2">
+                                    {sortedGroups?.filter(g => g.organizationId === organization.id).map(group => (
+                                      <div key={group.id} className="p-3 border rounded-lg bg-gray-50/50">
+                                        {editingGroup?.id === group.id ? (
+                                          <form
+                                            onSubmit={(e) => {
+                                              e.preventDefault();
+                                              const formData = new FormData(e.currentTarget);
+                                              const name = formData.get("name") as string;
+                                              const description = formData.get("description") as string;
+                                              const statusValue = formData.get("status") as string;
+                                              const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                              const status = parsedStatus === 0 || parsedStatus === 1 ? parsedStatus : 1;
+                                              const competitive = formData.get("competitive") === "on";
+
+                                              if (!name) {
+                                                toast({ title: "Error", description: "Please fill in the division name", variant: "destructive" });
+                                                return;
+                                              }
+
+                                              let programStartDateValue = null;
+                                              if (editingGroup && editingGroup.id === group.id) {
+                                                if (editingGroup.programStartDate) {
+                                                  if (editingGroup.programStartDate instanceof Date) {
+                                                    programStartDateValue = editingGroup.programStartDate.toISOString();
+                                                  } else if (typeof editingGroup.programStartDate === 'string' && editingGroup.programStartDate.trim() !== '') {
+                                                    programStartDateValue = editingGroup.programStartDate;
+                                                  }
+                                                }
+                                              }
+
+                                              let currentWeek = 1;
+                                              let currentDay = 1;
+                                              if (programStartDateValue) {
+                                                const startDate = new Date(programStartDateValue);
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                startDate.setHours(0, 0, 0, 0);
+                                                if (startDate > today) {
+                                                  currentWeek = 1;
+                                                  currentDay = 1;
+                                                } else {
+                                                  const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                                  currentWeek = Math.floor(daysDiff / 7) + 1;
+                                                  currentDay = (daysDiff % 7) + 1;
+                                                }
+                                              }
+
+                                              updateGroupMutation.mutate({
+                                                groupId: group.id,
+                                                data: {
+                                                  name,
+                                                  description: description || undefined,
+                                                  organizationId: organization.id,
+                                                  status: Number(status),
+                                                  competitive,
+                                                  programStartDate: programStartDateValue,
+                                                  currentWeek,
+                                                  currentDay,
+                                                },
+                                              }, {
+                                                onSuccess: () => { setEditingGroup(null); }
+                                              });
+                                            }}
+                                            className="space-y-2"
+                                          >
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Division Name</Label>
+                                              <Input name="name" defaultValue={group.name} placeholder="Division name" required />
+                                            </div>
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Description</Label>
+                                              <Input name="description" defaultValue={group.description || ""} placeholder="Description" />
+                                            </div>
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Program Start Date (Mondays only)</Label>
+                                              <div className="flex gap-2">
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Button variant="outline" className="flex-1 justify-start text-left font-normal" type="button">
+                                                      {editingGroup?.programStartDate
+                                                        ? new Date(editingGroup.programStartDate).toLocaleDateString()
+                                                        : "Select a Monday"}
+                                                    </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                                                    <Calendar
+                                                      mode="single"
+                                                      selected={editingGroup?.programStartDate ? (() => {
+                                                        const isoStr = typeof editingGroup.programStartDate === 'string' 
+                                                          ? editingGroup.programStartDate 
+                                                          : (editingGroup.programStartDate as any)?.toISOString?.() || '';
+                                                        const dateStr = isoStr.split('T')[0];
+                                                        const [year, month, day] = dateStr.split('-').map(Number);
+                                                        return new Date(year, month - 1, day);
+                                                      })() : undefined}
+                                                      onSelect={(date) => {
+                                                        if (editingGroup) {
+                                                          setEditingGroup({ ...editingGroup, programStartDate: date || null });
+                                                        }
+                                                      }}
+                                                      disabled={(date) => date.getDay() !== 1}
+                                                    />
+                                                  </PopoverContent>
+                                                </Popover>
+                                                {editingGroup?.programStartDate && (
+                                                  <Button variant="outline" size="sm" type="button" onClick={() => {
+                                                    if (editingGroup) setEditingGroup({ ...editingGroup, programStartDate: null });
+                                                  }} className="px-3">
+                                                    Clear
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                              <Select name="status" defaultValue={group.status?.toString() || "1"}>
+                                                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="1">Active</SelectItem>
+                                                  <SelectItem value="0">Inactive</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                              <Checkbox id={`edit-competitive-${group.id}`} name="competitive" defaultChecked={group.competitive || false} />
+                                              <label htmlFor={`edit-competitive-${group.id}`} className="text-sm font-medium leading-none">Competitive</label>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                              <Button type="submit" size="sm" disabled={updateGroupMutation.isPending}>
+                                                {updateGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Save
+                                              </Button>
+                                              <Button type="button" variant="outline" size="sm" onClick={() => setEditingGroup(null)}>Cancel</Button>
+                                            </div>
+                                          </form>
+                                        ) : (
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <p className="font-medium text-sm">{group.name}</p>
+                                              {group.description && <p className="text-xs text-muted-foreground">{group.description}</p>}
+                                              <div className="flex items-center gap-3 mt-1">
+                                                <span className={`text-xs ${group.status === 1 ? 'text-green-600' : 'text-red-600'}`}>
+                                                  {group.status === 1 ? 'Active' : 'Inactive'}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                  Teams: {sortedTeams?.filter(t => t.groupId === group.id).length || 0}
+                                                </span>
+                                                {group.competitive && <span className="text-xs text-blue-600">Competitive</span>}
+                                              </div>
+                                            </div>
+                                            <div className="flex gap-1">
+                                              <Button variant="ghost" size="sm" onClick={() => setEditingGroup(group)}>
+                                                <Edit className="h-3 w-3" />
+                                              </Button>
+                                              <Button variant="ghost" size="sm" onClick={() => deleteGroupMutation.mutate(group.id)} disabled={deleteGroupMutation.isPending}>
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {editingGroup?.id !== group.id && (
+                                          <div className="mt-2 pt-2 border-t">
+                                            <p className="text-xs font-medium mb-1">Invite Codes:</p>
+                                            <div className="space-y-1">
+                                              <InviteQRCode type="group_admin" id={group.id} name={group.name} />
+                                              <InviteQRCode type="group_member" id={group.id} name={group.name} />
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                    {(sortedGroups?.filter(g => g.organizationId === organization.id).length || 0) === 0 && (
+                                      <p className="text-sm text-muted-foreground">No divisions yet</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <Dialog open={createDivisionForOrgId === organization.id} onOpenChange={(open) => { if (!open) setCreateDivisionForOrgId(null); }}>
+                                <DialogContent>
+                                  <div className="flex items-center mb-2 relative">
+                                    <DialogPrimitive.Close asChild>
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full absolute right-2 top-2">
+                                        <span className="sr-only">Close</span>
+                                        <span className="text-lg font-semibold">×</span>
+                                      </Button>
+                                    </DialogPrimitive.Close>
+                                    <DialogTitle className="w-full text-center">Create New Division</DialogTitle>
+                                  </div>
+                                  <Form {...groupForm}>
+                                    <form
+                                      onSubmit={groupForm.handleSubmit((data) => {
+                                        createGroupMutation.mutate({
+                                          ...data,
+                                          organizationId: organization.id,
+                                        });
+                                        setCreateDivisionForOrgId(null);
+                                      })}
+                                      className="space-y-4"
+                                    >
+                                      <FormField
+                                        control={groupForm.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Division Name</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={groupForm.control}
+                                        name="description"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Description</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <div className="text-sm text-muted-foreground">
+                                        Division will be created in: {organization.name}
+                                      </div>
+                                      <Button type="submit" disabled={createGroupMutation.isPending}>
+                                        {createGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Create Division
+                                      </Button>
+                                    </form>
+                                  </Form>
+                                </DialogContent>
+                              </Dialog>
                             </CardContent>
                           </Card>
                         ))}
@@ -1902,8 +2152,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </Collapsible>
               )}
 
-              {/* Groups Section - Show for Admins, Organization Admins, and Group Admins */}
-              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
+              {/* Groups Section - Hidden: Division management is now inside Organization cards */}
+              {false && (currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                 <Collapsible 
                   open={groupsPanelOpen} 
                   onOpenChange={setGroupsPanelOpen}
