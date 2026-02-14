@@ -55,7 +55,7 @@ export default function DonationSuccessPage() {
           <CardContent className="space-y-4">
             {!isVerifying && verified && (
               <p className="text-sm text-muted-foreground">
-                You now have access to create your own Organization, Group, and Team. 
+                You now have access to create your own Organization, Division, and Team. 
                 Head over to the invite code page to get started!
               </p>
             )}

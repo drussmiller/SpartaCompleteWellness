@@ -194,7 +194,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Group updated successfully" });
+      toast({ title: "Success", description: "Division updated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/group-admin/group"] });
       setEditGroupOpen(false);
       setGroupProgramStartDate(undefined);
@@ -258,7 +258,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
             <CardHeader className="text-center">
               <CardTitle>Access Denied</CardTitle>
               <CardDescription>
-                You need Group Admin permissions to access this page.
+                You need Division Admin permissions to access this page.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -283,14 +283,14 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
           <div className="space-y-6">
             {/* Page title */}
             <div className="text-center">
-              <h1 className="text-2xl font-bold mb-2">Group Admin Dashboard</h1>
+              <h1 className="text-2xl font-bold mb-2">Division Admin Dashboard</h1>
               {group && (
                 <div className="space-y-1">
                   <p className="text-muted-foreground">
-                    You are Group Admin for: <span className="font-semibold text-purple-700">{group.name}</span>
+                    You are Division Admin for: <span className="font-semibold text-purple-700">{group.name}</span>
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Managing teams in this group
+                    Managing teams in this division
                   </p>
                 </div>
               )}
@@ -304,7 +304,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                 data-testid="button-group-settings"
               >
                 <Settings className="h-4 w-4 mr-2" />
-                Group Settings
+                Division Settings
               </Button>
               <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
                 <DialogTrigger asChild>
@@ -525,7 +525,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                 ) : (
                   <Card>
                     <CardContent className="text-center py-8">
-                      <p className="text-muted-foreground mb-4">No teams found in this group.</p>
+                      <p className="text-muted-foreground mb-4">No teams found in this division.</p>
                       <Button 
                         onClick={() => setCreateTeamOpen(true)}
                         className="bg-purple-700 text-white hover:bg-purple-800"
@@ -666,7 +666,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
           <Dialog open={editGroupOpen} onOpenChange={setEditGroupOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Group Settings</DialogTitle>
+                <DialogTitle>Division Settings</DialogTitle>
               </DialogHeader>
               <Form {...editGroupForm}>
                 <form onSubmit={editGroupForm.handleSubmit(onEditGroupSubmit)} className="space-y-4">
@@ -675,7 +675,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Group Name</FormLabel>
+                        <FormLabel>Division Name</FormLabel>
                         <FormControl>
                           <Input {...field} data-testid="input-edit-group-name" />
                         </FormControl>
@@ -751,7 +751,7 @@ export default function GroupAdminPage({ onClose }: GroupAdminPageProps) {
                       className="bg-purple-700 text-white hover:bg-purple-800"
                       data-testid="button-update-group"
                     >
-                      Update Group
+                      Update Division
                     </Button>
                   </DialogFooter>
                 </form>

@@ -80,7 +80,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
                 Thank you for having the courage and conviction to start this life changing experience. This is the first step of many in the process of getting fit physically, mentally, emotionally, and spiritually.
               </p>
               <p className="text-base">
-                You will be in a group with up to 9 other men to make up your Team. You are an important part of this Team. Every time you post a meal pic, commentary, sweaty selfie, you inspire the other men on your Team. In the spirit of competition, and accountability, points will be accumulated by you, and your Team, that will guarantee healthy change for a lifetime.
+                You will be in a division with up to 9 other men to make up your Team. You are an important part of this Team. Every time you post a meal pic, commentary, sweaty selfie, you inspire the other men on your Team. In the spirit of competition, and accountability, points will be accumulated by you, and your Team, that will guarantee healthy change for a lifetime.
               </p>
             </CardContent>
           </Card>

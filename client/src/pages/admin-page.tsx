@@ -730,7 +730,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       if (!data) return; // Waiting for user confirmation
 
       const message = data.groupsUpdated || data.teamsUpdated || data.usersUpdated
-        ? `Organization updated. ${data.groupsUpdated || 0} group(s), ${data.teamsUpdated || 0} team(s), and ${data.usersUpdated || 0} user(s) made inactive.`
+        ? `Organization updated. ${data.groupsUpdated || 0} division(s), ${data.teamsUpdated || 0} team(s), and ${data.usersUpdated || 0} user(s) made inactive.`
         : "Organization updated successfully";
 
       toast({
@@ -887,14 +887,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const res = await apiRequest("POST", "/api/groups", data);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to create group");
+        throw new Error(error.message || "Failed to create division");
       }
       return res.json();
     },
     onSuccess: (newGroup) => {
       toast({
         title: "Success",
-        description: "Group created successfully",
+        description: "Division created successfully",
       });
       setCreateGroupDialogOpen(false);
       setSelectedOrganizationId(null);
@@ -951,7 +951,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to update group");
+        throw new Error(error.message || "Failed to update division");
       }
       return res.json();
     },
@@ -959,8 +959,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       if (!data) return; // Waiting for user confirmation
 
       const message = data.teamsUpdated || data.usersUpdated
-        ? `Group updated. ${data.teamsUpdated || 0} team(s) and ${data.usersUpdated || 0} user(s) made inactive.`
-        : "Group updated successfully";
+        ? `Division updated. ${data.teamsUpdated || 0} team(s) and ${data.usersUpdated || 0} user(s) made inactive.`
+        : "Division updated successfully";
 
       toast({
         title: "Success",
@@ -1008,7 +1008,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       const group = groups?.find(g => g.id === groupId);
       if (!group) {
-        throw new Error("Group not found");
+        throw new Error("Division not found");
       }
 
       // Show confirmation dialog
@@ -1044,14 +1044,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const res = await apiRequest("DELETE", `/api/groups/${groupId}`);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to delete group");
+        throw new Error(error.message || "Failed to delete division");
       }
       return res.json();
     },
     onSuccess: (data, groupId) => {
       toast({
         title: "Success",
-        description: "Group deleted successfully",
+        description: "Division deleted successfully",
       });
 
       // Clear confirmation state
@@ -1131,7 +1131,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to update user's group");
+        throw new Error(error.message || "Failed to update user's division");
       }
       return res.json();
     },
@@ -1850,7 +1850,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </CardHeader>
                             <CardContent>
                               <p className="text-sm">
-                                <span className="font-medium">Groups: </span>
+                                <span className="font-medium">Divisions: </span>
                                 {sortedGroups?.filter(
                                   (g) => g.organizationId === organization.id,
                                 ).length || 0}
@@ -1905,7 +1905,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         variant="ghost"
                         className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
                       >
-                        Groups
+                        Divisions
                         <ChevronDown className={`h-5 w-5 ml-2 transition-transform ${groupsPanelOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
@@ -1923,13 +1923,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <Label
                             htmlFor="show-inactive-groups"
                           >
-                            Show inactive groups
+                            Show inactive divisions
                           </Label>
                         </div>
                         )}
                         {!currentUser?.isGroupAdmin && (
                         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
-                          <h3 className="text-lg font-medium">Search & Filter Groups</h3>
+                          <h3 className="text-lg font-medium">Search & Filter Divisions</h3>
                           {currentUser?.isAdmin && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
@@ -1981,7 +1981,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               className="mb-8 mt-6 px-3 bg-violet-700 text-white hover:bg-violet-800"
                             >
                               <Plus className="h-4 w-4 mr-2" />
-                              New Group
+                              New Division
                             </Button>
                           </DialogTrigger>
                           )}
@@ -2000,7 +2000,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </Button>
                               </DialogPrimitive.Close>
                               <DialogTitle className="w-full text-center">
-                                Create New Group
+                                Create New Division
                               </DialogTitle>
                             </div>
                             <Form {...groupForm}>
@@ -2045,7 +2045,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   } else {
                                     toast({
                                       title: "Error",
-                                      description: "Not authorized to create groups",
+                                      description: "Not authorized to create divisions",
                                       variant: "destructive",
                                     });
                                     return;
@@ -2063,7 +2063,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   name="name"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Group Name</FormLabel>
+                                      <FormLabel>Division Name</FormLabel>
                                       <FormControl>
                                         <Input {...field} />
                                       </FormControl>
@@ -2109,13 +2109,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 )}
                                 {currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && (
                                   <div className="text-sm text-muted-foreground">
-                                    Groups will be created in your organization:{" "}
+                                    Divisions will be created in your organization:{" "}
                                     {sortedOrganizations?.find(o => o.id === currentUser.adminOrganizationId)?.name || "Unknown"}
                                   </div>
                                 )}
                                 {currentUser?.isGroupAdmin && !currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && (
                                   <div className="text-sm text-muted-foreground">
-                                    Groups will be created in your organization:{" "}
+                                    Divisions will be created in your organization:{" "}
                                     {(() => {
                                       const adminGroup = groups?.find(
                                         (g) =>
@@ -2136,7 +2136,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   {createGroupMutation.isPending && (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   )}
-                                  Create Group
+                                  Create Division
                                 </Button>
                               </form>
                             </Form>
@@ -2255,11 +2255,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       className="space-y-2"
                                     >
                                       <div>
-                                        <Label className="text-sm font-medium mb-1 block">Group Name</Label>
+                                        <Label className="text-sm font-medium mb-1 block">Division Name</Label>
                                         <Input
                                           name="name"
                                           defaultValue={group.name}
-                                          placeholder="Group name"
+                                          placeholder="Division name"
                                           required
                                         />
                                       </div>
@@ -2622,16 +2622,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </Select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-2">Group</label>
+                            <label className="block text-sm font-medium mb-2">Division</label>
                             <Select
                               value={teamGroupFilter}
                               onValueChange={setTeamGroupFilter}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="All Groups" />
+                                <SelectValue placeholder="All Divisions" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="all">All Groups</SelectItem>
+                                <SelectItem value="all">All Divisions</SelectItem>
                                 {groupsForTeamFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
@@ -2654,16 +2654,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       {currentUser?.isGroupAdmin && !currentUser?.isAdmin && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium mb-2">Group</label>
+                            <label className="block text-sm font-medium mb-2">Division</label>
                             <Select
                               value={teamGroupFilter}
                               onValueChange={setTeamGroupFilter}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="All Groups" />
+                                <SelectValue placeholder="All Divisions" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="all">All Groups</SelectItem>
+                                <SelectItem value="all">All Divisions</SelectItem>
                                 {filteredGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
@@ -2749,12 +2749,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               name="groupId"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Group</FormLabel>
+                                  <FormLabel>Division</FormLabel>
                                   <FormControl>
                                     {currentUser?.isGroupAdmin && !currentUser?.isAdmin ? (
-                                      // Group Admins see their group as read-only text
                                       <div className="px-3 py-2 border rounded-md bg-muted text-sm">
-                                        {filteredGroups[0]?.name || 'Your Group'}
+                                        {filteredGroups[0]?.name || 'Your Division'}
                                       </div>
                                     ) : (
                                       // Full Admins see dropdown with all groups
@@ -2765,12 +2764,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         }
                                       >
                                         <SelectTrigger>
-                                          <SelectValue placeholder="Select a group" />
+                                          <SelectValue placeholder="Select a division" />
                                         </SelectTrigger>
                                         <SelectContent>
                                           {!sortedGroups || sortedGroups.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-muted-foreground">
-                                              No groups available
+                                              No divisions available
                                             </div>
                                           ) : (
                                             sortedGroups.map((group) => (
@@ -2961,14 +2960,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       />
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium mb-1 block">Group</Label>
-                                      {/* Team Leads only see their own group */}
+                                      <Label className="text-sm font-medium mb-1 block">Division</Label>
                                       {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && !currentUser?.isGroupAdmin ? (
                                         <div className="px-3 py-2 border rounded-md bg-muted text-sm">
                                           {(() => {
                                             const userTeam = teams?.find(t => t.id === currentUser?.teamId);
                                             const userGroup = groups?.find(g => g.id === userTeam?.groupId);
-                                            return userGroup?.name || 'Your Group';
+                                            return userGroup?.name || 'Your Division';
                                           })()}
                                         </div>
                                       ) : (
@@ -3159,9 +3157,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </CardHeader>
                         <CardContent>
                           <p className="text-sm">
-                            <span className="font-medium">Group: </span>
+                            <span className="font-medium">Division: </span>
                             {sortedGroups?.find((g) => g.id === team.groupId)
-                              ?.name || "No Group"}
+                              ?.name || "No Division"}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
@@ -3305,11 +3303,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
-                              Group
+                              Division
                             </label>
                             {currentUser?.isGroupAdmin && !currentUser?.isAdmin ? (
                               <div className="px-3 py-2 border rounded-md bg-muted text-sm">
-                                {filteredGroups[0]?.name || 'Your Group'}
+                                {filteredGroups[0]?.name || 'Your Division'}
                               </div>
                             ) : (
                               <Select
@@ -3320,10 +3318,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 }}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="All Groups" />
+                                  <SelectValue placeholder="All Divisions" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="all">All Groups</SelectItem>
+                                  <SelectItem value="all">All Divisions</SelectItem>
                                   {filteredGroupsForFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                     <SelectItem
                                       key={group.id}
@@ -3782,7 +3780,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     )}
                                     {user.isGroupAdmin && (
                                       <div className="mt-1 text-sm text-muted-foreground">
-                                        <span className="font-medium">Group Admin of: </span>
+                                        <span className="font-medium">Division Admin of: </span>
                                         {(() => {
                                           const grp = (groups || []).find(g => g.id === user.adminGroupId);
                                           return grp ? grp.name : "Not assigned";
@@ -3998,7 +3996,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       });
                                     }}
                                   >
-                                    Group Admin
+                                    Division Admin
                                   </Button>
                                 )}
                                 {/* Team Lead button - show for Admin, Organization Admin, Group Admin, or Team Lead */}
@@ -4152,7 +4150,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   Making the organization "
                   {sortedOrganizations?.find(o => o.id === orgToInactivate.id)?.name}" inactive will also make:
                   <ul className="list-disc list-inside mt-2">
-                    {orgToInactivate.activeGroupCount > 0 && <li>{orgToInactivate.activeGroupCount} active group(s) inactive</li>}
+                    {orgToInactivate.activeGroupCount > 0 && <li>{orgToInactivate.activeGroupCount} active division(s) inactive</li>}
                     {orgToInactivate.activeTeamCount > 0 && <li>{orgToInactivate.activeTeamCount} active team(s) inactive</li>}
                     {orgToInactivate.activeUserCount > 0 && <li>{orgToInactivate.activeUserCount} active user(s) inactive</li>}
                   </ul>
@@ -4191,7 +4189,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <AlertDialogDescription>
               {groupToInactivate && (
                 <>
-                  Making the group "
+                  Making the division "
                   {groups?.find(g => g.id === groupToInactivate.id)?.name}" inactive will also make:
                   <ul className="list-disc list-inside mt-2">
                     {groupToInactivate.activeTeamCount > 0 && <li>{groupToInactivate.activeTeamCount} active team(s) inactive</li>}
@@ -4263,11 +4261,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         {/* Confirmation dialog for deleting group */}
         <AlertDialog open={!!groupToDelete} onOpenChange={(open) => { if (!open) setGroupToDelete(null); }}>
           <AlertDialogContent>
-            <AlertDialogTitle>Confirm Group Deletion</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Division Deletion</AlertDialogTitle>
             <AlertDialogDescription>
               {groupToDelete && (
                 <>
-                  Deleting the group "{groupToDelete.name}" will also delete:
+                  Deleting the division "{groupToDelete.name}" will also delete:
                   <ul className="list-disc list-inside mt-2">
                     {groupToDelete.teamCount > 0 && <li>{groupToDelete.teamCount} team(s)</li>}
                     {groupToDelete.userCount > 0 && <li>{groupToDelete.userCount} user(s)</li>}
@@ -4290,7 +4288,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 className="bg-red-600 hover:bg-red-700 text-white"
                 disabled={confirmDeleteGroupMutation.isPending}
               >
-                {confirmDeleteGroupMutation.isPending ? "Deleting..." : "Delete Group"}
+                {confirmDeleteGroupMutation.isPending ? "Deleting..." : "Delete Division"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -4305,7 +4303,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <>
                   Deleting the organization "{orgToDelete.name}" will also delete:
                   <ul className="list-disc list-inside mt-2">
-                    {orgToDelete.groupCount > 0 && <li>{orgToDelete.groupCount} group(s)</li>}
+                    {orgToDelete.groupCount > 0 && <li>{orgToDelete.groupCount} division(s)</li>}
                     {orgToDelete.teamCount > 0 && <li>{orgToDelete.teamCount} team(s)</li>}
                     {orgToDelete.userCount > 0 && <li>{orgToDelete.userCount} user(s)</li>}
                     {orgToDelete.postCount > 0 && <li>{orgToDelete.postCount} post(s)</li>}
@@ -4348,14 +4346,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 {roleAssignDialog.role === "isOrganizationAdmin"
                   ? "Select Organization"
                   : roleAssignDialog.role === "isGroupAdmin"
-                    ? "Select Group"
+                    ? "Select Division"
                     : "Select Team"}
               </DialogTitle>
               <DialogDescription>
                 {roleAssignDialog.role === "isOrganizationAdmin"
                   ? "This user is not in a team, so we can't determine which organization to assign. Please select one."
                   : roleAssignDialog.role === "isGroupAdmin"
-                    ? "This user is not in a team, so we can't determine which group to assign. Please select one."
+                    ? "This user is not in a team, so we can't determine which division to assign. Please select one."
                     : "This user is not in a team. Please select which team to assign them as lead."}
               </DialogDescription>
             </DialogHeader>
@@ -4366,7 +4364,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     roleAssignDialog.role === "isOrganizationAdmin"
                       ? "Choose an organization..."
                       : roleAssignDialog.role === "isGroupAdmin"
-                        ? "Choose a group..."
+                        ? "Choose a division..."
                         : "Choose a team..."
                   } />
                 </SelectTrigger>

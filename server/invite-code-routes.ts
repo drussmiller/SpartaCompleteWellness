@@ -43,7 +43,7 @@ inviteCodeRouter.get("/api/invite-codes/group/:groupId", authenticate, async (re
     const { type } = req.query;
     
     if (isNaN(groupId)) {
-      return res.status(400).json({ message: "Invalid group ID" });
+      return res.status(400).json({ message: "Invalid division ID" });
     }
 
     if (!type || (type !== "group_admin" && type !== "group_member")) {
@@ -52,7 +52,7 @@ inviteCodeRouter.get("/api/invite-codes/group/:groupId", authenticate, async (re
 
     const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
     if (!group) {
-      return res.status(404).json({ message: "Group not found" });
+      return res.status(404).json({ message: "Division not found" });
     }
 
     const needsGeneration = 
@@ -116,7 +116,7 @@ inviteCodeRouter.get("/api/invite-codes/team/:teamId", authenticate, async (req:
 
     const [group] = await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1);
     if (!group) {
-      return res.status(404).json({ message: "Group not found" });
+      return res.status(404).json({ message: "Division not found" });
     }
 
     const needsGeneration = 
@@ -167,16 +167,16 @@ inviteCodeRouter.post("/api/groups/:groupId/generate-invite-code", authenticate,
     const { type } = req.body;
     
     if (isNaN(groupId)) {
-      return res.status(400).json({ message: "Invalid group ID" });
+      return res.status(400).json({ message: "Invalid division ID" });
     }
 
     if (!type || (type !== "group_admin" && type !== "group_member")) {
-      return res.status(400).json({ message: "Invalid invite type. Must be 'group_admin' or 'group_member'" });
+      return res.status(400).json({ message: "Invalid invite type. Must be 'division_admin' or 'division_member'" });
     }
 
     const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
     if (!group) {
-      return res.status(404).json({ message: "Group not found" });
+      return res.status(404).json({ message: "Division not found" });
     }
 
     if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === groupId)) {
@@ -223,7 +223,7 @@ inviteCodeRouter.post("/api/teams/:teamId/generate-invite-codes", authenticate, 
 
     const [group] = await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1);
     if (!group) {
-      return res.status(404).json({ message: "Group not found" });
+      return res.status(404).json({ message: "Division not found" });
     }
 
     if (!req.user?.isAdmin && !(req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId)) {
@@ -271,7 +271,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
     if (groupAdmin) {
       if (req.user!.teamId) {
-        return res.status(400).json({ message: "You must leave your current team before becoming a Group Admin" });
+        return res.status(400).json({ message: "You must leave your current team before becoming a Division Admin" });
       }
 
       await db
@@ -285,7 +285,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       return res.json({ 
         success: true, 
-        role: "Group Admin",
+        role: "Division Admin",
         groupId: groupAdmin.id,
         groupName: groupAdmin.name 
       });
@@ -301,7 +301,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       const [group] = await db.select().from(groups).where(eq(groups.id, teamAdmin.groupId)).limit(1);
       
       if (req.user!.isGroupAdmin) {
-        return res.status(400).json({ message: "You cannot join a team as a Team Lead while you are a Group Admin" });
+        return res.status(400).json({ message: "You cannot join a team as a Team Lead while you are a Division Admin" });
       }
 
       const teamMemberCount = await db
@@ -379,7 +379,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       const [group] = await db.select().from(groups).where(eq(groups.id, teamMember.groupId)).limit(1);
       
       if (req.user!.isGroupAdmin) {
-        return res.status(400).json({ message: "You cannot join a team as a Team Member while you are a Group Admin" });
+        return res.status(400).json({ message: "You cannot join a team as a Team Member while you are a Division Admin" });
       }
 
       const teamMemberCount = await db
@@ -456,7 +456,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
     if (groupMember) {
       if (req.user!.teamId) {
-        return res.status(400).json({ message: "You must leave your current team before joining a new group" });
+        return res.status(400).json({ message: "You must leave your current team before joining a new division" });
       }
 
       const now = new Date();
@@ -487,7 +487,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       return res.json({ 
         success: true, 
-        role: "Group Member",
+        role: "Division Member",
         groupId: groupMember.id,
         groupName: groupMember.name 
       });

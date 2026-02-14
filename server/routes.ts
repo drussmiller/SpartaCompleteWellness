@@ -3162,7 +3162,7 @@ export const registerRoutes = async (
         .limit(1);
 
       if (!group) {
-        return res.status(404).json({ message: "Group not found" });
+        return res.status(404).json({ message: "Division not found" });
       }
 
       res.json({ competitive: group.competitive || false });
@@ -3845,7 +3845,7 @@ export const registerRoutes = async (
       }
     } catch (error) {
       logger.error("Error fetching groups:", error);
-      res.status(500).json({ message: "Failed to fetch groups" });
+      res.status(500).json({ message: "Failed to fetch divisions" });
     }
   });
 
@@ -3858,7 +3858,7 @@ export const registerRoutes = async (
       const parsedData = insertGroupSchema.safeParse(req.body);
       if (!parsedData.success) {
         return res.status(400).json({
-          message: "Invalid group data",
+          message: "Invalid division data",
           errors: parsedData.error.errors,
         });
       }
@@ -3869,7 +3869,7 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error("Error creating group:", error);
       res.status(500).json({
-        message: "Failed to create group",
+        message: "Failed to create division",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -3884,7 +3884,7 @@ export const registerRoutes = async (
 
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Get all teams in this group
@@ -3920,7 +3920,7 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error(`Error getting group delete info ${req.params.id}:`, error);
       res.status(500).json({
-        message: "Failed to get group delete info",
+        message: "Failed to get division delete info",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -3934,7 +3934,7 @@ export const registerRoutes = async (
 
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       logger.info(`Deleting group ${groupId} by user ${req.user.id}`);
@@ -4057,11 +4057,11 @@ export const registerRoutes = async (
       });
 
       logger.info(`Group ${groupId} deleted successfully by user ${req.user.id}`);
-      res.status(200).json({ message: "Group deleted successfully" });
+      res.status(200).json({ message: "Division deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting group ${req.params.id}:`, error);
       res.status(500).json({
-        message: "Failed to delete group",
+        message: "Failed to delete division",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -4072,7 +4072,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Check authorization
@@ -4117,9 +4117,9 @@ export const registerRoutes = async (
             .where(eq(groups.id, req.user.adminGroupId))
             .limit(1);
 
-          const groupName = authorizedGroup?.name || `Group ${req.user.adminGroupId}`;
+          const groupName = authorizedGroup?.name || `Division ${req.user.adminGroupId}`;
           return res.status(403).json({
-            message: `Not authorized to make changes to this group. You are Group Admin for ${groupName} only.`
+            message: `Not authorized to make changes to this division. You are Division Admin for ${groupName} only.`
           });
         }
 
@@ -4129,7 +4129,7 @@ export const registerRoutes = async (
       // Validate status field if present (only Full Admins can change status)
       if (req.body.status !== undefined) {
         if (!isFullAdmin) {
-          return res.status(403).json({ message: "Only Full Admins can change group status" });
+          return res.status(403).json({ message: "Only Full Admins can change division status" });
         }
         const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
         const statusValidation = statusSchema.safeParse({ status: req.body.status });
@@ -4213,7 +4213,7 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error(`Error updating group ${req.params.id}:`, error);
       res.status(500).json({
-        message: "Failed to update group",
+        message: "Failed to update division",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -4225,7 +4225,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.groupId);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Check if user is admin, group admin for this group, or org admin for this group's org
@@ -4251,7 +4251,7 @@ export const registerRoutes = async (
         .returning();
 
       if (!updatedGroup) {
-        return res.status(404).json({ message: "Group not found" });
+        return res.status(404).json({ message: "Division not found" });
       }
 
       res.status(201).json({ code, type: "group_admin" });
@@ -4266,7 +4266,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.groupId);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Check if user is admin, group admin for this group, or org admin for this group's org
@@ -4291,7 +4291,7 @@ export const registerRoutes = async (
         .returning();
 
       if (!updatedGroup) {
-        return res.status(404).json({ message: "Group not found" });
+        return res.status(404).json({ message: "Division not found" });
       }
 
       res.status(201).json({ code, type: "group_member" });
@@ -8767,7 +8767,7 @@ export const registerRoutes = async (
         // For Group Admins, verify the team is in their group
         if (req.user?.isGroupAdmin && !req.user?.isAdmin) {
           if (team.groupId !== req.user.adminGroupId) {
-            return res.status(403).json({ message: "You can only assign users to teams in your group" });
+            return res.status(403).json({ message: "You can only assign users to teams in your division" });
           }
         }
 
@@ -8974,7 +8974,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.groupId);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
       
       const groupTeams = await db
@@ -8995,7 +8995,7 @@ export const registerRoutes = async (
     organizationId: z.number().optional(),
     organizationName: z.string().min(1, "Organization name cannot be empty").max(100).optional(),
     groupId: z.number().optional(),
-    groupName: z.string().min(1, "Group name cannot be empty").max(100).optional(),
+    groupName: z.string().min(1, "Division name cannot be empty").max(100).optional(),
     teamId: z.number().optional(),
     teamName: z.string().min(1, "Team name cannot be empty").max(100).optional(),
   });
@@ -9055,7 +9055,7 @@ export const registerRoutes = async (
       // If new group name is provided, create it
       if (groupName && !groupId) {
         if (!finalOrgId) {
-          return res.status(400).json({ message: "Organization is required to create a group" });
+          return res.status(400).json({ message: "Organization is required to create a division" });
         }
         const newGroup = await storage.createGroup({
           name: groupName.trim(),
@@ -9072,18 +9072,18 @@ export const registerRoutes = async (
       if (groupId && !groupName) {
         const [existingGroup] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
         if (!existingGroup) {
-          return res.status(400).json({ message: "Selected group does not exist" });
+          return res.status(400).json({ message: "Selected division does not exist" });
         }
         // Verify group belongs to the selected organization
         if (finalOrgId && existingGroup.organizationId !== finalOrgId) {
-          return res.status(400).json({ message: "Selected group does not belong to the selected organization" });
+          return res.status(400).json({ message: "Selected division does not belong to the selected organization" });
         }
       }
       
       // If new team name is provided, create it
       if (teamName && !teamId) {
         if (!finalGroupId) {
-          return res.status(400).json({ message: "Group is required to create a team" });
+          return res.status(400).json({ message: "Division is required to create a team" });
         }
         const newTeam = await storage.createTeam({
           name: teamName.trim(),
@@ -9104,7 +9104,7 @@ export const registerRoutes = async (
         }
         // Verify team belongs to the selected group
         if (finalGroupId && existingTeam.groupId !== finalGroupId) {
-          return res.status(400).json({ message: "Selected team does not belong to the selected group" });
+          return res.status(400).json({ message: "Selected team does not belong to the selected division" });
         }
       }
       

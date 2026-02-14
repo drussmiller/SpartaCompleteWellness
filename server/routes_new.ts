@@ -2495,20 +2495,20 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       
       if (postScope === 'group') {
         if (!currentUser.isAdmin && !currentUser.isGroupAdmin) {
-          return res.status(403).json({ message: "Only admins and group admins can post to a group" });
+          return res.status(403).json({ message: "Only admins and division admins can post to a division" });
         }
         if (!targetGroupId) {
-          return res.status(400).json({ message: "Group ID is required for group scope" });
+          return res.status(400).json({ message: "Division ID is required for division scope" });
         }
         // Group admins can only post to their own group
         if (currentUser.isGroupAdmin && targetGroupId !== currentUser.adminGroupId) {
-          return res.status(403).json({ message: "Group admins can only post to their own group" });
+          return res.status(403).json({ message: "Division admins can only post to their own division" });
         }
       }
       
       if (postScope === 'team') {
         if (!currentUser.isAdmin && !currentUser.isGroupAdmin) {
-          return res.status(403).json({ message: "Only admins and group admins can post to a team" });
+          return res.status(403).json({ message: "Only admins and division admins can post to a team" });
         }
         if (!targetTeamId) {
           return res.status(400).json({ message: "Team ID is required for team scope" });
@@ -2521,7 +2521,7 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             .where(eq(teams.id, targetTeamId));
           
           if (!team || team.groupId !== currentUser.adminGroupId) {
-            return res.status(403).json({ message: "Group admins can only post to teams in their group" });
+            return res.status(403).json({ message: "Division admins can only post to teams in their division" });
           }
         }
       }

@@ -448,7 +448,7 @@ export function setupAuth(app: Express) {
       // Update password in database
       await storage.updateUser(targetUserId, { password: hashedNewPassword });
 
-      console.log(`Password reset by user ${currentUser.username} (${currentUser.isAdmin ? 'Admin' : currentUser.isGroupAdmin ? 'Group Admin' : 'Team Lead'}) for user: ${targetUser.username}`);
+      console.log(`Password reset by user ${currentUser.username} (${currentUser.isAdmin ? 'Admin' : currentUser.isGroupAdmin ? 'Division Admin' : 'Team Lead'}) for user: ${targetUser.username}`);
       res.json({ message: "Password reset successfully" });
       
     } catch (error) {

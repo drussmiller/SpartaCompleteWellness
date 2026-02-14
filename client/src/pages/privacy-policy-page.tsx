@@ -85,7 +85,7 @@ export function PrivacyPolicyPage({ onClose }: PrivacyPolicyPageProps = {}) {
               <ul className="list-disc pl-6 text-muted-foreground space-y-1">
                 <li>Name, email address, and username</li>
                 <li>Profile photo (optional)</li>
-                <li>Team affiliation and group membership</li>
+                <li>Team affiliation and division membership</li>
                 <li>Activity and wellness data you choose to log</li>
               </ul>
             </div>
@@ -118,7 +118,7 @@ export function PrivacyPolicyPage({ onClose }: PrivacyPolicyPageProps = {}) {
               We do not sell your personal information. We may share your information in the following circumstances:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-              <li><strong>Within Your Team:</strong> Your activity data and achievements may be visible to other members of your team and group administrators</li>
+              <li><strong>Within Your Team:</strong> Your activity data and achievements may be visible to other members of your team and division administrators</li>
               <li><strong>Service Providers:</strong> We may share information with trusted third-party services that help us operate our platform</li>
               <li><strong>Legal Requirements:</strong> We may disclose information when required by law or to protect our rights and safety</li>
             </ul>

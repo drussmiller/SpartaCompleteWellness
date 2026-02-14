@@ -12,7 +12,7 @@ export const groupAdminRouter = Router();
 async function requireGroupAdmin(req: Request, res: Response, next: Function) {
   try {
     if (!req.user?.isGroupAdmin || !req.user?.adminGroupId) {
-      return res.status(403).json({ message: "Group Admin access required" });
+      return res.status(403).json({ message: "Division Admin access required" });
     }
     next();
   } catch (error) {
@@ -88,7 +88,7 @@ groupAdminRouter.patch("/api/group-admin/teams/:teamId", authenticate, requireGr
       .limit(1);
       
     if (!team) {
-      return res.status(404).json({ message: "Team not found or not in your group" });
+      return res.status(404).json({ message: "Team not found or not in your division" });
     }
     
     // Validate update data
@@ -167,7 +167,7 @@ groupAdminRouter.delete("/api/group-admin/teams/:teamId", authenticate, requireG
       .limit(1);
       
     if (!team) {
-      return res.status(404).json({ message: "Team not found or not in your group" });
+      return res.status(404).json({ message: "Team not found or not in your division" });
     }
     
     // Check if team has members
@@ -199,7 +199,7 @@ groupAdminRouter.get("/api/group-admin/group", authenticate, requireGroupAdmin, 
       .limit(1);
       
     if (!group) {
-      return res.status(404).json({ message: "Group not found" });
+      return res.status(404).json({ message: "Division not found" });
     }
     
     res.json(group);

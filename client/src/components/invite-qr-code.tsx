@@ -157,9 +157,9 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
 
   const roleLabel =
     type === "group_admin"
-      ? "Group Admin"
+      ? "Division Admin"
       : type === "group_member"
-        ? "Group Member"
+        ? "Division Member"
         : type === "team_admin"
           ? "Team Lead"
           : "Team Member";
