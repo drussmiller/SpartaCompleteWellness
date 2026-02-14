@@ -3032,21 +3032,18 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                               No divisions available
                                             </div>
                                           ) : (
-                                            sortedGroups.map((group) => (
-                                              <SelectItem
-                                                key={group.id}
-                                                value={group.id.toString()}
-                                              >
-                                                {group.name} (Org:{" "}
-                                                {
-                                                  sortedOrganizations?.find(
-                                                    (o) =>
-                                                      o.id === group.organizationId,
-                                                  )?.name
-                                                }
-                                                )
-                                              </SelectItem>
-                                            ))
+                                            sortedGroups.map((group) => {
+                                              const groupOrg = sortedOrganizations?.find(o => o.id === group.organizationId);
+                                              const isDefault = group.name === groupOrg?.name;
+                                              return (
+                                                <SelectItem
+                                                  key={group.id}
+                                                  value={group.id.toString()}
+                                                >
+                                                  {isDefault ? "None" : group.name} (Org: {groupOrg?.name})
+                                                </SelectItem>
+                                              );
+                                            })
                                           )}
                                         </SelectContent>
                                       </Select>
@@ -3235,17 +3232,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           onValueChange={setSelectedGroupId}
                                         >
                                           <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select a group" />
+                                            <SelectValue placeholder="Select a division" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {filteredGroups?.map((group) => (
-                                              <SelectItem
-                                                key={group.id}
-                                                value={group.id.toString()}
-                                              >
-                                                {group.name}
-                                              </SelectItem>
-                                            ))}
+                                            {filteredGroups?.map((group) => {
+                                              const groupOrg = sortedOrganizations?.find(o => o.id === group.organizationId);
+                                              const isDefault = group.name === groupOrg?.name;
+                                              return (
+                                                <SelectItem
+                                                  key={group.id}
+                                                  value={group.id.toString()}
+                                                >
+                                                  {isDefault ? "None" : group.name}
+                                                </SelectItem>
+                                              );
+                                            })}
                                           </SelectContent>
                                         </Select>
                                       )}
@@ -3418,8 +3419,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         <CardContent>
                           <p className="text-sm">
                             <span className="font-medium">Division: </span>
-                            {sortedGroups?.find((g) => g.id === team.groupId)
-                              ?.name || "No Division"}
+                            {(() => {
+                              const teamGroup = sortedGroups?.find((g) => g.id === team.groupId);
+                              if (!teamGroup) return "None";
+                              const teamOrg = sortedOrganizations?.find((o) => o.id === teamGroup.organizationId);
+                              return teamGroup.name === teamOrg?.name ? "None" : teamGroup.name;
+                            })()}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
