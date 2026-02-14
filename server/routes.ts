@@ -1737,8 +1737,8 @@ export const registerRoutes = async (
           return res.json([]);
         }
 
-        // Build query for introductory videos from team-less users
-        const introVideos = await db
+        // Build query for all posts from team-less users
+        const teamlessPosts = await db
           .select({
             id: posts.id,
             content: posts.content,
@@ -1770,7 +1770,6 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              eq(posts.type, 'introductory_video'),
               inArray(posts.userId, teamlessUserIds)
             )
           )
@@ -1778,8 +1777,8 @@ export const registerRoutes = async (
           .limit(limit)
           .offset(offset);
 
-        logger.info(`[TEAMLESS INTRO FILTER] Returning ${introVideos.length} introductory videos from ${teamlessUserIds.length} team-less users`);
-        return res.json(introVideos);
+        logger.info(`[TEAMLESS FILTER] Returning ${teamlessPosts.length} posts from ${teamlessUserIds.length} team-less users`);
+        return res.json(teamlessPosts);
       }
 
       // Build the query conditions
