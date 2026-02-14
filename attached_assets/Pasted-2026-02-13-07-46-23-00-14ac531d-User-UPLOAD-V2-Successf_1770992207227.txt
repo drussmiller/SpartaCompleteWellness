@@ -1,0 +1,185 @@
+2026-02-13 07:46:23.00
+14ac531d
+User
+[UPLOAD-V2] Successfully uploaded shared/uploads/hls/1770990369932-1000025321/1770990369932-10000253212.ts to Object Storage
+2026-02-13 07:46:23.00
+14ac531d
+User
+[HLS] Conversion complete: 3 segments uploaded
+2026-02-13 07:46:23.00
+14ac531d
+User
+[UPLOAD-V2] Successfully uploaded shared/uploads/hls/1770990369932-1000025321/1770990369932-10000253212.ts to Object Storage
+2026-02-13 07:46:23.00
+14ac531d
+User
+[HLS] Cleaned up work directory: /tmp/hls-conversion/1770990369947-6h6ok5gyk
+2026-02-13 07:46:23.00
+14ac531d
+User
+[Video Upload] HLS conversion complete: 3 segments
+2026-02-13 07:46:23.77
+14ac531d
+User
+[Video Upload] HLS thumbnail created: 1770990369932-1000025321-hls-source.jpg
+2026-02-13 07:46:23.77
+14ac531d
+User
+[Video Upload] HLS thumbnail created: 1770990369932-1000025321-hls-source.jpg
+2026-02-13 07:46:23.78
+14ac531d
+User
+filename: '1770990369932-1000025321.mp4',
+2026-02-13 07:46:23.78
+14ac531d
+User
+✅ [Finalize Upload] File stored successfully: {
+2026-02-13 07:46:23.78
+14ac531d
+User
+}
+2026-02-13 07:46:23.78
+14ac531d
+User
+isVideo: true
+2026-02-13 07:46:23.78
+14ac531d
+User
+✅ [Finalize Upload] File stored successfully: {
+2026-02-13 07:46:23.78
+14ac531d
+User
+filename: '1770990369932-1000025321.mp4',
+2026-02-13 07:46:23.78
+14ac531d
+User
+}
+2026-02-13 07:46:23.78
+14ac531d
+User
+thumbnailUrl: '/api/serve-file?filename=shared/uploads/1770990369932-1000025321-hls-source.jpg',
+2026-02-13 07:46:23.78
+14ac531d
+User
+isVideo: true
+2026-02-13 07:46:23.78
+14ac531d
+User
+thumbnailUrl: '/api/serve-file?filename=shared/uploads/1770990369932-1000025321-hls-source.jpg',
+2026-02-13 07:46:23.78
+14ac531d
+User
+mediaUrl: '/api/hls/1770990369932-1000025321/playlist.m3u8',
+2026-02-13 07:46:23.78
+14ac531d
+User
+mediaUrl: '/api/hls/1770990369932-1000025321/playlist.m3u8',
+2026-02-13 07:46:23.78
+14ac531d
+User
+Deleted upload session 42f02d50-9008-4caf-9bee-60c0cab614de
+2026-02-13 07:46:23.78
+14ac531d
+User
+Deleted upload session 42f02d50-9008-4caf-9bee-60c0cab614de
+2026-02-13 07:46:23.81
+14ac531d
+User
+1:46:23 PM [express] POST /api/uploads/sessions/42f02d50-9008-4caf-9bee-60c0cab614de/finalize 200 in…
+2026-02-13 07:46:23.81
+14ac531d
+User
+1:46:23 PM [express] POST /api/uploads/sessions/42f02d50-9008-4caf-9bee-60c0cab614de/finalize 200 in…
+2026-02-13 07:46:24.59
+14ac531d
+User
+Successfully parsed post data: { postType: 'introductory_video' }
+2026-02-13 07:46:24.59
+14ac531d
+User
+fileDetails: 'No file uploaded',
+2026-02-13 07:46:24.59
+14ac531d
+User
+filesKeys: []
+2026-02-13 07:46:24.59
+14ac531d
+User
+contentType: 'multipart/form-data; boundary=----WebKitFormBoundaryFNP1CBCS0zhrSIzN',
+2026-02-13 07:46:24.59
+14ac531d
+User
+hasFile: false,
+2026-02-13 07:46:24.59
+14ac531d
+User
+}
+2026-02-13 07:46:24.59
+14ac531d
+User
+hasFile: false,
+2026-02-13 07:46:24.59
+14ac531d
+User
+bodyKeys: [ 'is_video', 'selected_media_type', 'data' ],
+2026-02-13 07:46:24.59
+14ac531d
+User
+filesKeys: []
+2026-02-13 07:46:24.59
+14ac531d
+User
+}
+2026-02-13 07:46:24.59
+14ac531d
+User
+Successfully parsed post data: { postType: 'introductory_video' }
+2026-02-13 07:46:24.59
+14ac531d
+User
+fileDetails: 'No file uploaded',
+2026-02-13 07:46:24.59
+14ac531d
+User
+POST /api/posts - Request received {
+2026-02-13 07:46:24.59
+14ac531d
+User
+POST /api/posts - Request received {
+2026-02-13 07:46:24.59
+14ac531d
+User
+bodyKeys: [ 'is_video', 'selected_media_type', 'data' ],
+2026-02-13 07:46:24.59
+14ac531d
+User
+contentType: 'multipart/form-data; boundary=----WebKitFormBoundaryFNP1CBCS0zhrSIzN',
+2026-02-13 07:46:34.48
+14ac531d
+User
+1:46:34 PM [express] GET /api/notifications 304 in 43ms :: []
+2026-02-13 07:46:34.48
+14ac531d
+User
+1:46:34 PM [express] GET /api/notifications 304 in 43ms :: []
+2026-02-13 07:46:34.59
+14ac531d
+User
+1:46:34 PM [express] GET /api/notifications/unread 304 in 44ms :: {"unreadCount":0}
+2026-02-13 07:46:34.59
+14ac531d
+User
+1:46:34 PM [express] GET /api/notifications/unread 304 in 44ms :: {"unreadCount":0}
+2026-02-13 07:46:34.77
+14ac531d
+User
+1:46:34 PM [express] GET /api/notifications/unread 304 in 43ms :: {"unreadCount":0}
+2026-02-13 07:46:34.77
+14ac531d
+User
+1:46:34 PM [express] GET /api/notifications/unread 304 in 43ms :: {"unreadCount":0}
+2026-02-13 07:58:27.65
+14ac531d
+User
+GET /api/user - Session: VZorMzulzNVGZi7uaOJ2lZCeqbnzvOqx
+202

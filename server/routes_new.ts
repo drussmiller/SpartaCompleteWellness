@@ -2923,7 +2923,8 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
           isAdmin: users.isAdmin,
           teamId: users.teamId,
           notificationTime: users.notificationTime,
-          timezoneOffset: users.timezoneOffset
+          timezoneOffset: users.timezoneOffset,
+          programStartDate: users.programStartDate,
         })
         .from(users);
 
@@ -2944,6 +2945,22 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
       // Process each user
       for (const user of allUsers) {
         try {
+          if (!user.teamId) {
+            logger.info(`Skipping user ${user.id} (${user.username}) - not in a team`);
+            continue;
+          }
+
+          if (user.programStartDate) {
+            const startDateStr = String(user.programStartDate).split('T')[0];
+            const [year, month, day] = startDateStr.split('-').map(Number);
+            const programStart = new Date(year, month - 1, day);
+            programStart.setHours(0, 0, 0, 0);
+            if (programStart > today) {
+              logger.info(`Skipping user ${user.id} (${user.username}) - program start date hasn't passed yet`);
+              continue;
+            }
+          }
+
           logger.info(`Processing user ${user.id} (${user.username})`);
 
           // Get user's posts from yesterday with detailed logging
