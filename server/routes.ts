@@ -1722,13 +1722,36 @@ export const registerRoutes = async (
       if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin || req.user.isOrganizationAdmin || req.user.isTeamLead)) {
         logger.info(`[TEAMLESS INTRO FILTER] ${req.user.id} fetching intro videos from team-less users`);
 
-        // Get all users without teams
-        // Note: Since team-less users don't have teams, they can't be scoped to an organization
-        // All admins/group admins can see all team-less users' introductory videos
+        // Scope team-less users by organization for org admins
+        // Super admins see all, org admins see only users pending for their organization
+        let teamlessConditions: any[] = [isNull(users.teamId)];
+
+        if (req.user.isOrganizationAdmin && req.user.adminOrganizationId && !req.user.isAdmin) {
+          teamlessConditions.push(eq(users.pendingOrganizationId, req.user.adminOrganizationId));
+          logger.info(`[TEAMLESS INTRO FILTER] Scoping to org ${req.user.adminOrganizationId} for org admin ${req.user.id}`);
+        } else if (req.user.isGroupAdmin && !req.user.isAdmin) {
+          // Group admins: find their org from their group, then filter by pendingOrganizationId
+          const [adminGroup] = await db.select().from(groups).where(eq(groups.id, req.user.adminGroupId!)).limit(1);
+          if (adminGroup) {
+            teamlessConditions.push(eq(users.pendingOrganizationId, adminGroup.organizationId));
+            logger.info(`[TEAMLESS INTRO FILTER] Scoping to org ${adminGroup.organizationId} for group admin ${req.user.id}`);
+          }
+        } else if (req.user.isTeamLead && req.user.teamId && !req.user.isAdmin) {
+          // Team leads: find their org from team -> group -> org
+          const [leadTeam] = await db.select().from(teams).where(eq(teams.id, req.user.teamId)).limit(1);
+          if (leadTeam) {
+            const [leadGroup] = await db.select().from(groups).where(eq(groups.id, leadTeam.groupId)).limit(1);
+            if (leadGroup) {
+              teamlessConditions.push(eq(users.pendingOrganizationId, leadGroup.organizationId));
+              logger.info(`[TEAMLESS INTRO FILTER] Scoping to org ${leadGroup.organizationId} for team lead ${req.user.id}`);
+            }
+          }
+        }
+
         const teamlessUsers = await db
           .select({ id: users.id })
           .from(users)
-          .where(isNull(users.teamId));
+          .where(and(...teamlessConditions));
 
         const teamlessUserIds = teamlessUsers.map(u => u.id);
 
@@ -8809,6 +8832,7 @@ export const registerRoutes = async (
         if (req.body.teamId) {
           const now = new Date();
           updateData.teamJoinedAt = now;
+          updateData.pendingOrganizationId = null;
           
           // Set programStartDate if not explicitly provided
           if (!updateData.programStartDate) {

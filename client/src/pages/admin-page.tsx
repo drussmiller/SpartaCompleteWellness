@@ -13,6 +13,9 @@ import {
   Building2,
   Users,
   UserPlus,
+  Copy,
+  RefreshCw,
+  Key,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -97,6 +100,70 @@ type GroupFormData = z.infer<typeof insertGroupSchema>;
 
 interface AdminPageProps {
   onClose?: () => void;
+}
+
+function OrgInviteCodeSection({ organizationId }: { organizationId: number }) {
+  const { toast } = useToast();
+  const { data, isLoading } = useQuery<{ inviteCode: string }>({
+    queryKey: ["/api/invite-codes/organization", organizationId],
+    queryFn: async () => {
+      const res = await fetch(`/api/invite-codes/organization/${organizationId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error("Failed to fetch invite code");
+      return res.json();
+    },
+  });
+
+  const regenerateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/invite-codes/organization/${organizationId}/regenerate`);
+      if (!res.ok) throw new Error("Failed to regenerate");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invite-codes/organization", organizationId] });
+      toast({ title: "Invite code regenerated" });
+    },
+  });
+
+  const copyCode = () => {
+    if (data?.inviteCode) {
+      navigator.clipboard.writeText(data.inviteCode);
+      toast({ title: "Copied!", description: "Invite code copied to clipboard" });
+    }
+  };
+
+  return (
+    <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+      <p className="text-sm font-medium mb-2 flex items-center gap-1">
+        <Key className="h-3.5 w-3.5" />
+        Organization Invite Code:
+      </p>
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <div className="flex items-center gap-2">
+          <code className="text-sm font-mono bg-background px-2 py-1 rounded border">
+            {data?.inviteCode || "Not generated"}
+          </code>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={copyCode}>
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 w-7 p-0" 
+            onClick={() => regenerateMutation.mutate()}
+            disabled={regenerateMutation.isPending}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${regenerateMutation.isPending ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground mt-1">
+        Share this code with new users so they get routed to your organization during signup.
+      </p>
+    </div>
+  );
 }
 
 // Helper function to safely extract error messages from responses
@@ -1855,6 +1922,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   (g) => g.organizationId === organization.id,
                                 ).length || 0}
                               </p>
+                              <OrgInviteCodeSection organizationId={organization.id} />
                               <div className="flex gap-2 justify-end mt-4">
                                 {editingOrganization?.id !== organization.id && (
                                   <>

@@ -98,9 +98,12 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
       return res.json();
     },
     onSuccess: (data) => {
+      const displayName = data.displayName || data.teamName || data.groupName || data.organizationName;
       toast({
         title: "Success!",
-        description: `You have been added as ${data.role} to ${data.displayName || data.teamName || data.groupName}`,
+        description: data.organizationName 
+          ? `You've been linked to ${data.organizationName}. An admin will review your intro video and assign you to a team.`
+          : `You have been added as ${data.role} to ${displayName}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setTimeout(() => {

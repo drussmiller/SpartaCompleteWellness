@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db";
-import { groups, teams, users } from "@shared/schema";
-import { eq, or } from "drizzle-orm";
+import { groups, teams, users, organizations } from "@shared/schema";
+import { eq, or, isNull, and } from "drizzle-orm";
 import { authenticate } from "./auth";
 import { generateInviteCode } from "./invite-code-utils";
 import { logger } from "./logger";
@@ -279,7 +279,8 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         .set({ 
           isGroupAdmin: true,
           adminGroupId: groupAdmin.id,
-          teamId: null
+          teamId: null,
+          pendingOrganizationId: null
         })
         .where(eq(users.id, userId));
 
@@ -351,7 +352,8 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         isTeamLead: true,
         teamId: teamAdmin.id,
         teamJoinedAt: now,
-        programStartDate: userProgramStartDate
+        programStartDate: userProgramStartDate,
+        pendingOrganizationId: null
       };
       
       await db
@@ -429,7 +431,8 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         teamId: teamMember.id,
         teamJoinedAt: now,
         isTeamLead: false,
-        programStartDate: userProgramStartDate
+        programStartDate: userProgramStartDate,
+        pendingOrganizationId: null
       };
       
       await db
@@ -481,7 +484,8 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
           isGroupAdmin: false,
           adminGroupId: groupMember.id,
           teamId: null,
-          programStartDate: userProgramStartDate
+          programStartDate: userProgramStartDate,
+          pendingOrganizationId: null
         })
         .where(eq(users.id, userId));
 
@@ -493,9 +497,119 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       });
     }
 
+    // Check if the code matches an organization invite code
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.inviteCode, inviteCode))
+      .limit(1);
+
+    if (org) {
+      await db
+        .update(users)
+        .set({ pendingOrganizationId: org.id })
+        .where(eq(users.id, userId));
+
+      return res.json({
+        success: true,
+        role: "Organization Member (Pending)",
+        organizationId: org.id,
+        organizationName: org.name
+      });
+    }
+
     return res.status(404).json({ message: "Invalid invite code" });
   } catch (error) {
     logger.error("Error redeeming invite code:", error);
     res.status(500).json({ message: "Failed to redeem invite code" });
+  }
+});
+
+// Get or generate organization invite code
+inviteCodeRouter.get("/api/invite-codes/organization/:organizationId", authenticate, async (req: Request, res: Response) => {
+  try {
+    const organizationId = parseInt(req.params.organizationId);
+    if (isNaN(organizationId)) {
+      return res.status(400).json({ message: "Invalid organization ID" });
+    }
+
+    if (!req.user?.isAdmin && !(req.user?.isOrganizationAdmin && req.user?.adminOrganizationId === organizationId)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
+    if (!org.inviteCode) {
+      const code = generateInviteCode();
+      const [updated] = await db
+        .update(organizations)
+        .set({ inviteCode: code })
+        .where(eq(organizations.id, organizationId))
+        .returning();
+      return res.json({ inviteCode: updated.inviteCode });
+    }
+
+    res.json({ inviteCode: org.inviteCode });
+  } catch (error) {
+    logger.error("Error fetching organization invite code:", error);
+    res.status(500).json({ message: "Failed to fetch invite code" });
+  }
+});
+
+// Regenerate organization invite code
+inviteCodeRouter.post("/api/invite-codes/organization/:organizationId/regenerate", authenticate, async (req: Request, res: Response) => {
+  try {
+    const organizationId = parseInt(req.params.organizationId);
+    if (isNaN(organizationId)) {
+      return res.status(400).json({ message: "Invalid organization ID" });
+    }
+
+    if (!req.user?.isAdmin && !(req.user?.isOrganizationAdmin && req.user?.adminOrganizationId === organizationId)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const code = generateInviteCode();
+    const [updated] = await db
+      .update(organizations)
+      .set({ inviteCode: code })
+      .where(eq(organizations.id, organizationId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
+    res.json({ inviteCode: updated.inviteCode });
+  } catch (error) {
+    logger.error("Error regenerating organization invite code:", error);
+    res.status(500).json({ message: "Failed to regenerate invite code" });
+  }
+});
+
+// Lookup organization by invite code (public, no auth needed for new users entering code)
+inviteCodeRouter.get("/api/organization-by-invite-code/:code", async (req: Request, res: Response) => {
+  try {
+    const code = req.params.code;
+    if (!code) {
+      return res.status(400).json({ message: "Invite code is required" });
+    }
+
+    const [org] = await db
+      .select({ id: organizations.id, name: organizations.name })
+      .from(organizations)
+      .where(eq(organizations.inviteCode, code))
+      .limit(1);
+
+    if (!org) {
+      return res.status(404).json({ message: "Invalid invite code" });
+    }
+
+    res.json(org);
+  } catch (error) {
+    logger.error("Error looking up organization by invite code:", error);
+    res.status(500).json({ message: "Failed to lookup invite code" });
   }
 });
