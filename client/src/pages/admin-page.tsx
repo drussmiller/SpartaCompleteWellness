@@ -2105,6 +2105,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   <Form {...groupForm}>
                                     <form
                                       onSubmit={groupForm.handleSubmit((data) => {
+                                        if (data.name.trim().toLowerCase() === organization.name.trim().toLowerCase()) {
+                                          toast({ title: "Error", description: "Division name cannot be the same as the Organization name", variant: "destructive" });
+                                          return;
+                                        }
                                         createGroupMutation.mutate({
                                           ...data,
                                           organizationId: organization.id,
