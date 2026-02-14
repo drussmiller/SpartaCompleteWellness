@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 interface InviteQRCodeProps {
-  type: "group_admin" | "group_member" | "team_admin" | "team_member";
+  type: "group_admin" | "group_member" | "team_admin" | "team_member" | "organization";
   id: number;
   name: string;
 }
@@ -28,9 +28,11 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const { toast } = useToast();
 
   const baseEndpoint =
-    type === "group_admin" || type === "group_member"
-      ? `/api/invite-codes/group/${id}`
-      : `/api/invite-codes/team/${id}`;
+    type === "organization"
+      ? `/api/invite-codes/organization/${id}`
+      : type === "group_admin" || type === "group_member"
+        ? `/api/invite-codes/group/${id}`
+        : `/api/invite-codes/team/${id}`;
 
   const { data: inviteCodes, isLoading } = useQuery<{ inviteCode: string }>({
     queryKey: [baseEndpoint, type],
@@ -51,13 +53,15 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   const createCodeMutation = useMutation({
     mutationFn: async () => {
       const createEndpoint =
-        type === "group_admin"
-          ? `/api/invite-codes/group-admin/${id}`
-          : type === "group_member"
-            ? `/api/invite-codes/group-member/${id}`
-            : type === "team_admin"
-              ? `/api/invite-codes/team-admin/${id}`
-              : `/api/invite-codes/team-member/${id}`;
+        type === "organization"
+          ? `/api/invite-codes/organization/${id}/regenerate`
+          : type === "group_admin"
+            ? `/api/invite-codes/group-admin/${id}`
+            : type === "group_member"
+              ? `/api/invite-codes/group-member/${id}`
+              : type === "team_admin"
+                ? `/api/invite-codes/team-admin/${id}`
+                : `/api/invite-codes/team-member/${id}`;
 
       const res = await apiRequest("POST", createEndpoint, {});
       if (!res.ok) {
@@ -156,13 +160,15 @@ export function InviteQRCode({ type, id, name }: InviteQRCodeProps) {
   };
 
   const roleLabel =
-    type === "group_admin"
-      ? "Division Admin"
-      : type === "group_member"
-        ? "Division Member"
-        : type === "team_admin"
-          ? "Team Lead"
-          : "Team Member";
+    type === "organization"
+      ? "Organization"
+      : type === "group_admin"
+        ? "Division Admin"
+        : type === "group_member"
+          ? "Division Member"
+          : type === "team_admin"
+            ? "Team Lead"
+            : "Team Member";
 
   const currentCode = inviteCodes?.inviteCode;
 
