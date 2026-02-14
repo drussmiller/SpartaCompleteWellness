@@ -2109,6 +2109,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           toast({ title: "Error", description: "Division name cannot be the same as the Organization name", variant: "destructive" });
                                           return;
                                         }
+                                        const existingDivisions = sortedGroups?.filter(g => g.organizationId === organization.id) || [];
+                                        if (existingDivisions.some(g => g.name.trim().toLowerCase() === data.name.trim().toLowerCase())) {
+                                          toast({ title: "Error", description: "A division with this name already exists in this organization", variant: "destructive" });
+                                          return;
+                                        }
                                         createGroupMutation.mutate({
                                           ...data,
                                           organizationId: organization.id,

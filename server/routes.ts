@@ -3213,6 +3213,11 @@ export const registerRoutes = async (
         });
       }
 
+      const existingTeams = await db.select().from(teams).where(eq(teams.groupId, parsedData.data.groupId));
+      if (existingTeams.some(t => t.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase())) {
+        return res.status(400).json({ message: "A team with this name already exists in this division" });
+      }
+
       const team = await storage.createTeam(parsedData.data);
       res.status(201).json(team);
     } catch (error) {
@@ -3884,6 +3889,11 @@ export const registerRoutes = async (
           message: "Invalid division data",
           errors: parsedData.error.errors,
         });
+      }
+
+      const existingGroups = await db.select().from(groups).where(eq(groups.organizationId, parsedData.data.organizationId));
+      if (existingGroups.some(g => g.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase())) {
+        return res.status(400).json({ message: "A division with this name already exists in this organization" });
       }
 
       const group = await storage.createGroup(parsedData.data);
