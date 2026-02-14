@@ -1340,9 +1340,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   }
 
   // Sort and filter data - do all computations without useMemo to avoid hooks order issues
-  const sortedOrganizations = [...(organizations || [])].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  const sortedOrganizations = [...(organizations || [])]
+    .filter((org) => org.name !== 'Admin')
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Filter groups based on the current user's role first
   const filteredGroups = currentUser?.isAdmin

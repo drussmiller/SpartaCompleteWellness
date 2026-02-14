@@ -7,8 +7,8 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { db } from "./db";
-import { users } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { users, organizations } from "@shared/schema";
+import { eq, desc, ne, and } from "drizzle-orm";
 import { emailService } from "./email-service";
 
 declare global {
@@ -241,6 +241,19 @@ export function setupAuth(app: Express) {
       });
 
       console.log('User created successfully:', user.id);
+
+      if (!user.teamId && !user.pendingOrganizationId) {
+        try {
+          const nonAdminOrgs = await db.select({ id: organizations.id }).from(organizations)
+            .where(and(ne(organizations.name, 'Admin'), eq(organizations.status, 1)));
+          if (nonAdminOrgs.length === 1) {
+            await db.update(users).set({ pendingOrganizationId: nonAdminOrgs[0].id }).where(eq(users.id, user.id));
+            console.log(`Auto-associated user ${user.id} with organization ${nonAdminOrgs[0].id}`);
+          }
+        } catch (orgError) {
+          console.error('Failed to auto-associate user with organization:', orgError);
+        }
+      }
 
       // Notify all admins about the new user
       try {
