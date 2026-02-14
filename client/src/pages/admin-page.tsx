@@ -1898,7 +1898,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     className="p-0 h-auto font-medium text-sm hover:bg-transparent"
                                     onClick={() => setExpandedOrgDivisions(prev => ({ ...prev, [organization.id]: !prev[organization.id] }))}
                                   >
-                                    Divisions ({sortedGroups?.filter(g => g.organizationId === organization.id && g.name !== organization.name).length || 0})
+                                    Divisions ({Math.max(0, (sortedGroups?.filter(g => g.organizationId === organization.id).length || 0) - 1)})
                                     <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${expandedOrgDivisions[organization.id] ? 'rotate-180' : ''}`} />
                                   </Button>
                                   {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && currentUser?.adminOrganizationId === organization.id)) && (
