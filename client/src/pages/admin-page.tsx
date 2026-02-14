@@ -1298,6 +1298,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     a.name.localeCompare(b.name),
   );
 
+  const defaultGroupIds = new Set(
+    Object.values(
+      (groups || []).reduce<Record<number, number>>((acc, g) => {
+        if (!acc[g.organizationId] || g.id < acc[g.organizationId]) {
+          acc[g.organizationId] = g.id;
+        }
+        return acc;
+      }, {})
+    )
+  );
+
   // Filter teams based on user role
   const filteredTeams = currentUser?.isAdmin
     ? teams || []
@@ -3043,7 +3054,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           ) : (
                                             sortedGroups.map((group) => {
                                               const groupOrg = sortedOrganizations?.find(o => o.id === group.organizationId);
-                                              const isDefault = group.name === groupOrg?.name;
+                                              const isDefault = defaultGroupIds.has(group.id);
                                               return (
                                                 <SelectItem
                                                   key={group.id}
@@ -3245,8 +3256,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           </SelectTrigger>
                                           <SelectContent>
                                             {filteredGroups?.map((group) => {
-                                              const groupOrg = sortedOrganizations?.find(o => o.id === group.organizationId);
-                                              const isDefault = group.name === groupOrg?.name;
+                                              const isDefault = defaultGroupIds.has(group.id);
                                               return (
                                                 <SelectItem
                                                   key={group.id}
@@ -3431,8 +3441,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             {(() => {
                               const teamGroup = sortedGroups?.find((g) => g.id === team.groupId);
                               if (!teamGroup) return "None";
-                              const teamOrg = sortedOrganizations?.find((o) => o.id === teamGroup.organizationId);
-                              return teamGroup.name === teamOrg?.name ? "None" : teamGroup.name;
+                              return defaultGroupIds.has(teamGroup.id) ? "None" : teamGroup.name;
                             })()}
                           </p>
                           <p className="text-sm">
