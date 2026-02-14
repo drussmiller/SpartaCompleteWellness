@@ -1517,6 +1517,88 @@ export const registerRoutes = async (
       const teamlessIntroOnly = req.query.teamlessIntroOnly === "true";
       const allUsers = req.query.allUsers === "true";
       const groupAllUsers = req.query.groupAllUsers === "true";
+      const orgAllUsers = req.query.orgAllUsers === "true";
+
+      // Organization Admin filter: show all posts from users in their organization
+      if (orgAllUsers && req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
+        logger.info(`[ORG ALL USERS] Org Admin ${req.user.id} fetching all posts from organization ${req.user.adminOrganizationId}`);
+
+        const orgGroups = await db
+          .select({ id: groups.id })
+          .from(groups)
+          .where(eq(groups.organizationId, req.user.adminOrganizationId));
+        const orgGroupIds = orgGroups.map(g => g.id);
+
+        if (orgGroupIds.length === 0) {
+          logger.info(`[ORG ALL USERS] No groups found in organization ${req.user.adminOrganizationId}`);
+          return res.json([]);
+        }
+
+        const orgTeams = await db
+          .select({ id: teams.id })
+          .from(teams)
+          .where(inArray(teams.groupId, orgGroupIds));
+        const orgTeamIds = orgTeams.map(t => t.id);
+
+        if (orgTeamIds.length === 0) {
+          logger.info(`[ORG ALL USERS] No teams found in organization ${req.user.adminOrganizationId}`);
+          return res.json([]);
+        }
+
+        const orgUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.teamId, orgTeamIds));
+        const orgUserIds = orgUsers.map(u => u.id);
+
+        if (orgUserIds.length === 0) {
+          logger.info(`[ORG ALL USERS] No users found in organization ${req.user.adminOrganizationId}`);
+          return res.json([]);
+        }
+
+        const orgPosts = await db
+          .select({
+            id: posts.id,
+            content: posts.content,
+            type: posts.type,
+            mediaUrl: posts.mediaUrl,
+            thumbnailUrl: posts.thumbnailUrl,
+            is_video: posts.is_video,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            points: posts.points,
+            userId: posts.userId,
+            postScope: posts.postScope,
+            targetOrganizationId: posts.targetOrganizationId,
+            targetGroupId: posts.targetGroupId,
+            targetTeamId: posts.targetTeamId,
+            author: {
+              id: users.id,
+              username: users.username,
+              preferredName: users.preferredName,
+              email: users.email,
+              imageUrl: users.imageUrl,
+              avatarColor: users.avatarColor,
+              isAdmin: users.isAdmin,
+              teamId: users.teamId,
+            },
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              isNull(posts.parentId),
+              inArray(posts.userId, orgUserIds),
+              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+        logger.info(`[ORG ALL USERS] Returning ${orgPosts.length} posts from ${orgUserIds.length} users in organization ${req.user.adminOrganizationId}`);
+        return res.json(orgPosts);
+      }
 
       // Group Admin filter: show all posts from users in their group
       if (groupAllUsers && req.user.isGroupAdmin && req.user.adminGroupId) {
@@ -1636,9 +1718,9 @@ export const registerRoutes = async (
         return res.json(allPosts);
       }
 
-      // Admin/Group Admin filter: show only introductory videos from team-less users
-      if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin)) {
-        logger.info(`[TEAMLESS INTRO FILTER] Admin/Group Admin ${req.user.id} fetching intro videos from team-less users`);
+      // Admin/Group Admin/Org Admin/Team Lead filter: show only introductory videos from team-less users
+      if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin || req.user.isOrganizationAdmin || req.user.isTeamLead)) {
+        logger.info(`[TEAMLESS INTRO FILTER] ${req.user.id} fetching intro videos from team-less users`);
 
         // Get all users without teams
         // Note: Since team-less users don't have teams, they can't be scoped to an organization

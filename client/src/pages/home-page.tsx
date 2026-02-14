@@ -94,8 +94,8 @@ export default function HomePage() {
   } = useQuery({
     queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode], // v2: includes thumbnailUrl field
     queryFn: async () => {
-      // Admin/Group Admin filter for introductory videos from team-less users (New Users mode)
-      if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin)) {
+      // Admin/Group Admin/Org Admin/Team Lead filter for introductory videos from team-less users (New Users mode)
+      if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
         console.log("Fetching introductory videos from team-less users");
         const response = await apiRequest(
           "GET",
@@ -124,6 +124,21 @@ export default function HomePage() {
         return data;
       }
 
+      // Organization Admin "All Users" mode - see all posts from users in their organization
+      if (filterMode === "all_users" && user?.isOrganizationAdmin) {
+        console.log("Organization Admin fetching all posts from their organization");
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?page=1&limit=50&exclude=prayer&orgAllUsers=true`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("All posts for org admin:", data.length);
+        return data;
+      }
+
       // Group Admin "All Users" mode - see all posts from users in their group
       if (filterMode === "all_users" && user?.isGroupAdmin) {
         console.log("Group Admin fetching all posts from their group");
@@ -136,6 +151,21 @@ export default function HomePage() {
         }
         const data = await response.json();
         console.log("All posts for group admin:", data.length);
+        return data;
+      }
+
+      // Team Lead "All Users" mode - see all posts from their team
+      if (filterMode === "all_users" && user?.isTeamLead) {
+        console.log("Team Lead fetching all posts from their team");
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?page=1&limit=50&exclude=prayer&teamOnly=true`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("All posts for team lead:", data.length);
         return data;
       }
 
@@ -314,8 +344,8 @@ export default function HomePage() {
                     <CreatePostDialog remaining={remaining} initialType="food" />
                     {user?.teamId && <MessageSlideCard />}
                   </div>
-                  {/* Admin/Group Admin filter popup */}
-                  {(user?.isAdmin || user?.isGroupAdmin) && (
+                  {/* Admin/Org Admin/Group Admin/Team Lead filter popup */}
+                  {(user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin || user?.isTeamLead) && (
                     <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button
