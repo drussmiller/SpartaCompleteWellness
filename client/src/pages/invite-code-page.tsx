@@ -319,9 +319,9 @@ function ConnectWithOrganization() {
     queryKey: ["/api/organizations"],
   });
 
-  const activeOrgs = organizations.filter(
-    (org) => org.status === 1 && org.name !== "Admin"
-  );
+  const activeOrgs = organizations
+    .filter((org) => org.status === 1 && org.name !== "Admin")
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const connectMutation = useMutation({
     mutationFn: async () => {
