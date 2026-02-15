@@ -1925,7 +1925,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </div>
                                 {expandedOrgDivisions[organization.id] && (
                                   <div className="space-y-2 mt-2">
-                                    {sortedGroups?.filter(g => g.organizationId === organization.id).map(group => (
+                                    {sortedGroups?.filter(g => g.organizationId === organization.id && !defaultGroupIds.has(g.id)).map(group => (
                                       <div key={group.id} className="p-3 border rounded-lg bg-gray-50/50">
                                         {editingGroup?.id === group.id ? (
                                           <form
@@ -2096,7 +2096,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         )}
                                       </div>
                                     ))}
-                                    {(sortedGroups?.filter(g => g.organizationId === organization.id).length || 0) === 0 && (
+                                    {(sortedGroups?.filter(g => g.organizationId === organization.id && !defaultGroupIds.has(g.id)).length || 0) === 0 && (
                                       <p className="text-sm text-muted-foreground">No divisions yet</p>
                                     )}
                                   </div>
