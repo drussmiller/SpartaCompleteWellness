@@ -85,7 +85,7 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
 
         // Verify the Group Admin has authority over this group
         if (targetTeam.groupId !== req.user.adminGroupId) {
-          return res.status(403).json({ message: "You can only manage Team Leads in your own group" });
+          return res.status(403).json({ message: "You can only manage Team Leads in your own division" });
         }
       }
     }
@@ -165,7 +165,7 @@ userRoleRouter.patch("/api/users/:userId/role", authenticate, async (req: Reques
     // For Group Admin role, verify permissions
     else if (role === "isGroupAdmin") {
       if (!req.user.isAdmin && !req.user.isOrganizationAdmin) {
-        return res.status(403).json({ message: "Only Admins or Organization Admins can assign Group Admin role" });
+        return res.status(403).json({ message: "Only Admins or Organization Admins can assign Division Admin role" });
       }
 
       if (value) {

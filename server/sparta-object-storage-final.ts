@@ -5,7 +5,11 @@ import sharp from 'sharp';
 import { createMovThumbnail } from './mov-frame-extractor-new.js';
 import { Readable } from 'stream';
 
-const replitStorageClient = new Client();
+function getReplitStorageClient() {
+  return new Client({
+    bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+  });
+}
 
 export class SpartaObjectStorageFinal {
   private allowedTypes: string[];
@@ -48,7 +52,7 @@ export class SpartaObjectStorageFinal {
     console.log(`[UPLOAD-V2] Starting upload for ${key}, buffer size: ${buffer.length}`);
     await this.retryOperation(
       async () => {
-        const result = await replitStorageClient.uploadFromBytes(key, buffer);
+        const result = await getReplitStorageClient().uploadFromBytes(key, buffer);
         if (!result.ok) {
           throw new Error(`Upload failed: ${(result as any).error?.message || 'Unknown error'}`);
         }
@@ -202,7 +206,7 @@ export class SpartaObjectStorageFinal {
   async deleteFile(storageKey: string): Promise<void> {
     await this.retryOperation(
       async () => {
-        const result = await replitStorageClient.delete(storageKey);
+        const result = await getReplitStorageClient().delete(storageKey);
         if (!result.ok) {
           throw new Error(`Delete failed: ${(result as any).error?.message || 'Unknown error'}`);
         }
@@ -214,7 +218,7 @@ export class SpartaObjectStorageFinal {
 
   async fileExists(storageKey: string): Promise<boolean> {
     try {
-      const result = await replitStorageClient.exists(storageKey);
+      const result = await getReplitStorageClient().exists(storageKey);
       if (result.ok) {
         return result.value;
       }
@@ -230,7 +234,7 @@ export class SpartaObjectStorageFinal {
     
     const result = await this.retryOperation(
       async () => {
-        const dl = await replitStorageClient.downloadAsBytes(storageKey);
+        const dl = await getReplitStorageClient().downloadAsBytes(storageKey);
         if (!dl.ok) {
           throw new Error(`Download failed: ${(dl as any).error?.message || 'Unknown error'}`);
         }
@@ -247,7 +251,7 @@ export class SpartaObjectStorageFinal {
     console.log(`Streaming file from Object Storage: ${storageKey}`);
     const passthrough = new (require('stream').PassThrough)();
     
-    replitStorageClient.downloadAsBytes(storageKey).then((dl: any) => {
+    getReplitStorageClient().downloadAsBytes(storageKey).then((dl: any) => {
       if (dl.ok) {
         passthrough.end(Buffer.from(dl.value[0]));
       } else {
@@ -263,7 +267,7 @@ export class SpartaObjectStorageFinal {
   async listFiles(prefix?: string): Promise<string[]> {
     try {
       const options = prefix ? { prefix } : {};
-      const result = await replitStorageClient.list(options as any);
+      const result = await getReplitStorageClient().list(options as any);
       if (result.ok) {
         return result.value.map((obj: any) => typeof obj === 'string' ? obj : obj.name);
       }

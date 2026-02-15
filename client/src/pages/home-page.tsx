@@ -94,9 +94,9 @@ export default function HomePage() {
   } = useQuery({
     queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode], // v2: includes thumbnailUrl field
     queryFn: async () => {
-      // Admin/Group Admin/Org Admin/Team Lead filter for introductory videos from team-less users (New Users mode)
+      // Admin/Group Admin/Org Admin/Team Lead filter for all posts from users not in a team (New Users mode)
       if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
-        console.log("Fetching introductory videos from team-less users");
+        console.log("Fetching posts from users not in a team");
         const response = await apiRequest(
           "GET",
           `/api/posts?teamlessIntroOnly=true`,
@@ -105,7 +105,7 @@ export default function HomePage() {
           throw new Error(`Failed to fetch posts: ${response.status}`);
         }
         const data = await response.json();
-        console.log("Introductory videos from team-less users:", data.length);
+        console.log("Posts from users not in a team:", data.length);
         return data;
       }
 

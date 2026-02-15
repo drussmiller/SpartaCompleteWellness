@@ -78,7 +78,7 @@ export async function createMovThumbnail(sourceMovPath: string): Promise<string 
 
           try {
           const thumbnailKey = `shared/uploads/${thumbnailFilename}`;
-          const storageClient = new Client();
+          const storageClient = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
           const uploadResult = await storageClient.uploadFromBytes(thumbnailKey, jpgBuffer);
           if (!uploadResult.ok) {
             throw new Error(`Upload failed: ${(uploadResult as any).error?.message || 'Unknown error'}`);

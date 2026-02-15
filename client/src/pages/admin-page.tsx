@@ -163,6 +163,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const [createGroupDialogOpen, setCreateGroupDialogOpen] = useState(false);
   const [createTeamDialogOpen, setCreateTeamDialogOpen] = useState(false);
+  const [createDivisionForOrgId, setCreateDivisionForOrgId] = useState<number | null>(null);
+  const [expandedOrgDivisions, setExpandedOrgDivisions] = useState<Record<number, boolean>>({});
 
   // Collapsible panel states - controlled to persist across re-renders
   const [organizationsPanelOpen, setOrganizationsPanelOpen] = useState(false);
@@ -730,7 +732,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       if (!data) return; // Waiting for user confirmation
 
       const message = data.groupsUpdated || data.teamsUpdated || data.usersUpdated
-        ? `Organization updated. ${data.groupsUpdated || 0} group(s), ${data.teamsUpdated || 0} team(s), and ${data.usersUpdated || 0} user(s) made inactive.`
+        ? `Organization updated. ${data.groupsUpdated || 0} division(s), ${data.teamsUpdated || 0} team(s), and ${data.usersUpdated || 0} user(s) made inactive.`
         : "Organization updated successfully";
 
       toast({
@@ -887,14 +889,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const res = await apiRequest("POST", "/api/groups", data);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to create group");
+        throw new Error(error.message || "Failed to create division");
       }
       return res.json();
     },
     onSuccess: (newGroup) => {
       toast({
         title: "Success",
-        description: "Group created successfully",
+        description: "Division created successfully",
       });
       setCreateGroupDialogOpen(false);
       setSelectedOrganizationId(null);
@@ -951,7 +953,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const res = await apiRequest("PATCH", `/api/groups/${groupId}`, data);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to update group");
+        throw new Error(error.message || "Failed to update division");
       }
       return res.json();
     },
@@ -959,8 +961,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       if (!data) return; // Waiting for user confirmation
 
       const message = data.teamsUpdated || data.usersUpdated
-        ? `Group updated. ${data.teamsUpdated || 0} team(s) and ${data.usersUpdated || 0} user(s) made inactive.`
-        : "Group updated successfully";
+        ? `Division updated. ${data.teamsUpdated || 0} team(s) and ${data.usersUpdated || 0} user(s) made inactive.`
+        : "Division updated successfully";
 
       toast({
         title: "Success",
@@ -1008,7 +1010,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       const group = groups?.find(g => g.id === groupId);
       if (!group) {
-        throw new Error("Group not found");
+        throw new Error("Division not found");
       }
 
       // Show confirmation dialog
@@ -1044,14 +1046,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       const res = await apiRequest("DELETE", `/api/groups/${groupId}`);
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to delete group");
+        throw new Error(error.message || "Failed to delete division");
       }
       return res.json();
     },
     onSuccess: (data, groupId) => {
       toast({
         title: "Success",
-        description: "Group deleted successfully",
+        description: "Division deleted successfully",
       });
 
       // Clear confirmation state
@@ -1131,7 +1133,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || "Failed to update user's group");
+        throw new Error(error.message || "Failed to update user's division");
       }
       return res.json();
     },
@@ -1273,9 +1275,9 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   }
 
   // Sort and filter data - do all computations without useMemo to avoid hooks order issues
-  const sortedOrganizations = [...(organizations || [])].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  const sortedOrganizations = [...(organizations || [])]
+    .filter((org) => org.name !== 'Admin')
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Filter groups based on the current user's role first
   const filteredGroups = currentUser?.isAdmin
@@ -1294,6 +1296,17 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   // Sort the filtered groups
   const sortedGroups = [...filteredGroups].sort((a, b) =>
     a.name.localeCompare(b.name),
+  );
+
+  const defaultGroupIds = new Set(
+    Object.values(
+      (groups || []).reduce<Record<number, number>>((acc, g) => {
+        if (!acc[g.organizationId] || g.id < acc[g.organizationId]) {
+          acc[g.organizationId] = g.id;
+        }
+        return acc;
+      }, {})
+    )
   );
 
   // Filter teams based on user role
@@ -1849,13 +1862,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </div>
                             </CardHeader>
                             <CardContent>
-                              <p className="text-sm">
-                                <span className="font-medium">Groups: </span>
-                                {sortedGroups?.filter(
-                                  (g) => g.organizationId === organization.id,
-                                ).length || 0}
-                              </p>
-                              <div className="flex gap-2 justify-end mt-4">
+                              <div className="flex gap-2 justify-end mb-2">
                                 {editingOrganization?.id !== organization.id && (
                                   <>
                                     <Button
@@ -1884,6 +1891,279 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   </>
                                 )}
                               </div>
+                              <div className="mt-2 pt-2 border-t">
+                                <p className="text-sm font-medium mb-2">Invite Code:</p>
+                                <div className="space-y-2">
+                                  <InviteQRCode
+                                    type="organization"
+                                    id={organization.id}
+                                    name={organization.name}
+                                  />
+                                </div>
+                              </div>
+                              <div className="mt-4 pt-4 border-t">
+                                <div className="flex items-center justify-between mb-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="p-0 h-auto font-medium text-sm hover:bg-transparent"
+                                    onClick={() => setExpandedOrgDivisions(prev => ({ ...prev, [organization.id]: !prev[organization.id] }))}
+                                  >
+                                    Divisions ({Math.max(0, (sortedGroups?.filter(g => g.organizationId === organization.id).length || 0) - 1)})
+                                    <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${expandedOrgDivisions[organization.id] ? 'rotate-180' : ''}`} />
+                                  </Button>
+                                  {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && currentUser?.adminOrganizationId === organization.id)) && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setCreateDivisionForOrgId(organization.id)}
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      Create Division
+                                    </Button>
+                                  )}
+                                </div>
+                                {expandedOrgDivisions[organization.id] && (
+                                  <div className="space-y-2 mt-2">
+                                    {sortedGroups?.filter(g => g.organizationId === organization.id && !defaultGroupIds.has(g.id)).map(group => (
+                                      <div key={group.id} className="p-3 border rounded-lg bg-gray-50/50">
+                                        {editingGroup?.id === group.id ? (
+                                          <form
+                                            onSubmit={(e) => {
+                                              e.preventDefault();
+                                              const formData = new FormData(e.currentTarget);
+                                              const name = formData.get("name") as string;
+                                              const description = formData.get("description") as string;
+                                              const statusValue = formData.get("status") as string;
+                                              const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                              const status = parsedStatus === 0 || parsedStatus === 1 ? parsedStatus : 1;
+                                              const competitive = formData.get("competitive") === "on";
+
+                                              if (!name) {
+                                                toast({ title: "Error", description: "Please fill in the division name", variant: "destructive" });
+                                                return;
+                                              }
+
+                                              let programStartDateValue = null;
+                                              if (editingGroup && editingGroup.id === group.id) {
+                                                if (editingGroup.programStartDate) {
+                                                  if (editingGroup.programStartDate instanceof Date) {
+                                                    programStartDateValue = editingGroup.programStartDate.toISOString();
+                                                  } else if (typeof editingGroup.programStartDate === 'string' && editingGroup.programStartDate.trim() !== '') {
+                                                    programStartDateValue = editingGroup.programStartDate;
+                                                  }
+                                                }
+                                              }
+
+                                              let currentWeek = 1;
+                                              let currentDay = 1;
+                                              if (programStartDateValue) {
+                                                const startDate = new Date(programStartDateValue);
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                startDate.setHours(0, 0, 0, 0);
+                                                if (startDate > today) {
+                                                  currentWeek = 1;
+                                                  currentDay = 1;
+                                                } else {
+                                                  const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                                  currentWeek = Math.floor(daysDiff / 7) + 1;
+                                                  currentDay = (daysDiff % 7) + 1;
+                                                }
+                                              }
+
+                                              updateGroupMutation.mutate({
+                                                groupId: group.id,
+                                                data: {
+                                                  name,
+                                                  description: description || undefined,
+                                                  organizationId: organization.id,
+                                                  status: Number(status),
+                                                  competitive,
+                                                  programStartDate: programStartDateValue,
+                                                  currentWeek,
+                                                  currentDay,
+                                                },
+                                              }, {
+                                                onSuccess: () => { setEditingGroup(null); }
+                                              });
+                                            }}
+                                            className="space-y-2"
+                                          >
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Division Name</Label>
+                                              <Input name="name" defaultValue={group.name} placeholder="Division name" required />
+                                            </div>
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Description</Label>
+                                              <Input name="description" defaultValue={group.description || ""} placeholder="Description" />
+                                            </div>
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Program Start Date (Mondays only)</Label>
+                                              <div className="flex gap-2">
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Button variant="outline" className="flex-1 justify-start text-left font-normal" type="button">
+                                                      {editingGroup?.programStartDate
+                                                        ? new Date(editingGroup.programStartDate).toLocaleDateString()
+                                                        : "Select a Monday"}
+                                                    </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                                                    <Calendar
+                                                      mode="single"
+                                                      selected={editingGroup?.programStartDate ? (() => {
+                                                        const isoStr = typeof editingGroup.programStartDate === 'string' 
+                                                          ? editingGroup.programStartDate 
+                                                          : (editingGroup.programStartDate as any)?.toISOString?.() || '';
+                                                        const dateStr = isoStr.split('T')[0];
+                                                        const [year, month, day] = dateStr.split('-').map(Number);
+                                                        return new Date(year, month - 1, day);
+                                                      })() : undefined}
+                                                      onSelect={(date) => {
+                                                        if (editingGroup) {
+                                                          setEditingGroup({ ...editingGroup, programStartDate: date || null });
+                                                        }
+                                                      }}
+                                                      disabled={(date) => date.getDay() !== 1}
+                                                    />
+                                                  </PopoverContent>
+                                                </Popover>
+                                                {editingGroup?.programStartDate && (
+                                                  <Button variant="outline" size="sm" type="button" onClick={() => {
+                                                    if (editingGroup) setEditingGroup({ ...editingGroup, programStartDate: null });
+                                                  }} className="px-3">
+                                                    Clear
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                              <Select name="status" defaultValue={group.status?.toString() || "1"}>
+                                                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="1">Active</SelectItem>
+                                                  <SelectItem value="0">Inactive</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                              <Checkbox id={`edit-competitive-${group.id}`} name="competitive" defaultChecked={group.competitive || false} />
+                                              <label htmlFor={`edit-competitive-${group.id}`} className="text-sm font-medium leading-none">Competitive</label>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                              <Button type="submit" size="sm" disabled={updateGroupMutation.isPending}>
+                                                {updateGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Save
+                                              </Button>
+                                              <Button type="button" variant="outline" size="sm" onClick={() => setEditingGroup(null)}>Cancel</Button>
+                                            </div>
+                                          </form>
+                                        ) : (
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <p className="font-medium text-sm">{group.name}</p>
+                                              {group.description && <p className="text-xs text-muted-foreground">{group.description}</p>}
+                                              <div className="flex items-center gap-3 mt-1">
+                                                <span className={`text-xs ${group.status === 1 ? 'text-green-600' : 'text-red-600'}`}>
+                                                  {group.status === 1 ? 'Active' : 'Inactive'}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                  Teams: {sortedTeams?.filter(t => t.groupId === group.id).length || 0}
+                                                </span>
+                                                {group.competitive && <span className="text-xs text-blue-600">Competitive</span>}
+                                              </div>
+                                            </div>
+                                            <div className="flex gap-1">
+                                              <Button variant="ghost" size="sm" onClick={() => setEditingGroup(group)}>
+                                                <Edit className="h-3 w-3" />
+                                              </Button>
+                                              <Button variant="ghost" size="sm" onClick={() => deleteGroupMutation.mutate(group.id)} disabled={deleteGroupMutation.isPending}>
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {editingGroup?.id !== group.id && (
+                                          <div className="mt-2 pt-2 border-t">
+                                            <p className="text-xs font-medium mb-1">Invite Codes:</p>
+                                            <div className="space-y-1">
+                                              <InviteQRCode type="group_admin" id={group.id} name={group.name} />
+                                              <InviteQRCode type="group_member" id={group.id} name={group.name} />
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                    {(sortedGroups?.filter(g => g.organizationId === organization.id && !defaultGroupIds.has(g.id)).length || 0) === 0 && (
+                                      <p className="text-sm text-muted-foreground">No divisions yet</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <Dialog open={createDivisionForOrgId === organization.id} onOpenChange={(open) => { if (!open) setCreateDivisionForOrgId(null); }}>
+                                <DialogContent>
+                                  <div className="flex items-center mb-2 relative">
+                                    <DialogPrimitive.Close asChild>
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full absolute right-2 top-2">
+                                        <span className="sr-only">Close</span>
+                                        <span className="text-lg font-semibold">×</span>
+                                      </Button>
+                                    </DialogPrimitive.Close>
+                                    <DialogTitle className="w-full text-center">Create New Division</DialogTitle>
+                                  </div>
+                                  <Form {...groupForm}>
+                                    <form
+                                      onSubmit={groupForm.handleSubmit((data) => {
+                                        if (data.name.trim().toLowerCase() === organization.name.trim().toLowerCase()) {
+                                          toast({ title: "Error", description: "Division name cannot be the same as the Organization name", variant: "destructive" });
+                                          return;
+                                        }
+                                        const existingDivisions = sortedGroups?.filter(g => g.organizationId === organization.id) || [];
+                                        if (existingDivisions.some(g => g.name.trim().toLowerCase() === data.name.trim().toLowerCase())) {
+                                          toast({ title: "Error", description: "A division with this name already exists in this organization", variant: "destructive" });
+                                          return;
+                                        }
+                                        createGroupMutation.mutate({
+                                          ...data,
+                                          organizationId: organization.id,
+                                        });
+                                        setCreateDivisionForOrgId(null);
+                                      })}
+                                      className="space-y-4"
+                                    >
+                                      <FormField
+                                        control={groupForm.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Division Name</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={groupForm.control}
+                                        name="description"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Description</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <div className="text-sm text-muted-foreground">
+                                        Division will be created in: {organization.name}
+                                      </div>
+                                      <Button type="submit" disabled={createGroupMutation.isPending}>
+                                        {createGroupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Create Division
+                                      </Button>
+                                    </form>
+                                  </Form>
+                                </DialogContent>
+                              </Dialog>
                             </CardContent>
                           </Card>
                         ))}
@@ -1892,8 +2172,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   </Collapsible>
               )}
 
-              {/* Groups Section - Show for Admins, Organization Admins, and Group Admins */}
-              {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
+              {/* Groups Section - Hidden: Division management is now inside Organization cards */}
+              {false && (currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                 <Collapsible 
                   open={groupsPanelOpen} 
                   onOpenChange={setGroupsPanelOpen}
@@ -1905,7 +2185,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         variant="ghost"
                         className="p-0 h-auto text-2xl font-semibold hover:bg-transparent hover:text-primary mb-4"
                       >
-                        Groups
+                        Divisions
                         <ChevronDown className={`h-5 w-5 ml-2 transition-transform ${groupsPanelOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
@@ -1923,13 +2203,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           <Label
                             htmlFor="show-inactive-groups"
                           >
-                            Show inactive groups
+                            Show inactive divisions
                           </Label>
                         </div>
                         )}
                         {!currentUser?.isGroupAdmin && (
                         <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-4">
-                          <h3 className="text-lg font-medium">Search & Filter Groups</h3>
+                          <h3 className="text-lg font-medium">Search & Filter Divisions</h3>
                           {currentUser?.isAdmin && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
@@ -1981,7 +2261,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               className="mb-8 mt-6 px-3 bg-violet-700 text-white hover:bg-violet-800"
                             >
                               <Plus className="h-4 w-4 mr-2" />
-                              New Group
+                              New Division
                             </Button>
                           </DialogTrigger>
                           )}
@@ -2000,7 +2280,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </Button>
                               </DialogPrimitive.Close>
                               <DialogTitle className="w-full text-center">
-                                Create New Group
+                                Create New Division
                               </DialogTitle>
                             </div>
                             <Form {...groupForm}>
@@ -2045,7 +2325,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   } else {
                                     toast({
                                       title: "Error",
-                                      description: "Not authorized to create groups",
+                                      description: "Not authorized to create divisions",
                                       variant: "destructive",
                                     });
                                     return;
@@ -2063,7 +2343,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   name="name"
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Group Name</FormLabel>
+                                      <FormLabel>Division Name</FormLabel>
                                       <FormControl>
                                         <Input {...field} />
                                       </FormControl>
@@ -2109,13 +2389,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 )}
                                 {currentUser?.isOrganizationAdmin && !currentUser?.isAdmin && (
                                   <div className="text-sm text-muted-foreground">
-                                    Groups will be created in your organization:{" "}
+                                    Divisions will be created in your organization:{" "}
                                     {sortedOrganizations?.find(o => o.id === currentUser.adminOrganizationId)?.name || "Unknown"}
                                   </div>
                                 )}
                                 {currentUser?.isGroupAdmin && !currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && (
                                   <div className="text-sm text-muted-foreground">
-                                    Groups will be created in your organization:{" "}
+                                    Divisions will be created in your organization:{" "}
                                     {(() => {
                                       const adminGroup = groups?.find(
                                         (g) =>
@@ -2136,7 +2416,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   {createGroupMutation.isPending && (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   )}
-                                  Create Group
+                                  Create Division
                                 </Button>
                               </form>
                             </Form>
@@ -2255,11 +2535,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       className="space-y-2"
                                     >
                                       <div>
-                                        <Label className="text-sm font-medium mb-1 block">Group Name</Label>
+                                        <Label className="text-sm font-medium mb-1 block">Division Name</Label>
                                         <Input
                                           name="name"
                                           defaultValue={group.name}
-                                          placeholder="Group name"
+                                          placeholder="Division name"
                                           required
                                         />
                                       </div>
@@ -2622,16 +2902,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                             </Select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-2">Group</label>
+                            <label className="block text-sm font-medium mb-2">Division</label>
                             <Select
                               value={teamGroupFilter}
                               onValueChange={setTeamGroupFilter}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="All Groups" />
+                                <SelectValue placeholder="All Divisions" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="all">All Groups</SelectItem>
+                                <SelectItem value="all">All Divisions</SelectItem>
                                 {groupsForTeamFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
@@ -2654,16 +2934,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                       {currentUser?.isGroupAdmin && !currentUser?.isAdmin && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium mb-2">Group</label>
+                            <label className="block text-sm font-medium mb-2">Division</label>
                             <Select
                               value={teamGroupFilter}
                               onValueChange={setTeamGroupFilter}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="All Groups" />
+                                <SelectValue placeholder="All Divisions" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="all">All Groups</SelectItem>
+                                <SelectItem value="all">All Divisions</SelectItem>
                                 {filteredGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
@@ -2749,12 +3029,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               name="groupId"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Group</FormLabel>
+                                  <FormLabel>Division</FormLabel>
                                   <FormControl>
                                     {currentUser?.isGroupAdmin && !currentUser?.isAdmin ? (
-                                      // Group Admins see their group as read-only text
                                       <div className="px-3 py-2 border rounded-md bg-muted text-sm">
-                                        {filteredGroups[0]?.name || 'Your Group'}
+                                        {filteredGroups[0]?.name || 'Your Division'}
                                       </div>
                                     ) : (
                                       // Full Admins see dropdown with all groups
@@ -2765,29 +3044,26 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         }
                                       >
                                         <SelectTrigger>
-                                          <SelectValue placeholder="Select a group" />
+                                          <SelectValue placeholder="Select a division" />
                                         </SelectTrigger>
                                         <SelectContent>
                                           {!sortedGroups || sortedGroups.length === 0 ? (
                                             <div className="px-3 py-2 text-sm text-muted-foreground">
-                                              No groups available
+                                              No divisions available
                                             </div>
                                           ) : (
-                                            sortedGroups.map((group) => (
-                                              <SelectItem
-                                                key={group.id}
-                                                value={group.id.toString()}
-                                              >
-                                                {group.name} (Org:{" "}
-                                                {
-                                                  sortedOrganizations?.find(
-                                                    (o) =>
-                                                      o.id === group.organizationId,
-                                                  )?.name
-                                                }
-                                                )
-                                              </SelectItem>
-                                            ))
+                                            sortedGroups.map((group) => {
+                                              const groupOrg = sortedOrganizations?.find(o => o.id === group.organizationId);
+                                              const isDefault = defaultGroupIds.has(group.id);
+                                              return (
+                                                <SelectItem
+                                                  key={group.id}
+                                                  value={group.id.toString()}
+                                                >
+                                                  {isDefault ? "None" : group.name} (Org: {groupOrg?.name})
+                                                </SelectItem>
+                                              );
+                                            })
                                           )}
                                         </SelectContent>
                                       </Select>
@@ -2961,14 +3237,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       />
                                     </div>
                                     <div>
-                                      <Label className="text-sm font-medium mb-1 block">Group</Label>
-                                      {/* Team Leads only see their own group */}
+                                      <Label className="text-sm font-medium mb-1 block">Division</Label>
                                       {currentUser?.isTeamLead && !currentUser?.isAdmin && !currentUser?.isOrganizationAdmin && !currentUser?.isGroupAdmin ? (
                                         <div className="px-3 py-2 border rounded-md bg-muted text-sm">
                                           {(() => {
                                             const userTeam = teams?.find(t => t.id === currentUser?.teamId);
                                             const userGroup = groups?.find(g => g.id === userTeam?.groupId);
-                                            return userGroup?.name || 'Your Group';
+                                            return userGroup?.name || 'Your Division';
                                           })()}
                                         </div>
                                       ) : (
@@ -2977,17 +3252,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           onValueChange={setSelectedGroupId}
                                         >
                                           <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select a group" />
+                                            <SelectValue placeholder="Select a division" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {filteredGroups?.map((group) => (
-                                              <SelectItem
-                                                key={group.id}
-                                                value={group.id.toString()}
-                                              >
-                                                {group.name}
-                                              </SelectItem>
-                                            ))}
+                                            {filteredGroups?.map((group) => {
+                                              const isDefault = defaultGroupIds.has(group.id);
+                                              return (
+                                                <SelectItem
+                                                  key={group.id}
+                                                  value={group.id.toString()}
+                                                >
+                                                  {isDefault ? "None" : group.name}
+                                                </SelectItem>
+                                              );
+                                            })}
                                           </SelectContent>
                                         </Select>
                                       )}
@@ -3159,9 +3437,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                         </CardHeader>
                         <CardContent>
                           <p className="text-sm">
-                            <span className="font-medium">Group: </span>
-                            {sortedGroups?.find((g) => g.id === team.groupId)
-                              ?.name || "No Group"}
+                            <span className="font-medium">Division: </span>
+                            {(() => {
+                              const teamGroup = sortedGroups?.find((g) => g.id === team.groupId);
+                              if (!teamGroup) return "None";
+                              return defaultGroupIds.has(teamGroup.id) ? "None" : teamGroup.name;
+                            })()}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Members: </span>
@@ -3305,11 +3586,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                           {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && (
                           <div>
                             <label className="block text-sm font-medium mb-2">
-                              Group
+                              Division
                             </label>
                             {currentUser?.isGroupAdmin && !currentUser?.isAdmin ? (
                               <div className="px-3 py-2 border rounded-md bg-muted text-sm">
-                                {filteredGroups[0]?.name || 'Your Group'}
+                                {filteredGroups[0]?.name || 'Your Division'}
                               </div>
                             ) : (
                               <Select
@@ -3320,10 +3601,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 }}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="All Groups" />
+                                  <SelectValue placeholder="All Divisions" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="all">All Groups</SelectItem>
+                                  <SelectItem value="all">All Divisions</SelectItem>
                                   {filteredGroupsForFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
                                     <SelectItem
                                       key={group.id}
@@ -3782,7 +4063,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     )}
                                     {user.isGroupAdmin && (
                                       <div className="mt-1 text-sm text-muted-foreground">
-                                        <span className="font-medium">Group Admin of: </span>
+                                        <span className="font-medium">Division Admin of: </span>
                                         {(() => {
                                           const grp = (groups || []).find(g => g.id === user.adminGroupId);
                                           return grp ? grp.name : "Not assigned";
@@ -3918,15 +4199,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     }
                                     size="sm"
                                     className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    disabled={user.id === currentUser?.id && user.isAdmin}
                                     onClick={() => {
-                                      if (
-                                        user.username === "admin" &&
-                                        user.isAdmin
-                                      ) {
+                                      if (user.id === currentUser?.id && user.isAdmin) {
                                         toast({
                                           title: "Cannot Remove Admin",
                                           description:
-                                            "This is the main administrator account and cannot have admin rights removed.",
+                                            "You cannot remove your own Admin role.",
                                           variant: "destructive",
                                         });
                                         return;
@@ -3973,9 +4252,12 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </div>
                               <div className="flex gap-2">
                                 {/* Group Admin button - show if current logged-in user is Admin, Organization Admin, or Group Admin */}
-                                {(currentUser?.isAdmin ||
-                                  currentUser?.isOrganizationAdmin ||
-                                  currentUser?.isGroupAdmin) && (
+                                {(() => {
+                                  const userTeam = user.teamId ? (teams || []).find(t => t.id === user.teamId) : null;
+                                  const userGroupId = userTeam?.groupId;
+                                  const userInNonDefaultGroup = userGroupId ? !defaultGroupIds.has(userGroupId) : false;
+                                  const showGroupAdminButton = (user.isGroupAdmin || userInNonDefaultGroup) && (currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin);
+                                  return showGroupAdminButton ? (
                                   <Button
                                     variant={
                                       user.isGroupAdmin ? "default" : "outline"
@@ -3984,8 +4266,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
                                     onClick={() => {
                                       if (!user.isGroupAdmin) {
-                                        const userTeam = (teams || []).find(t => t.id === user.teamId);
-                                        if (!userTeam) {
+                                        const uTeam = (teams || []).find(t => t.id === user.teamId);
+                                        if (!uTeam) {
                                           setRoleAssignDialog({ open: true, userId: user.id, role: "isGroupAdmin" });
                                           setSelectedRoleTarget("");
                                           return;
@@ -3998,9 +4280,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       });
                                     }}
                                   >
-                                    Group Admin
+                                    Division Admin
                                   </Button>
-                                )}
+                                ) : null;
+                                })()}
                                 {/* Team Lead button - show for Admin, Organization Admin, Group Admin, or Team Lead */}
                                 {(currentUser?.isAdmin ||
                                   currentUser?.isOrganizationAdmin ||
@@ -4152,7 +4435,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                   Making the organization "
                   {sortedOrganizations?.find(o => o.id === orgToInactivate.id)?.name}" inactive will also make:
                   <ul className="list-disc list-inside mt-2">
-                    {orgToInactivate.activeGroupCount > 0 && <li>{orgToInactivate.activeGroupCount} active group(s) inactive</li>}
+                    {orgToInactivate.activeGroupCount > 0 && <li>{orgToInactivate.activeGroupCount} active division(s) inactive</li>}
                     {orgToInactivate.activeTeamCount > 0 && <li>{orgToInactivate.activeTeamCount} active team(s) inactive</li>}
                     {orgToInactivate.activeUserCount > 0 && <li>{orgToInactivate.activeUserCount} active user(s) inactive</li>}
                   </ul>
@@ -4191,7 +4474,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
             <AlertDialogDescription>
               {groupToInactivate && (
                 <>
-                  Making the group "
+                  Making the division "
                   {groups?.find(g => g.id === groupToInactivate.id)?.name}" inactive will also make:
                   <ul className="list-disc list-inside mt-2">
                     {groupToInactivate.activeTeamCount > 0 && <li>{groupToInactivate.activeTeamCount} active team(s) inactive</li>}
@@ -4263,11 +4546,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         {/* Confirmation dialog for deleting group */}
         <AlertDialog open={!!groupToDelete} onOpenChange={(open) => { if (!open) setGroupToDelete(null); }}>
           <AlertDialogContent>
-            <AlertDialogTitle>Confirm Group Deletion</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Division Deletion</AlertDialogTitle>
             <AlertDialogDescription>
               {groupToDelete && (
                 <>
-                  Deleting the group "{groupToDelete.name}" will also delete:
+                  Deleting the division "{groupToDelete.name}" will also delete:
                   <ul className="list-disc list-inside mt-2">
                     {groupToDelete.teamCount > 0 && <li>{groupToDelete.teamCount} team(s)</li>}
                     {groupToDelete.userCount > 0 && <li>{groupToDelete.userCount} user(s)</li>}
@@ -4290,7 +4573,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 className="bg-red-600 hover:bg-red-700 text-white"
                 disabled={confirmDeleteGroupMutation.isPending}
               >
-                {confirmDeleteGroupMutation.isPending ? "Deleting..." : "Delete Group"}
+                {confirmDeleteGroupMutation.isPending ? "Deleting..." : "Delete Division"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -4305,7 +4588,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 <>
                   Deleting the organization "{orgToDelete.name}" will also delete:
                   <ul className="list-disc list-inside mt-2">
-                    {orgToDelete.groupCount > 0 && <li>{orgToDelete.groupCount} group(s)</li>}
+                    {orgToDelete.groupCount > 0 && <li>{orgToDelete.groupCount} division(s)</li>}
                     {orgToDelete.teamCount > 0 && <li>{orgToDelete.teamCount} team(s)</li>}
                     {orgToDelete.userCount > 0 && <li>{orgToDelete.userCount} user(s)</li>}
                     {orgToDelete.postCount > 0 && <li>{orgToDelete.postCount} post(s)</li>}
@@ -4348,14 +4631,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                 {roleAssignDialog.role === "isOrganizationAdmin"
                   ? "Select Organization"
                   : roleAssignDialog.role === "isGroupAdmin"
-                    ? "Select Group"
+                    ? "Select Division"
                     : "Select Team"}
               </DialogTitle>
               <DialogDescription>
                 {roleAssignDialog.role === "isOrganizationAdmin"
                   ? "This user is not in a team, so we can't determine which organization to assign. Please select one."
                   : roleAssignDialog.role === "isGroupAdmin"
-                    ? "This user is not in a team, so we can't determine which group to assign. Please select one."
+                    ? "This user is not in a team, so we can't determine which division to assign. Please select one."
                     : "This user is not in a team. Please select which team to assign them as lead."}
               </DialogDescription>
             </DialogHeader>
@@ -4366,7 +4649,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     roleAssignDialog.role === "isOrganizationAdmin"
                       ? "Choose an organization..."
                       : roleAssignDialog.role === "isGroupAdmin"
-                        ? "Choose a group..."
+                        ? "Choose a division..."
                         : "Choose a team..."
                   } />
                 </SelectTrigger>

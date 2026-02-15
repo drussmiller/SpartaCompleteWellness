@@ -42,6 +42,7 @@ export const users = pgTable("users", {
   avatarColor: text("avatar_color"), // Color for avatar fallback background
   hasDonated: boolean("has_donated").default(false), // Whether user has made a donation via Donorbox
   donatedAt: timestamp("donated_at"), // When the donation was made
+  pendingOrganizationId: integer("pending_organization_id"), // Organization claimed during signup (before team assignment)
 });
 
 // Organizations table (top level)
@@ -50,6 +51,7 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   description: text("description"),
   status: integer("status").default(1), // 1 = active, 0 = inactive
+  inviteCode: text("invite_code").unique(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

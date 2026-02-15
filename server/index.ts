@@ -95,6 +95,22 @@ async function bootstrapAdmin() {
     const { eq } = await import("drizzle-orm");
     const { hashPassword } = await import("./auth");
     
+    const { organizations } = await import("@shared/schema");
+
+    let adminOrgId: number | null = null;
+    const [existingAdminOrg] = await db.select().from(organizations).where(eq(organizations.name, 'Admin')).limit(1);
+    if (!existingAdminOrg) {
+      const [newOrg] = await db.insert(organizations).values({
+        name: 'Admin',
+        description: 'System administration organization',
+        status: 1,
+      }).returning({ id: organizations.id });
+      adminOrgId = newOrg.id;
+      console.log("Admin organization created (id:", adminOrgId, ")");
+    } else {
+      adminOrgId = existingAdminOrg.id;
+    }
+
     const existingAdmin = await db.select().from(users).where(eq(users.username, 'admin')).limit(1);
     
     if (existingAdmin.length === 0) {
@@ -108,12 +124,31 @@ async function bootstrapAdmin() {
         preferredName: 'Admin',
         isAdmin: true,
         status: 1,
+        adminOrganizationId: adminOrgId,
       });
       console.log("Default admin user created (username: admin, password: admin123)");
       console.log("IMPORTANT: Change the admin password immediately after first login!");
     } else {
+      if (!existingAdmin[0].adminOrganizationId) {
+        await db.update(users).set({ adminOrganizationId: adminOrgId }).where(eq(users.id, existingAdmin[0].id));
+        console.log("Admin user assigned to Admin organization.");
+      }
       console.log("Admin user already exists.");
     }
+    const { ne, and, isNull } = await import("drizzle-orm");
+    const nonAdminOrgs = await db.select({ id: organizations.id }).from(organizations)
+      .where(and(ne(organizations.name, 'Admin'), eq(organizations.status, 1)));
+    if (nonAdminOrgs.length === 1) {
+      const result = await db.update(users)
+        .set({ pendingOrganizationId: nonAdminOrgs[0].id })
+        .where(and(
+          isNull(users.teamId),
+          isNull(users.pendingOrganizationId),
+          ne(users.username, 'admin')
+        ));
+      console.log(`Auto-associated teamless users with organization ${nonAdminOrgs[0].id}`);
+    }
+
   } catch (error) {
     console.log("Admin bootstrap skipped (tables may not exist yet). Run 'npm run db:push' to create schema.");
   }
@@ -468,7 +503,7 @@ server.listen(port, "0.0.0.0", () => {
             };
             
             res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
-            res.setHeader('Cache-Control', 'public, max-age=86400');
+            res.setHeader('Cache-Control', 'no-cache, must-revalidate');
             return res.send(fileBuffer);
           } else {
             return res.status(404).json({ error: "File not found" });

@@ -75,7 +75,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
     if (user && (user.isGroupAdmin || user.isTeamLead || user.teamId)) {
       toast({
         title: "Already Assigned",
-        description: "You are already a Group Admin, Team Lead, or part of a team.",
+        description: "You are already a Division Admin, Team Lead, or part of a team.",
       });
       if (onClose) {
         onClose();
@@ -98,9 +98,12 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
       return res.json();
     },
     onSuccess: (data) => {
+      const displayName = data.displayName || data.teamName || data.groupName || data.organizationName;
       toast({
         title: "Success!",
-        description: `You have been added as ${data.role} to ${data.displayName || data.teamName || data.groupName}`,
+        description: data.organizationName 
+          ? `You've been linked to ${data.organizationName}. An admin will review your intro video and assign you to a team.`
+          : `You have been added as ${data.role} to ${displayName}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setTimeout(() => {
@@ -179,26 +182,25 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
     setIsScanning(!isScanning);
   };
 
-  return (
-    <AppLayout>
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border -mt-4">
-        <div className="flex items-center pl-4 pr-2 pb-4">
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mr-2 scale-125"
-              onClick={onClose}
-              data-testid="button-close-invite-code"
-            >
-              <ChevronLeft className="h-8 w-8 scale-125" />
-            </Button>
-          )}
-          <h1 className="text-lg font-semibold">Join a Team</h1>
-        </div>
-      </header>
+  const headerEl = (
+    <div className="flex items-center pl-4 pr-2 pt-[4.5rem] pb-3">
+      {onClose && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-2 scale-125"
+          onClick={onClose}
+          data-testid="button-close-invite-code"
+        >
+          <ChevronLeft className="h-8 w-8 scale-125" />
+        </Button>
+      )}
+      <h1 className="text-lg font-semibold">Join a Team</h1>
+    </div>
+  );
 
+  return (
+    <AppLayout headerContent={headerEl}>
       <div className="flex flex-col items-center p-4 pt-2 pb-24">
         <Card className="w-full max-w-md">
           <CardHeader className="pb-4">
@@ -297,9 +299,98 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
           </CardContent>
         </Card>
         
+        {userHasNoTeam && !user?.pendingOrganizationId && (
+          <ConnectWithOrganization />
+        )}
+
         {hasPostedIntroVideo && (isAutonomousModeEnabled || (userHasDonated && userHasNoTeam)) && <JoinOrBuildTeamPanel />}
       </div>
     </AppLayout>
+  );
+}
+
+function ConnectWithOrganization() {
+  const [selectedOrgId, setSelectedOrgId] = useState("");
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const { data: organizations = [] } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
+  const activeOrgs = organizations
+    .filter((org) => org.status === 1 && org.name !== "Admin")
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/user/connect-organization", {
+        organizationId: parseInt(selectedOrgId),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to connect to organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Connected!",
+        description: "You've been connected to the organization. Your video will be reviewed and you will be assigned to a team or you will receive an invite code.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      setTimeout(() => setLocation("/"), 1500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (activeOrgs.length === 0) return null;
+
+  return (
+    <Card className="w-full max-w-md mt-4">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Building2 className="h-5 w-5" />
+          Connect with Existing Church or Organization
+        </CardTitle>
+        <CardDescription>
+          Select your church or organization to get connected. Your video will be reviewed and you will be assigned to a team or you will receive an invite code.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select an organization..." />
+          </SelectTrigger>
+          <SelectContent>
+            {activeOrgs.map((org) => (
+              <SelectItem key={org.id} value={org.id.toString()}>
+                {org.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          className="w-full"
+          onClick={() => connectMutation.mutate()}
+          disabled={!selectedOrgId || connectMutation.isPending}
+        >
+          {connectMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Building2 className="mr-2 h-4 w-4" />
+          )}
+          Connect
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -374,7 +465,7 @@ function DonationSection() {
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
           <p className="text-lg font-medium text-green-700">Thank you for your donation!</p>
           <p className="text-sm text-muted-foreground mt-2">
-            You can now create your own Organization, Group, and Team.
+            You can now create your own Organization and Team.
           </p>
         </div>
       </div>
@@ -408,7 +499,7 @@ function DonationSection() {
   return (
     <div className="mt-6 pt-6 border-t">
       <p className="text-sm text-muted-foreground text-center mb-4">
-        Want to start your own team? Make a donation to unlock the ability to create your own Organization, Group, and Team.
+        Want to start your own team? Make a donation to unlock the ability to create your own Organization and Team.
       </p>
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
@@ -617,7 +708,6 @@ function PaymentForm({
 function JoinOrBuildTeamPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
-  const [newGroupName, setNewGroupName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -626,7 +716,6 @@ function JoinOrBuildTeamPanel() {
     mutationFn: async () => {
       const payload: Record<string, unknown> = {
         organizationName: newOrgName,
-        groupName: newGroupName,
         teamName: newTeamName,
       };
       
@@ -657,7 +746,7 @@ function JoinOrBuildTeamPanel() {
   });
 
   const canSubmit = () => {
-    return newOrgName.trim() && newGroupName.trim() && newTeamName.trim();
+    return newOrgName.trim() && newTeamName.trim();
   };
 
   return (
@@ -677,7 +766,7 @@ function JoinOrBuildTeamPanel() {
               )}
             </div>
             <CardDescription>
-              Create a new organization, group, and team
+              Create a new organization and team
             </CardDescription>
           </CardHeader>
         </CollapsibleTrigger>
@@ -701,27 +790,13 @@ function JoinOrBuildTeamPanel() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  2. Group Name
+                  2. Team Name
                 </Label>
                 <Input
-                  placeholder={newOrgName.trim() ? "Enter group name..." : "Enter organization first"}
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  disabled={!newOrgName.trim()}
-                  data-testid="input-new-group"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  3. Team Name
-                </Label>
-                <Input
-                  placeholder={newGroupName.trim() ? "Enter team name..." : "Enter group first"}
+                  placeholder={newOrgName.trim() ? "Enter team name..." : "Enter organization first"}
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
-                  disabled={!newGroupName.trim()}
+                  disabled={!newOrgName.trim()}
                   data-testid="input-new-team"
                 />
               </div>

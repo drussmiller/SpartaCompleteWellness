@@ -1722,13 +1722,36 @@ export const registerRoutes = async (
       if (teamlessIntroOnly && (req.user.isAdmin || req.user.isGroupAdmin || req.user.isOrganizationAdmin || req.user.isTeamLead)) {
         logger.info(`[TEAMLESS INTRO FILTER] ${req.user.id} fetching intro videos from team-less users`);
 
-        // Get all users without teams
-        // Note: Since team-less users don't have teams, they can't be scoped to an organization
-        // All admins/group admins can see all team-less users' introductory videos
+        // Scope team-less users by organization for org admins
+        // Super admins see all, org admins see only users pending for their organization
+        let teamlessConditions: any[] = [isNull(users.teamId)];
+
+        if (req.user.isOrganizationAdmin && req.user.adminOrganizationId && !req.user.isAdmin) {
+          teamlessConditions.push(eq(users.pendingOrganizationId, req.user.adminOrganizationId));
+          logger.info(`[TEAMLESS INTRO FILTER] Scoping to org ${req.user.adminOrganizationId} for org admin ${req.user.id}`);
+        } else if (req.user.isGroupAdmin && !req.user.isAdmin) {
+          // Group admins: find their org from their group, then filter by pendingOrganizationId
+          const [adminGroup] = await db.select().from(groups).where(eq(groups.id, req.user.adminGroupId!)).limit(1);
+          if (adminGroup) {
+            teamlessConditions.push(eq(users.pendingOrganizationId, adminGroup.organizationId));
+            logger.info(`[TEAMLESS INTRO FILTER] Scoping to org ${adminGroup.organizationId} for group admin ${req.user.id}`);
+          }
+        } else if (req.user.isTeamLead && req.user.teamId && !req.user.isAdmin) {
+          // Team leads: find their org from team -> group -> org
+          const [leadTeam] = await db.select().from(teams).where(eq(teams.id, req.user.teamId)).limit(1);
+          if (leadTeam) {
+            const [leadGroup] = await db.select().from(groups).where(eq(groups.id, leadTeam.groupId)).limit(1);
+            if (leadGroup) {
+              teamlessConditions.push(eq(users.pendingOrganizationId, leadGroup.organizationId));
+              logger.info(`[TEAMLESS INTRO FILTER] Scoping to org ${leadGroup.organizationId} for team lead ${req.user.id}`);
+            }
+          }
+        }
+
         const teamlessUsers = await db
           .select({ id: users.id })
           .from(users)
-          .where(isNull(users.teamId));
+          .where(and(...teamlessConditions));
 
         const teamlessUserIds = teamlessUsers.map(u => u.id);
 
@@ -1737,8 +1760,8 @@ export const registerRoutes = async (
           return res.json([]);
         }
 
-        // Build query for introductory videos from team-less users
-        const introVideos = await db
+        // Build query for all posts from team-less users
+        const teamlessPosts = await db
           .select({
             id: posts.id,
             content: posts.content,
@@ -1770,7 +1793,6 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              eq(posts.type, 'introductory_video'),
               inArray(posts.userId, teamlessUserIds)
             )
           )
@@ -1778,8 +1800,8 @@ export const registerRoutes = async (
           .limit(limit)
           .offset(offset);
 
-        logger.info(`[TEAMLESS INTRO FILTER] Returning ${introVideos.length} introductory videos from ${teamlessUserIds.length} team-less users`);
-        return res.json(introVideos);
+        logger.info(`[TEAMLESS FILTER] Returning ${teamlessPosts.length} posts from ${teamlessUserIds.length} team-less users`);
+        return res.json(teamlessPosts);
       }
 
       // Build the query conditions
@@ -3163,7 +3185,7 @@ export const registerRoutes = async (
         .limit(1);
 
       if (!group) {
-        return res.status(404).json({ message: "Group not found" });
+        return res.status(404).json({ message: "Division not found" });
       }
 
       res.json({ competitive: group.competitive || false });
@@ -3189,6 +3211,11 @@ export const registerRoutes = async (
           message: "Invalid team data",
           errors: parsedData.error.errors,
         });
+      }
+
+      const existingTeams = await db.select().from(teams).where(eq(teams.groupId, parsedData.data.groupId));
+      if (existingTeams.some(t => t.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase())) {
+        return res.status(400).json({ message: "A team with this name already exists in this division" });
       }
 
       const team = await storage.createTeam(parsedData.data);
@@ -3428,6 +3455,20 @@ export const registerRoutes = async (
 
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      if (updateData.name || updateData.groupId) {
+        const [currentTeam] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+        if (currentTeam) {
+          const targetGroupId = updateData.groupId || currentTeam.groupId;
+          const checkName = (updateData.name || currentTeam.name).trim().toLowerCase();
+          const existingTeams = await db.select().from(teams).where(
+            and(eq(teams.groupId, targetGroupId), ne(teams.id, teamId))
+          );
+          if (existingTeams.some(t => t.name.trim().toLowerCase() === checkName)) {
+            return res.status(400).json({ message: "A team with this name already exists in this division" });
+          }
+        }
       }
 
       let usersUpdated = 0;
@@ -3846,7 +3887,7 @@ export const registerRoutes = async (
       }
     } catch (error) {
       logger.error("Error fetching groups:", error);
-      res.status(500).json({ message: "Failed to fetch groups" });
+      res.status(500).json({ message: "Failed to fetch divisions" });
     }
   });
 
@@ -3859,9 +3900,19 @@ export const registerRoutes = async (
       const parsedData = insertGroupSchema.safeParse(req.body);
       if (!parsedData.success) {
         return res.status(400).json({
-          message: "Invalid group data",
+          message: "Invalid division data",
           errors: parsedData.error.errors,
         });
+      }
+
+      const [parentOrg] = await db.select().from(organizations).where(eq(organizations.id, parsedData.data.organizationId)).limit(1);
+      if (parentOrg && parentOrg.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase()) {
+        return res.status(400).json({ message: "Division name cannot be the same as the organization name" });
+      }
+
+      const existingGroups = await db.select().from(groups).where(eq(groups.organizationId, parsedData.data.organizationId));
+      if (existingGroups.some(g => g.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase())) {
+        return res.status(400).json({ message: "A division with this name already exists in this organization" });
       }
 
       const group = await storage.createGroup(parsedData.data);
@@ -3870,7 +3921,7 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error("Error creating group:", error);
       res.status(500).json({
-        message: "Failed to create group",
+        message: "Failed to create division",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -3885,7 +3936,7 @@ export const registerRoutes = async (
 
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Get all teams in this group
@@ -3921,7 +3972,7 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error(`Error getting group delete info ${req.params.id}:`, error);
       res.status(500).json({
-        message: "Failed to get group delete info",
+        message: "Failed to get division delete info",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -3935,7 +3986,7 @@ export const registerRoutes = async (
 
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       logger.info(`Deleting group ${groupId} by user ${req.user.id}`);
@@ -4058,11 +4109,11 @@ export const registerRoutes = async (
       });
 
       logger.info(`Group ${groupId} deleted successfully by user ${req.user.id}`);
-      res.status(200).json({ message: "Group deleted successfully" });
+      res.status(200).json({ message: "Division deleted successfully" });
     } catch (error) {
       logger.error(`Error deleting group ${req.params.id}:`, error);
       res.status(500).json({
-        message: "Failed to delete group",
+        message: "Failed to delete division",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -4073,7 +4124,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Check authorization
@@ -4118,9 +4169,9 @@ export const registerRoutes = async (
             .where(eq(groups.id, req.user.adminGroupId))
             .limit(1);
 
-          const groupName = authorizedGroup?.name || `Group ${req.user.adminGroupId}`;
+          const groupName = authorizedGroup?.name || `Division ${req.user.adminGroupId}`;
           return res.status(403).json({
-            message: `Not authorized to make changes to this group. You are Group Admin for ${groupName} only.`
+            message: `Not authorized to make changes to this division. You are Division Admin for ${groupName} only.`
           });
         }
 
@@ -4130,7 +4181,7 @@ export const registerRoutes = async (
       // Validate status field if present (only Full Admins can change status)
       if (req.body.status !== undefined) {
         if (!isFullAdmin) {
-          return res.status(403).json({ message: "Only Full Admins can change group status" });
+          return res.status(403).json({ message: "Only Full Admins can change division status" });
         }
         const statusSchema = z.object({ status: z.number().int().min(0).max(1) });
         const statusValidation = statusSchema.safeParse({ status: req.body.status });
@@ -4162,6 +4213,23 @@ export const registerRoutes = async (
       // Ensure we have something to update
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      if (updateData.name) {
+        const [currentGroup] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+        if (currentGroup) {
+          const [parentOrg] = await db.select().from(organizations).where(eq(organizations.id, currentGroup.organizationId)).limit(1);
+          if (parentOrg && parentOrg.name.trim().toLowerCase() === updateData.name.trim().toLowerCase()) {
+            return res.status(400).json({ message: "Division name cannot be the same as the organization name" });
+          }
+
+          const existingGroups = await db.select().from(groups).where(
+            and(eq(groups.organizationId, currentGroup.organizationId), ne(groups.id, groupId))
+          );
+          if (existingGroups.some(g => g.name.trim().toLowerCase() === updateData.name.trim().toLowerCase())) {
+            return res.status(400).json({ message: "A division with this name already exists in this organization" });
+          }
+        }
       }
 
       // Use database transaction for atomic updates
@@ -4214,7 +4282,7 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error(`Error updating group ${req.params.id}:`, error);
       res.status(500).json({
-        message: "Failed to update group",
+        message: "Failed to update division",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -4226,7 +4294,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.groupId);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Check if user is admin, group admin for this group, or org admin for this group's org
@@ -4252,7 +4320,7 @@ export const registerRoutes = async (
         .returning();
 
       if (!updatedGroup) {
-        return res.status(404).json({ message: "Group not found" });
+        return res.status(404).json({ message: "Division not found" });
       }
 
       res.status(201).json({ code, type: "group_admin" });
@@ -4267,7 +4335,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.groupId);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
 
       // Check if user is admin, group admin for this group, or org admin for this group's org
@@ -4292,7 +4360,7 @@ export const registerRoutes = async (
         .returning();
 
       if (!updatedGroup) {
-        return res.status(404).json({ message: "Group not found" });
+        return res.status(404).json({ message: "Division not found" });
       }
 
       res.status(201).json({ code, type: "group_member" });
@@ -5182,6 +5250,34 @@ export const registerRoutes = async (
         message: "Failed to update email",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  router.post("/api/user/connect-organization", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { organizationId } = req.body;
+      if (!organizationId || typeof organizationId !== "number") {
+        return res.status(400).json({ message: "Valid organization ID is required" });
+      }
+
+      if (req.user.teamId) {
+        return res.status(400).json({ message: "You are already assigned to a team" });
+      }
+
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+      if (!org || org.status !== 1 || org.name === "Admin") {
+        return res.status(400).json({ message: "Organization not found" });
+      }
+
+      await db.update(users).set({ pendingOrganizationId: organizationId }).where(eq(users.id, req.user.id));
+
+      logger.info(`[CONNECT-ORG] User ${req.user.id} connected to organization ${org.name} (ID: ${organizationId})`);
+      res.json({ message: "Successfully connected to organization" });
+    } catch (error) {
+      logger.error("Error connecting to organization:", error);
+      res.status(500).json({ message: "Failed to connect to organization" });
     }
   });
 
@@ -7829,7 +7925,7 @@ export const registerRoutes = async (
 
       // Set common headers
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
       res.setHeader(
         "Access-Control-Allow-Origin",
         "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev",
@@ -8041,7 +8137,7 @@ export const registerRoutes = async (
 
       // Set common headers
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
       res.setHeader("Access-Control-Allow-Origin", "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Range");
@@ -8401,7 +8497,7 @@ export const registerRoutes = async (
         const playlistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
         
         res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.setHeader("Cache-Control", "no-cache, must-revalidate");
         res.setHeader("Access-Control-Allow-Origin", "*");
         
         console.log(`[HLS PLAYLIST] ${requestId}: Serving playlist (${playlistBuffer.length} bytes)`);
@@ -8435,7 +8531,7 @@ export const registerRoutes = async (
             const newPlaylistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
             
             res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-            res.setHeader("Cache-Control", "public, max-age=3600");
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
             res.setHeader("Access-Control-Allow-Origin", "*");
             
             console.log(`[HLS PLAYLIST] ${requestId}: Serving converted playlist (${newPlaylistBuffer.length} bytes)`);
@@ -8483,7 +8579,7 @@ export const registerRoutes = async (
       const segmentBuffer = await spartaObjectStorage.downloadFile(segmentKey);
       
       res.setHeader("Content-Type", "video/mp2t");
-      res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year (segments never change)
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Content-Length", segmentBuffer.length);
       
@@ -8594,7 +8690,9 @@ export const registerRoutes = async (
 
       // Authorization checks
       if (req.user.isAdmin) {
-        // Admins can update any role
+        if (role === 'isAdmin' && !value && userId === req.user.id) {
+          return res.status(403).json({ message: "You cannot remove your own Admin role" });
+        }
       } else if (req.user.isOrganizationAdmin) {
         // Organization Admins cannot assign full Admin role
         if (role === 'isAdmin') {
@@ -8768,7 +8866,7 @@ export const registerRoutes = async (
         // For Group Admins, verify the team is in their group
         if (req.user?.isGroupAdmin && !req.user?.isAdmin) {
           if (team.groupId !== req.user.adminGroupId) {
-            return res.status(403).json({ message: "You can only assign users to teams in your group" });
+            return res.status(403).json({ message: "You can only assign users to teams in your division" });
           }
         }
 
@@ -8810,6 +8908,7 @@ export const registerRoutes = async (
         if (req.body.teamId) {
           const now = new Date();
           updateData.teamJoinedAt = now;
+          updateData.pendingOrganizationId = null;
           
           // Set programStartDate if not explicitly provided
           if (!updateData.programStartDate) {
@@ -8975,7 +9074,7 @@ export const registerRoutes = async (
     try {
       const groupId = parseInt(req.params.groupId);
       if (isNaN(groupId)) {
-        return res.status(400).json({ message: "Invalid group ID" });
+        return res.status(400).json({ message: "Invalid division ID" });
       }
       
       const groupTeams = await db
@@ -8996,7 +9095,7 @@ export const registerRoutes = async (
     organizationId: z.number().optional(),
     organizationName: z.string().min(1, "Organization name cannot be empty").max(100).optional(),
     groupId: z.number().optional(),
-    groupName: z.string().min(1, "Group name cannot be empty").max(100).optional(),
+    groupName: z.string().min(1, "Division name cannot be empty").max(100).optional(),
     teamId: z.number().optional(),
     teamName: z.string().min(1, "Team name cannot be empty").max(100).optional(),
   });
@@ -9053,10 +9152,10 @@ export const registerRoutes = async (
         }
       }
       
-      // If new group name is provided, create it
+      // If new group name is provided, create it; otherwise auto-create with org name
       if (groupName && !groupId) {
         if (!finalOrgId) {
-          return res.status(400).json({ message: "Organization is required to create a group" });
+          return res.status(400).json({ message: "Organization is required to create a division" });
         }
         const newGroup = await storage.createGroup({
           name: groupName.trim(),
@@ -9067,24 +9166,46 @@ export const registerRoutes = async (
         });
         finalGroupId = newGroup.id;
         logger.info(`[SELF-SERVICE] Created new group: ${newGroup.name} (ID: ${newGroup.id})`);
+      } else if (!groupId && !groupName && finalOrgId) {
+        // Auto-create a default division with the organization name
+        const orgName = organizationName?.trim() || "";
+        if (createdNewOrg && orgName) {
+          // The default group was already created by storage.createOrganization(),
+          // so find it by matching the org ID
+          const existingGroups = await db.select().from(groups).where(eq(groups.organizationId, finalOrgId));
+          if (existingGroups.length > 0) {
+            finalGroupId = existingGroups[0].id;
+            logger.info(`[SELF-SERVICE] Using auto-created default group (ID: ${finalGroupId}) for org ${finalOrgId}`);
+          } else {
+            const newGroup = await storage.createGroup({
+              name: orgName,
+              description: "",
+              organizationId: finalOrgId,
+              status: 1,
+              competitive: false
+            });
+            finalGroupId = newGroup.id;
+            logger.info(`[SELF-SERVICE] Created default group: ${newGroup.name} (ID: ${newGroup.id})`);
+          }
+        }
       }
       
       // Validate existing group if ID provided
       if (groupId && !groupName) {
         const [existingGroup] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
         if (!existingGroup) {
-          return res.status(400).json({ message: "Selected group does not exist" });
+          return res.status(400).json({ message: "Selected division does not exist" });
         }
         // Verify group belongs to the selected organization
         if (finalOrgId && existingGroup.organizationId !== finalOrgId) {
-          return res.status(400).json({ message: "Selected group does not belong to the selected organization" });
+          return res.status(400).json({ message: "Selected division does not belong to the selected organization" });
         }
       }
       
       // If new team name is provided, create it
       if (teamName && !teamId) {
         if (!finalGroupId) {
-          return res.status(400).json({ message: "Group is required to create a team" });
+          return res.status(400).json({ message: "Division is required to create a team" });
         }
         const newTeam = await storage.createTeam({
           name: teamName.trim(),
@@ -9105,7 +9226,7 @@ export const registerRoutes = async (
         }
         // Verify team belongs to the selected group
         if (finalGroupId && existingTeam.groupId !== finalGroupId) {
-          return res.status(400).json({ message: "Selected team does not belong to the selected group" });
+          return res.status(400).json({ message: "Selected team does not belong to the selected division" });
         }
       }
       

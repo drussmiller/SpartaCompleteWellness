@@ -32,8 +32,8 @@ export class SpartaObjectStorage {
 
     // Initialize Object Storage if available - client initialization only
     try {
-      this.objectStorage = new Client();
-      console.log('Object Storage client initialized with default bucket - functionality will be tested on first use');
+      this.objectStorage = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
+      console.log('Object Storage client initialized with specified bucket - functionality will be tested on first use');
     } catch (error) {
       console.log('Object Storage client initialization failed, using local filesystem only:', (error as Error).message);
       this.objectStorage = null;

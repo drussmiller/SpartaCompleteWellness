@@ -822,7 +822,7 @@ export function CreatePostDialog({
                   </Popover>
                   {isCompetitive === true && (
                     <p className="text-xs text-muted-foreground">
-                      Competitive groups must post on the current date
+                      Competitive divisions must post on the current date
                     </p>
                   )}
                   <FormMessage />
@@ -908,7 +908,7 @@ export function CreatePostDialog({
                         <SelectContent>
                           {user?.isAdmin && <SelectItem value="everyone">Everyone</SelectItem>}
                           {user?.isAdmin && <SelectItem value="organization">Organization</SelectItem>}
-                          <SelectItem value="group">Group</SelectItem>
+                          <SelectItem value="group">Division</SelectItem>
                           <SelectItem value="team">Team</SelectItem>
                           <SelectItem value="my_team">My Team (Default)</SelectItem>
                         </SelectContent>
@@ -956,14 +956,14 @@ export function CreatePostDialog({
                     name="targetGroupId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Select Group</FormLabel>
+                        <FormLabel>Select Division</FormLabel>
                         <Select
                           value={field.value?.toString()}
                           onValueChange={(value) => field.onChange(parseInt(value))}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Choose group" />
+                              <SelectValue placeholder="Choose division" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
