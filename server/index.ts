@@ -503,7 +503,7 @@ server.listen(port, "0.0.0.0", () => {
             };
             
             res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
-            res.setHeader('Cache-Control', 'public, max-age=86400');
+            res.setHeader('Cache-Control', 'no-cache, must-revalidate');
             return res.send(fileBuffer);
           } else {
             return res.status(404).json({ error: "File not found" });

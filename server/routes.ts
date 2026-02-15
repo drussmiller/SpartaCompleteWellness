@@ -8497,7 +8497,7 @@ export const registerRoutes = async (
         const playlistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
         
         res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.setHeader("Cache-Control", "no-cache, must-revalidate");
         res.setHeader("Access-Control-Allow-Origin", "*");
         
         console.log(`[HLS PLAYLIST] ${requestId}: Serving playlist (${playlistBuffer.length} bytes)`);
@@ -8531,7 +8531,7 @@ export const registerRoutes = async (
             const newPlaylistBuffer = await spartaObjectStorage.downloadFile(playlistKey);
             
             res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-            res.setHeader("Cache-Control", "public, max-age=3600");
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
             res.setHeader("Access-Control-Allow-Origin", "*");
             
             console.log(`[HLS PLAYLIST] ${requestId}: Serving converted playlist (${newPlaylistBuffer.length} bytes)`);
@@ -8579,7 +8579,7 @@ export const registerRoutes = async (
       const segmentBuffer = await spartaObjectStorage.downloadFile(segmentKey);
       
       res.setHeader("Content-Type", "video/mp2t");
-      res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year (segments never change)
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Content-Length", segmentBuffer.length);
       
