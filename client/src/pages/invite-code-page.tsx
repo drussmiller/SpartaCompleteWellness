@@ -300,9 +300,98 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
           </CardContent>
         </Card>
         
+        {userHasNoTeam && !user?.pendingOrganizationId && (
+          <ConnectWithOrganization />
+        )}
+
         {hasPostedIntroVideo && (isAutonomousModeEnabled || (userHasDonated && userHasNoTeam)) && <JoinOrBuildTeamPanel />}
       </div>
     </AppLayout>
+  );
+}
+
+function ConnectWithOrganization() {
+  const [selectedOrgId, setSelectedOrgId] = useState("");
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const { data: organizations = [] } = useQuery<Organization[]>({
+    queryKey: ["/api/organizations"],
+  });
+
+  const activeOrgs = organizations.filter(
+    (org) => org.status === 1 && org.name !== "Admin"
+  );
+
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/user/connect-organization", {
+        organizationId: parseInt(selectedOrgId),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to connect to organization");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Connected!",
+        description: "You've been connected to the organization. An admin will review and assign you to a team.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      setTimeout(() => setLocation("/"), 1500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (activeOrgs.length === 0) return null;
+
+  return (
+    <Card className="w-full max-w-md mt-4">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Building2 className="h-5 w-5" />
+          Connect with Existing Church or Organization
+        </CardTitle>
+        <CardDescription>
+          Select your church or organization to get connected. An admin will review and assign you to a team.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select an organization..." />
+          </SelectTrigger>
+          <SelectContent>
+            {activeOrgs.map((org) => (
+              <SelectItem key={org.id} value={org.id.toString()}>
+                {org.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          className="w-full"
+          onClick={() => connectMutation.mutate()}
+          disabled={!selectedOrgId || connectMutation.isPending}
+        >
+          {connectMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Building2 className="mr-2 h-4 w-4" />
+          )}
+          Connect
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

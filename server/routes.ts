@@ -3457,6 +3457,20 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "No valid fields to update" });
       }
 
+      if (updateData.name || updateData.groupId) {
+        const [currentTeam] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+        if (currentTeam) {
+          const targetGroupId = updateData.groupId || currentTeam.groupId;
+          const checkName = (updateData.name || currentTeam.name).trim().toLowerCase();
+          const existingTeams = await db.select().from(teams).where(
+            and(eq(teams.groupId, targetGroupId), ne(teams.id, teamId))
+          );
+          if (existingTeams.some(t => t.name.trim().toLowerCase() === checkName)) {
+            return res.status(400).json({ message: "A team with this name already exists in this division" });
+          }
+        }
+      }
+
       let usersUpdated = 0;
 
       if (updateData.status === 0) {
@@ -3891,6 +3905,11 @@ export const registerRoutes = async (
         });
       }
 
+      const [parentOrg] = await db.select().from(organizations).where(eq(organizations.id, parsedData.data.organizationId)).limit(1);
+      if (parentOrg && parentOrg.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase()) {
+        return res.status(400).json({ message: "Division name cannot be the same as the organization name" });
+      }
+
       const existingGroups = await db.select().from(groups).where(eq(groups.organizationId, parsedData.data.organizationId));
       if (existingGroups.some(g => g.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase())) {
         return res.status(400).json({ message: "A division with this name already exists in this organization" });
@@ -4194,6 +4213,23 @@ export const registerRoutes = async (
       // Ensure we have something to update
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      if (updateData.name) {
+        const [currentGroup] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+        if (currentGroup) {
+          const [parentOrg] = await db.select().from(organizations).where(eq(organizations.id, currentGroup.organizationId)).limit(1);
+          if (parentOrg && parentOrg.name.trim().toLowerCase() === updateData.name.trim().toLowerCase()) {
+            return res.status(400).json({ message: "Division name cannot be the same as the organization name" });
+          }
+
+          const existingGroups = await db.select().from(groups).where(
+            and(eq(groups.organizationId, currentGroup.organizationId), ne(groups.id, groupId))
+          );
+          if (existingGroups.some(g => g.name.trim().toLowerCase() === updateData.name.trim().toLowerCase())) {
+            return res.status(400).json({ message: "A division with this name already exists in this organization" });
+          }
+        }
       }
 
       // Use database transaction for atomic updates
@@ -5214,6 +5250,34 @@ export const registerRoutes = async (
         message: "Failed to update email",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  router.post("/api/user/connect-organization", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { organizationId } = req.body;
+      if (!organizationId || typeof organizationId !== "number") {
+        return res.status(400).json({ message: "Valid organization ID is required" });
+      }
+
+      if (req.user.teamId) {
+        return res.status(400).json({ message: "You are already assigned to a team" });
+      }
+
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+      if (!org || org.status !== 1 || org.name === "Admin") {
+        return res.status(400).json({ message: "Organization not found" });
+      }
+
+      await db.update(users).set({ pendingOrganizationId: organizationId }).where(eq(users.id, req.user.id));
+
+      logger.info(`[CONNECT-ORG] User ${req.user.id} connected to organization ${org.name} (ID: ${organizationId})`);
+      res.json({ message: "Successfully connected to organization" });
+    } catch (error) {
+      logger.error("Error connecting to organization:", error);
+      res.status(500).json({ message: "Failed to connect to organization" });
     }
   });
 
