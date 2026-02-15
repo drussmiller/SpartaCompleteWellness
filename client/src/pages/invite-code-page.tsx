@@ -182,26 +182,25 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
     setIsScanning(!isScanning);
   };
 
-  return (
-    <AppLayout>
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="flex items-center pl-4 pr-2 py-3">
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mr-2 scale-125"
-              onClick={onClose}
-              data-testid="button-close-invite-code"
-            >
-              <ChevronLeft className="h-8 w-8 scale-125" />
-            </Button>
-          )}
-          <h1 className="text-lg font-semibold">Join a Team</h1>
-        </div>
-      </header>
+  const headerEl = (
+    <div className="flex items-center pl-4 pr-2 py-3">
+      {onClose && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-2 scale-125"
+          onClick={onClose}
+          data-testid="button-close-invite-code"
+        >
+          <ChevronLeft className="h-8 w-8 scale-125" />
+        </Button>
+      )}
+      <h1 className="text-lg font-semibold">Join a Team</h1>
+    </div>
+  );
 
+  return (
+    <AppLayout headerContent={headerEl}>
       <div className="flex flex-col items-center p-4 pt-2 pb-24">
         <Card className="w-full max-w-md">
           <CardHeader className="pb-4">
