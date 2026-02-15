@@ -4199,15 +4199,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     }
                                     size="sm"
                                     className={`text-xs ${user.isAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
+                                    disabled={user.id === currentUser?.id && user.isAdmin}
                                     onClick={() => {
-                                      if (
-                                        user.username === "admin" &&
-                                        user.isAdmin
-                                      ) {
+                                      if (user.id === currentUser?.id && user.isAdmin) {
                                         toast({
                                           title: "Cannot Remove Admin",
                                           description:
-                                            "This is the main administrator account and cannot have admin rights removed.",
+                                            "You cannot remove your own Admin role.",
                                           variant: "destructive",
                                         });
                                         return;

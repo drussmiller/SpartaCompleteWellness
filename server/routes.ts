@@ -8626,7 +8626,9 @@ export const registerRoutes = async (
 
       // Authorization checks
       if (req.user.isAdmin) {
-        // Admins can update any role
+        if (role === 'isAdmin' && !value && userId === req.user.id) {
+          return res.status(403).json({ message: "You cannot remove your own Admin role" });
+        }
       } else if (req.user.isOrganizationAdmin) {
         // Organization Admins cannot assign full Admin role
         if (role === 'isAdmin') {
