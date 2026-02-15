@@ -337,7 +337,7 @@ function ConnectWithOrganization() {
     onSuccess: () => {
       toast({
         title: "Connected!",
-        description: "You've been connected to the organization. An admin will review and assign you to a team.",
+        description: "You've been connected to the organization. Your video will be reviewed and you will be assigned to a team or you will receive an invite code.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
@@ -362,7 +362,7 @@ function ConnectWithOrganization() {
           Connect with Existing Church or Organization
         </CardTitle>
         <CardDescription>
-          Select your church or organization to get connected. An admin will review and assign you to a team.
+          Select your church or organization to get connected. Your video will be reviewed and you will be assigned to a team or you will receive an invite code.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
