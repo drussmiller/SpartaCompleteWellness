@@ -183,7 +183,7 @@ export default function InviteCodePage({ onClose }: InviteCodePageProps) {
   };
 
   const headerEl = (
-    <div className="flex items-center pl-4 pr-2 py-3">
+    <div className="flex items-center pl-4 pr-2 pt-14 pb-3">
       {onClose && (
         <Button
           variant="ghost"
