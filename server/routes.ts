@@ -9088,7 +9088,7 @@ export const registerRoutes = async (
         }
       }
       
-      // If new group name is provided, create it
+      // If new group name is provided, create it; otherwise auto-create with org name
       if (groupName && !groupId) {
         if (!finalOrgId) {
           return res.status(400).json({ message: "Organization is required to create a division" });
@@ -9102,6 +9102,28 @@ export const registerRoutes = async (
         });
         finalGroupId = newGroup.id;
         logger.info(`[SELF-SERVICE] Created new group: ${newGroup.name} (ID: ${newGroup.id})`);
+      } else if (!groupId && !groupName && finalOrgId) {
+        // Auto-create a default division with the organization name
+        const orgName = organizationName?.trim() || "";
+        if (createdNewOrg && orgName) {
+          // The default group was already created by storage.createOrganization(),
+          // so find it by matching the org ID
+          const existingGroups = await db.select().from(groups).where(eq(groups.organizationId, finalOrgId));
+          if (existingGroups.length > 0) {
+            finalGroupId = existingGroups[0].id;
+            logger.info(`[SELF-SERVICE] Using auto-created default group (ID: ${finalGroupId}) for org ${finalOrgId}`);
+          } else {
+            const newGroup = await storage.createGroup({
+              name: orgName,
+              description: "",
+              organizationId: finalOrgId,
+              status: 1,
+              competitive: false
+            });
+            finalGroupId = newGroup.id;
+            logger.info(`[SELF-SERVICE] Created default group: ${newGroup.name} (ID: ${newGroup.id})`);
+          }
+        }
       }
       
       // Validate existing group if ID provided

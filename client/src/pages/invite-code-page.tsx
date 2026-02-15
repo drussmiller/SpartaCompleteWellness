@@ -377,7 +377,7 @@ function DonationSection() {
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
           <p className="text-lg font-medium text-green-700">Thank you for your donation!</p>
           <p className="text-sm text-muted-foreground mt-2">
-            You can now create your own Organization, Division, and Team.
+            You can now create your own Organization and Team.
           </p>
         </div>
       </div>
@@ -411,7 +411,7 @@ function DonationSection() {
   return (
     <div className="mt-6 pt-6 border-t">
       <p className="text-sm text-muted-foreground text-center mb-4">
-        Want to start your own team? Make a donation to unlock the ability to create your own Organization, Division, and Team.
+        Want to start your own team? Make a donation to unlock the ability to create your own Organization and Team.
       </p>
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
@@ -620,7 +620,6 @@ function PaymentForm({
 function JoinOrBuildTeamPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
-  const [newGroupName, setNewGroupName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -629,7 +628,6 @@ function JoinOrBuildTeamPanel() {
     mutationFn: async () => {
       const payload: Record<string, unknown> = {
         organizationName: newOrgName,
-        groupName: newGroupName,
         teamName: newTeamName,
       };
       
@@ -660,7 +658,7 @@ function JoinOrBuildTeamPanel() {
   });
 
   const canSubmit = () => {
-    return newOrgName.trim() && newGroupName.trim() && newTeamName.trim();
+    return newOrgName.trim() && newTeamName.trim();
   };
 
   return (
@@ -680,7 +678,7 @@ function JoinOrBuildTeamPanel() {
               )}
             </div>
             <CardDescription>
-              Create a new organization, division, and team
+              Create a new organization and team
             </CardDescription>
           </CardHeader>
         </CollapsibleTrigger>
@@ -704,27 +702,13 @@ function JoinOrBuildTeamPanel() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  2. Division Name
+                  2. Team Name
                 </Label>
                 <Input
-                  placeholder={newOrgName.trim() ? "Enter division name..." : "Enter organization first"}
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  disabled={!newOrgName.trim()}
-                  data-testid="input-new-group"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  3. Team Name
-                </Label>
-                <Input
-                  placeholder={newGroupName.trim() ? "Enter team name..." : "Enter division first"}
+                  placeholder={newOrgName.trim() ? "Enter team name..." : "Enter organization first"}
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
-                  disabled={!newGroupName.trim()}
+                  disabled={!newOrgName.trim()}
                   data-testid="input-new-team"
                 />
               </div>
