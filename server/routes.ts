@@ -7925,7 +7925,7 @@ export const registerRoutes = async (
 
       // Set common headers
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
       res.setHeader(
         "Access-Control-Allow-Origin",
         "https://a0341f86-dcd3-4fbd-8a10-9a1965e07b56-00-2cetph4iixb13.worf.replit.dev",
