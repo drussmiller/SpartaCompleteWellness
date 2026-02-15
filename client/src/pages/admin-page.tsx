@@ -4252,9 +4252,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </div>
                               <div className="flex gap-2">
                                 {/* Group Admin button - show if current logged-in user is Admin, Organization Admin, or Group Admin */}
-                                {(currentUser?.isAdmin ||
-                                  currentUser?.isOrganizationAdmin ||
-                                  currentUser?.isGroupAdmin) && (
+                                {(() => {
+                                  const userTeam = user.teamId ? (teams || []).find(t => t.id === user.teamId) : null;
+                                  const userGroup = userTeam ? (groups || []).find(g => g.id === userTeam.groupId) : null;
+                                  const userOrgId = userGroup?.organizationId;
+                                  const orgHasNonDefaultGroups = userOrgId
+                                    ? (groups || []).filter(g => g.organizationId === userOrgId && !defaultGroupIds.has(g.id)).length > 0
+                                    : false;
+                                  const showGroupAdminButton = (user.isGroupAdmin || orgHasNonDefaultGroups) && (currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin);
+                                  return showGroupAdminButton ? (
                                   <Button
                                     variant={
                                       user.isGroupAdmin ? "default" : "outline"
@@ -4263,8 +4269,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     className={`text-xs ${user.isGroupAdmin ? "bg-green-600 text-white hover:bg-green-700" : ""}`}
                                     onClick={() => {
                                       if (!user.isGroupAdmin) {
-                                        const userTeam = (teams || []).find(t => t.id === user.teamId);
-                                        if (!userTeam) {
+                                        const uTeam = (teams || []).find(t => t.id === user.teamId);
+                                        if (!uTeam) {
                                           setRoleAssignDialog({ open: true, userId: user.id, role: "isGroupAdmin" });
                                           setSelectedRoleTarget("");
                                           return;
@@ -4279,7 +4285,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                   >
                                     Division Admin
                                   </Button>
-                                )}
+                                ) : null;
+                                })()}
                                 {/* Team Lead button - show for Admin, Organization Admin, Group Admin, or Team Lead */}
                                 {(currentUser?.isAdmin ||
                                   currentUser?.isOrganizationAdmin ||
