@@ -51,6 +51,7 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   description: text("description"),
   status: integer("status").default(1), // 1 = active, 0 = inactive
+  isPrivate: boolean("is_private").default(false),
   inviteCode: text("invite_code").unique(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -88,6 +89,7 @@ export const insertOrganizationSchema = createInsertSchema(organizations).extend
   name: z.string().min(1, "Organization name is required"),
   description: z.string().optional(),
   status: z.number().min(0).max(1).default(1),
+  isPrivate: z.boolean().default(false),
 });
 
 export const insertGroupSchema = createInsertSchema(groups).extend({

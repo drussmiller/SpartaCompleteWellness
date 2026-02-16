@@ -319,7 +319,7 @@ function ConnectWithOrganization() {
   });
 
   const activeOrgs = organizations
-    .filter((org) => org.status === 1 && org.name !== "Admin")
+    .filter((org) => org.status === 1 && org.name !== "Admin" && !org.isPrivate)
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const connectMutation = useMutation({
