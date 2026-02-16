@@ -155,8 +155,8 @@ div[data-post-id] .video-container {
 }
 
 /* Ensure activity content text respects dark mode */
-.rich-text-content,
-.daily-content {
+.dark .rich-text-content,
+.dark .daily-content {
   color: inherit;
 }
 
@@ -165,6 +165,10 @@ div[data-post-id] .video-container {
 .daily-content * {
   margin-top: 0.75rem !important;
   margin-bottom: 0.75rem !important;
+}
+
+.dark .rich-text-content *,
+.dark .daily-content * {
   color: inherit;
 }
 
