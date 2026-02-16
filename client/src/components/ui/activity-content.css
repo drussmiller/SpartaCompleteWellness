@@ -128,45 +128,47 @@ p > .youtube-video-container:only-child {
 .activity-text-content {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-  color: hsl(var(--foreground));
 }
 
-/* Bible verse section dark mode support */
-.bible-verse-section {
+/* Dark mode support for bible verse and activity sections */
+.dark .bible-verse-section {
   color: hsl(var(--foreground));
   background-color: hsl(var(--card));
   border-color: hsl(var(--border));
 }
 
-.bible-verse-section *,
-.bible-verse-section div,
-.bible-verse-section p,
-.bible-verse-section span {
+.dark .bible-verse-section *,
+.dark .bible-verse-section div,
+.dark .bible-verse-section p,
+.dark .bible-verse-section span {
   background-color: transparent !important;
   color: inherit !important;
 }
 
-.bible-verse-section a,
-.bible-verse-section a * {
+.dark .bible-verse-section a,
+.dark .bible-verse-section a * {
   color: #1e90ff !important;
 }
 
-/* Workout activity section dark mode support */
-.workout-activity-section {
+.dark .workout-activity-section {
   color: hsl(var(--foreground));
 }
 
-.workout-activity-section *,
-.workout-activity-section div,
-.workout-activity-section p,
-.workout-activity-section span {
+.dark .workout-activity-section *,
+.dark .workout-activity-section div,
+.dark .workout-activity-section p,
+.dark .workout-activity-section span {
   background-color: transparent !important;
   color: inherit !important;
 }
 
-.workout-activity-section a,
-.workout-activity-section a * {
+.dark .workout-activity-section a,
+.dark .workout-activity-section a * {
   color: #1e90ff !important;
+}
+
+.dark .activity-text-content {
+  color: hsl(var(--foreground));
 }
 
 /* Video segments - full width, no padding */

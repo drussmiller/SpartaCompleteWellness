@@ -746,11 +746,11 @@ export function CreatePostDialog({
         <div className="relative">
           <Button 
             size="icon" 
-            className={`h-10 w-10 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${highlightPlus ? 'onboarding-pulse' : ''}`}
+            className={`h-10 w-10 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${highlightPlus ? 'onboarding-pulse' : ''}`}
             disabled={isPostingDisabled}
             title={isPostingDisabled ? "Join a team to post more content" : "Create a post"}
           >
-            <Plus className="h-16 w-16 text-white font-extrabold" />
+            <Plus className="h-16 w-16 text-black dark:text-white font-extrabold" />
           </Button>
           {highlightPlus && (
             <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
