@@ -1766,11 +1766,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           description: description || undefined,
                                         };
 
+                                        if (currentUser?.isAdmin || currentUser?.isOrganizationAdmin) {
+                                          data.isPrivate = formData.get("isPrivate") === "on";
+                                        }
+
                                         if (currentUser?.isAdmin) {
                                           const statusValue = formData.get("status") as string;
                                           const parsedStatus = statusValue ? parseInt(statusValue) : 1;
                                           data.status = parsedStatus === 0 || parsedStatus === 1 ? parsedStatus : 1;
-                                          data.isPrivate = formData.get("isPrivate") === "on";
                                         }
 
                                         updateOrganizationMutation.mutate({
@@ -1799,40 +1802,40 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           placeholder="Description"
                                         />
                                       </div>
+                                      {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin) && (
+                                        <div className="flex items-center gap-2 mt-2">
+                                          <Checkbox
+                                            id={`private-${organization.id}`}
+                                            name="isPrivate"
+                                            defaultChecked={organization.isPrivate || false}
+                                          />
+                                          <Label htmlFor={`private-${organization.id}`} className="text-sm font-medium">
+                                            Private (hidden from public selection)
+                                          </Label>
+                                        </div>
+                                      )}
                                       {currentUser?.isAdmin && (
-                                        <>
-                                          <div>
-                                            <Label className="text-sm font-medium mb-1 block">Status</Label>
-                                            <Select
-                                              name="status"
-                                              defaultValue={
-                                                organization.status?.toString() || "1"
-                                              }
-                                            >
-                                              <SelectTrigger>
-                                                <SelectValue placeholder="Select status" />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="1">
-                                                  Active
-                                                </SelectItem>
-                                                <SelectItem value="0">
-                                                  Inactive
-                                                </SelectItem>
-                                              </SelectContent>
-                                            </Select>
-                                          </div>
-                                          <div className="flex items-center gap-2 mt-2">
-                                            <Checkbox
-                                              id={`private-${organization.id}`}
-                                              name="isPrivate"
-                                              defaultChecked={organization.isPrivate || false}
-                                            />
-                                            <Label htmlFor={`private-${organization.id}`} className="text-sm font-medium">
-                                              Private (hidden from public selection)
-                                            </Label>
-                                          </div>
-                                        </>
+                                        <div>
+                                          <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                          <Select
+                                            name="status"
+                                            defaultValue={
+                                              organization.status?.toString() || "1"
+                                            }
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="1">
+                                                Active
+                                              </SelectItem>
+                                              <SelectItem value="0">
+                                                Inactive
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
                                       )}
                                       <div className="flex gap-2 mt-4">
                                         <Button

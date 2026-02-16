@@ -3796,13 +3796,13 @@ export const registerRoutes = async (
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      // Organization Admins can only edit name and description
+      // Organization Admins can only edit name, description, and isPrivate
       if (isOrgAdmin && !isAdmin) {
-        const allowedFields = ["name", "description"];
+        const allowedFields = ["name", "description", "isPrivate"];
         const bodyKeys = Object.keys(req.body);
         const disallowed = bodyKeys.filter(k => !allowedFields.includes(k));
         if (disallowed.length > 0) {
-          return res.status(403).json({ message: "Organization Admins can only edit name and description" });
+          return res.status(403).json({ message: "Organization Admins can only edit name, description, and privacy" });
         }
       }
 
