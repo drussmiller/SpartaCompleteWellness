@@ -182,7 +182,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
         ref={buttonRef}
         variant="ghost"
         size="lg"
-        className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black"} p-0 h-6`}
+        className={`${variant === 'text' ? "text-sm text-muted-foreground hover:text-foreground" : ""} ${userReaction ? "text-blue-500" : "text-black dark:text-white"} p-0 h-6`}
         onTouchStart={(e) => {
           touchStartTimeRef.current = Date.now();
           touchHandledRef.current = false;
@@ -222,7 +222,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       >
         {variant === 'icon' ? (
           <div className="flex items-center gap-1">
-            <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black"}`} />
+            <ThumbsUp className={`h-4 w-4 ${userReaction ? reactionEmojis[userReaction.type as ReactionType]?.color || "text-blue-500" : "text-black dark:text-white"}`} />
             <span>Like</span>
           </div>
         ) : (
@@ -231,7 +231,7 @@ export function ReactionButton({ postId, variant = 'icon' }: ReactionButtonProps
       </Button>
       {isOpen && (
         <div 
-          className="fixed grid grid-cols-5 p-2 gap-1 rounded-md shadow-2xl bg-white"
+          className="fixed grid grid-cols-5 p-2 gap-1 rounded-md shadow-2xl bg-white dark:bg-gray-800"
           style={{
             width: '320px',
             zIndex: 99999,
