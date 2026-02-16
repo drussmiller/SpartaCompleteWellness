@@ -1750,19 +1750,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         const description = formData.get(
                                           "description",
                                         ) as string;
-                                        const statusValue = formData.get(
-                                          "status",
-                                        ) as string;
-                                        const parsedStatus = statusValue
-                                          ? parseInt(statusValue)
-                                          : 1;
-                                        const status =
-                                          parsedStatus === 0 ||
-                                          parsedStatus === 1
-                                            ? parsedStatus
-                                            : 1;
-
-                                        const isPrivate = formData.get("isPrivate") === "on";
 
                                         if (!name) {
                                           toast({
@@ -1774,15 +1761,21 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           return;
                                         }
 
+                                        const data: Record<string, any> = {
+                                          name,
+                                          description: description || undefined,
+                                        };
+
+                                        if (currentUser?.isAdmin) {
+                                          const statusValue = formData.get("status") as string;
+                                          const parsedStatus = statusValue ? parseInt(statusValue) : 1;
+                                          data.status = parsedStatus === 0 || parsedStatus === 1 ? parsedStatus : 1;
+                                          data.isPrivate = formData.get("isPrivate") === "on";
+                                        }
+
                                         updateOrganizationMutation.mutate({
                                           organizationId: organization.id,
-                                          data: {
-                                            name,
-                                            description:
-                                              description || undefined,
-                                            status: Number(status),
-                                            isPrivate,
-                                          },
+                                          data,
                                         });
                                       }}
                                       className="space-y-2"
@@ -1806,37 +1799,41 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                           placeholder="Description"
                                         />
                                       </div>
-                                      <div>
-                                        <Label className="text-sm font-medium mb-1 block">Status</Label>
-                                        <Select
-                                          name="status"
-                                          defaultValue={
-                                            organization.status?.toString() || "1"
-                                          }
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select status" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="1">
-                                              Active
-                                            </SelectItem>
-                                            <SelectItem value="0">
-                                              Inactive
-                                            </SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <Checkbox
-                                          id={`private-${organization.id}`}
-                                          name="isPrivate"
-                                          defaultChecked={organization.isPrivate || false}
-                                        />
-                                        <Label htmlFor={`private-${organization.id}`} className="text-sm font-medium">
-                                          Private (hidden from public selection)
-                                        </Label>
-                                      </div>
+                                      {currentUser?.isAdmin && (
+                                        <>
+                                          <div>
+                                            <Label className="text-sm font-medium mb-1 block">Status</Label>
+                                            <Select
+                                              name="status"
+                                              defaultValue={
+                                                organization.status?.toString() || "1"
+                                              }
+                                            >
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="1">
+                                                  Active
+                                                </SelectItem>
+                                                <SelectItem value="0">
+                                                  Inactive
+                                                </SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div className="flex items-center gap-2 mt-2">
+                                            <Checkbox
+                                              id={`private-${organization.id}`}
+                                              name="isPrivate"
+                                              defaultChecked={organization.isPrivate || false}
+                                            />
+                                            <Label htmlFor={`private-${organization.id}`} className="text-sm font-medium">
+                                              Private (hidden from public selection)
+                                            </Label>
+                                          </div>
+                                        </>
+                                      )}
                                       <div className="flex gap-2 mt-4">
                                         <Button
                                           type="submit"
@@ -1905,29 +1902,33 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               <div className="flex gap-2 justify-end mb-2">
                                 {editingOrganization?.id !== organization.id && (
                                   <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        setEditingOrganization(organization)
-                                      }
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="destructive"
-                                      size="sm"
-                                      onClick={() =>
-                                        deleteOrganizationMutation.mutate(
-                                          organization.id,
-                                        )
-                                      }
-                                      disabled={
-                                        deleteOrganizationMutation.isPending
-                                      }
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && currentUser?.adminOrganizationId === organization.id)) && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          setEditingOrganization(organization)
+                                        }
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    {currentUser?.isAdmin && (
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() =>
+                                          deleteOrganizationMutation.mutate(
+                                            organization.id,
+                                          )
+                                        }
+                                        disabled={
+                                          deleteOrganizationMutation.isPending
+                                        }
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
                                   </>
                                 )}
                               </div>
