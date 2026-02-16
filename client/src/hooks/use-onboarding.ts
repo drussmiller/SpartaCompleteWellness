@@ -6,22 +6,22 @@ export type OnboardingStep = "post_intro" | "join_team" | "complete";
 export function useOnboarding() {
   const { user } = useAuth();
 
-  const { data: hasPostedIntroVideo = false } = useQuery({
+  const { data: introVideoPosts = [] } = useQuery({
     queryKey: ["/api/posts", "introductory_video", user?.id],
     queryFn: async () => {
-      if (!user) return false;
+      if (!user) return [];
       const response = await fetch(`/api/posts?type=introductory_video&userId=${user.id}`, {
         credentials: "include",
       });
-      if (!response.ok) return false;
+      if (!response.ok) return [];
       const data = await response.json();
-      const posts = Array.isArray(data) ? data : (data.posts ?? []);
-      return posts.length > 0;
+      return Array.isArray(data) ? data : (data.posts ?? []);
     },
     enabled: !!user,
     staleTime: 30000,
   });
 
+  const hasPostedIntroVideo = introVideoPosts.length > 0;
   const hasTeam = !!user?.teamId;
 
   let step: OnboardingStep = "complete";
