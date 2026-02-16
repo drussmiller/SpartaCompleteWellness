@@ -3784,13 +3784,26 @@ export const registerRoutes = async (
   // Update organization endpoint
   router.patch("/api/organizations/:id", authenticate, async (req, res) => {
     try {
-      if (!req.user?.isAdmin) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
       const organizationId = parseInt(req.params.id);
       if (isNaN(organizationId)) {
         return res.status(400).json({ message: "Invalid organization ID" });
+      }
+
+      const isAdmin = req.user?.isAdmin;
+      const isOrgAdmin = req.user?.isOrganizationAdmin && req.user?.adminOrganizationId === organizationId;
+
+      if (!isAdmin && !isOrgAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Organization Admins can only edit name, description, and isPrivate
+      if (isOrgAdmin && !isAdmin) {
+        const allowedFields = ["name", "description", "isPrivate"];
+        const bodyKeys = Object.keys(req.body);
+        const disallowed = bodyKeys.filter(k => !allowedFields.includes(k));
+        if (disallowed.length > 0) {
+          return res.status(403).json({ message: "Organization Admins can only edit name, description, and privacy" });
+        }
       }
 
       // Validate status field if present
