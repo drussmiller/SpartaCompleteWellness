@@ -791,7 +791,7 @@ export function MessageSlideCard() {
     <>
       <Button
         size="icon"
-        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2 relative"
+        className="h-10 w-10 bg-gray-800 hover:bg-gray-900 ml-2 relative"
         onClick={() => {
           console.log('Opening message slide card. User team ID:', user?.teamId);
           setIsOpen(true);
@@ -799,7 +799,7 @@ export function MessageSlideCard() {
         disabled={!user?.teamId} // Disable button if user has no teamId
         style={!user?.teamId ? { opacity: 0.5, cursor: 'not-allowed' } : {}} // Visual indication
       >
-        <MessagesSquare className="h-4 w-4 text-black font-extrabold" />
+        <MessagesSquare className="h-4 w-4 text-white font-extrabold" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
             {unreadCount}

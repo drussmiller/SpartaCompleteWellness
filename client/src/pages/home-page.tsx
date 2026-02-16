@@ -328,16 +328,17 @@ export default function HomePage() {
                 <div className={`border-b border-border ${!isMobile ? 'border-x px-4' : ''}`}>
               <div className="flex items-center justify-between pt-12">
                 <div className="flex-1 flex justify-center">
-                  <img
-                    src="/sparta_circle_red.png"
-                    alt="Sparta Complete Wellness Logo"
-                    className="w-36 h-auto mx-auto"
-                    onError={(e) => {
-                      console.error("Error loading logo:", e);
-                      // Fallback to a different logo if the main one fails
-                      e.currentTarget.src = "/Spartans_LOGO.png";
-                    }}
-                  />
+                  <div className="bg-gray-900 rounded-lg px-4 py-2">
+                    <img
+                      src="/sparta_circle_red.png"
+                      alt="Sparta Complete Wellness Logo"
+                      className="w-36 h-auto mx-auto brightness-0 invert"
+                      onError={(e) => {
+                        console.error("Error loading logo:", e);
+                        e.currentTarget.src = "/Spartans_LOGO.png";
+                      }}
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex items-center gap-2">
