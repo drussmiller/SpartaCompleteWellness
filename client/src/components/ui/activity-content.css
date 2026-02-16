@@ -128,6 +128,45 @@ p > .youtube-video-container:only-child {
 .activity-text-content {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
+  color: hsl(var(--foreground));
+}
+
+/* Bible verse section dark mode support */
+.bible-verse-section {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.bible-verse-section *,
+.bible-verse-section div,
+.bible-verse-section p,
+.bible-verse-section span {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.bible-verse-section a,
+.bible-verse-section a * {
+  color: #1e90ff !important;
+}
+
+/* Workout activity section dark mode support */
+.workout-activity-section {
+  color: hsl(var(--foreground));
+}
+
+.workout-activity-section *,
+.workout-activity-section div,
+.workout-activity-section p,
+.workout-activity-section span {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.workout-activity-section a,
+.workout-activity-section a * {
+  color: #1e90ff !important;
 }
 
 /* Video segments - full width, no padding */

@@ -5,6 +5,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, CalendarIcon, Loader2, Video } from "lucide-react";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -41,6 +42,7 @@ export function CreatePostDialog({
 }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { highlightPlus } = useOnboarding();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -741,14 +743,21 @@ export function CreatePostDialog({
       }
     }}>
       <DialogTrigger asChild>
-        <Button 
-          size="icon" 
-          className="h-10 w-10 bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isPostingDisabled}
-          title={isPostingDisabled ? "Join a team to post more content" : "Create a post"}
-        >
-          <Plus className="h-16 w-16 text-black font-extrabold" />
-        </Button>
+        <div className="relative">
+          <Button 
+            size="icon" 
+            className={`h-10 w-10 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${highlightPlus ? 'onboarding-pulse' : ''}`}
+            disabled={isPostingDisabled}
+            title={isPostingDisabled ? "Join a team to post more content" : "Create a post"}
+          >
+            <Plus className="h-16 w-16 text-white font-extrabold" />
+          </Button>
+          {highlightPlus && (
+            <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+              Post intro
+            </span>
+          )}
+        </div>
       </DialogTrigger>
       <DialogContent className="h-screen overflow-y-auto pb-32 sm:pb-28 pt-8">
         <div className="flex justify-between items-center mb-4 px-2">

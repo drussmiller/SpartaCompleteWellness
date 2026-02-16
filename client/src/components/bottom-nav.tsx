@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useEffect, useState, useRef } from "react";
+import { useOnboarding } from "@/hooks/use-onboarding";
 
 interface BottomNavProps {
   orientation?: "horizontal" | "vertical";
@@ -15,6 +16,7 @@ interface BottomNavProps {
 export function BottomNav({ orientation = "horizontal", isVisible = true, scrollOffset = 0 }: BottomNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const { highlightHome, highlightMenu } = useOnboarding();
 
   // Detect Android device
   const isAndroid = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('android');
@@ -144,6 +146,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         {items.map(({ icon: Icon, label, href, count, noTeamRequired }) => {
           const isActivityLink = href === "/activity";
           const isDisabled = !noTeamRequired && (!user?.teamId || (isActivityLink && activityStatus && !activityStatus.programHasStarted));
+          const isHome = href === "/";
+          const shouldPulse = isHome && highlightHome;
 
           return (
           <div
@@ -151,11 +155,8 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
             onClick={isDisabled ? undefined : () => setLocation(href)}
             className={cn(
               "flex flex-col items-center justify-center gap-1 relative",
-              // Size styles
               orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-              // Disabled or enabled cursor
               isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
-              // Text styles
               isDisabled
                 ? "text-muted-foreground"
                 : location === href
@@ -163,8 +164,18 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
                   : "text-muted-foreground hover:text-primary transition-colors"
             )}
           >
-            <Icon className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
+            <div className={cn(
+              "rounded-full p-1",
+              shouldPulse && "onboarding-pulse-ring"
+            )}>
+              <Icon className="h-7 w-7" />
+            </div>
             <span className="text-xs">{label}</span>
+            {shouldPulse && (
+              <span className="absolute -top-1 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+                Start here
+              </span>
+            )}
             {count > 0 && (
               <span className="absolute top-1 -right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                 {count}
@@ -176,17 +187,25 @@ export function BottomNav({ orientation = "horizontal", isVisible = true, scroll
         <div
           onClick={() => setLocation("/menu")}
           className={cn(
-            "flex flex-col items-center justify-center gap-1 cursor-pointer",
-            // Size styles
+            "flex flex-col items-center justify-center gap-1 cursor-pointer relative",
             orientation === "horizontal" ? "h-full w-full" : "w-full py-2",
-            // Text styles
             location === "/menu"
               ? "text-primary"
               : "text-muted-foreground hover:text-primary transition-colors"
           )}
         >
-          <Menu className="h-7 w-7" /> {/* Changed from h-5 w-5 */}
+          <div className={cn(
+            "rounded-full p-1",
+            highlightMenu && "onboarding-pulse-ring"
+          )}>
+            <Menu className="h-7 w-7" />
+          </div>
           <span className="text-xs">Menu</span>
+          {highlightMenu && (
+            <span className="absolute -top-1 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+              Next step
+            </span>
+          )}
         </div>
       </div>
     </nav>

@@ -18,10 +18,12 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
+import { useOnboarding } from "@/hooks/use-onboarding";
 
 export default function MenuPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { highlightJoinTeam } = useOnboarding();
   console.log('[MENU PAGE] User avatar color:', user?.avatarColor);
   const [profileOpen, setProfileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -187,7 +189,7 @@ export default function MenuPage() {
               <SheetTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start active:bg-background focus:bg-background" 
+                  className={`w-full justify-start active:bg-background focus:bg-background ${highlightJoinTeam ? 'onboarding-pulse border-violet-500 border-2' : ''}`}
                   size="lg" 
                   data-testid="button-join-team"
                   disabled={!hasPostedIntroVideo}
@@ -195,6 +197,11 @@ export default function MenuPage() {
                 >
                   <Users className="mr-2 h-5 w-5" />
                   Join a Team
+                  {highlightJoinTeam && hasPostedIntroVideo && (
+                    <span className="ml-auto bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+                      Tap here
+                    </span>
+                  )}
                   {!hasPostedIntroVideo && <span className="ml-auto text-xs text-muted-foreground">(Intro Video required)</span>}
                 </Button>
               </SheetTrigger>

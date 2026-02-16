@@ -154,11 +154,18 @@ div[data-post-id] .video-container {
   max-width: 100% !important;
 }
 
+/* Ensure activity content text respects dark mode */
+.rich-text-content,
+.daily-content {
+  color: inherit;
+}
+
 /* Normalize ALL spacing in activity content - force uniformity */
 .rich-text-content *,
 .daily-content * {
   margin-top: 0.75rem !important;
   margin-bottom: 0.75rem !important;
+  color: inherit;
 }
 
 /* Special handling for paragraphs */
@@ -361,4 +368,28 @@ html.font-extra-large { --app-font-size: 22px; font-size: 22px !important; }
 
 body {
   font-size: var(--app-font-size) !important;
+}
+
+@keyframes onboarding-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+  }
+}
+
+.onboarding-pulse {
+  animation: onboarding-pulse 1.5s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding-pulse-ring {
+  border: 2px solid rgb(139, 92, 246);
+  border-radius: 9999px;
+  animation: onboarding-pulse 1.5s ease-in-out infinite;
 }

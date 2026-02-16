@@ -791,7 +791,7 @@ export function MessageSlideCard() {
     <>
       <Button
         size="icon"
-        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 ml-2 relative"
+        className="h-10 w-10 bg-gray-800 hover:bg-gray-900 ml-2 relative"
         onClick={() => {
           console.log('Opening message slide card. User team ID:', user?.teamId);
           setIsOpen(true);
@@ -799,7 +799,7 @@ export function MessageSlideCard() {
         disabled={!user?.teamId} // Disable button if user has no teamId
         style={!user?.teamId ? { opacity: 0.5, cursor: 'not-allowed' } : {}} // Visual indication
       >
-        <MessagesSquare className="h-4 w-4 text-black font-extrabold" />
+        <MessagesSquare className="h-4 w-4 text-white font-extrabold" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
             {unreadCount}
@@ -828,7 +828,7 @@ export function MessageSlideCard() {
         >
           {/* Header - Fixed at top */}
           <div 
-            className="flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 sticky top-0" 
+            className="flex items-center px-4 py-4 border-b bg-background border-border flex-shrink-0 min-h-[80px] z-50 sticky top-0" 
             style={{ paddingTop: '4rem' }}
           >
             <Button
@@ -843,9 +843,9 @@ export function MessageSlideCard() {
               }}
               className="mr-3 bg-transparent hover:bg-gray-100 flex-shrink-0"
             >
-              <ChevronLeft className="text-black" style={{ width: '24px', height: '24px' }} />
+              <ChevronLeft className="text-foreground" style={{ width: '24px', height: '24px' }} />
             </Button>
-            <h2 className="text-2xl font-bold text-black flex-1">
+            <h2 className="text-2xl font-bold text-foreground flex-1">
               {selectedMember ? getDisplayName(selectedMember) : "Messages"}
             </h2>
           </div>
@@ -881,7 +881,7 @@ export function MessageSlideCard() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-black`}>
+                        <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-foreground`}>
                           {getDisplayName(member)}
                         </p>
                       </div>
