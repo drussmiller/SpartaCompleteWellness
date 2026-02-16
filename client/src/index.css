@@ -154,11 +154,18 @@ div[data-post-id] .video-container {
   max-width: 100% !important;
 }
 
+/* Ensure activity content text respects dark mode */
+.rich-text-content,
+.daily-content {
+  color: inherit;
+}
+
 /* Normalize ALL spacing in activity content - force uniformity */
 .rich-text-content *,
 .daily-content * {
   margin-top: 0.75rem !important;
   margin-bottom: 0.75rem !important;
+  color: inherit;
 }
 
 /* Special handling for paragraphs */
