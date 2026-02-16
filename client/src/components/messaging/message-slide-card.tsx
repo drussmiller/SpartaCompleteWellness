@@ -881,7 +881,7 @@ export function MessageSlideCard() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-black`}>
+                        <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-foreground`}>
                           {getDisplayName(member)}
                         </p>
                       </div>
