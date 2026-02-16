@@ -138,9 +138,35 @@ p > .youtube-video-container:only-child {
   border-color: hsl(var(--border));
 }
 
+.bible-verse-section *,
+.bible-verse-section div,
+.bible-verse-section p,
+.bible-verse-section span {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.bible-verse-section a,
+.bible-verse-section a * {
+  color: #1e90ff !important;
+}
+
 /* Workout activity section dark mode support */
 .workout-activity-section {
   color: hsl(var(--foreground));
+}
+
+.workout-activity-section *,
+.workout-activity-section div,
+.workout-activity-section p,
+.workout-activity-section span {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.workout-activity-section a,
+.workout-activity-section a * {
+  color: #1e90ff !important;
 }
 
 /* Video segments - full width, no padding */
