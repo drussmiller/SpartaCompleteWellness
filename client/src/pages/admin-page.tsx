@@ -743,6 +743,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       // Clear pending states
       setPendingOrgUpdate(null);
       setOrgToInactivate(null);
+      setEditingOrganization(null);
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
