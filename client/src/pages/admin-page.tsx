@@ -743,6 +743,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
       // Clear pending states
       setPendingOrgUpdate(null);
       setOrgToInactivate(null);
+      setEditingOrganization(null);
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
@@ -1886,11 +1887,14 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             ? "Active"
                                             : "Inactive"}
                                         </span>
-                                        {organization.isPrivate && (
-                                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
-                                            Private
-                                          </span>
-                                        )}
+                                      </p>
+                                      <p className="text-sm mt-1">
+                                        <span className="font-medium">
+                                          Private:{" "}
+                                        </span>
+                                        <span className={organization.isPrivate ? "text-yellow-600" : "text-gray-500"}>
+                                          {organization.isPrivate ? "Yes" : "No"}
+                                        </span>
                                       </p>
                                     </div>
                                   )}
