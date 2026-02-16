@@ -3804,7 +3804,9 @@ export const registerRoutes = async (
 
       // Validate isPrivate field if present
       if (req.body.isPrivate !== undefined) {
-        req.body.isPrivate = Boolean(req.body.isPrivate);
+        if (typeof req.body.isPrivate !== "boolean") {
+          return res.status(400).json({ message: "isPrivate must be a boolean" });
+        }
       }
 
       logger.info(`Updating organization ${organizationId} with data:`, req.body);
