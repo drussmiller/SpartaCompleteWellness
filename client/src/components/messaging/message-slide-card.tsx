@@ -828,7 +828,7 @@ export function MessageSlideCard() {
         >
           {/* Header - Fixed at top */}
           <div 
-            className="flex items-center px-4 py-4 border-b bg-white border-gray-200 flex-shrink-0 min-h-[80px] z-50 sticky top-0" 
+            className="flex items-center px-4 py-4 border-b bg-background border-border flex-shrink-0 min-h-[80px] z-50 sticky top-0" 
             style={{ paddingTop: '4rem' }}
           >
             <Button
@@ -843,9 +843,9 @@ export function MessageSlideCard() {
               }}
               className="mr-3 bg-transparent hover:bg-gray-100 flex-shrink-0"
             >
-              <ChevronLeft className="text-black" style={{ width: '24px', height: '24px' }} />
+              <ChevronLeft className="text-foreground" style={{ width: '24px', height: '24px' }} />
             </Button>
-            <h2 className="text-2xl font-bold text-black flex-1">
+            <h2 className="text-2xl font-bold text-foreground flex-1">
               {selectedMember ? getDisplayName(selectedMember) : "Messages"}
             </h2>
           </div>
