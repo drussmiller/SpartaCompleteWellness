@@ -769,6 +769,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     defaultValues: {
       name: "",
       description: "",
+      isPrivate: false,
     },
   });
 
@@ -1693,6 +1694,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     </FormItem>
                                   )}
                                 />
+                                <FormField
+                                  control={organizationForm.control}
+                                  name="isPrivate"
+                                  render={({ field }) => (
+                                    <FormItem className="flex items-center gap-2 space-y-0">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-medium">
+                                        Private (hidden from public selection)
+                                      </FormLabel>
+                                    </FormItem>
+                                  )}
+                                />
                                 <DialogFooter>
                                   <Button
                                     type="submit"
@@ -1743,6 +1761,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             ? parsedStatus
                                             : 1;
 
+                                        const isPrivate = formData.get("isPrivate") === "on";
+
                                         if (!name) {
                                           toast({
                                             title: "Error",
@@ -1760,6 +1780,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             description:
                                               description || undefined,
                                             status: Number(status),
+                                            isPrivate,
                                           },
                                         });
                                       }}
@@ -1804,6 +1825,16 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             </SelectItem>
                                           </SelectContent>
                                         </Select>
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <Checkbox
+                                          id={`private-${organization.id}`}
+                                          name="isPrivate"
+                                          defaultChecked={organization.isPrivate || false}
+                                        />
+                                        <Label htmlFor={`private-${organization.id}`} className="text-sm font-medium">
+                                          Private (hidden from public selection)
+                                        </Label>
                                       </div>
                                       <div className="flex gap-2 mt-4">
                                         <Button
@@ -1855,6 +1886,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             ? "Active"
                                             : "Inactive"}
                                         </span>
+                                        {organization.isPrivate && (
+                                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                                            Private
+                                          </span>
+                                        )}
                                       </p>
                                     </div>
                                   )}

@@ -3802,6 +3802,11 @@ export const registerRoutes = async (
         }
       }
 
+      // Validate isPrivate field if present
+      if (req.body.isPrivate !== undefined) {
+        req.body.isPrivate = Boolean(req.body.isPrivate);
+      }
+
       logger.info(`Updating organization ${organizationId} with data:`, req.body);
 
       // Use database transaction for atomic updates
