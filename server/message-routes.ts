@@ -433,9 +433,7 @@ messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
       .select()
       .from(messages);
     
-    console.log(`Building query for messages where: 
-      (senderId=${req.user.id} AND recipientId=${otherUserId}) OR 
-      (senderId=${otherUserId} AND recipientId=${req.user.id})`);
+    console.log(`Building query for messages between userId: ${req.user.id} and userId: ${otherUserId}`);
     
     // Query messages using Drizzle ORM's parameterized query builder
     const rawMessages = await messageQuery
