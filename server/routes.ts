@@ -3215,7 +3215,7 @@ export const registerRoutes = async (
 
       const existingTeams = await db.select().from(teams).where(eq(teams.groupId, parsedData.data.groupId));
       if (existingTeams.some(t => t.name.trim().toLowerCase() === parsedData.data.name.trim().toLowerCase())) {
-        return res.status(400).json({ message: "A team with this name already exists in this division" });
+        return res.status(400).json({ message: "The Team already exists" });
       }
 
       const team = await storage.createTeam(parsedData.data);
@@ -3466,7 +3466,7 @@ export const registerRoutes = async (
             and(eq(teams.groupId, targetGroupId), ne(teams.id, teamId))
           );
           if (existingTeams.some(t => t.name.trim().toLowerCase() === checkName)) {
-            return res.status(400).json({ message: "A team with this name already exists in this division" });
+            return res.status(400).json({ message: "The Team already exists" });
           }
         }
       }
