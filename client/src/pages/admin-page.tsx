@@ -163,6 +163,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const [createGroupDialogOpen, setCreateGroupDialogOpen] = useState(false);
   const [createTeamDialogOpen, setCreateTeamDialogOpen] = useState(false);
+  const [createTeamOrgId, setCreateTeamOrgId] = useState<number | null>(null);
   const [createDivisionForOrgId, setCreateDivisionForOrgId] = useState<number | null>(null);
   const [expandedOrgDivisions, setExpandedOrgDivisions] = useState<Record<number, boolean>>({});
 
@@ -3011,7 +3012,23 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                     )}
                     {/* Hide New Team button for Team Leads */}
                     {(currentUser?.isAdmin || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && !currentUser?.isTeamLead && (
-                    <Dialog open={createTeamDialogOpen} onOpenChange={setCreateTeamDialogOpen}>
+                    <Dialog open={createTeamDialogOpen} onOpenChange={(open) => {
+                      setCreateTeamDialogOpen(open);
+                      if (!open) {
+                        setCreateTeamOrgId(null);
+                        form.setValue('groupId', 0);
+                      } else if (open && currentUser?.isOrganizationAdmin && !currentUser?.isAdmin) {
+                        const orgId = currentUser.adminOrganizationId;
+                        if (orgId) {
+                          const orgGroups = (groups || []).filter(g => g.organizationId === orgId);
+                          const nonDefault = orgGroups.filter(g => !defaultGroupIds.has(g.id));
+                          if (nonDefault.length === 0) {
+                            const defGroup = orgGroups.find(g => defaultGroupIds.has(g.id));
+                            if (defGroup) form.setValue('groupId', defGroup.id);
+                          }
+                        }
+                      }
+                    }}>
                       <DialogTrigger asChild>
                         <Button
                           size="sm"
@@ -3068,54 +3085,102 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </FormItem>
                               )}
                             />
-                            <FormField
-                              control={form.control}
-                              name="groupId"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Division</FormLabel>
-                                  <FormControl>
-                                    {currentUser?.isGroupAdmin && !currentUser?.isAdmin ? (
-                                      <div className="px-3 py-2 border rounded-md bg-muted text-sm">
-                                        {filteredGroups[0]?.name || 'Your Division'}
-                                      </div>
-                                    ) : (
-                                      // Full Admins see dropdown with all groups
-                                      <Select
-                                        value={field.value && field.value > 0 ? field.value.toString() : undefined}
-                                        onValueChange={(value) =>
-                                          field.onChange(parseInt(value))
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select a division" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {!sortedGroups || sortedGroups.length === 0 ? (
-                                            <div className="px-3 py-2 text-sm text-muted-foreground">
-                                              No divisions available
-                                            </div>
-                                          ) : (
-                                            sortedGroups.map((group) => {
-                                              const groupOrg = sortedOrganizations?.find(o => o.id === group.organizationId);
-                                              const isDefault = defaultGroupIds.has(group.id);
-                                              return (
-                                                <SelectItem
-                                                  key={group.id}
-                                                  value={group.id.toString()}
-                                                >
-                                                  {isDefault ? "None" : group.name} (Org: {groupOrg?.name})
-                                                </SelectItem>
-                                              );
-                                            })
-                                          )}
-                                        </SelectContent>
-                                      </Select>
+                            {currentUser?.isAdmin && (
+                              <FormItem>
+                                <FormLabel>Organization</FormLabel>
+                                <FormControl>
+                                  <Select
+                                    value={createTeamOrgId ? createTeamOrgId.toString() : undefined}
+                                    onValueChange={(value) => {
+                                      const orgId = parseInt(value);
+                                      setCreateTeamOrgId(orgId);
+                                      const orgGroups = (groups || []).filter(g => g.organizationId === orgId);
+                                      const nonDefaultGroups = orgGroups.filter(g => !defaultGroupIds.has(g.id));
+                                      if (nonDefaultGroups.length === 0) {
+                                        const defaultGroup = orgGroups.find(g => defaultGroupIds.has(g.id));
+                                        if (defaultGroup) form.setValue('groupId', defaultGroup.id);
+                                      } else {
+                                        form.setValue('groupId', 0);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select an organization" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {sortedOrganizations.map((org) => (
+                                        <SelectItem key={org.id} value={org.id.toString()}>
+                                          {org.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                              </FormItem>
+                            )}
+                            {(() => {
+                              const selectedOrgId = currentUser?.isAdmin ? createTeamOrgId : (currentUser?.isOrganizationAdmin ? currentUser.adminOrganizationId : null);
+                              const orgGroups = selectedOrgId ? (groups || []).filter(g => g.organizationId === selectedOrgId) : [];
+                              const nonDefaultGroups = orgGroups.filter(g => !defaultGroupIds.has(g.id)).sort((a, b) => a.name.localeCompare(b.name));
+                              const defaultGroup = orgGroups.find(g => defaultGroupIds.has(g.id));
+
+                              if (currentUser?.isGroupAdmin && !currentUser?.isAdmin) {
+                                return (
+                                  <FormField
+                                    control={form.control}
+                                    name="groupId"
+                                    render={() => (
+                                      <FormItem>
+                                        <FormLabel>Division</FormLabel>
+                                        <FormControl>
+                                          <div className="px-3 py-2 border rounded-md bg-muted text-sm">
+                                            {filteredGroups[0]?.name || 'Your Division'}
+                                          </div>
+                                        </FormControl>
+                                      </FormItem>
                                     )}
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
+                                  />
+                                );
+                              }
+
+                              if (!selectedOrgId) return null;
+
+                              if (nonDefaultGroups.length === 0) return null;
+
+                              return (
+                                <FormField
+                                  control={form.control}
+                                  name="groupId"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Division</FormLabel>
+                                      <FormControl>
+                                        <Select
+                                          value={field.value && field.value > 0 ? field.value.toString() : undefined}
+                                          onValueChange={(value) => field.onChange(parseInt(value))}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select a division" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {defaultGroup && (
+                                              <SelectItem value={defaultGroup.id.toString()}>
+                                                None
+                                              </SelectItem>
+                                            )}
+                                            {nonDefaultGroups.map((group) => (
+                                              <SelectItem key={group.id} value={group.id.toString()}>
+                                                {group.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              );
+                            })()}
                             <FormField
                               control={form.control}
                               name="maxSize"
