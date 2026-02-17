@@ -26,7 +26,7 @@ export function convertUrlsToLinks(text: string): string {
 
   const matches = text.match(urlRegex);
   if (!matches || matches.length === 0) {
-    return text;
+    return DOMPurify.sanitize(text, DOMPURIFY_CONFIG);
   }
 
   const html = text.replace(urlRegex, (match, url) => {
