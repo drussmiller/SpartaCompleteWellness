@@ -38,6 +38,43 @@ const DEFAULT_HELP_HTML = `
 <p>If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week. All posts and points Week/Day and after will be forfeited.</p>
 `;
 
+const SECTION_ICONS: Record<string, string> = {
+  "home": "home",
+  "activity": "activity",
+};
+
+function getSectionIcon(title: string) {
+  const lower = title.toLowerCase();
+  if (lower.includes("home")) return <Home className="h-5 w-5" />;
+  if (lower.includes("activity")) return <Activity className="h-5 w-5" />;
+  return null;
+}
+
+function splitIntoSections(html: string): { title: string; content: string }[] {
+  const parts = html.split(/<h2[^>]*>/i);
+  const sections: { title: string; content: string }[] = [];
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (!part) continue;
+
+    const h2EndMatch = part.match(/<\/h2>/i);
+    if (h2EndMatch && h2EndMatch.index !== undefined) {
+      const title = part.substring(0, h2EndMatch.index).replace(/<[^>]*>/g, '').trim();
+      const content = part.substring(h2EndMatch.index + 5).trim();
+      sections.push({ title, content });
+    } else {
+      if (sections.length > 0) {
+        sections[sections.length - 1].content += part;
+      } else {
+        sections.push({ title: "", content: part });
+      }
+    }
+  }
+
+  return sections;
+}
+
 export default function HelpPage() {
   const isMobile = useIsMobile();
 
@@ -57,7 +94,8 @@ export default function HelpPage() {
   });
 
   const rawContent = pageData?.content || DEFAULT_HELP_HTML;
-  const htmlContent = useMemo(() => DOMPurify.sanitize(rawContent), [rawContent]);
+  const sanitizedContent = useMemo(() => DOMPurify.sanitize(rawContent), [rawContent]);
+  const sections = useMemo(() => splitIntoSections(sanitizedContent), [sanitizedContent]);
 
   return (
     <AppLayout>
@@ -68,11 +106,21 @@ export default function HelpPage() {
       </div>
 
       <main className={`pb-24 space-y-4 max-w-2xl mx-auto w-full pl-6 pr-4 py-6 text-lg mt-[40px] md:mt-[100px] ${isAndroid ? 'pb-[calc(24+40)px]' : ''}`}>
-        <Card>
-          <CardContent className="space-y-4 pt-6 prose prose-sm max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-          </CardContent>
-        </Card>
+        {sections.map((section, index) => (
+          <Card key={index}>
+            {section.title && (
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  {getSectionIcon(section.title)}
+                  {section.title}
+                </CardTitle>
+              </CardHeader>
+            )}
+            <CardContent className="space-y-4 prose prose-sm max-w-none">
+              <div dangerouslySetInnerHTML={{ __html: section.content }} />
+            </CardContent>
+          </Card>
+        ))}
       </main>
     </AppLayout>
   );
