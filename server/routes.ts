@@ -9641,7 +9641,11 @@ export const registerRoutes = async (
           return res.status(400).json({ message: "No file uploaded" });
         }
 
-        if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
+        const lowerName = req.file.originalname.toLowerCase();
+        if (lowerName.endsWith('.doc') && !lowerName.endsWith('.docx')) {
+          return res.status(400).json({ message: "The older .doc format is not supported. Please open the file in Word and save it as .docx (Word Document) format, then upload again." });
+        }
+        if (!lowerName.endsWith('.docx')) {
           return res.status(400).json({ message: "Only .docx files are supported" });
         }
 
