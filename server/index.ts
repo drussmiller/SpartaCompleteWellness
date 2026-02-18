@@ -78,13 +78,21 @@ app.get('/health', (_req, res) => {
 async function verifyDatabase() {
   console.log("Verifying database connection...");
   try {
-    // Test database connection
     await db.execute(sql`SELECT 1`);
     console.log("Database connection verified successfully.");
-    console.log("Note: Schema is managed by Drizzle Kit. Run 'npm run db:push' to sync schema changes.");
+    await ensureSchemaColumns();
   } catch (error) {
     console.error("Error connecting to database:", error);
     throw error;
+  }
+}
+
+async function ensureSchemaColumns() {
+  try {
+    await db.execute(sql`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT false`);
+    console.log("Schema columns verified.");
+  } catch (error) {
+    console.warn("Schema column check warning:", error);
   }
 }
 
