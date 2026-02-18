@@ -970,8 +970,15 @@ export default function ActivityManagementPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content). Special files: "BibleVerses.docx" will create daily Bible verse activities.
+                Name your files using the format: <strong>Category-Week#Day#.docx</strong>. The category becomes a workout selection preference. For example:
               </p>
+              <ul className="text-sm text-muted-foreground mt-1 ml-4 list-disc space-y-1">
+                <li><strong>Bands-Week1Day1.docx</strong> — adds as a "Bands" workout option</li>
+                <li><strong>Free Weights-Week1Day1.docx</strong> — adds as a "Free Weights" workout option</li>
+                <li><strong>Week25.docx</strong> — weekly content (no category)</li>
+                <li><strong>Week1Day2.docx</strong> — daily content (no category)</li>
+                <li><strong>BibleVerses.docx</strong> — creates daily Bible verse activities</li>
+              </ul>
             </div>
             </div>
         </div>
