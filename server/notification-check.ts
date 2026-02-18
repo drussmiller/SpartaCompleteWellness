@@ -32,14 +32,6 @@ export async function checkNotifications() {
 
     logger.info(`[SCHEDULER] Found ${allUsers.length} users to check`);
 
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const dayOfWeek = today.getDay();
-
     let notificationsCreated = 0;
     let smsNotificationsSent = 0;
     let emailNotificationsSent = 0;
@@ -51,12 +43,25 @@ export async function checkNotifications() {
           continue;
         }
 
+        const offsetMinutes = user.timezoneOffset || 0;
+        const userLocalNow = new Date(now.getTime() + offsetMinutes * 60000);
+        const userLocalToday = new Date(userLocalNow);
+        userLocalToday.setUTCHours(0, 0, 0, 0);
+        const userLocalYesterday = new Date(userLocalToday.getTime() - 86400000);
+
+        const todayUTC = new Date(userLocalToday.getTime() - offsetMinutes * 60000);
+        const yesterdayUTC = new Date(userLocalYesterday.getTime() - offsetMinutes * 60000);
+
+        const dayOfWeek = userLocalToday.getUTCDay();
+
+        logger.info(`[SCHEDULER] User ${user.username} (ID: ${user.id}) timezone offset: ${offsetMinutes}min, local yesterday: ${userLocalYesterday.toISOString()}, query range UTC: ${yesterdayUTC.toISOString()} to ${todayUTC.toISOString()}`);
+
         if (user.programStartDate) {
           const startDateStr = String(user.programStartDate).split('T')[0];
           const [year, month, day] = startDateStr.split('-').map(Number);
           const programStart = new Date(year, month - 1, day);
           programStart.setHours(0, 0, 0, 0);
-          if (programStart > today) {
+          if (programStart > todayUTC) {
             logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - program start date hasn't passed yet`);
             continue;
           }
@@ -72,8 +77,8 @@ export async function checkNotifications() {
           .where(
             and(
               eq(posts.userId, user.id),
-              gte(posts.createdAt, yesterday),
-              lt(posts.createdAt, today),
+              gte(posts.createdAt, yesterdayUTC),
+              lt(posts.createdAt, todayUTC),
               isNull(posts.parentId),
             ),
           );
@@ -92,8 +97,8 @@ export async function checkNotifications() {
             .where(
               and(
                 eq(posts.userId, user.id),
-                gte(posts.createdAt, yesterday),
-                lt(posts.createdAt, today),
+                gte(posts.createdAt, yesterdayUTC),
+                lt(posts.createdAt, todayUTC),
                 isNull(posts.parentId),
               ),
             )
