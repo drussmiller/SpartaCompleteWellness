@@ -47,11 +47,15 @@ import {
   messages,
   insertMessageSchema,
   systemState,
+  pageContent,
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
 import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
+import HTMLtoDOCX from "html-to-docx";
+import { JSDOM } from "jsdom";
+import DOMPurify from "dompurify";
 import bcrypt from "bcryptjs";
 import sharp from "sharp";
 import { z } from "zod";
@@ -9349,6 +9353,344 @@ export const registerRoutes = async (
       });
     }
   });
+
+  // ===== PAGE CONTENT & DOCUMENT DOWNLOAD/UPLOAD ENDPOINTS =====
+
+  router.get("/api/page-content/:pageName", authenticate, async (req, res) => {
+    try {
+      const { pageName } = req.params;
+      const validPages = ["help", "welcome"];
+      if (!validPages.includes(pageName.toLowerCase())) {
+        return res.status(400).json({ message: "Invalid page name. Must be 'help' or 'welcome'." });
+      }
+
+      const result = await db
+        .select()
+        .from(pageContent)
+        .where(eq(pageContent.pageName, pageName.toLowerCase()));
+
+      if (result.length === 0) {
+        return res.json({ pageName: pageName.toLowerCase(), content: null });
+      }
+
+      res.json(result[0]);
+    } catch (error) {
+      logger.error("Error fetching page content:", error);
+      res.status(500).json({ message: "Failed to fetch page content" });
+    }
+  });
+
+  router.get("/api/page-content/:pageName/download", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const { pageName } = req.params;
+      const validPages = ["help", "welcome"];
+      if (!validPages.includes(pageName.toLowerCase())) {
+        return res.status(400).json({ message: "Invalid page name. Must be 'help' or 'welcome'." });
+      }
+
+      let htmlContent = "";
+
+      const result = await db
+        .select()
+        .from(pageContent)
+        .where(eq(pageContent.pageName, pageName.toLowerCase()));
+
+      if (result.length > 0 && result[0].content) {
+        htmlContent = result[0].content;
+      } else {
+        if (pageName.toLowerCase() === "help") {
+          htmlContent = `<h1>Help</h1>
+<h2>Home Page</h2>
+<h3>Posts</h3>
+<p>Your posts on the Home page seen by your team</p>
+<p>Prayer requests are seen by your team and other teams.</p>
+<h3>Post Types:</h3>
+<ul>
+<li><strong>Food:</strong> Up to 3 posts a day (3 points each). Sunday is a free day if you choose.</li>
+<li><strong>Workout:</strong> Up to 5 posts a week (3 points each).</li>
+<li><strong>Scripture:</strong> One for each day of the week (3 points each).</li>
+<li><strong>Memory verse:</strong> One per week (10 points)</li>
+<li><strong>Miscellaneous:</strong> No points are awarded.</li>
+</ul>
+<p><strong>Note:</strong> If you are in a team marked as "Competitive" you must post Food, Workout and Scripture post on the current day and not allowed to change the date.</p>
+<p><strong>Note:</strong> Deleting a post with points will remove the points also</p>
+<h3>Messages</h3>
+<p>You can message only members of your team</p>
+<h2>Activity Page</h2>
+<h3>Week Content</h3>
+<ul>
+<li>Memory Verse for the week is listed at the top of the section.</li>
+<li>Follow the instructions in the section to have a successful week.</li>
+</ul>
+<h3>Week and Day Content</h3>
+<ul>
+<li>Today's Bible verse is at the top of the section.</li>
+<li>Follow the instruction in the section to have a successful day.</li>
+</ul>
+<h3>Re-Engage (Non-competitive teams only)</h3>
+<p>If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week. All posts and points Week/Day and after will be forfeited.</p>`;
+        } else {
+          htmlContent = `<h1>Welcome to Sparta Complete Wellness!</h1>
+<p>Thank you for having the courage and conviction to start this life changing experience. This is the first step of many in the process of getting fit physically, mentally, emotionally, and spiritually.</p>
+<p>You will be in a division with up to 9 other men to make up your Team. You are an important part of this Team. Every time you post a meal pic, commentary, sweaty selfie, you inspire the other men on your Team. In the spirit of competition, and accountability, points will be accumulated by you, and your Team, that will guarantee healthy change for a lifetime.</p>
+<h2>Getting Started</h2>
+<h3>1) Take Before Photos</h3>
+<p>Take two pictures of yourself, one from the front and one from the side. These will be used for you to document your great results. We will remind you to retake these pictures each time you go to the next level.</p>
+<p><em>(You are not required to post these photos. Take pictures dressed in shorts and fitted t-shirt.)</em></p>
+<h3>2) Weigh Yourself</h3>
+<p>Weigh yourself and take a picture of the reading. We know that this is not a true measuring tool of fitness, but it is a measuring tool that we like to track. We will remind you to weigh yourself again each time you go to the next level.</p>
+<p><em>(You are not required to post this photo.)</em></p>
+<h3>3) Measure Your Waist</h3>
+<p>Measure yourself around your waist where your belly button is located. Lost inches around the waist is another great measuring tool. We will remind you to measure yourself again each time you go to the next level.</p>
+<h3>4) Track Your Progress</h3>
+<p>You can record your weight and waist measurement in your profile to track your progress.</p>
+<h2>Scoring System</h2>
+<p><strong>Workouts:</strong> 3 points each, 15 total for the week</p>
+<p><strong>Scripture Reading:</strong> 3 points, 7 days a week, 21 total for the week</p>
+<p><strong>Compliant Meals:</strong> 3 points each, 6 days, 3 per day, 54 total for the week</p>
+<p><strong>Scripture Memorization:</strong> 10 points</p>
+<p><strong>TOTAL SCORE: 100 points</strong></p>
+<p><strong>ALL SPARTANS MUST HAVE AN AVERAGE SCORE OF 85 POINTS OR HIGHER TO GRADUATE AND BECOME A SPARTAN FOR LIFE.</strong></p>
+<h2>Your First Post</h2>
+<p>Your first post will be an intro video.</p>
+<p><strong>Tell us:</strong></p>
+<ul>
+<li>Why you joined Sparta</li>
+<li>A little about yourself</li>
+<li>What are you expecting to get out of the program</li>
+</ul>`;
+        }
+      }
+
+      const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
+        table: { row: { cantSplit: true } },
+        footer: true,
+        pageNumber: true,
+      });
+
+      const filename = `${pageName.charAt(0).toUpperCase() + pageName.slice(1)}.docx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(Buffer.from(docxBuffer));
+    } catch (error) {
+      logger.error("Error downloading page content:", error);
+      res.status(500).json({ message: "Failed to download page content" });
+    }
+  });
+
+  router.get("/api/activities/download/week/:week", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const week = parseInt(req.params.week);
+      if (isNaN(week)) {
+        return res.status(400).json({ message: "Invalid week number" });
+      }
+
+      const weekActivities = await db
+        .select()
+        .from(activities)
+        .where(eq(activities.week, week))
+        .orderBy(asc(activities.day));
+
+      const allWorkoutTypes = await db.select().from(workoutTypes);
+      const typeMap: Record<number, string> = {};
+      allWorkoutTypes.forEach((wt) => {
+        typeMap[wt.id] = wt.type;
+      });
+
+      let htmlContent = `<h1>Week ${week} Activities</h1>`;
+
+      const dayGroups: Record<number, typeof weekActivities> = {};
+      weekActivities.forEach((activity) => {
+        if (!dayGroups[activity.day]) {
+          dayGroups[activity.day] = [];
+        }
+        dayGroups[activity.day].push(activity);
+      });
+
+      const sortedDays = Object.keys(dayGroups).map(Number).sort((a, b) => a - b);
+
+      for (const day of sortedDays) {
+        htmlContent += `<h2>Day ${day}</h2>`;
+        for (const activity of dayGroups[day]) {
+          const typeName = activity.activityTypeId ? typeMap[activity.activityTypeId] || `Type ${activity.activityTypeId}` : "General";
+          htmlContent += `<h3>${typeName}</h3>`;
+
+          const fields = activity.contentFields as any[];
+          if (Array.isArray(fields)) {
+            for (const field of fields) {
+              if (field.type === "text") {
+                htmlContent += field.content || "";
+              } else if (field.type === "video") {
+                htmlContent += `<p>[Video: ${field.content || field.title || ""}]</p>`;
+              }
+            }
+          }
+        }
+      }
+
+      if (weekActivities.length === 0) {
+        htmlContent += `<p>No activities found for Week ${week}.</p>`;
+      }
+
+      const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
+        table: { row: { cantSplit: true } },
+        footer: true,
+        pageNumber: true,
+      });
+
+      const filename = `Week${week}_Activities.docx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(Buffer.from(docxBuffer));
+    } catch (error) {
+      logger.error("Error downloading weekly activities:", error);
+      res.status(500).json({ message: "Failed to download weekly activities" });
+    }
+  });
+
+  router.get("/api/activities/download/week/:week/day/:day", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const week = parseInt(req.params.week);
+      const day = parseInt(req.params.day);
+      if (isNaN(week) || isNaN(day)) {
+        return res.status(400).json({ message: "Invalid week or day number" });
+      }
+
+      const dayActivities = await db
+        .select()
+        .from(activities)
+        .where(and(eq(activities.week, week), eq(activities.day, day)));
+
+      const allWorkoutTypes = await db.select().from(workoutTypes);
+      const typeMap: Record<number, string> = {};
+      allWorkoutTypes.forEach((wt) => {
+        typeMap[wt.id] = wt.type;
+      });
+
+      let htmlContent = `<h1>Week ${week} - Day ${day} Activities</h1>`;
+
+      for (const activity of dayActivities) {
+        const typeName = activity.activityTypeId ? typeMap[activity.activityTypeId] || `Type ${activity.activityTypeId}` : "General";
+        htmlContent += `<h3>${typeName}</h3>`;
+
+        const fields = activity.contentFields as any[];
+        if (Array.isArray(fields)) {
+          for (const field of fields) {
+            if (field.type === "text") {
+              htmlContent += field.content || "";
+            } else if (field.type === "video") {
+              htmlContent += `<p>[Video: ${field.content || field.title || ""}]</p>`;
+            }
+          }
+        }
+      }
+
+      if (dayActivities.length === 0) {
+        htmlContent += `<p>No activities found for Week ${week}, Day ${day}.</p>`;
+      }
+
+      const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
+        table: { row: { cantSplit: true } },
+        footer: true,
+        pageNumber: true,
+      });
+
+      const filename = `Week${week}_Day${day}_Activities.docx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(Buffer.from(docxBuffer));
+    } catch (error) {
+      logger.error("Error downloading daily activities:", error);
+      res.status(500).json({ message: "Failed to download daily activities" });
+    }
+  });
+
+  router.post(
+    "/api/page-content/upload",
+    authenticate,
+    multer({ storage: multer.memoryStorage() }).single("document"),
+    async (req, res) => {
+      try {
+        res.setHeader("Content-Type", "application/json");
+
+        if (!req.user?.isAdmin) {
+          return res.status(403).json({ message: "Not authorized" });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
+          return res.status(400).json({ message: "Only .docx files are supported" });
+        }
+
+        const filename = req.file.originalname.toLowerCase().replace('.docx', '').trim();
+
+        let pageName: string | null = null;
+        if (filename === "help" || filename.includes("help")) {
+          pageName = "help";
+        } else if (filename === "welcome" || filename.includes("welcome")) {
+          pageName = "welcome";
+        }
+
+        if (!pageName) {
+          return res.status(400).json({
+            message: "Could not determine page type from filename. Please name the file 'Help.docx' or 'Welcome.docx'."
+          });
+        }
+
+        const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
+
+        const window = new JSDOM("").window;
+        const purify = DOMPurify(window as any);
+        const htmlContent = purify.sanitize(result.value, {
+          ALLOWED_TAGS: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "strong", "em", "b", "i", "u", "a", "br", "div", "span", "table", "thead", "tbody", "tr", "td", "th", "img", "blockquote", "hr", "sup", "sub"],
+          ALLOWED_ATTR: ["href", "src", "alt", "class", "style", "target", "rel"],
+        });
+
+        await db
+          .insert(pageContent)
+          .values({
+            pageName,
+            content: htmlContent,
+          })
+          .onConflictDoUpdate({
+            target: pageContent.pageName,
+            set: {
+              content: htmlContent,
+              updatedAt: new Date(),
+            },
+          });
+
+        logger.info(`[PAGE CONTENT] Updated ${pageName} page content from uploaded document`);
+
+        res.json({
+          success: true,
+          pageName,
+          message: `${pageName.charAt(0).toUpperCase() + pageName.slice(1)} page content updated successfully`,
+        });
+      } catch (error) {
+        logger.error("Error uploading page content:", error);
+        res.status(500).json({
+          message: "Failed to process document",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  );
 
   return httpServer;
 };

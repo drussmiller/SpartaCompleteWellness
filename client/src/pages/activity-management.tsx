@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, PlayCircle } from "lucide-react";
+import { Edit, Trash2, X, Plus, Loader2, Upload, ChevronLeft, PlayCircle, Download, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,6 +37,10 @@ export default function ActivityManagementPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [downloadWeek, setDownloadWeek] = useState<number>(1);
+  const [downloadDay, setDownloadDay] = useState<number>(1);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isUploadingPage, setIsUploadingPage] = useState(false);
   const [extractedWeek, setExtractedWeek] = useState<number | null>(null);
   const [extractedDay, setExtractedDay] = useState<number | null>(null);
   const [selectedActivityTypeId, setSelectedActivityTypeId] = useState<number>(1); // Default to "Bands"
@@ -470,6 +474,61 @@ export default function ActivityManagementPage() {
     );
   }
 
+  const handleDownload = async (url: string, filename: string) => {
+    setIsDownloading(true);
+    try {
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      toast({ title: "Success", description: `Downloaded ${filename}` });
+    } catch (error) {
+      toast({ title: "Error", description: "Download failed", variant: "destructive" });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handlePageContentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.name.endsWith('.docx')) {
+      toast({ title: "Invalid file", description: "Please upload a Word document (.docx)", variant: "destructive" });
+      return;
+    }
+
+    setIsUploadingPage(true);
+    try {
+      const formData = new FormData();
+      formData.append("document", file);
+
+      const res = await fetch("/api/page-content/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Upload failed");
+
+      toast({ title: "Success", description: data.message });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Upload failed",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingPage(false);
+      event.target.value = "";
+    }
+  };
+
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-[1000px] px-6 md:px-44 md:pl-56 lg:border-x lg:border-border/40 bg-white space-y-8 pb-24">
@@ -896,6 +955,127 @@ export default function ActivityManagementPage() {
               </p>
             </div>
             </div>
+        </div>
+
+        <div className="border rounded-md p-4 bg-muted/20">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Download Content
+          </h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Download Weekly Activity</Label>
+                <div className="flex items-center gap-2">
+                  <Select value={String(downloadWeek)} onValueChange={(v) => setDownloadWeek(parseInt(v))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 52 }, (_, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1)}>Week {i + 1}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isDownloading}
+                    onClick={() => handleDownload(`/api/activities/download/week/${downloadWeek}`, `Week${downloadWeek}_Activities.docx`)}
+                  >
+                    {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
+                    Download Week
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Download Daily Activity</Label>
+                <div className="flex items-center gap-2">
+                  <Select value={String(downloadWeek)} onValueChange={(v) => setDownloadWeek(parseInt(v))}>
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue placeholder="Week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 52 }, (_, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1)}>Week {i + 1}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(downloadDay)} onValueChange={(v) => setDownloadDay(parseInt(v))}>
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue placeholder="Day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 7 }, (_, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1)}>Day {i + 1}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isDownloading}
+                    onClick={() => handleDownload(`/api/activities/download/week/${downloadWeek}/day/${downloadDay}`, `Week${downloadWeek}_Day${downloadDay}_Activities.docx`)}
+                  >
+                    {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
+                    Download Day
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 mt-4">
+              <Label>Download Page Content</Label>
+              <div className="flex items-center gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isDownloading}
+                  onClick={() => handleDownload("/api/page-content/help/download", "Help.docx")}
+                >
+                  {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
+                  Download Help Page
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isDownloading}
+                  onClick={() => handleDownload("/api/page-content/welcome/download", "Welcome.docx")}
+                >
+                  {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
+                  Download Welcome Page
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border rounded-md p-4 bg-muted/20">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Upload Help / Welcome Page Content
+          </h2>
+          <div className="space-y-2">
+            <Label htmlFor="pageContentUpload">Upload Word Document</Label>
+            <input
+              id="pageContentUpload"
+              type="file"
+              accept=".docx"
+              disabled={isUploadingPage}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={handlePageContentUpload}
+            />
+            {isUploadingPage && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Uploading...
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">
+              Name the file "Help.docx" or "Welcome.docx" to update the corresponding page. The content from the Word document will replace the current page content.
+            </p>
+          </div>
         </div>
 
         <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
