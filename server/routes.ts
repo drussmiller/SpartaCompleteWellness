@@ -9470,20 +9470,14 @@ export const registerRoutes = async (
 
       if (pageName.toLowerCase() === "welcome") {
         const videoId = youtubeVideoId || "31VqAraWk_w";
-        const videoLink = `<p><strong>YouTube Video:</strong> <a href="https://www.youtube.com/watch?v=${videoId}">https://www.youtube.com/watch?v=${videoId}</a></p><hr>`;
+        const videoLink = `<!-- YouTube Video ID: ${videoId} -->\n<p><strong>YouTube Video:</strong> <a href="https://www.youtube.com/watch?v=${videoId}">https://www.youtube.com/watch?v=${videoId}</a></p>\n<hr>\n`;
         htmlContent = videoLink + htmlContent;
       }
 
-      const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
-        table: { row: { cantSplit: true } },
-        footer: true,
-        pageNumber: true,
-      });
-
-      const filename = `${pageName.charAt(0).toUpperCase() + pageName.slice(1)}.docx`;
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      const filename = `${pageName.charAt(0).toUpperCase() + pageName.slice(1)}.html`;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      res.send(Buffer.from(docxBuffer));
+      res.send(htmlContent);
     } catch (error) {
       logger.error("Error downloading page content:", error);
       res.status(500).json({ message: "Failed to download page content" });
@@ -9641,11 +9635,15 @@ export const registerRoutes = async (
           return res.status(400).json({ message: "No file uploaded" });
         }
 
-        if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
-          return res.status(400).json({ message: "Only .docx files are supported" });
+        const originalName = req.file.originalname.toLowerCase();
+        const isHtml = originalName.endsWith('.html') || originalName.endsWith('.htm');
+        const isDocx = originalName.endsWith('.docx');
+
+        if (!isHtml && !isDocx) {
+          return res.status(400).json({ message: "Only .html or .docx files are supported" });
         }
 
-        const filename = req.file.originalname.toLowerCase().replace('.docx', '').trim();
+        const filename = originalName.replace(/\.(html|htm|docx)$/, '').trim();
 
         let pageName: string | null = null;
         if (filename === "help" || filename.includes("help")) {
@@ -9656,26 +9654,33 @@ export const registerRoutes = async (
 
         if (!pageName) {
           return res.status(400).json({
-            message: "Could not determine page type from filename. Please name the file 'Help.docx' or 'Welcome.docx'."
+            message: "Could not determine page type from filename. Please name the file 'Help.html' or 'Welcome.html'."
           });
         }
 
-        const result = await mammoth.convertToHtml({ buffer: req.file.buffer }, {
-          styleMap: [
-            "p[style-name='Heading 1'] => h1:fresh",
-            "p[style-name='Heading 2'] => h2:fresh",
-            "p[style-name='Heading 3'] => h3:fresh",
-            "p[style-name='Heading 4'] => h4:fresh",
-            "p[style-name='Heading 5'] => h5:fresh",
-            "p[style-name='Heading 6'] => h6:fresh",
-            "p[style-name='Title'] => h1:fresh",
-            "p[style-name='Subtitle'] => h2:fresh",
-          ],
-        });
+        let rawHtml: string;
+
+        if (isHtml) {
+          rawHtml = req.file.buffer.toString('utf-8');
+        } else {
+          const result = await mammoth.convertToHtml({ buffer: req.file.buffer }, {
+            styleMap: [
+              "p[style-name='Heading 1'] => h1:fresh",
+              "p[style-name='Heading 2'] => h2:fresh",
+              "p[style-name='Heading 3'] => h3:fresh",
+              "p[style-name='Heading 4'] => h4:fresh",
+              "p[style-name='Heading 5'] => h5:fresh",
+              "p[style-name='Heading 6'] => h6:fresh",
+              "p[style-name='Title'] => h1:fresh",
+              "p[style-name='Subtitle'] => h2:fresh",
+            ],
+          });
+          rawHtml = result.value;
+        }
 
         const window = new JSDOM("").window;
         const purify = DOMPurify(window as any);
-        let htmlContent = purify.sanitize(result.value, {
+        let htmlContent = purify.sanitize(rawHtml, {
           ALLOWED_TAGS: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "strong", "em", "b", "i", "u", "a", "br", "div", "span", "table", "thead", "tbody", "tr", "td", "th", "img", "blockquote", "hr", "sup", "sub"],
           ALLOWED_ATTR: ["href", "src", "alt", "class", "style", "target", "rel"],
         });
