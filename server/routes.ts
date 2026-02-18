@@ -9474,58 +9474,16 @@ export const registerRoutes = async (
         htmlContent = videoLink + htmlContent;
       }
 
-      const sections = htmlContent.split(/<h2[^>]*>/i);
-      let cardsHtml = '';
-      for (let i = 0; i < sections.length; i++) {
-        const part = sections[i].trim();
-        if (!part) continue;
-        const h2EndMatch = part.match(/<\/h2>/i);
-        if (h2EndMatch && h2EndMatch.index !== undefined) {
-          const title = part.substring(0, h2EndMatch.index).replace(/<[^>]*>/g, '').trim();
-          const content = part.substring(h2EndMatch.index + 5).trim();
-          cardsHtml += `<div class="card"><div class="card-header"><h2>${title}</h2></div><div class="card-content">${content}</div></div>\n`;
-        } else {
-          cardsHtml += `<div class="card"><div class="card-content">${part}</div></div>\n`;
-        }
-      }
+      const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
+        table: { row: { cantSplit: true } },
+        footer: true,
+        pageNumber: true,
+      });
 
-      const pageTitle = pageName.charAt(0).toUpperCase() + pageName.slice(1);
-      const styledHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${pageTitle} - Sparta Complete Wellness</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #1a1a1a; padding: 20px; max-width: 700px; margin: 0 auto; }
-  h1 { font-size: 1.25rem; font-weight: bold; padding: 16px 0; border-bottom: 1px solid #e5e5e5; margin-bottom: 16px; }
-  .card { background: white; border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
-  .card-header { padding: 16px 20px 8px; }
-  .card-header h2 { font-size: 1.2rem; font-weight: 600; }
-  .card-content { padding: 8px 20px 20px; font-size: 0.95rem; line-height: 1.6; }
-  .card-content h3 { font-size: 1rem; font-weight: 600; margin-top: 12px; margin-bottom: 4px; }
-  .card-content p { margin: 6px 0; }
-  .card-content ul, .card-content ol { margin: 6px 0; padding-left: 24px; }
-  .card-content li { margin: 4px 0; }
-  .card-content strong { font-weight: 600; }
-  .card-content em { font-style: italic; }
-  .card-content a { color: #7c3aed; }
-  .card-content hr { border: none; border-top: 1px solid #e5e5e5; margin: 12px 0; }
-  .edit-note { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #92400e; }
-</style>
-</head>
-<body>
-<h1>${pageTitle}</h1>
-<div class="edit-note">To edit this page, modify the content inside the <code>&lt;div class="card-content"&gt;</code> sections below. Keep the card structure intact. When done, save and re-upload this file.</div>
-${cardsHtml}
-</body>
-</html>`;
-
-      const filename = `${pageTitle}.html`;
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      const filename = `${pageName.charAt(0).toUpperCase() + pageName.slice(1)}.docx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      res.send(styledHtml);
+      res.send(Buffer.from(docxBuffer));
     } catch (error) {
       logger.error("Error downloading page content:", error);
       res.status(500).json({ message: "Failed to download page content" });
@@ -9683,15 +9641,11 @@ ${cardsHtml}
           return res.status(400).json({ message: "No file uploaded" });
         }
 
-        const originalName = req.file.originalname.toLowerCase();
-        const isHtml = originalName.endsWith('.html') || originalName.endsWith('.htm');
-        const isDocx = originalName.endsWith('.docx');
-
-        if (!isHtml && !isDocx) {
-          return res.status(400).json({ message: "Only .html or .docx files are supported" });
+        if (!req.file.originalname.toLowerCase().endsWith('.docx')) {
+          return res.status(400).json({ message: "Only .docx files are supported" });
         }
 
-        const filename = originalName.replace(/\.(html|htm|docx)$/, '').trim();
+        const filename = req.file.originalname.toLowerCase().replace('.docx', '').trim();
 
         let pageName: string | null = null;
         if (filename === "help" || filename.includes("help")) {
@@ -9702,59 +9656,26 @@ ${cardsHtml}
 
         if (!pageName) {
           return res.status(400).json({
-            message: "Could not determine page type from filename. Please name the file 'Help.html' or 'Welcome.html'."
+            message: "Could not determine page type from filename. Please name the file 'Help.docx' or 'Welcome.docx'."
           });
         }
 
-        let rawHtml: string;
-
-        if (isHtml) {
-          let fileContent = req.file.buffer.toString('utf-8');
-
-          const bodyMatch = fileContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-          if (bodyMatch) {
-            fileContent = bodyMatch[1];
-          }
-
-          fileContent = fileContent.replace(/<div class="edit-note">[\s\S]*?<\/div>/gi, '');
-          fileContent = fileContent.replace(/<h1>[\s\S]*?<\/h1>/gi, '');
-
-          const cardRegex = /<div class="card">\s*(?:<div class="card-header">\s*<h2>([\s\S]*?)<\/h2>\s*<\/div>)?\s*<div class="card-content">([\s\S]*?)<\/div>\s*<\/div>/gi;
-          let match;
-          const parts: string[] = [];
-          let hasCards = false;
-
-          while ((match = cardRegex.exec(fileContent)) !== null) {
-            hasCards = true;
-            const title = match[1]?.trim();
-            const content = match[2]?.trim();
-            if (title) {
-              parts.push(`<h2>${title}</h2>\n${content}`);
-            } else if (content) {
-              parts.push(content);
-            }
-          }
-
-          rawHtml = hasCards ? parts.join('\n') : fileContent.trim();
-        } else {
-          const result = await mammoth.convertToHtml({ buffer: req.file.buffer }, {
-            styleMap: [
-              "p[style-name='Heading 1'] => h1:fresh",
-              "p[style-name='Heading 2'] => h2:fresh",
-              "p[style-name='Heading 3'] => h3:fresh",
-              "p[style-name='Heading 4'] => h4:fresh",
-              "p[style-name='Heading 5'] => h5:fresh",
-              "p[style-name='Heading 6'] => h6:fresh",
-              "p[style-name='Title'] => h1:fresh",
-              "p[style-name='Subtitle'] => h2:fresh",
-            ],
-          });
-          rawHtml = result.value;
-        }
+        const result = await mammoth.convertToHtml({ buffer: req.file.buffer }, {
+          styleMap: [
+            "p[style-name='Heading 1'] => h1:fresh",
+            "p[style-name='Heading 2'] => h2:fresh",
+            "p[style-name='Heading 3'] => h3:fresh",
+            "p[style-name='Heading 4'] => h4:fresh",
+            "p[style-name='Heading 5'] => h5:fresh",
+            "p[style-name='Heading 6'] => h6:fresh",
+            "p[style-name='Title'] => h1:fresh",
+            "p[style-name='Subtitle'] => h2:fresh",
+          ],
+        });
 
         const window = new JSDOM("").window;
         const purify = DOMPurify(window as any);
-        let htmlContent = purify.sanitize(rawHtml, {
+        let htmlContent = purify.sanitize(result.value, {
           ALLOWED_TAGS: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "strong", "em", "b", "i", "u", "a", "br", "div", "span", "table", "thead", "tbody", "tr", "td", "th", "img", "blockquote", "hr", "sup", "sub"],
           ALLOWED_ATTR: ["href", "src", "alt", "class", "style", "target", "rel"],
         });

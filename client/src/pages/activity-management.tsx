@@ -1051,7 +1051,7 @@ export default function ActivityManagementPage() {
                   variant="outline"
                   size="sm"
                   disabled={isDownloading}
-                  onClick={() => handleDownload("/api/page-content/help/download", "Help.html")}
+                  onClick={() => handleDownload("/api/page-content/help/download", "Help.docx")}
                 >
                   {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
                   Download Help Page
@@ -1060,7 +1060,7 @@ export default function ActivityManagementPage() {
                   variant="outline"
                   size="sm"
                   disabled={isDownloading}
-                  onClick={() => handleDownload("/api/page-content/welcome/download", "Welcome.html")}
+                  onClick={() => handleDownload("/api/page-content/welcome/download", "Welcome.docx")}
                 >
                   {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
                   Download Welcome Page
@@ -1076,11 +1076,11 @@ export default function ActivityManagementPage() {
             Upload Help / Welcome Page Content
           </h2>
           <div className="space-y-2">
-            <Label htmlFor="pageContentUpload">Upload HTML Document</Label>
+            <Label htmlFor="pageContentUpload">Upload Word Document</Label>
             <input
               id="pageContentUpload"
               type="file"
-              accept=".html,.htm,.docx"
+              accept=".docx"
               disabled={isUploadingPage}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               onChange={handlePageContentUpload}
@@ -1092,7 +1092,7 @@ export default function ActivityManagementPage() {
               </div>
             )}
             <p className="text-sm text-muted-foreground mt-1">
-              Name the file "Help.html" or "Welcome.html" to update the corresponding page. The content from the HTML file will replace the current page content. Word documents (.docx) are also accepted.
+              Name the file "Help.docx" or "Welcome.docx" to update the corresponding page. The content from the Word document will replace the current page content.
             </p>
           </div>
         </div>
