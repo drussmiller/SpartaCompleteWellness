@@ -68,7 +68,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
     }
   });
 
-  const { data: pageData } = useQuery<{ pageName: string; content: string | null }>({
+  const { data: pageData } = useQuery<{ pageName: string; content: string | null; youtubeVideoId: string | null }>({
     queryKey: ["/api/page-content", "welcome"],
     queryFn: async () => {
       const res = await fetch("/api/page-content/welcome", { credentials: "include" });
@@ -92,6 +92,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
 
   const rawContent = pageData?.content || DEFAULT_WELCOME_HTML;
   const htmlContent = useMemo(() => DOMPurify.sanitize(rawContent), [rawContent]);
+  const videoId = pageData?.youtubeVideoId || "31VqAraWk_w";
 
   return (
     <div 
@@ -118,7 +119,7 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
         <div className="container py-4 max-w-4xl mx-auto space-y-4">
           <Card>
             <CardContent className="space-y-4 pt-6">
-              <YouTubePlayer videoId="31VqAraWk_w" />
+              <YouTubePlayer videoId={videoId} />
               <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: htmlContent }} />
             </CardContent>
           </Card>

@@ -9393,6 +9393,7 @@ export const registerRoutes = async (
       }
 
       let htmlContent = "";
+      let youtubeVideoId: string | null = null;
 
       const result = await db
         .select()
@@ -9401,6 +9402,7 @@ export const registerRoutes = async (
 
       if (result.length > 0 && result[0].content) {
         htmlContent = result[0].content;
+        youtubeVideoId = result[0].youtubeVideoId || null;
       } else {
         if (pageName.toLowerCase() === "help") {
           htmlContent = `<h1>Help</h1>
@@ -9464,6 +9466,12 @@ export const registerRoutes = async (
 <li>What are you expecting to get out of the program</li>
 </ul>`;
         }
+      }
+
+      if (pageName.toLowerCase() === "welcome") {
+        const videoId = youtubeVideoId || "31VqAraWk_w";
+        const videoLink = `<p><strong>YouTube Video:</strong> <a href="https://www.youtube.com/watch?v=${videoId}">https://www.youtube.com/watch?v=${videoId}</a></p><hr>`;
+        htmlContent = videoLink + htmlContent;
       }
 
       const docxBuffer = await HTMLtoDOCX(htmlContent, null, {
@@ -9656,26 +9664,41 @@ export const registerRoutes = async (
 
         const window = new JSDOM("").window;
         const purify = DOMPurify(window as any);
-        const htmlContent = purify.sanitize(result.value, {
+        let htmlContent = purify.sanitize(result.value, {
           ALLOWED_TAGS: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "strong", "em", "b", "i", "u", "a", "br", "div", "span", "table", "thead", "tbody", "tr", "td", "th", "img", "blockquote", "hr", "sup", "sub"],
           ALLOWED_ATTR: ["href", "src", "alt", "class", "style", "target", "rel"],
         });
+
+        let youtubeVideoId: string | null = null;
+        if (pageName === "welcome") {
+          const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/g;
+          const matches = htmlContent.matchAll(youtubeRegex);
+          for (const match of matches) {
+            youtubeVideoId = match[1];
+            break;
+          }
+          htmlContent = htmlContent.replace(/<p>\s*<strong>YouTube Video:<\/strong>.*?<\/p>\s*(<hr\s*\/?>)?/gi, '');
+          htmlContent = htmlContent.replace(/<p>.*?(?:youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]{11}.*?<\/p>/gi, '');
+          htmlContent = htmlContent.trim();
+        }
 
         await db
           .insert(pageContent)
           .values({
             pageName,
             content: htmlContent,
+            youtubeVideoId,
           })
           .onConflictDoUpdate({
             target: pageContent.pageName,
             set: {
               content: htmlContent,
+              youtubeVideoId,
               updatedAt: new Date(),
             },
           });
 
-        logger.info(`[PAGE CONTENT] Updated ${pageName} page content from uploaded document`);
+        logger.info(`[PAGE CONTENT] Updated ${pageName} page content from uploaded document${youtubeVideoId ? ` (YouTube video: ${youtubeVideoId})` : ''}`);
 
         res.json({
           success: true,
