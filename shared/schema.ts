@@ -564,3 +564,13 @@ export const systemState = pgTable("system_state", {
 });
 
 export type SystemState = typeof systemState.$inferSelect;
+
+export const pageContent = pgTable("page_content", {
+  id: serial("id").primaryKey(),
+  pageName: text("page_name").notNull().unique(),
+  content: text("content").notNull(),
+  youtubeVideoId: text("youtube_video_id"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type PageContent = typeof pageContent.$inferSelect;
