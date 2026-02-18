@@ -9677,9 +9677,47 @@ export const registerRoutes = async (
           ],
         });
 
+        let convertedHtml = result.value;
+
+        const h2Titles = [
+          "Home Page", "Activity Page", "Getting Started",
+          "Scoring System", "Your First Post", "Welcome to Sparta",
+          "Welcome to Sparta Complete Wellness", "Welcome to Sparta Complete Wellness!"
+        ];
+        const h3Titles = [
+          "Posts", "Post Types", "Post Types:", "Messages",
+          "Week Content", "Week and Day Content",
+          "Re-Engage", "Re-Engage (Non-competitive teams only)",
+          "1) Take Before Photos", "2) Weigh Yourself",
+          "3) Measure Your Waist", "4) Track Your Progress"
+        ];
+
+        for (const title of h2Titles) {
+          const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`<p>\\s*<strong>\\s*${escaped}\\s*<\\/strong>\\s*<\\/p>`, 'gi');
+          convertedHtml = convertedHtml.replace(regex, `<h2>${title}</h2>`);
+        }
+        for (const title of h3Titles) {
+          const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`<p>\\s*<strong>\\s*${escaped}\\s*<\\/strong>\\s*<\\/p>`, 'gi');
+          convertedHtml = convertedHtml.replace(regex, `<h3>${title}</h3>`);
+        }
+
+        convertedHtml = convertedHtml.replace(/<p>\s*<strong>([^<]{1,60})<\/strong>\s*<\/p>/g, (match, text) => {
+          const trimmed = text.trim();
+          if (h2Titles.some(t => t.toLowerCase() === trimmed.toLowerCase()) ||
+              h3Titles.some(t => t.toLowerCase() === trimmed.toLowerCase())) {
+            return match;
+          }
+          if (!trimmed.includes('.') && !trimmed.includes(',') && trimmed.split(/\s+/).length <= 8) {
+            return `<h3>${trimmed}</h3>`;
+          }
+          return match;
+        });
+
         const window = new JSDOM("").window;
         const purify = DOMPurify(window as any);
-        let htmlContent = purify.sanitize(result.value, {
+        let htmlContent = purify.sanitize(convertedHtml, {
           ALLOWED_TAGS: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "strong", "em", "b", "i", "u", "a", "br", "div", "span", "table", "thead", "tbody", "tr", "td", "th", "img", "blockquote", "hr", "sup", "sub"],
           ALLOWED_ATTR: ["href", "src", "alt", "class", "style", "target", "rel"],
         });
