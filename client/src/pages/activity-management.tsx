@@ -575,6 +575,25 @@ export default function ActivityManagementPage() {
                       const file = files[i];
 
                       try {
+                        // Check if this is a Help or Welcome page document
+                        const fileBaseName = file.name.replace(/\.docx$/i, '').trim().toLowerCase();
+                        const isPageContentDoc = fileBaseName === 'help' || fileBaseName === 'welcome';
+
+                        if (isPageContentDoc) {
+                          const formData = new FormData();
+                          formData.append('document', file);
+                          const res = await fetch('/api/page-content/upload', {
+                            method: 'POST',
+                            body: formData,
+                            credentials: 'include'
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.message || 'Upload failed');
+                          processedCount++;
+                          toast({ title: "Page Updated", description: `${fileBaseName.charAt(0).toUpperCase() + fileBaseName.slice(1)} page content updated successfully.` });
+                          continue;
+                        }
+
                         // Check if this is a BibleVerses.Doc file (case insensitive)
                         const isBibleVersesDoc = file.name.toLowerCase().includes('bibleverses');
 
@@ -951,7 +970,7 @@ export default function ActivityManagementPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content). Special: Files named "BibleVerses.docx" will create daily Bible verse activities with each line becoming a day's verse.
+                Select Word documents to process in batch. Filenames should contain week number and optionally day number (e.g., "Week25.docx" for week info or "Week1Day2.docx" for daily content). Special files: "BibleVerses.docx" will create daily Bible verse activities. "Help.docx" or "Welcome.docx" will update the corresponding page content.
               </p>
             </div>
             </div>
