@@ -830,13 +830,7 @@ export function CreatePostDialog({
       if (videoInputRef.current) videoInputRef.current.value = "";
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';
-          return key0.startsWith("/api/posts");
-        }
-      });
-      queryClient.refetchQueries({
+      queryClient.removeQueries({
         predicate: (query) => {
           const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';
           return key0.startsWith("/api/posts");
