@@ -211,11 +211,75 @@ async function sendDailyReminderEmail(
   }
 }
 
-// Export as both individual functions and as a service object for compatibility
-export { sendVerificationEmail, sendPasswordResetCode, sendFeedbackEmail, sendDailyReminderEmail };
+async function sendInviteCodeEmail(
+  recipientEmail: string,
+  recipientName: string,
+  inviteCode: string,
+  teamName: string,
+  role: string,
+  senderName: string
+): Promise<boolean> {
+  try {
+    const roleDisplay = role === "team_admin" ? "Team Lead" : "Team Member";
+
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
+      logger.warn("Gmail credentials not configured. Logging invite code to console.");
+      console.log(`\n=== INVITE CODE EMAIL for ${recipientName} (${recipientEmail}) ===`);
+      console.log(`Code: ${inviteCode}`);
+      console.log(`Team: ${teamName}`);
+      console.log(`Role: ${roleDisplay}`);
+      console.log(`Sent by: ${senderName}`);
+      console.log(`=======================================\n`);
+      return true;
+    }
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: recipientEmail,
+      subject: `Sparta Complete Wellness - You've been invited to join ${teamName}!`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">You're Invited!</h2>
+          <p>Hi ${recipientName},</p>
+          <p>${senderName} has invited you to join <strong>${teamName}</strong> as a <strong>${roleDisplay}</strong>.</p>
+          <p>Use the following invite code in the app to join:</p>
+          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 3px; margin: 20px 0; border-radius: 8px;">
+            ${inviteCode}
+          </div>
+          <p>To use this code:</p>
+          <ol>
+            <li>Open the Sparta Complete Wellness app</li>
+            <li>Go to Menu and tap "Join a Team"</li>
+            <li>Enter the invite code above</li>
+          </ol>
+          <p>We look forward to having you on the team!</p>
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            This is an automated message from Sparta Complete Wellness.
+          </p>
+        </div>
+      `,
+      text: `Hi ${recipientName},\n\n${senderName} has invited you to join ${teamName} as a ${roleDisplay}.\n\nYour invite code is: ${inviteCode}\n\nTo use this code:\n1. Open the Sparta Complete Wellness app\n2. Go to Menu and tap "Join a Team"\n3. Enter the invite code above\n\nWe look forward to having you on the team!`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info(`Invite code email sent to ${recipientEmail} for team ${teamName}`);
+    return true;
+  } catch (error) {
+    logger.error("Error sending invite code email:", error);
+    console.log(`\n=== INVITE CODE EMAIL (Error occurred) for ${recipientName} (${recipientEmail}) ===`);
+    console.log(`Code: ${inviteCode}`);
+    console.log(`Team: ${teamName}`);
+    console.log(`Role: ${role === "team_admin" ? "Team Lead" : "Team Member"}`);
+    console.log(`=======================================\n`);
+    return false;
+  }
+}
+
+export { sendVerificationEmail, sendPasswordResetCode, sendFeedbackEmail, sendDailyReminderEmail, sendInviteCodeEmail };
 export const emailService = {
   sendVerificationEmail,
   sendPasswordResetCode,
   sendFeedbackEmail,
   sendDailyReminderEmail,
+  sendInviteCodeEmail,
 };

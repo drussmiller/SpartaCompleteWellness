@@ -11,14 +11,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Post, User } from "@shared/schema";
 import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { MessageCircle, Trash2, ImageOff, Pencil } from "lucide-react";
+import { MessageCircle, Trash2, ImageOff, Pencil, MoreHorizontal, Mail } from "lucide-react";
 import { CreatePostDialog } from "@/components/create-post-dialog";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { ReactionButton } from "@/components/reaction-button";
@@ -31,6 +37,7 @@ import { createMediaUrl, createThumbnailUrl } from "@/lib/media-utils";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { generateVideoThumbnails, getVideoPoster } from "@/lib/memory-verse-utils";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import { SendTeamInviteDialog } from "@/components/send-team-invite-dialog";
 
 // Production URL for fallback
 const PROD_URL = "https://sparta.replit.app";
@@ -103,6 +110,7 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -114,6 +122,8 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
   const canEdit = isOwnPost;
+  const canInvite = (currentUser?.isAdmin || currentUser?.isTeamLead || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && post.type === 'introductory_video';
+  const showMenu = canEdit || canDelete || canInvite;
 
   // Check if this post should be displayed as a video
   const shouldShowAsVideo = useMemo(() => {
@@ -322,48 +332,71 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          {canEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Edit post"
-              onClick={() => setIsEditOpen(true)}
-              data-testid={`button-edit-post-${post.id}`}
-            >
-              <Pencil className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          )}
-        {canDelete && (
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Delete post">
-                <Trash2 className="h-5 w-5 text-red-500" />
+        {showMenu && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-post-menu-${post.id}`}>
+                <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the post.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={() => {
-                    deleteMutation.mutate();
-                    setIsDeleteDialogOpen(false);
-                  }}
-                  className="bg-red-500 hover:bg-red-700"
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canEdit && (
+                <DropdownMenuItem
+                  onClick={() => setIsEditOpen(true)}
+                  data-testid={`button-edit-post-${post.id}`}
                 >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {canInvite && (
+                <DropdownMenuItem
+                  onClick={() => setIsInviteDialogOpen(true)}
+                  data-testid={`button-invite-post-${post.id}`}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Team Invite
+                </DropdownMenuItem>
+              )}
+              {canDelete && (canEdit || canInvite) && (
+                <DropdownMenuSeparator />
+              )}
+              {canDelete && (
+                <DropdownMenuItem
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="text-red-600 focus:text-red-600"
+                  data-testid={`button-delete-post-${post.id}`}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        </div>
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the post.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  deleteMutation.mutate();
+                  setIsDeleteDialogOpen(false);
+                }}
+                className="bg-red-500 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {post.content && (
@@ -491,6 +524,15 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
           editOpen={isEditOpen}
           onEditOpenChange={setIsEditOpen}
           onPostUpdated={onPostUpdated}
+        />
+      )}
+
+      {canInvite && (
+        <SendTeamInviteDialog
+          recipientUserId={post.author?.id}
+          recipientName={getDisplayName(post.author)}
+          isOpen={isInviteDialogOpen}
+          onOpenChange={setIsInviteDialogOpen}
         />
       )}
     </div>

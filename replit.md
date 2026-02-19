@@ -58,6 +58,9 @@ The application uses a monorepo structure, separating client, server, and shared
 - **Authentication**: User submits credentials, Passport.js validates, session created, subsequent requests authenticated via session.
 - **Post Creation**: Client submits post data, media processed/stored, DB transaction creates record, thumbnails generated, WebSocket notification sent.
 
+## Recent Changes
+- **Feb 19, 2026**: Added "..." dropdown menu on post cards (replacing separate edit/delete buttons). Menu shows Edit and Delete for post authors, plus "Send Team Invite" option for Admins/Team Leads on introductory video posts. The invite dialog allows selecting a team (filtered by admin's organization) and role (Team Lead or Team Member), auto-generates an invite code if needed, and emails it to the post author.
+
 ## External Dependencies
 
 ### Core

@@ -4659,6 +4659,190 @@ export const registerRoutes = async (
   // GET invite code routes for groups and teams moved to invite-code-routes.ts to avoid duplication
   // Redeem/use an invite code - MOVED to invite-code-routes.ts to avoid duplication
 
+  // Send invite code email to a user
+  router.post("/api/invite-codes/send-email", authenticate, async (req, res) => {
+    try {
+      const { recipientUserId, teamId, role } = req.body;
+
+      if (!recipientUserId || !teamId || !role) {
+        return res.status(400).json({ message: "Missing required fields: recipientUserId, teamId, role" });
+      }
+
+      if (!["team_admin", "team_member"].includes(role)) {
+        return res.status(400).json({ message: "Role must be 'team_admin' or 'team_member'" });
+      }
+
+      // Get the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+
+      // Check permissions
+      const isAdmin = req.user?.isAdmin;
+      const isGroupAdminForThisTeam = req.user?.isGroupAdmin && req.user?.adminGroupId === team.groupId;
+      const isTeamLeadForThisTeam = req.user?.isTeamLead && req.user?.teamId === teamId;
+
+      const [teamGroup] = await db.select().from(groups).where(eq(groups.id, team.groupId)).limit(1);
+      const isOrgAdminForThisTeam = req.user?.isOrganizationAdmin && teamGroup?.organizationId === req.user?.adminOrganizationId;
+
+      if (!isAdmin && !isGroupAdminForThisTeam && !isTeamLeadForThisTeam && !isOrgAdminForThisTeam) {
+        return res.status(403).json({ message: "Not authorized to send invites for this team" });
+      }
+
+      // Get the recipient user
+      const [recipient] = await db.select().from(users).where(eq(users.id, recipientUserId)).limit(1);
+      if (!recipient) {
+        return res.status(404).json({ message: "Recipient user not found" });
+      }
+
+      // Generate or get existing invite code
+      let inviteCode: string;
+      if (role === "team_admin") {
+        if (team.teamAdminInviteCode) {
+          inviteCode = team.teamAdminInviteCode;
+        } else {
+          inviteCode = `TA-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+          await db.update(teams).set({ teamAdminInviteCode: inviteCode }).where(eq(teams.id, teamId));
+        }
+      } else {
+        if (team.teamMemberInviteCode) {
+          inviteCode = team.teamMemberInviteCode;
+        } else {
+          inviteCode = `TM-${teamId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+          await db.update(teams).set({ teamMemberInviteCode: inviteCode }).where(eq(teams.id, teamId));
+        }
+      }
+
+      // Get sender name
+      const senderName = req.user?.preferredName || req.user?.username || "An administrator";
+      const recipientName = recipient.preferredName || recipient.username;
+
+      // Send the email
+      const { sendInviteCodeEmail } = await import("./email-service");
+      const emailSent = await sendInviteCodeEmail(
+        recipient.email,
+        recipientName,
+        inviteCode,
+        team.name,
+        role,
+        senderName
+      );
+
+      if (!emailSent) {
+        return res.status(500).json({ message: "Failed to send invite email" });
+      }
+
+      res.json({
+        success: true,
+        message: `Invite code sent to ${recipient.email}`,
+        code: inviteCode,
+        teamName: team.name,
+        role,
+      });
+    } catch (error) {
+      logger.error("Error sending invite code email:", error);
+      res.status(500).json({ message: "Failed to send invite code email" });
+    }
+  });
+
+  // Get teams available for invite - filtered by admin's organization
+  router.get("/api/teams/for-invite", authenticate, async (req, res) => {
+    try {
+      const user = req.user!;
+
+      // Admin sees all active teams
+      if (user.isAdmin) {
+        const allTeams = await db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            groupId: teams.groupId,
+            groupName: groups.name,
+            organizationName: organizations.name,
+            status: teams.status,
+          })
+          .from(teams)
+          .innerJoin(groups, eq(teams.groupId, groups.id))
+          .innerJoin(organizations, eq(groups.organizationId, organizations.id))
+          .where(eq(teams.status, 1));
+
+        return res.json(allTeams);
+      }
+
+      // Organization admin sees teams in their org
+      if (user.isOrganizationAdmin && user.adminOrganizationId) {
+        const orgTeams = await db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            groupId: teams.groupId,
+            groupName: groups.name,
+            organizationName: organizations.name,
+            status: teams.status,
+          })
+          .from(teams)
+          .innerJoin(groups, eq(teams.groupId, groups.id))
+          .innerJoin(organizations, eq(groups.organizationId, organizations.id))
+          .where(and(
+            eq(groups.organizationId, user.adminOrganizationId),
+            eq(teams.status, 1)
+          ));
+
+        return res.json(orgTeams);
+      }
+
+      // Group admin sees teams in their group
+      if (user.isGroupAdmin && user.adminGroupId) {
+        const groupTeams = await db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            groupId: teams.groupId,
+            groupName: groups.name,
+            organizationName: organizations.name,
+            status: teams.status,
+          })
+          .from(teams)
+          .innerJoin(groups, eq(teams.groupId, groups.id))
+          .innerJoin(organizations, eq(groups.organizationId, organizations.id))
+          .where(and(
+            eq(teams.groupId, user.adminGroupId),
+            eq(teams.status, 1)
+          ));
+
+        return res.json(groupTeams);
+      }
+
+      // Team lead sees only their team
+      if (user.isTeamLead && user.teamId) {
+        const teamLeadTeams = await db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            groupId: teams.groupId,
+            groupName: groups.name,
+            organizationName: organizations.name,
+            status: teams.status,
+          })
+          .from(teams)
+          .innerJoin(groups, eq(teams.groupId, groups.id))
+          .innerJoin(organizations, eq(groups.organizationId, organizations.id))
+          .where(and(
+            eq(teams.id, user.teamId),
+            eq(teams.status, 1)
+          ));
+
+        return res.json(teamLeadTeams);
+      }
+
+      res.json([]);
+    } catch (error) {
+      logger.error("Error fetching teams for invite:", error);
+      res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
   // Workout Types endpoints
   router.get("/api/workout-types", authenticate, async (req, res) => {
     try {
