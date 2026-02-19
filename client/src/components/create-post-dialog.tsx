@@ -235,9 +235,28 @@ export function CreatePostDialog({
 
         if (isVideo) {
           setSelectedMediaType("video");
-          const thumbUrl = editPost.thumbnailUrl
-            ? createMediaUrl(editPost.thumbnailUrl)
-            : null;
+          let thumbUrl: string | null = null;
+          if (editPost.thumbnailUrl) {
+            thumbUrl = createMediaUrl(editPost.thumbnailUrl);
+          } else {
+            let filename = editPost.mediaUrl;
+            if (filename.includes('storageKey=')) {
+              const params = new URLSearchParams(filename.split('?')[1]);
+              filename = params.get('storageKey') || filename;
+            }
+            if (filename.includes('filename=')) {
+              const params = new URLSearchParams(filename.split('?')[1]);
+              filename = params.get('filename') || filename;
+            }
+            if (filename.includes('/')) {
+              filename = filename.split('/').pop() || filename;
+            }
+            if (filename.includes('?')) {
+              filename = filename.split('?')[0];
+            }
+            const jpgFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
+            thumbUrl = `/api/serve-file?filename=${encodeURIComponent(jpgFilename)}`;
+          }
           setVideoThumbnail(thumbUrl);
           setImagePreview(thumbUrl || mediaUrl);
         } else {
@@ -1306,8 +1325,8 @@ export function CreatePostDialog({
                       <FormControl>
                         {form.watch("type") !== "memory_verse" && (
                           <>
-                            {/* Hide image button for intro video (first post) */}
-                            {hasAnyPosts && (
+                            {/* Hide image button for intro video posts and memory verse */}
+                            {hasAnyPosts && form.watch("type") !== "introductory_video" && (
                               <>
                                 <Button
                                   type="button"
