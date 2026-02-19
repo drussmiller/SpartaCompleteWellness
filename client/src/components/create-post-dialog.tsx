@@ -8,7 +8,7 @@ import { Plus, CalendarIcon, Loader2, Video } from "lucide-react";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient as globalQueryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertPostSchema, Post, User } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -821,7 +821,7 @@ export function CreatePostDialog({
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       form.reset();
       setDialogOpen(false);
       setImagePreview(null);
@@ -832,15 +832,12 @@ export function CreatePostDialog({
       if (videoInputRef.current) videoInputRef.current.value = "";
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';
-          return key0.startsWith("/api/posts");
-        }
+      await globalQueryClient.resetQueries({
+        queryKey: ["/api/posts"],
       });
 
       if (onPostUpdated) {
-        setTimeout(() => onPostUpdated(), 100);
+        onPostUpdated();
       }
 
       toast({
