@@ -1017,7 +1017,7 @@ export default function ActivityManagementPage() {
 
               <div className="space-y-2">
                 <Label>Download Daily Activity</Label>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Select value={String(downloadWeek)} onValueChange={(v) => setDownloadWeek(parseInt(v))}>
                     <SelectTrigger className="w-[100px]">
                       <SelectValue placeholder="Week" />
@@ -1053,7 +1053,7 @@ export default function ActivityManagementPage() {
 
             <div className="border-t pt-4 mt-4">
               <Label>Download Page Content</Label>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Button
                   variant="outline"
                   size="sm"
