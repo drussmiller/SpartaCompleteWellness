@@ -857,6 +857,18 @@ export function CreatePostDialog({
 
   const onSubmit = (data: CreatePostForm) => {
     if (isEditMode) {
+      if (editPost?.type === "introductory_video") {
+        const hasNewVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
+        const hasExistingMedia = !editMediaRemoved && editPost.mediaUrl;
+        if (!hasNewVideoFile && !hasExistingMedia) {
+          toast({
+            title: "Video Required",
+            description: "Please upload a video for your intro post.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
       updatePostMutation.mutate(data);
       return;
     }
