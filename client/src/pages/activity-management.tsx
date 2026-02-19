@@ -984,6 +984,8 @@ export default function ActivityManagementPage() {
                 <li><strong>Week25.docx</strong> — weekly content (no category)</li>
                 <li><strong>Week1Day2.docx</strong> — daily content (no category)</li>
                 <li><strong>BibleVerses.docx</strong> — creates daily Bible verse activities</li>
+                <li><strong>Help.docx</strong> — updates the Help page content</li>
+                <li><strong>Welcome.docx</strong> — updates the Welcome page content</li>
               </ul>
             </div>
             </div>
@@ -1083,32 +1085,6 @@ export default function ActivityManagementPage() {
           </div>
         </div>
 
-        <div className="border rounded-md p-4 bg-muted/20">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Upload Help / Welcome Page Content
-          </h2>
-          <div className="space-y-2">
-            <Label htmlFor="pageContentUpload">Upload Word Document (.docx)</Label>
-            <input
-              id="pageContentUpload"
-              type="file"
-              accept=".docx,.doc"
-              disabled={isUploadingPage}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              onChange={handlePageContentUpload}
-            />
-            {isUploadingPage && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Uploading...
-              </div>
-            )}
-            <p className="text-sm text-muted-foreground mt-1">
-              Name the file "Help.docx" or "Welcome.docx" to update the corresponding page. The content from the Word document will replace the current page content.
-            </p>
-          </div>
-        </div>
 
         <Dialog open={editActivityOpen} onOpenChange={setEditActivityOpen}>
           <DialogContent className="max-h-[90vh]">
