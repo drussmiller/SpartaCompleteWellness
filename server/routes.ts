@@ -3035,9 +3035,7 @@ export const registerRoutes = async (
       if (uploadedFile) {
         await deleteOldMedia();
 
-        const fs = await import('fs');
-        const path = await import('path');
-        const fileBuffer = fs.default.readFileSync(uploadedFile.path);
+        const fileBuffer = uploadedFile.buffer;
         const filename = `shared/uploads/${Date.now()}-${uploadedFile.originalname}`;
 
         const isVideoFile = uploadedFile.mimetype?.startsWith('video/') ||
@@ -3056,7 +3054,7 @@ export const registerRoutes = async (
             (req.files as any)?.thumbnail_jpg?.[0] || null;
 
           if (thumbnailFile && isVideoFile) {
-            const thumbBuffer = fs.default.readFileSync(thumbnailFile.path);
+            const thumbBuffer = thumbnailFile.buffer;
             const thumbFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
             await spartaObjectStorage.uploadFile(thumbFilename, thumbBuffer, {
               contentType: 'image/jpeg'
@@ -3067,10 +3065,6 @@ export const registerRoutes = async (
           console.error("Error uploading file during post edit:", uploadError);
           return res.status(500).json({ message: "Failed to upload media file" });
         }
-
-        try {
-          fs.default.unlinkSync(uploadedFile.path);
-        } catch (e) {}
       }
 
       if (Object.keys(updateFields).length === 0) {
