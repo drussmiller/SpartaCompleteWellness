@@ -9504,8 +9504,8 @@ export const registerRoutes = async (
       const weekActivities = await db
         .select()
         .from(activities)
-        .where(eq(activities.week, week))
-        .orderBy(asc(activities.day));
+        .where(and(eq(activities.week, week), eq(activities.day, 0)))
+        .orderBy(asc(activities.activityTypeId));
 
       const allWorkoutTypes = await db.select().from(workoutTypes);
       const typeMap: Record<number, string> = {};
@@ -9515,29 +9515,26 @@ export const registerRoutes = async (
 
       let htmlContent = `<h1>Week ${week} Activities</h1>`;
 
-      const dayGroups: Record<number, typeof weekActivities> = {};
-      weekActivities.forEach((activity) => {
-        if (!dayGroups[activity.day]) {
-          dayGroups[activity.day] = [];
-        }
-        dayGroups[activity.day].push(activity);
-      });
+      for (const activity of weekActivities) {
+        const typeName = activity.activityTypeId ? typeMap[activity.activityTypeId] || `Type ${activity.activityTypeId}` : "General";
+        htmlContent += `<h2>${typeName}</h2>`;
 
-      const sortedDays = Object.keys(dayGroups).map(Number).sort((a, b) => a - b);
-
-      for (const day of sortedDays) {
-        htmlContent += `<h2>Day ${day}</h2>`;
-        for (const activity of dayGroups[day]) {
-          const typeName = activity.activityTypeId ? typeMap[activity.activityTypeId] || `Type ${activity.activityTypeId}` : "General";
-          htmlContent += `<h3>${typeName}</h3>`;
-
-          const fields = activity.contentFields as any[];
-          if (Array.isArray(fields)) {
-            for (const field of fields) {
-              if (field.type === "text") {
-                htmlContent += field.content || "";
-              } else if (field.type === "video") {
-                htmlContent += `<p>[Video: ${field.content || field.title || ""}]</p>`;
+        const fields = activity.contentFields as any[];
+        if (Array.isArray(fields)) {
+          for (const field of fields) {
+            if (field.type === "text") {
+              let textContent = field.content || "";
+              textContent = textContent.replace(/<div class="video-wrapper"><iframe src="https:\/\/www\.youtube\.com\/embed\/([a-zA-Z0-9_-]+)"[^>]*><\/iframe><\/div>/gi,
+                (match: string, videoId: string) => `<p><strong>Video:</strong> <a href="https://www.youtube.com/watch?v=${videoId}">https://www.youtube.com/watch?v=${videoId}</a></p>`
+              );
+              htmlContent += textContent;
+            } else if (field.type === "video") {
+              const videoUrl = field.content || field.title || "";
+              const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+              if (ytMatch) {
+                htmlContent += `<p><strong>Video:</strong> <a href="https://www.youtube.com/watch?v=${ytMatch[1]}">https://www.youtube.com/watch?v=${ytMatch[1]}</a></p>`;
+              } else {
+                htmlContent += `<p><strong>Video:</strong> ${videoUrl}</p>`;
               }
             }
           }
@@ -9597,9 +9594,19 @@ export const registerRoutes = async (
         if (Array.isArray(fields)) {
           for (const field of fields) {
             if (field.type === "text") {
-              htmlContent += field.content || "";
+              let textContent = field.content || "";
+              textContent = textContent.replace(/<div class="video-wrapper"><iframe src="https:\/\/www\.youtube\.com\/embed\/([a-zA-Z0-9_-]+)"[^>]*><\/iframe><\/div>/gi,
+                (match: string, videoId: string) => `<p><strong>Video:</strong> <a href="https://www.youtube.com/watch?v=${videoId}">https://www.youtube.com/watch?v=${videoId}</a></p>`
+              );
+              htmlContent += textContent;
             } else if (field.type === "video") {
-              htmlContent += `<p>[Video: ${field.content || field.title || ""}]</p>`;
+              const videoUrl = field.content || field.title || "";
+              const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+              if (ytMatch) {
+                htmlContent += `<p><strong>Video:</strong> <a href="https://www.youtube.com/watch?v=${ytMatch[1]}">https://www.youtube.com/watch?v=${ytMatch[1]}</a></p>`;
+              } else {
+                htmlContent += `<p><strong>Video:</strong> ${videoUrl}</p>`;
+              }
             }
           }
         }
