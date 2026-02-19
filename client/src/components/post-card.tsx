@@ -18,7 +18,9 @@ import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { MessageCircle, Trash2, ImageOff } from "lucide-react";
+import { MessageCircle, Trash2, ImageOff, Pencil } from "lucide-react";
+import { CreatePostDialog } from "@/components/create-post-dialog";
+import { usePostLimits } from "@/hooks/use-post-limits";
 import { ReactionButton } from "@/components/reaction-button";
 import { ReactionSummary } from "@/components/reaction-summary";
 import { useToast } from "@/hooks/use-toast";
@@ -94,21 +96,24 @@ function convertUrlsToLinks(text: string): string {
   });
 }
 
-export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
+export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { post: Post & { author: User }; onPostUpdated?: () => void }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [triggerReload, setTriggerReload] = useState(0);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const { remaining } = usePostLimits();
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
+  const canEdit = isOwnPost;
 
   // Check if this post should be displayed as a video
   const shouldShowAsVideo = useMemo(() => {
@@ -317,6 +322,18 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           </div>
         </div>
 
+        <div className="flex items-center gap-1">
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Edit post"
+              onClick={() => setIsEditOpen(true)}
+              data-testid={`button-edit-post-${post.id}`}
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          )}
         {canDelete && (
           <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogTrigger asChild>
@@ -346,6 +363,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
             </AlertDialogContent>
           </AlertDialog>
         )}
+        </div>
       </div>
 
       {post.content && (
@@ -463,6 +481,16 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           alt={`${post.type} post content`}
           isOpen={isImageViewerOpen}
           onClose={() => setIsImageViewerOpen(false)}
+        />
+      )}
+
+      {canEdit && (
+        <CreatePostDialog
+          remaining={remaining as Record<string, number>}
+          editPost={post}
+          editOpen={isEditOpen}
+          onEditOpenChange={setIsEditOpen}
+          onPostUpdated={onPostUpdated}
         />
       )}
     </div>

@@ -451,7 +451,7 @@ export default function HomePage() {
                   posts.map((post: Post, index: number) => (
                     <div key={post.id}>
                       <ErrorBoundary>
-                        <PostCard post={post} />
+                        <PostCard post={post} onPostUpdated={refetch} />
                       </ErrorBoundary>
                       {index < posts.length - 1 && (
                         <div className="h-[6px] bg-border my-2 -mx-4" />

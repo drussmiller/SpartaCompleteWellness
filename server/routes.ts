@@ -2954,6 +2954,156 @@ export const registerRoutes = async (
     },
   );
 
+  // Update a post (edit content and/or media)
+  router.patch("/api/posts/:id", authenticate, upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'thumbnail_alt', maxCount: 1 },
+    { name: 'thumbnail_jpg', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      res.set({
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Content-Type': 'application/json',
+        'X-Content-Type-Options': 'nosniff'
+      });
+
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const postId = parseInt(req.params.id);
+      if (isNaN(postId)) {
+        return res.status(400).json({ message: "Invalid post ID" });
+      }
+
+      const [existingPost] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
+
+      if (!existingPost) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      if (existingPost.userId !== req.user.id) {
+        return res.status(403).json({ message: "You can only edit your own posts" });
+      }
+
+      const parsedData = req.body.data ? JSON.parse(req.body.data) : {};
+      const updateFields: any = {};
+
+      if (parsedData.content !== undefined) {
+        updateFields.content = parsedData.content;
+      }
+
+      const deleteOldMedia = async () => {
+        if (existingPost.mediaUrl) {
+          try {
+            const oldFilename = new URL(existingPost.mediaUrl, 'http://localhost').searchParams.get('filename');
+            if (oldFilename) {
+              const storageKey = oldFilename.startsWith('shared/uploads/') ? oldFilename : `shared/uploads/${oldFilename}`;
+              await spartaObjectStorage.deleteFile(storageKey).catch(() => {});
+            }
+          } catch (e) {
+            console.error("Error deleting old media file:", e);
+          }
+        }
+        if (existingPost.thumbnailUrl) {
+          try {
+            const oldThumbFilename = new URL(existingPost.thumbnailUrl, 'http://localhost').searchParams.get('filename');
+            if (oldThumbFilename) {
+              const storageKey = oldThumbFilename.startsWith('shared/uploads/') ? oldThumbFilename : `shared/uploads/${oldThumbFilename}`;
+              await spartaObjectStorage.deleteFile(storageKey).catch(() => {});
+            }
+          } catch (e) {
+            console.error("Error deleting old thumbnail file:", e);
+          }
+        }
+      };
+
+      if (parsedData.removeMedia === true) {
+        await deleteOldMedia();
+        updateFields.mediaUrl = null;
+        updateFields.thumbnailUrl = null;
+        updateFields.is_video = false;
+      }
+
+      const uploadedFile = (req.files as any)?.image?.[0] || null;
+      if (uploadedFile) {
+        await deleteOldMedia();
+
+        const isVideoFile = uploadedFile.mimetype?.startsWith('video/') ||
+          /\.(mp4|mov|webm|avi|mkv)$/i.test(uploadedFile.originalname);
+
+        try {
+          const fileInfo = await spartaObjectStorage.storeFile(
+            uploadedFile.buffer,
+            uploadedFile.originalname,
+            uploadedFile.mimetype,
+            isVideoFile
+          );
+
+          updateFields.mediaUrl = fileInfo.url;
+          updateFields.is_video = isVideoFile;
+
+          if (fileInfo.thumbnailUrl && isVideoFile) {
+            updateFields.thumbnailUrl = fileInfo.thumbnailUrl;
+          } else {
+            const thumbnailFile = (req.files as any)?.thumbnail?.[0] ||
+              (req.files as any)?.thumbnail_alt?.[0] ||
+              (req.files as any)?.thumbnail_jpg?.[0] || null;
+
+            if (thumbnailFile && isVideoFile) {
+              const thumbInfo = await spartaObjectStorage.storeFile(
+                thumbnailFile.buffer,
+                uploadedFile.originalname.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg'),
+                'image/jpeg',
+                false
+              );
+              updateFields.thumbnailUrl = thumbInfo.url;
+            }
+          }
+        } catch (uploadError) {
+          console.error("Error uploading file during post edit:", uploadError);
+          return res.status(500).json({ message: "Failed to upload media file" });
+        }
+      }
+
+      if (Object.keys(updateFields).length === 0) {
+        return res.status(400).json({ message: "No changes provided" });
+      }
+
+      const [updatedPost] = await db
+        .update(posts)
+        .set(updateFields)
+        .where(eq(posts.id, postId))
+        .returning();
+
+      const [postWithAuthor] = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, updatedPost.id))
+        .limit(1);
+
+      const [author] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, updatedPost.userId))
+        .limit(1);
+
+      return res.json({ ...postWithAuthor, author });
+    } catch (error) {
+      console.error("Error updating post:", error);
+      return res.status(500).json({
+        message: "Failed to update post",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Delete a post
   router.delete("/api/posts/:id", authenticate, async (req, res) => {
     try {
