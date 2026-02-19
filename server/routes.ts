@@ -2999,8 +2999,42 @@ export const registerRoutes = async (
         updateFields.content = parsedData.content;
       }
 
+      const deleteOldMedia = async () => {
+        if (existingPost.mediaUrl) {
+          try {
+            const oldFilename = new URL(existingPost.mediaUrl, 'http://localhost').searchParams.get('filename');
+            if (oldFilename) {
+              const storageKey = oldFilename.startsWith('shared/uploads/') ? oldFilename : `shared/uploads/${oldFilename}`;
+              await spartaObjectStorage.deleteFile(storageKey).catch(() => {});
+            }
+          } catch (e) {
+            console.error("Error deleting old media file:", e);
+          }
+        }
+        if (existingPost.thumbnailUrl) {
+          try {
+            const oldThumbFilename = new URL(existingPost.thumbnailUrl, 'http://localhost').searchParams.get('filename');
+            if (oldThumbFilename) {
+              const storageKey = oldThumbFilename.startsWith('shared/uploads/') ? oldThumbFilename : `shared/uploads/${oldThumbFilename}`;
+              await spartaObjectStorage.deleteFile(storageKey).catch(() => {});
+            }
+          } catch (e) {
+            console.error("Error deleting old thumbnail file:", e);
+          }
+        }
+      };
+
+      if (parsedData.removeMedia === true) {
+        await deleteOldMedia();
+        updateFields.mediaUrl = null;
+        updateFields.thumbnailUrl = null;
+        updateFields.is_video = false;
+      }
+
       const uploadedFile = (req.files as any)?.image?.[0] || null;
       if (uploadedFile) {
+        await deleteOldMedia();
+
         const fs = await import('fs');
         const path = await import('path');
         const fileBuffer = fs.default.readFileSync(uploadedFile.path);

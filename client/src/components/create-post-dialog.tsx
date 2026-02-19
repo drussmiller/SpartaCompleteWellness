@@ -67,6 +67,7 @@ export function CreatePostDialog({
   const [postScope, setPostScope] = useState<"everyone" | "organization" | "group" | "team" | "my_team">("my_team");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusMessage, setUploadStatusMessage] = useState('');
+  const [editMediaRemoved, setEditMediaRemoved] = useState(false);
 
   // Reset upload progress state (call on any error or success)
   const resetUploadProgress = () => {
@@ -213,6 +214,7 @@ export function CreatePostDialog({
 
   useEffect(() => {
     if (isEditMode && editPost && dialogOpen) {
+      setEditMediaRemoved(false);
       form.reset({
         type: editPost.type,
         content: editPost.content || "",
@@ -226,12 +228,18 @@ export function CreatePostDialog({
       });
       if (editPost.mediaUrl) {
         const mediaUrl = createMediaUrl(editPost.mediaUrl);
-        setImagePreview(mediaUrl);
         if (editPost.is_video || editPost.type === 'memory_verse') {
           setSelectedMediaType("video");
-        } else if (editPost.mediaUrl) {
+          setVideoThumbnail(editPost.thumbnailUrl ? createMediaUrl(editPost.thumbnailUrl) : mediaUrl);
+          setImagePreview(mediaUrl);
+        } else {
           setSelectedMediaType("image");
+          setImagePreview(mediaUrl);
         }
+      } else {
+        setImagePreview(null);
+        setVideoThumbnail(null);
+        setSelectedMediaType(null);
       }
     }
   }, [isEditMode, editPost, dialogOpen]);
@@ -759,6 +767,10 @@ export function CreatePostDialog({
       const postData: any = {
         content: data.content?.trim() || '',
       };
+
+      if (editMediaRemoved && !hasNewImageFile && !hasNewVideoFile) {
+        postData.removeMedia = true;
+      }
 
       formData.append("data", JSON.stringify(postData));
 
@@ -1460,15 +1472,20 @@ export function CreatePostDialog({
                             variant="ghost"
                             size="sm"
                             className="mt-2"
+                            data-testid="button-remove-media"
                             onClick={() => {
                               setImagePreview(null);
                               setVideoThumbnail(null);
                               field.onChange(null);
                               resetUploadProgress();
-                              // Reset media type for miscellaneous posts
+                              if (isEditMode) {
+                                setEditMediaRemoved(true);
+                              }
                               if (form.watch("type") === "miscellaneous") {
                                 setSelectedMediaType(null);
                               }
+                              if (fileInputRef.current) fileInputRef.current.value = "";
+                              if (videoInputRef.current) videoInputRef.current.value = "";
                             }}
                           >
                             Remove {form.watch("type") === "memory_verse" || form.watch("type") === "introductory_video" || (form.watch("type") === "miscellaneous" && videoThumbnail) || (form.watch("type") === "prayer" && videoThumbnail) ? "Video" : "Image"}
