@@ -90,6 +90,13 @@ async function verifyDatabase() {
 async function ensureSchemaColumns() {
   try {
     await db.execute(sql`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT false`);
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS page_content (
+      id SERIAL PRIMARY KEY,
+      page_name TEXT NOT NULL UNIQUE,
+      content TEXT NOT NULL,
+      youtube_video_id TEXT,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )`);
     console.log("Schema columns verified.");
   } catch (error) {
     console.warn("Schema column check warning:", error);
