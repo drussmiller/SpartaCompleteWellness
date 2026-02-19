@@ -178,8 +178,8 @@ function App() {
         backgroundedAt = Date.now();
       } else if (document.visibilityState === 'visible' && backgroundedAt) {
         const backgroundDuration = Date.now() - backgroundedAt;
-        // If backgrounded for more than 10 minutes, refresh all data
-        if (backgroundDuration > 10 * 60 * 1000) {
+        // If backgrounded for more than 30 minutes, refresh all data
+        if (backgroundDuration > 30 * 60 * 1000) {
           console.log('App resumed after', Math.round(backgroundDuration / 1000), 'seconds, refreshing data...');
           queryClient.invalidateQueries();
         }
@@ -219,8 +219,8 @@ function App() {
         const backgroundedAt = sessionStorage.getItem('appBackgroundedAt');
         if (backgroundedAt) {
           const backgroundDuration = Date.now() - parseInt(backgroundedAt, 10);
-          // If backgrounded for more than 10 minutes, refresh all data
-          if (backgroundDuration > 10 * 60 * 1000) {
+          // If backgrounded for more than 30 minutes, refresh all data
+          if (backgroundDuration > 30 * 60 * 1000) {
             console.log('App was backgrounded for', Math.round(backgroundDuration / 1000), 'seconds, refreshing data...');
             queryClient.invalidateQueries();
           }
