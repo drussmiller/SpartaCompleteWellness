@@ -68,7 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       console.log('Attempting login...');
-      const res = await apiRequest("POST", "/api/login", credentials);
+      const timezoneOffset = -(new Date().getTimezoneOffset());
+      const res = await apiRequest("POST", "/api/login", { ...credentials, timezoneOffset });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Invalid username or password");

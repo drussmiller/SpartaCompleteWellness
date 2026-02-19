@@ -325,6 +325,19 @@ export function setupAuth(app: Express) {
           return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
         }
         
+        const timezoneOffset = req.body.timezoneOffset;
+        if (typeof timezoneOffset === 'number' && freshUser.timezoneOffset !== timezoneOffset) {
+          db.update(users)
+            .set({ timezoneOffset })
+            .where(eq(users.id, freshUser.id))
+            .then(() => {
+              console.log(`Updated timezone offset for ${freshUser.username}: ${timezoneOffset}`);
+            })
+            .catch((tzErr: any) => {
+              console.error('Failed to update timezone offset:', tzErr);
+            });
+        }
+
         req.login(freshUser, (err) => {
         if (err) {
           console.error('Session creation error:', err);
