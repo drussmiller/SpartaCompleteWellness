@@ -54,11 +54,14 @@ export function SendTeamInviteDialog({
     enabled: isOpen,
   });
 
+  const isSingleTeam = teams.length === 1;
+  const effectiveTeamId = isSingleTeam ? teams[0].id.toString() : selectedTeamId;
+
   const sendInviteMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/invite-codes/send-email", {
         recipientUserId,
-        teamId: parseInt(selectedTeamId),
+        teamId: parseInt(effectiveTeamId),
         role: selectedRole,
       });
       if (!res.ok) {
@@ -98,10 +101,10 @@ export function SendTeamInviteDialog({
   };
 
   const handleSend = () => {
-    if (!selectedTeamId || !selectedRole) {
+    if (!effectiveTeamId || !selectedRole) {
       toast({
         title: "Missing Selection",
-        description: "Please select both a team and a role",
+        description: isSingleTeam ? "Please select a role" : "Please select both a team and a role",
         variant: "destructive",
       });
       return;
@@ -136,6 +139,10 @@ export function SendTeamInviteDialog({
               </div>
             ) : teams.length === 0 ? (
               <p className="text-sm text-muted-foreground">No teams available</p>
+            ) : isSingleTeam ? (
+              <p className="text-sm font-medium" data-testid="text-invite-team-name">
+                {teams[0].name}
+              </p>
             ) : (
               <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
                 <SelectTrigger data-testid="select-invite-team">
@@ -181,7 +188,7 @@ export function SendTeamInviteDialog({
           </Button>
           <Button
             onClick={handleSend}
-            disabled={!selectedTeamId || !selectedRole || sendInviteMutation.isPending}
+            disabled={!effectiveTeamId || !selectedRole || sendInviteMutation.isPending}
             data-testid="button-send-invite"
           >
             {sendInviteMutation.isPending ? (
