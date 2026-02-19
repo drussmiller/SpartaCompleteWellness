@@ -85,7 +85,8 @@ export async function checkNotifications() {
 
         const userPosts = userPostsResult[0];
         const totalPoints = userPosts?.points || 0;
-        const expectedPoints = dayOfWeek === 6 ? 22 : dayOfWeek === 0 ? 3 : 15;
+        const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const expectedPoints = yesterdayDayOfWeek === 6 ? 22 : yesterdayDayOfWeek === 0 ? 3 : 15;
 
         if (totalPoints < expectedPoints) {
           const postsByType = await db
@@ -118,7 +119,6 @@ export async function checkNotifications() {
           });
 
           const missedItems: string[] = [];
-          const yesterdayDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
           if (yesterdayDayOfWeek !== 0 && counts.food < 3) {
             missedItems.push(`${3 - counts.food} meals`);

@@ -7,7 +7,7 @@ import { AchievementsProvider } from "@/hooks/use-achievements";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 import { Route, Switch } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ProtectedRoute } from "./lib/protected-route";
 import { initDisplaySettings } from "@/hooks/use-display-settings";
 import AuthPage from "@/pages/auth-page";
@@ -42,6 +42,22 @@ import DonationSuccessPage from "@/pages/donation-success-page";
 function MainContent() {
   const { user, isLoading, error } = useAuth();
   console.log('MainContent rendering - auth state:', { user, isLoading, error });
+
+  const timezoneSynced = useRef(false);
+  useEffect(() => {
+    if (user && !timezoneSynced.current) {
+      timezoneSynced.current = true;
+      const currentOffset = -(new Date().getTimezoneOffset());
+      if (user.timezoneOffset !== currentOffset) {
+        fetch('/api/users/timezone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ timezoneOffset: currentOffset }),
+        }).catch(() => {});
+      }
+    }
+  }, [user]);
 
   // Minimal browser navigation prevention - only block very edge browser swipes
   useEffect(() => {
@@ -162,8 +178,8 @@ function App() {
         backgroundedAt = Date.now();
       } else if (document.visibilityState === 'visible' && backgroundedAt) {
         const backgroundDuration = Date.now() - backgroundedAt;
-        // If backgrounded for more than 30 seconds, refresh all data
-        if (backgroundDuration > 30 * 1000) {
+        // If backgrounded for more than 30 minutes, refresh all data
+        if (backgroundDuration > 30 * 60 * 1000) {
           console.log('App resumed after', Math.round(backgroundDuration / 1000), 'seconds, refreshing data...');
           queryClient.invalidateQueries();
         }
@@ -203,8 +219,8 @@ function App() {
         const backgroundedAt = sessionStorage.getItem('appBackgroundedAt');
         if (backgroundedAt) {
           const backgroundDuration = Date.now() - parseInt(backgroundedAt, 10);
-          // If backgrounded for more than 2 minutes, refresh all data
-          if (backgroundDuration > 2 * 60 * 1000) {
+          // If backgrounded for more than 30 minutes, refresh all data
+          if (backgroundDuration > 30 * 60 * 1000) {
             console.log('App was backgrounded for', Math.round(backgroundDuration / 1000), 'seconds, refreshing data...');
             queryClient.invalidateQueries();
           }

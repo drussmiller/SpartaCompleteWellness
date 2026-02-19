@@ -5446,6 +5446,27 @@ export const registerRoutes = async (
   });
 
   router.post(
+    "/api/users/timezone",
+    authenticate,
+    async (req, res) => {
+      try {
+        if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+        const { timezoneOffset } = req.body;
+        if (typeof timezoneOffset !== 'number') {
+          return res.status(400).json({ message: "Invalid timezone offset" });
+        }
+        await db.update(users)
+          .set({ timezoneOffset })
+          .where(eq(users.id, req.user.id));
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error updating timezone:", error);
+        res.status(500).json({ message: "Failed to update timezone" });
+      }
+    }
+  );
+
+  router.post(
     "/api/users/notification-schedule",
     authenticate,
     async (req, res) => {
