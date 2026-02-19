@@ -836,6 +836,12 @@ export function CreatePostDialog({
           return key0.startsWith("/api/posts");
         }
       });
+      queryClient.refetchQueries({
+        predicate: (query) => {
+          const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';
+          return key0.startsWith("/api/posts");
+        }
+      });
 
       toast({
         title: "Post Updated",
