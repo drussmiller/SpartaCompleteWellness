@@ -3035,31 +3035,36 @@ export const registerRoutes = async (
       if (uploadedFile) {
         await deleteOldMedia();
 
-        const fileBuffer = uploadedFile.buffer;
-        const filename = `shared/uploads/${Date.now()}-${uploadedFile.originalname}`;
-
         const isVideoFile = uploadedFile.mimetype?.startsWith('video/') ||
           /\.(mp4|mov|webm|avi|mkv)$/i.test(uploadedFile.originalname);
 
         try {
-          await spartaObjectStorage.uploadFile(filename, fileBuffer, {
-            contentType: uploadedFile.mimetype || 'application/octet-stream'
-          });
+          const fileInfo = await spartaObjectStorage.storeFile(
+            uploadedFile.buffer,
+            uploadedFile.originalname,
+            uploadedFile.mimetype,
+            isVideoFile
+          );
 
-          updateFields.mediaUrl = `/api/serve-file?filename=${encodeURIComponent(filename)}`;
+          updateFields.mediaUrl = fileInfo.url;
           updateFields.is_video = isVideoFile;
 
-          const thumbnailFile = (req.files as any)?.thumbnail?.[0] ||
-            (req.files as any)?.thumbnail_alt?.[0] ||
-            (req.files as any)?.thumbnail_jpg?.[0] || null;
+          if (fileInfo.thumbnailUrl && isVideoFile) {
+            updateFields.thumbnailUrl = fileInfo.thumbnailUrl;
+          } else {
+            const thumbnailFile = (req.files as any)?.thumbnail?.[0] ||
+              (req.files as any)?.thumbnail_alt?.[0] ||
+              (req.files as any)?.thumbnail_jpg?.[0] || null;
 
-          if (thumbnailFile && isVideoFile) {
-            const thumbBuffer = thumbnailFile.buffer;
-            const thumbFilename = filename.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg');
-            await spartaObjectStorage.uploadFile(thumbFilename, thumbBuffer, {
-              contentType: 'image/jpeg'
-            });
-            updateFields.thumbnailUrl = `/api/serve-file?filename=${encodeURIComponent(thumbFilename)}`;
+            if (thumbnailFile && isVideoFile) {
+              const thumbInfo = await spartaObjectStorage.storeFile(
+                thumbnailFile.buffer,
+                uploadedFile.originalname.replace(/\.(mov|mp4|webm|avi|mkv)$/i, '.jpg'),
+                'image/jpeg',
+                false
+              );
+              updateFields.thumbnailUrl = thumbInfo.url;
+            }
           }
         } catch (uploadError) {
           console.error("Error uploading file during post edit:", uploadError);
