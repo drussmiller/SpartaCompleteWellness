@@ -9622,7 +9622,9 @@ export const registerRoutes = async (
         pageNumber: true,
       });
 
-      const filename = `Week${week}_Day${day}_Activities.docx`;
+      const mainType = dayActivities.find(a => a.activityTypeId && a.activityTypeId > 0);
+      const typePrefix = mainType && mainType.activityTypeId ? (typeMap[mainType.activityTypeId] || '') : '';
+      const filename = typePrefix ? `${typePrefix}-Week${week}Day${day}.docx` : `Week${week}Day${day}.docx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(Buffer.from(docxBuffer));

@@ -474,11 +474,17 @@ export default function ActivityManagementPage() {
     );
   }
 
-  const handleDownload = async (url: string, filename: string) => {
+  const handleDownload = async (url: string, fallbackFilename: string) => {
     setIsDownloading(true);
     try {
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Download failed");
+      const disposition = res.headers.get("Content-Disposition");
+      let filename = fallbackFilename;
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";\n]+)"?/);
+        if (match) filename = match[1].trim();
+      }
       const blob = await res.blob();
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
@@ -757,8 +763,8 @@ export default function ActivityManagementPage() {
                         }
 
                         // Extract week and day from filename
-                        // Support both "Week X Day Y" and "Week X" formats (Week only defaults to Day 0)
-                        const weekDayMatch = file.name.match(/Week\s*(\d+(?:-\d+)?)(?:[,\s]*Day\s*(\d+))?/i);
+                        // Support formats: "Week1Day2", "Week1_Day2", "Week 1 Day 2", "Week1", "Bands-Week1Day1"
+                        const weekDayMatch = file.name.match(/Week\s*(\d+(?:-\d+)?)(?:[_,\s-]*Day\s*(\d+))?/i);
                         if (!weekDayMatch) {
                           throw new Error(`Could not extract week from filename: ${file.name}`);
                         }
@@ -1007,7 +1013,7 @@ export default function ActivityManagementPage() {
                     variant="outline"
                     size="sm"
                     disabled={isDownloading}
-                    onClick={() => handleDownload(`/api/activities/download/week/${downloadWeek}`, `Week${downloadWeek}_Activities.docx`)}
+                    onClick={() => handleDownload(`/api/activities/download/week/${downloadWeek}`, `Week${downloadWeek}.docx`)}
                   >
                     {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
                     Download Week
@@ -1042,7 +1048,7 @@ export default function ActivityManagementPage() {
                     variant="outline"
                     size="sm"
                     disabled={isDownloading}
-                    onClick={() => handleDownload(`/api/activities/download/week/${downloadWeek}/day/${downloadDay}`, `Week${downloadWeek}_Day${downloadDay}_Activities.docx`)}
+                    onClick={() => handleDownload(`/api/activities/download/week/${downloadWeek}/day/${downloadDay}`, `Week${downloadWeek}Day${downloadDay}.docx`)}
                   >
                     {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
                     Download Day
