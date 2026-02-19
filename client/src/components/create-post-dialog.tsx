@@ -228,10 +228,18 @@ export function CreatePostDialog({
       });
       if (editPost.mediaUrl) {
         const mediaUrl = createMediaUrl(editPost.mediaUrl);
-        if (editPost.is_video || editPost.type === 'memory_verse') {
+        const isVideo = editPost.is_video ||
+          editPost.type === 'memory_verse' ||
+          editPost.type === 'introductory_video' ||
+          /\.(mp4|mov|webm|avi|mkv)$/i.test(editPost.mediaUrl);
+
+        if (isVideo) {
           setSelectedMediaType("video");
-          setVideoThumbnail(editPost.thumbnailUrl ? createMediaUrl(editPost.thumbnailUrl) : mediaUrl);
-          setImagePreview(mediaUrl);
+          const thumbUrl = editPost.thumbnailUrl
+            ? createMediaUrl(editPost.thumbnailUrl)
+            : null;
+          setVideoThumbnail(thumbUrl);
+          setImagePreview(thumbUrl || mediaUrl);
         } else {
           setSelectedMediaType("image");
           setImagePreview(mediaUrl);
@@ -1439,8 +1447,7 @@ export function CreatePostDialog({
                       </FormControl>
                       {(imagePreview || videoThumbnail) && (
                         <div className="mt-2">
-                          {/* Display video thumbnails for memory verse posts, introductory video posts, miscellaneous video posts, or prayer video posts */}
-                          {(form.watch("type") === "memory_verse" || form.watch("type") === "introductory_video" || (form.watch("type") === "miscellaneous" && selectedMediaType === "video") || (form.watch("type") === "prayer" && selectedMediaType === "video")) && (
+                          {selectedMediaType === "video" ? (
                             <div className="mt-2">
                               {videoThumbnail ? (
                                 <div>
@@ -1457,16 +1464,13 @@ export function CreatePostDialog({
                                 </div>
                               )}
                             </div>
-                          )}
-                          {/* Display regular images for other post types or miscellaneous image posts */}
-                          {((form.watch("type") !== "memory_verse" && form.watch("type") !== "introductory_video" && form.watch("type") !== "miscellaneous" && !(form.watch("type") === "prayer" && selectedMediaType === "video")) ||
-                            (form.watch("type") === "miscellaneous" && selectedMediaType === "image")) && imagePreview && (
+                          ) : imagePreview ? (
                             <img
                               src={imagePreview}
                               alt="Preview"
                               className="max-h-40 rounded-md"
                             />
-                          )}
+                          ) : null}
                           <Button
                             type="button"
                             variant="ghost"
