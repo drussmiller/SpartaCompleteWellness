@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { insertPostSchema } from "@shared/schema";
+import { insertPostSchema, Post, User } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { usePostLimits } from "@/hooks/use-post-limits";
@@ -20,6 +20,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { shouldUseChunkedUpload, uploadFileInChunks } from "@/lib/chunked-upload";
+import { createMediaUrl } from "@/lib/media-utils";
 
 type CreatePostForm = z.infer<typeof insertPostSchema> & {
   postDate?: Date;
@@ -33,19 +34,28 @@ export function CreatePostDialog({
   remaining: propRemaining,
   initialType = "food",
   defaultType = null,
-  hideTypeField = false
+  hideTypeField = false,
+  editPost = null,
+  editOpen = false,
+  onEditOpenChange,
 }: {
   remaining: Record<string, number>;
   initialType?: string;
   defaultType?: string | null;
   hideTypeField?: boolean;
+  editPost?: (Post & { author?: User }) | null;
+  editOpen?: boolean;
+  onEditOpenChange?: (open: boolean) => void;
 }) {
+  const isEditMode = !!editPost;
   const [open, setOpen] = useState(false);
+  const dialogOpen = isEditMode ? editOpen : open;
+  const setDialogOpen = isEditMode ? (v: boolean) => onEditOpenChange?.(v) : setOpen;
   const { toast } = useToast();
   const { highlightPlus } = useOnboarding();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(isEditMode && editPost?.createdAt ? new Date(editPost.createdAt) : new Date());
   const { canPost, counts, refetch, remaining, memoryVerseWeekCount } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,19 +77,19 @@ export function CreatePostDialog({
   // Fetch organizations for admin users
   const { data: organizations = [] } = useQuery({
     queryKey: ["/api/organizations"],
-    enabled: !!user?.isAdmin && open,
+    enabled: !!user?.isAdmin && dialogOpen,
   });
 
   // Fetch groups for admin and group admin users
   const { data: groups = [] } = useQuery({
     queryKey: ["/api/groups"],
-    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && open,
+    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && dialogOpen,
   });
 
   // Fetch teams for admin and group admin users
   const { data: teams = [] } = useQuery({
     queryKey: ["/api/teams"],
-    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && open,
+    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && dialogOpen,
   });
 
   // Check if user's team is in a competitive group
@@ -178,7 +188,17 @@ export function CreatePostDialog({
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(insertPostSchema),
-    defaultValues: {
+    defaultValues: isEditMode && editPost ? {
+      type: editPost.type,
+      content: editPost.content || "",
+      mediaUrl: editPost.mediaUrl || null,
+      points: editPost.points,
+      postDate: new Date(editPost.createdAt || new Date()),
+      postScope: (editPost as any).postScope || "my_team",
+      targetOrganizationId: null,
+      targetGroupId: null,
+      targetTeamId: null,
+    } : {
       type: actualType,
       content: "",
       mediaUrl: null,
@@ -190,6 +210,31 @@ export function CreatePostDialog({
       targetTeamId: null,
     }
   });
+
+  useEffect(() => {
+    if (isEditMode && editPost && dialogOpen) {
+      form.reset({
+        type: editPost.type,
+        content: editPost.content || "",
+        mediaUrl: editPost.mediaUrl || null,
+        points: editPost.points,
+        postDate: new Date(editPost.createdAt || new Date()),
+        postScope: (editPost as any).postScope || "my_team",
+        targetOrganizationId: null,
+        targetGroupId: null,
+        targetTeamId: null,
+      });
+      if (editPost.mediaUrl) {
+        const mediaUrl = createMediaUrl(editPost.mediaUrl);
+        setImagePreview(mediaUrl);
+        if (editPost.is_video || editPost.type === 'memory_verse') {
+          setSelectedMediaType("video");
+        } else if (editPost.mediaUrl) {
+          setSelectedMediaType("image");
+        }
+      }
+    }
+  }, [isEditMode, editPost, dialogOpen]);
 
   // Update form type when hasAnyPosts changes or dialog opens
   useEffect(() => {
@@ -682,20 +727,111 @@ export function CreatePostDialog({
     }
   });
 
+  const updatePostMutation = useMutation({
+    mutationFn: async (data: CreatePostForm) => {
+      if (!editPost) throw new Error("No post to edit");
+
+      const formData = new FormData();
+
+      const hasNewImageFile = fileInputRef.current?.files && fileInputRef.current.files.length > 0;
+      const hasNewVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
+
+      if (hasNewImageFile && fileInputRef.current?.files) {
+        const file = fileInputRef.current.files[0];
+        if (data.mediaUrl && data.mediaUrl.startsWith('data:')) {
+          const blob = await fetch(data.mediaUrl).then(r => r.blob());
+          formData.append("image", blob, "image.jpeg");
+        } else {
+          formData.append("image", file);
+        }
+      } else if (hasNewVideoFile && videoInputRef.current?.files) {
+        const videoFile = videoInputRef.current.files[0];
+        formData.append("image", videoFile);
+        formData.append("is_video", "true");
+        formData.append("selected_media_type", "video");
+
+        if (videoThumbnail) {
+          const thumbnailBlob = dataURLToBlob(videoThumbnail);
+          formData.append("thumbnail", thumbnailBlob, "thumbnail.jpg");
+        }
+      }
+
+      const postData: any = {
+        content: data.content?.trim() || '',
+      };
+
+      formData.append("data", JSON.stringify(postData));
+
+      const response = await fetch(`/api/posts/${editPost.id}`, {
+        method: "PATCH",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || "Failed to update post");
+        } catch {
+          throw new Error("Failed to update post");
+        }
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      form.reset();
+      setDialogOpen(false);
+      setImagePreview(null);
+      setVideoThumbnail(null);
+      setSelectedMediaType(null);
+      resetUploadProgress();
+
+      if (videoInputRef.current) videoInputRef.current.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';
+          return key0.startsWith("/api/posts");
+        }
+      });
+
+      toast({
+        title: "Post Updated",
+        description: "Your post was updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      resetUploadProgress();
+      toast({
+        title: "Error Updating Post",
+        description: error instanceof Error ? error.message : "Failed to update post",
+        variant: "destructive",
+      });
+    }
+  });
+
   const onSubmit = (data: CreatePostForm) => {
+    if (isEditMode) {
+      updatePostMutation.mutate(data);
+      return;
+    }
+
     console.log("============ FORM SUBMIT DEBUG START ============");
-    console.log("🔥 onSubmit called with data:", { type: data.type, hasMediaUrl: !!data.mediaUrl, content: data.content?.substring(0, 50) });
-    console.log("🔥 Form errors:", form.formState.errors);
-    console.log("🔥 [SCOPE DEBUG] Form data received in onSubmit:", {
+    console.log("onSubmit called with data:", { type: data.type, hasMediaUrl: !!data.mediaUrl, content: data.content?.substring(0, 50) });
+    console.log("Form errors:", form.formState.errors);
+    console.log("[SCOPE DEBUG] Form data received in onSubmit:", {
       postScope: data.postScope,
       targetOrganizationId: data.targetOrganizationId,
       targetGroupId: data.targetGroupId,
       targetTeamId: data.targetTeamId
     });
-    console.log("🔥 [SCOPE DEBUG] Local state values:", {
+    console.log("[SCOPE DEBUG] Local state values:", {
       localPostScope: postScope
     });
-    console.log("🔥 [SCOPE DEBUG] All form values from getValues():", form.getValues());
+    console.log("[SCOPE DEBUG] All form values from getValues():", form.getValues());
     console.log("============ FORM SUBMIT DEBUG END ============");
     
     // Intro video posts require a video - no text-only allowed
@@ -729,9 +865,11 @@ export function CreatePostDialog({
   // In this case, disable posting until they join a team (unless they delete their intro video)
   const isPostingDisabled = hasPostedIntroVideo && !user?.teamId;
 
+  const activeMutation = isEditMode ? updatePostMutation : createPostMutation;
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
+    <Dialog open={dialogOpen} onOpenChange={(isOpen) => {
+      setDialogOpen(isOpen);
       if (!isOpen) {
         form.reset();
         setImagePreview(null);
@@ -742,36 +880,38 @@ export function CreatePostDialog({
         resetUploadProgress();
       }
     }}>
-      <DialogTrigger asChild>
-        <div className="relative">
-          <Button 
-            size="icon" 
-            className={`h-10 w-10 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${highlightPlus ? 'onboarding-pulse' : ''}`}
-            disabled={isPostingDisabled}
-            title={isPostingDisabled ? "Join a team to post more content" : "Create a post"}
-          >
-            <Plus className="h-16 w-16 text-black dark:text-white font-extrabold" />
-          </Button>
-          {highlightPlus && (
-            <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
-              Post intro
-            </span>
-          )}
-        </div>
-      </DialogTrigger>
+      {!isEditMode && (
+        <DialogTrigger asChild>
+          <div className="relative">
+            <Button 
+              size="icon" 
+              className={`h-10 w-10 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${highlightPlus ? 'onboarding-pulse' : ''}`}
+              disabled={isPostingDisabled}
+              title={isPostingDisabled ? "Join a team to post more content" : "Create a post"}
+            >
+              <Plus className="h-16 w-16 text-black dark:text-white font-extrabold" />
+            </Button>
+            {highlightPlus && (
+              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
+                Post intro
+              </span>
+            )}
+          </div>
+        </DialogTrigger>
+      )}
       <DialogContent className="h-screen overflow-y-auto pb-32 sm:pb-28 pt-8">
         <div className="flex justify-between items-center mb-4 px-2">
           <Button
-            onClick={() => setOpen(false)}
+            onClick={() => setDialogOpen(false)}
             variant="ghost"
             className="h-8 w-8 p-0 !outline-none !ring-0 focus-visible:!ring-0 focus-visible:!ring-offset-0 !border-0"
             aria-label="Close"
           >
             <span className="text-2xl font-bold">×</span>
           </Button>
-          <DialogTitle className="text-center flex-1 mr-8">Create Post</DialogTitle>
+          <DialogTitle className="text-center flex-1 mr-8">{isEditMode ? "Edit Post" : "Create Post"}</DialogTitle>
           <DialogDescription className="sr-only">
-            Create a new post to share with your team
+            {isEditMode ? "Edit your post" : "Create a new post to share with your team"}
           </DialogDescription>
         </div>
         <Form {...form}>
@@ -782,6 +922,11 @@ export function CreatePostDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Post Date</FormLabel>
+                  {isEditMode ? (
+                    <div className="w-full pl-3 py-2 text-left font-normal border rounded-md bg-muted text-muted-foreground cursor-not-allowed">
+                      {editPost?.createdAt ? format(new Date(editPost.createdAt), "PPP 'at' h:mm a") : "Unknown date"}
+                    </div>
+                  ) : (
                   <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -829,7 +974,8 @@ export function CreatePostDialog({
                       />
                     </PopoverContent>
                   </Popover>
-                  {isCompetitive === true && (
+                  )}
+                  {!isEditMode && isCompetitive === true && (
                     <p className="text-xs text-muted-foreground">
                       Competitive divisions must post on the current date
                     </p>
@@ -840,7 +986,7 @@ export function CreatePostDialog({
             />
 
             {/* Only show Type field if hideTypeField is false */}
-            {!hideTypeField && (
+            {!hideTypeField && !isEditMode ? (
               <FormField
                 control={form.control}
                 name="type"
@@ -891,10 +1037,17 @@ export function CreatePostDialog({
                   </FormItem>
                 )}
               />
-            )}
+            ) : isEditMode ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Type</label>
+                <div className="w-full pl-3 py-2 text-left font-normal border rounded-md bg-muted text-muted-foreground cursor-not-allowed capitalize">
+                  {editPost?.type.replace("_", " ")}
+                </div>
+              </div>
+            ) : null}
 
-            {/* Post Scope Selector - Only show for Admin and Group Admin when posting Miscellaneous */}
-            {(user?.isAdmin || user?.isGroupAdmin) && form.watch("type") === "miscellaneous" && (
+            {/* Post Scope Selector - Only show for Admin and Group Admin when posting Miscellaneous (not in edit mode) */}
+            {!isEditMode && (user?.isAdmin || user?.isGroupAdmin) && form.watch("type") === "miscellaneous" && (
               <>
                 <FormField
                   control={form.control}
@@ -1354,9 +1507,9 @@ export function CreatePostDialog({
                 form="create-post-form"
                 variant="default"
                 className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
-                disabled={createPostMutation.isPending || uploadProgress > 0 || (form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
+                disabled={activeMutation.isPending || uploadProgress > 0 || (!isEditMode && form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
               >
-                {(createPostMutation.isPending || uploadProgress > 0) && (
+                {(activeMutation.isPending || uploadProgress > 0) && (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {uploadProgress > 0 && (
@@ -1369,7 +1522,7 @@ export function CreatePostDialog({
                     )}
                   </div>
                 )}
-                {!createPostMutation.isPending && uploadProgress === 0 && "Post"}
+                {!activeMutation.isPending && uploadProgress === 0 && (isEditMode ? "Save Changes" : "Post")}
               </Button>
             </div>
           </form>
