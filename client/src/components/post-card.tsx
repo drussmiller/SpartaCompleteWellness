@@ -96,7 +96,7 @@ function convertUrlsToLinks(text: string): string {
   });
 }
 
-export const PostCard = React.memo(function PostCard({ post }: { post: Post & { author: User } }) {
+export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { post: Post & { author: User }; onPostUpdated?: () => void }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -490,6 +490,7 @@ export const PostCard = React.memo(function PostCard({ post }: { post: Post & { 
           editPost={post}
           editOpen={isEditOpen}
           onEditOpenChange={setIsEditOpen}
+          onPostUpdated={onPostUpdated}
         />
       )}
     </div>

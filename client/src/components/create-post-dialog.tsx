@@ -38,6 +38,7 @@ export function CreatePostDialog({
   editPost = null,
   editOpen = false,
   onEditOpenChange,
+  onPostUpdated,
 }: {
   remaining: Record<string, number>;
   initialType?: string;
@@ -46,6 +47,7 @@ export function CreatePostDialog({
   editPost?: (Post & { author?: User }) | null;
   editOpen?: boolean;
   onEditOpenChange?: (open: boolean) => void;
+  onPostUpdated?: () => void;
 }) {
   const isEditMode = !!editPost;
   const [open, setOpen] = useState(false);
@@ -830,12 +832,16 @@ export function CreatePostDialog({
       if (videoInputRef.current) videoInputRef.current.value = "";
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      queryClient.removeQueries({
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';
           return key0.startsWith("/api/posts");
         }
       });
+
+      if (onPostUpdated) {
+        setTimeout(() => onPostUpdated(), 100);
+      }
 
       toast({
         title: "Post Updated",
