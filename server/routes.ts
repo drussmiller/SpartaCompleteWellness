@@ -9551,7 +9551,7 @@ export const registerRoutes = async (
         pageNumber: true,
       });
 
-      const filename = `Week${week}_Activities.docx`;
+      const filename = `Week${week}.docx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(Buffer.from(docxBuffer));
