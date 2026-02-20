@@ -35,6 +35,7 @@ interface TeamForInvite {
 interface SendTeamInviteDialogProps {
   recipientUserId: number;
   recipientName: string;
+  recipientOrganizationId?: number | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -42,6 +43,7 @@ interface SendTeamInviteDialogProps {
 export function SendTeamInviteDialog({
   recipientUserId,
   recipientName,
+  recipientOrganizationId,
   isOpen,
   onOpenChange,
 }: SendTeamInviteDialogProps) {
@@ -50,8 +52,17 @@ export function SendTeamInviteDialog({
   const [selectedRole, setSelectedRole] = useState("");
   const teamTriggerRef = useRef<HTMLButtonElement>(null);
 
+  const teamQueryUrl = recipientOrganizationId
+    ? `/api/teams/for-invite?organizationId=${recipientOrganizationId}`
+    : "/api/teams/for-invite";
+
   const { data: teams = [], isLoading: teamsLoading } = useQuery<TeamForInvite[]>({
-    queryKey: ["/api/teams/for-invite"],
+    queryKey: ["/api/teams/for-invite", recipientOrganizationId],
+    queryFn: async () => {
+      const res = await fetch(teamQueryUrl);
+      if (!res.ok) throw new Error("Failed to fetch teams");
+      return res.json();
+    },
     enabled: isOpen,
   });
 

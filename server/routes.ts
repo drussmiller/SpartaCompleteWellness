@@ -1585,6 +1585,7 @@ export const registerRoutes = async (
               avatarColor: users.avatarColor,
               isAdmin: users.isAdmin,
               teamId: users.teamId,
+              pendingOrganizationId: users.pendingOrganizationId,
             },
           })
           .from(posts)
@@ -1655,6 +1656,7 @@ export const registerRoutes = async (
               avatarColor: users.avatarColor,
               isAdmin: users.isAdmin,
               teamId: users.teamId,
+              pendingOrganizationId: users.pendingOrganizationId,
             },
           })
           .from(posts)
@@ -1704,6 +1706,7 @@ export const registerRoutes = async (
               avatarColor: users.avatarColor,
               isAdmin: users.isAdmin,
               teamId: users.teamId,
+              pendingOrganizationId: users.pendingOrganizationId,
             },
           })
           .from(posts)
@@ -1790,6 +1793,7 @@ export const registerRoutes = async (
               avatarColor: users.avatarColor,
               isAdmin: users.isAdmin,
               teamId: users.teamId,
+              pendingOrganizationId: users.pendingOrganizationId,
             },
           })
           .from(posts)
@@ -2068,6 +2072,7 @@ export const registerRoutes = async (
             avatarColor: users.avatarColor,
             isAdmin: users.isAdmin,
             teamId: users.teamId,
+            pendingOrganizationId: users.pendingOrganizationId,
           },
         })
         .from(posts)
@@ -4750,9 +4755,14 @@ export const registerRoutes = async (
   router.get("/api/teams/for-invite", authenticate, async (req, res) => {
     try {
       const user = req.user!;
+      const filterOrgId = req.query.organizationId ? parseInt(req.query.organizationId as string) : null;
 
-      // Admin sees all active teams
+      // Admin sees all active teams (optionally filtered by recipient's org)
       if (user.isAdmin) {
+        const conditions = [eq(teams.status, 1)];
+        if (filterOrgId) {
+          conditions.push(eq(groups.organizationId, filterOrgId));
+        }
         const allTeams = await db
           .select({
             id: teams.id,
@@ -4765,7 +4775,7 @@ export const registerRoutes = async (
           .from(teams)
           .innerJoin(groups, eq(teams.groupId, groups.id))
           .innerJoin(organizations, eq(groups.organizationId, organizations.id))
-          .where(eq(teams.status, 1));
+          .where(and(...conditions));
 
         return res.json(allTeams);
       }
