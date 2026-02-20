@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +48,7 @@ export function SendTeamInviteDialog({
   const { toast } = useToast();
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
+  const teamTriggerRef = useRef<HTMLButtonElement>(null);
 
   const { data: teams = [], isLoading: teamsLoading } = useQuery<TeamForInvite[]>({
     queryKey: ["/api/teams/for-invite"],
@@ -56,6 +57,12 @@ export function SendTeamInviteDialog({
 
   const isSingleTeam = teams.length === 1;
   const effectiveTeamId = isSingleTeam ? teams[0].id.toString() : selectedTeamId;
+
+  useEffect(() => {
+    if (isOpen && !teamsLoading && teams.length > 1 && teamTriggerRef.current) {
+      setTimeout(() => teamTriggerRef.current?.focus(), 100);
+    }
+  }, [isOpen, teamsLoading, teams.length]);
 
   const sendInviteMutation = useMutation({
     mutationFn: async () => {
@@ -148,7 +155,7 @@ export function SendTeamInviteDialog({
               </p>
             ) : (
               <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
-                <SelectTrigger data-testid="select-invite-team">
+                <SelectTrigger ref={teamTriggerRef} data-testid="select-invite-team">
                   <SelectValue placeholder="Select a team..." />
                 </SelectTrigger>
                 <SelectContent>
