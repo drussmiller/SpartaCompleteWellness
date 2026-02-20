@@ -531,6 +531,7 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
         <SendTeamInviteDialog
           recipientUserId={post.author?.id}
           recipientName={getDisplayName(post.author)}
+          recipientOrganizationId={post.author?.pendingOrganizationId}
           isOpen={isInviteDialogOpen}
           onOpenChange={setIsInviteDialogOpen}
         />
