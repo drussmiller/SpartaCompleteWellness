@@ -1947,7 +1947,19 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                 </div>
                               </div>
                               <div className="mt-4 pt-4 border-t">
-                                <div className="flex items-center justify-between mb-2">
+                                {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && currentUser?.adminOrganizationId === organization.id)) && (
+                                  <div className="mb-3">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setCreateDivisionForOrgId(organization.id)}
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      Create Division
+                                    </Button>
+                                  </div>
+                                )}
+                                <div className="flex items-center mb-2">
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1957,16 +1969,6 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                     Divisions ({Math.max(0, (sortedGroups?.filter(g => g.organizationId === organization.id).length || 0) - 1)})
                                     <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${expandedOrgDivisions[organization.id] ? 'rotate-180' : ''}`} />
                                   </Button>
-                                  {(currentUser?.isAdmin || (currentUser?.isOrganizationAdmin && currentUser?.adminOrganizationId === organization.id)) && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setCreateDivisionForOrgId(organization.id)}
-                                    >
-                                      <Plus className="h-4 w-4 mr-1" />
-                                      Create Division
-                                    </Button>
-                                  )}
                                 </div>
                                 {expandedOrgDivisions[organization.id] && (
                                   <div className="space-y-2 mt-2">
