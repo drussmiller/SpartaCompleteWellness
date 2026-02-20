@@ -122,7 +122,7 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
   const isOwnPost = currentUser?.id === post.author?.id;
   const canDelete = isOwnPost || currentUser?.isAdmin;
   const canEdit = isOwnPost;
-  const canInvite = (currentUser?.isAdmin || currentUser?.isTeamLead || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && post.type === 'introductory_video';
+  const canInvite = (currentUser?.isAdmin || currentUser?.isTeamLead || currentUser?.isOrganizationAdmin || currentUser?.isGroupAdmin) && post.type === 'introductory_video' && !post.author?.teamId;
   const showMenu = canEdit || canDelete || canInvite;
 
   // Check if this post should be displayed as a video
