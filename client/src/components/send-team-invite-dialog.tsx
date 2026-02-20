@@ -119,6 +119,9 @@ export function SendTeamInviteDialog({
     return acc;
   }, {});
 
+  const groupKeys = Object.keys(groupedTeams);
+  const needsGrouping = groupKeys.length > 1 && groupKeys.some(key => groupedTeams[key].length > 1);
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
@@ -149,16 +152,24 @@ export function SendTeamInviteDialog({
                   <SelectValue placeholder="Select a team..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(groupedTeams).map(([groupLabel, groupTeams]) => (
-                    <SelectGroup key={groupLabel}>
-                      <SelectLabel>{groupLabel}</SelectLabel>
-                      {groupTeams.map((team) => (
-                        <SelectItem key={team.id} value={team.id.toString()}>
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ))}
+                  {needsGrouping ? (
+                    Object.entries(groupedTeams).map(([groupLabel, groupTeams]) => (
+                      <SelectGroup key={groupLabel}>
+                        <SelectLabel>{groupLabel}</SelectLabel>
+                        {groupTeams.map((team) => (
+                          <SelectItem key={team.id} value={team.id.toString()}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))
+                  ) : (
+                    teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id.toString()}>
+                        {team.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             )}
