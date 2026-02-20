@@ -3980,12 +3980,30 @@ export const registerRoutes = async (
 
       // Use database transaction for atomic updates
       const result = await db.transaction(async (tx) => {
+        const [existingOrg] = await tx
+          .select({ name: organizations.name })
+          .from(organizations)
+          .where(eq(organizations.id, organizationId));
+        const oldName = existingOrg?.name;
+
         // Update the organization using transaction
         const [updatedOrganization] = await tx
           .update(organizations)
           .set(req.body)
           .where(eq(organizations.id, organizationId))
           .returning();
+
+        // If org name changed, rename the default group (the one with the old org name)
+        if (req.body.name && oldName && req.body.name !== oldName) {
+          const updated = await tx
+            .update(groups)
+            .set({ name: req.body.name })
+            .where(and(eq(groups.organizationId, organizationId), eq(groups.name, oldName)))
+            .returning();
+          if (updated.length > 0) {
+            logger.info(`Renamed default group from "${oldName}" to "${req.body.name}" for organization ${organizationId}`);
+          }
+        }
 
         let groupsUpdated = 0;
         let teamsUpdated = 0;
