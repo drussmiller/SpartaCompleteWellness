@@ -1016,6 +1016,14 @@ export function CreatePostDialog({
                             return true;
                           }
 
+                          // Disable dates before the user's program start date
+                          if (user?.programStartDate) {
+                            const programStart = parseProgramStartDate(user.programStartDate);
+                            if (checkDate < programStart) {
+                              return true;
+                            }
+                          }
+
                           // For competitive groups, only allow today's date
                           if (isCompetitive === true) {
                             return checkDate.getTime() !== today.getTime();
