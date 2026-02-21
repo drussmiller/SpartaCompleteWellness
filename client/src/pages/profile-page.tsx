@@ -939,7 +939,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
-                      userStats?.weeklyAvgPoints || 0
+                      `${userStats?.weeklyAvgPoints || 0}%`
                     )}
                   </div>
                 </div>

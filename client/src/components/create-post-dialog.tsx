@@ -996,7 +996,8 @@ export function CreatePostDialog({
                     <PopoverContent className="w-auto p-0 z-[999999999]" align="start">
                       <Calendar
                         mode="single"
-                        selected={selectedDate}
+                        selected={field.value || selectedDate}
+                        defaultMonth={field.value || selectedDate}
                         onSelect={(date) => {
                           if (date) {
                             setSelectedDate(date);
