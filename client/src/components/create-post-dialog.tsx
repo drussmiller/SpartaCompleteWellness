@@ -73,7 +73,8 @@ export function CreatePostDialog({
   const [foodImages, setFoodImages] = useState<{ dataUrl: string; file: File }[]>([]);
   const [multiPostProgress, setMultiPostProgress] = useState<{ current: number; total: number } | null>(null);
   const [workoutImages, setWorkoutImages] = useState<{ dataUrl: string; file: File }[]>([]);
-  const [stackedWorkoutPreview, setStackedWorkoutPreview] = useState<string | null>(null);
+  const [workoutLayout, setWorkoutLayout] = useState<"stacked" | "side-by-side">("stacked");
+  const [workoutCombinedPreview, setWorkoutCombinedPreview] = useState<string | null>(null);
 
   // Reset upload progress state (call on any error or success)
   const resetUploadProgress = () => {
@@ -404,7 +405,7 @@ export function CreatePostDialog({
         const hasImageFile = fileInputRef.current?.files && fileInputRef.current.files.length > 0;
         const hasVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
         
-        if ((data.type === 'food' || data.type === 'workout') && !hasImageFile && !(data.type === 'food' && foodImages.length > 0)) {
+        if ((data.type === 'food' || data.type === 'workout') && !hasImageFile && !(data.type === 'food' && foodImages.length > 0) && !(data.type === 'workout' && workoutImages.length >= 1)) {
           console.error(`${data.type} post missing required image`);
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
@@ -700,6 +701,9 @@ export function CreatePostDialog({
       resetUploadProgress();
       setFoodImages([]);
       setMultiPostProgress(null);
+      setWorkoutImages([]);
+      setWorkoutCombinedPreview(null);
+      setWorkoutLayout("stacked");
 
       if (videoInputRef.current) {
         videoInputRef.current.value = "";
@@ -1036,6 +1040,9 @@ export function CreatePostDialog({
         resetUploadProgress();
         setFoodImages([]);
         setMultiPostProgress(null);
+        setWorkoutImages([]);
+        setWorkoutCombinedPreview(null);
+        setWorkoutLayout("stacked");
       }
     }}>
       {!isEditMode && (
@@ -1169,6 +1176,9 @@ export function CreatePostDialog({
                         setVideoThumbnail(null);
                         resetUploadProgress();
                         setFoodImages([]);
+                        setWorkoutImages([]);
+                        setWorkoutCombinedPreview(null);
+                        setWorkoutLayout("stacked");
                         if (fileInputRef.current) fileInputRef.current.value = "";
                       }}
                     >
@@ -1473,12 +1483,12 @@ export function CreatePostDialog({
                                   variant="outline"
                                   className="w-full"
                                 >
-                                  {form.watch("type") === "food" ? `Select Image${remaining.food > 1 ? 's' : ''} (up to ${remaining.food})` : "Select Image"}
+                                  {form.watch("type") === "food" ? `Select Image${remaining.food > 1 ? 's' : ''} (up to ${remaining.food})` : form.watch("type") === "workout" ? "Select Image(s) (up to 3)" : "Select Image"}
                                 </Button>
                                 <Input
                                   type="file"
                                   accept="image/*"
-                                  multiple={form.watch("type") === "food"}
+                                  multiple={form.watch("type") === "food" || form.watch("type") === "workout"}
                                   ref={fileInputRef}
                                   onChange={async (e) => {
                                     const files = e.target.files;
@@ -1525,6 +1535,52 @@ export function CreatePostDialog({
                                       return;
                                     }
 
+                                    if (form.watch("type") === "workout" && files.length > 1) {
+                                      const filesToProcess = Array.from(files).slice(0, 3);
+
+                                      if (files.length > 3) {
+                                        toast({
+                                          title: "Too many images",
+                                          description: "Only the first 3 images will be used.",
+                                        });
+                                      }
+
+                                      const newWorkoutImages: { dataUrl: string; file: File }[] = [];
+                                      for (const file of filesToProcess) {
+                                        try {
+                                          const dataUrl = await new Promise<string>((resolve, reject) => {
+                                            const reader = new FileReader();
+                                            reader.onload = async () => {
+                                              try {
+                                                const compressed = await compressImage(reader.result as string);
+                                                resolve(compressed);
+                                              } catch (err) {
+                                                reject(err);
+                                              }
+                                            };
+                                            reader.onerror = reject;
+                                            reader.readAsDataURL(file);
+                                          });
+                                          newWorkoutImages.push({ dataUrl, file });
+                                        } catch (error) {
+                                          console.error('Error compressing image:', error);
+                                        }
+                                      }
+
+                                      if (newWorkoutImages.length > 1) {
+                                        setWorkoutImages(newWorkoutImages);
+                                        const combined = await combineImagesStacked(newWorkoutImages.map(i => i.dataUrl));
+                                        setWorkoutCombinedPreview(combined);
+                                        setImagePreview(combined);
+                                        field.onChange(combined);
+                                      } else if (newWorkoutImages.length === 1) {
+                                        setWorkoutImages(newWorkoutImages);
+                                        setImagePreview(newWorkoutImages[0].dataUrl);
+                                        field.onChange(newWorkoutImages[0].dataUrl);
+                                      }
+                                      return;
+                                    }
+
                                     const file = files[0];
                                     if (file) {
                                       const reader = new FileReader();
@@ -1539,6 +1595,9 @@ export function CreatePostDialog({
 
                                             if (form.watch("type") === "food") {
                                               setFoodImages([{ dataUrl: compressed, file }]);
+                                            }
+                                            if (form.watch("type") === "workout") {
+                                              setWorkoutImages([{ dataUrl: compressed, file }]);
                                             }
                                             if (form.watch("type") === "miscellaneous") {
                                               setSelectedMediaType("image");
@@ -1686,6 +1745,105 @@ export function CreatePostDialog({
                             Remove All
                           </Button>
                         </div>
+                      ) : form.watch("type") === "workout" && workoutImages.length > 1 ? (
+                        <div className="mt-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            {workoutImages.map((img, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={img.dataUrl}
+                                  alt={`Workout ${index + 1}`}
+                                  className="w-full h-24 object-cover rounded-md border border-gray-200"
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                  onClick={async () => {
+                                    const updated = workoutImages.filter((_, i) => i !== index);
+                                    setWorkoutImages(updated);
+                                    if (updated.length <= 1) {
+                                      setWorkoutCombinedPreview(null);
+                                      if (updated.length === 1) {
+                                        setImagePreview(updated[0].dataUrl);
+                                        field.onChange(updated[0].dataUrl);
+                                      } else {
+                                        setImagePreview(null);
+                                        field.onChange(null);
+                                        if (fileInputRef.current) fileInputRef.current.value = "";
+                                      }
+                                    } else {
+                                      const combineFn = workoutLayout === "stacked" ? combineImagesStacked : combineImagesSideBySide;
+                                      const combined = await combineFn(updated.map(i => i.dataUrl));
+                                      setWorkoutCombinedPreview(combined);
+                                      setImagePreview(combined);
+                                      field.onChange(combined);
+                                    }
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs text-muted-foreground">Layout:</span>
+                            <Button
+                              type="button"
+                              variant={workoutLayout === "stacked" ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={async () => {
+                                setWorkoutLayout("stacked");
+                                const combined = await combineImagesStacked(workoutImages.map(i => i.dataUrl));
+                                setWorkoutCombinedPreview(combined);
+                                setImagePreview(combined);
+                                field.onChange(combined);
+                              }}
+                            >
+                              Stacked
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={workoutLayout === "side-by-side" ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={async () => {
+                                setWorkoutLayout("side-by-side");
+                                const combined = await combineImagesSideBySide(workoutImages.map(i => i.dataUrl));
+                                setWorkoutCombinedPreview(combined);
+                                setImagePreview(combined);
+                                field.onChange(combined);
+                              }}
+                            >
+                              Side by Side
+                            </Button>
+                          </div>
+                          {workoutCombinedPreview && (
+                            <div className="mt-2">
+                              <p className="text-xs text-muted-foreground mb-1">Combined preview:</p>
+                              <img
+                                src={workoutCombinedPreview}
+                                alt="Combined workout"
+                                className="max-h-48 rounded-md border border-gray-200"
+                              />
+                            </div>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="mt-1"
+                            onClick={() => {
+                              setWorkoutImages([]);
+                              setWorkoutCombinedPreview(null);
+                              setImagePreview(null);
+                              field.onChange(null);
+                              if (fileInputRef.current) fileInputRef.current.value = "";
+                            }}
+                          >
+                            Remove All
+                          </Button>
+                        </div>
                       ) : (imagePreview || videoThumbnail) && (
                         <div className="mt-2">
                           {selectedMediaType === "video" ? (
@@ -1724,6 +1882,8 @@ export function CreatePostDialog({
                               field.onChange(null);
                               resetUploadProgress();
                               setFoodImages([]);
+                              setWorkoutImages([]);
+                              setWorkoutCombinedPreview(null);
                               if (isEditMode) {
                                 setEditMediaRemoved(true);
                               }
@@ -1972,4 +2132,76 @@ async function compressImage(imageDataUrl: string, maxWidth = 1200): Promise<str
     img.onerror = reject;
     img.src = imageDataUrl;
   });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function combineImagesStacked(dataUrls: string[], maxWidth = 1200): Promise<string> {
+  const images = await Promise.all(dataUrls.map(loadImage));
+
+  const scaledDims = images.map(img => {
+    const scale = Math.min(1, maxWidth / img.width);
+    return { w: img.width * scale, h: img.height * scale };
+  });
+
+  const canvasWidth = Math.min(maxWidth, Math.max(...scaledDims.map(d => d.w)));
+  const gap = 4;
+  const totalHeight = Math.min(3600, scaledDims.reduce((sum, d) => sum + d.h, 0) + gap * (images.length - 1));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to get canvas context');
+
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(0, 0, canvasWidth, totalHeight);
+
+  let y = 0;
+  for (let i = 0; i < images.length; i++) {
+    const x = (canvasWidth - scaledDims[i].w) / 2;
+    ctx.drawImage(images[i], x, y, scaledDims[i].w, scaledDims[i].h);
+    y += scaledDims[i].h + gap;
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
+async function combineImagesSideBySide(dataUrls: string[], maxWidth = 1200): Promise<string> {
+  const images = await Promise.all(dataUrls.map(loadImage));
+
+  const gap = 4;
+  const availableWidth = maxWidth - gap * (images.length - 1);
+  const slotWidth = availableWidth / images.length;
+
+  const scaledDims = images.map(img => {
+    const scale = slotWidth / img.width;
+    return { w: slotWidth, h: img.height * scale };
+  });
+
+  const canvasHeight = Math.min(2400, Math.max(...scaledDims.map(d => d.h)));
+  const canvas = document.createElement('canvas');
+  canvas.width = maxWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to get canvas context');
+
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(0, 0, maxWidth, canvasHeight);
+
+  let x = 0;
+  for (let i = 0; i < images.length; i++) {
+    const yOffset = (canvasHeight - scaledDims[i].h) / 2;
+    ctx.drawImage(images[i], x, yOffset, scaledDims[i].w, scaledDims[i].h);
+    x += scaledDims[i].w + gap;
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.8);
 }
