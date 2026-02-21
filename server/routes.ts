@@ -6862,54 +6862,48 @@ export const registerRoutes = async (
         else if (post.type === "memory_verse") weeklyPoints += 10;
       }
 
-      // Monthly average - Three months ago in user's local time
-      const threeMonthsAgo = new Date(
-        userLocalTime.getFullYear(),
-        userLocalTime.getMonth() - 3,
-        userLocalTime.getDate(),
-        0,
-        0,
-        0,
-        0,
-      );
+      // Weekly average - Four weeks ago in user's local time
+      const fourWeeksAgo = new Date(userLocalTime);
+      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+      fourWeeksAgo.setHours(0, 0, 0, 0);
       // Convert back to UTC for database query
-      const threeMonthsAgoUTC = new Date(
-        threeMonthsAgo.getTime() + tzOffset * 60000,
+      const fourWeeksAgoUTC = new Date(
+        fourWeeksAgo.getTime() + tzOffset * 60000,
       );
 
       logger.info(
-        `Date range for monthly stats (in user's local timezone): ${threeMonthsAgoUTC.toISOString()} to ${endOfDayUTC.toISOString()}`,
+        `Date range for weekly avg stats (in user's local timezone): ${fourWeeksAgoUTC.toISOString()} to ${endOfDayUTC.toISOString()}`,
       );
 
-      const monthlyPosts = await db
+      const avgPosts = await db
         .select()
         .from(posts)
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, threeMonthsAgoUTC),
+            gte(posts.createdAt, fourWeeksAgoUTC),
             lte(posts.createdAt, endOfDayUTC),
           ),
         );
 
       let totalPoints = 0;
-      for (const post of monthlyPosts) {
+      for (const post of avgPosts) {
         if (post.type === "food") totalPoints += 3;
         else if (post.type === "workout") totalPoints += 3;
         else if (post.type === "scripture") totalPoints += 3;
         else if (post.type === "memory_verse") totalPoints += 10;
       }
 
-      // Calculate monthly average (total points divided by 3 months)
-      const monthlyAvgPoints = Math.round(totalPoints / 3);
+      // Calculate weekly average (total points divided by 4 weeks)
+      const weeklyAvgPoints = Math.round(totalPoints / 4);
 
       logger.info(
-        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, monthlyAvg=${monthlyAvgPoints}`,
+        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}`,
       );
       res.json({
         dailyPoints,
         weeklyPoints,
-        monthlyAvgPoints,
+        weeklyAvgPoints,
       });
     } catch (error) {
       logger.error(

@@ -933,13 +933,13 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
 
                 <div className="flex flex-col items-center">
                   <div className="text-sm text-muted-foreground text-center whitespace-nowrap">
-                    Monthly Avg
+                    Weekly Avg
                   </div>
                   <div className="text-lg font-bold">
                     {statsLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : (
-                      userStats?.monthlyAvgPoints || 0
+                      userStats?.weeklyAvgPoints || 0
                     )}
                   </div>
                 </div>
