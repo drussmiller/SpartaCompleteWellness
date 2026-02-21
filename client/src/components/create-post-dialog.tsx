@@ -72,6 +72,8 @@ export function CreatePostDialog({
   const [editMediaRemoved, setEditMediaRemoved] = useState(false);
   const [foodImages, setFoodImages] = useState<{ dataUrl: string; file: File }[]>([]);
   const [multiPostProgress, setMultiPostProgress] = useState<{ current: number; total: number } | null>(null);
+  const [workoutImages, setWorkoutImages] = useState<{ dataUrl: string; file: File }[]>([]);
+  const [stackedWorkoutPreview, setStackedWorkoutPreview] = useState<string | null>(null);
 
   // Reset upload progress state (call on any error or success)
   const resetUploadProgress = () => {
