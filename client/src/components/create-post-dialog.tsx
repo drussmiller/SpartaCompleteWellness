@@ -70,6 +70,8 @@ export function CreatePostDialog({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusMessage, setUploadStatusMessage] = useState('');
   const [editMediaRemoved, setEditMediaRemoved] = useState(false);
+  const [foodImages, setFoodImages] = useState<{ dataUrl: string; file: File }[]>([]);
+  const [multiPostProgress, setMultiPostProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Reset upload progress state (call on any error or success)
   const resetUploadProgress = () => {
@@ -400,7 +402,7 @@ export function CreatePostDialog({
         const hasImageFile = fileInputRef.current?.files && fileInputRef.current.files.length > 0;
         const hasVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
         
-        if ((data.type === 'food' || data.type === 'workout') && !hasImageFile) {
+        if ((data.type === 'food' || data.type === 'workout') && !hasImageFile && !(data.type === 'food' && foodImages.length > 0)) {
           console.error(`${data.type} post missing required image`);
           throw new Error(`${data.type === 'food' ? 'Food' : 'Workout'} posts require an image`);
         }
@@ -686,7 +688,6 @@ export function CreatePostDialog({
       return { previousPosts };
     },
     onSuccess: (newPost: any) => {
-      // Clear all form state and close the dialog
       form.reset();
       setOpen(false);
       setImagePreview(null);
@@ -695,8 +696,9 @@ export function CreatePostDialog({
       setSelectedExistingVideo(null);
       setPostScope("my_team");
       resetUploadProgress();
+      setFoodImages([]);
+      setMultiPostProgress(null);
 
-      // Clear any file inputs
       if (videoInputRef.current) {
         videoInputRef.current.value = "";
       }
@@ -855,7 +857,52 @@ export function CreatePostDialog({
     }
   });
 
-  const onSubmit = (data: CreatePostForm) => {
+  const submitSingleFoodPost = async (imageFile: File, dataUrl: string, data: CreatePostForm): Promise<any> => {
+    const formData = new FormData();
+    const blob = await fetch(dataUrl).then(r => r.blob());
+    formData.append("image", blob, "image.jpeg");
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const postDate = data.postDate || selectedDate;
+    const selected = new Date(postDate);
+    selected.setHours(0, 0, 0, 0);
+
+    const postData: any = {
+      type: "food",
+      content: data.content?.trim() || '',
+      points: 3,
+      createdAt: selected.getTime() !== today.getTime() ? postDate.toISOString() : new Date().toISOString(),
+      postScope: data.postScope || postScope || "my_team",
+    };
+    if (data.targetOrganizationId) postData.targetOrganizationId = data.targetOrganizationId;
+    if (data.targetGroupId) postData.targetGroupId = data.targetGroupId;
+    if (data.targetTeamId) postData.targetTeamId = data.targetTeamId;
+
+    formData.append("data", JSON.stringify(postData));
+
+    const response = await fetch("/api/posts", {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.message || `Failed to create post: ${response.status}`);
+      } catch {
+        throw new Error(`Failed to create post: ${response.status} ${response.statusText}`);
+      }
+    }
+
+    const responseText = await response.text();
+    if (!responseText || responseText.trim().length === 0) return null;
+    return JSON.parse(responseText);
+  };
+
+  const onSubmit = async (data: CreatePostForm) => {
     if (isEditMode) {
       if (editPost?.type === "introductory_video") {
         const hasNewVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
@@ -870,6 +917,62 @@ export function CreatePostDialog({
         }
       }
       updatePostMutation.mutate(data);
+      return;
+    }
+
+    if (data.type === "food" && foodImages.length > 1) {
+      setMultiPostProgress({ current: 0, total: foodImages.length });
+      let successCount = 0;
+      try {
+        for (let i = 0; i < foodImages.length; i++) {
+          setMultiPostProgress({ current: i + 1, total: foodImages.length });
+          await submitSingleFoodPost(foodImages[i].file, foodImages[i].dataUrl, data);
+          successCount++;
+        }
+
+        form.reset();
+        setOpen(false);
+        setImagePreview(null);
+        setFoodImages([]);
+        setMultiPostProgress(null);
+        setPostScope("my_team");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+
+        queryClient.invalidateQueries({ queryKey: ["/api/posts"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"], exact: false });
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';
+            return key0.startsWith("/api/posts");
+          }
+        });
+
+        toast({
+          title: "Posts Created",
+          description: `${successCount} food post${successCount > 1 ? 's' : ''} created successfully.`,
+        });
+      } catch (error) {
+        setMultiPostProgress(null);
+        queryClient.invalidateQueries({ queryKey: ["/api/posts"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"], exact: false });
+        toast({
+          title: "Error Creating Posts",
+          description: `${successCount} of ${foodImages.length} posts created. ${error instanceof Error ? error.message : "An error occurred."}`,
+          variant: "destructive",
+        });
+        if (successCount > 0) {
+          const remainingImages = foodImages.slice(successCount);
+          setFoodImages(remainingImages);
+          if (remainingImages.length > 0) {
+            setImagePreview(remainingImages[0].dataUrl);
+            form.setValue("mediaUrl", remainingImages[0].dataUrl);
+          } else {
+            setImagePreview(null);
+            form.setValue("mediaUrl", null);
+          }
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      }
       return;
     }
 
@@ -888,8 +991,6 @@ export function CreatePostDialog({
     console.log("[SCOPE DEBUG] All form values from getValues():", form.getValues());
     console.log("============ FORM SUBMIT DEBUG END ============");
     
-    // Intro video posts require a video - no text-only allowed
-    // Check for: mediaUrl (already uploaded), file in videoInputRef, or selectedExistingVideo
     const hasVideoFile = videoInputRef.current?.files && videoInputRef.current.files.length > 0;
     const hasExistingMedia = !!data.mediaUrl;
     const hasSelectedExisting = !!selectedExistingVideo;
@@ -903,7 +1004,6 @@ export function CreatePostDialog({
       return;
     }
     
-    // Only use selectedDate if it's different from today, otherwise let the server use current time
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const selected = new Date(selectedDate);
@@ -932,6 +1032,8 @@ export function CreatePostDialog({
         setSelectedExistingVideo(null);
         setPostScope("my_team");
         resetUploadProgress();
+        setFoodImages([]);
+        setMultiPostProgress(null);
       }
     }}>
       {!isEditMode && (
@@ -1060,11 +1162,12 @@ export function CreatePostDialog({
                       value={field.value}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        // Reset selected media type when changing post type
                         setSelectedMediaType(null);
                         setImagePreview(null);
                         setVideoThumbnail(null);
                         resetUploadProgress();
+                        setFoodImages([]);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
                       }}
                     >
                       <FormControl>
@@ -1355,7 +1458,6 @@ export function CreatePostDialog({
                                 <Button
                                   type="button"
                                   onClick={() => {
-                                    // If Miscellaneous post and video already selected, show warning
                                     if (form.watch("type") === "miscellaneous" && selectedMediaType === "video") {
                                       toast({
                                         title: "Cannot select both image and video",
@@ -1369,14 +1471,59 @@ export function CreatePostDialog({
                                   variant="outline"
                                   className="w-full"
                                 >
-                                  Select Image
+                                  {form.watch("type") === "food" ? `Select Image${remaining.food > 1 ? 's' : ''} (up to ${remaining.food})` : "Select Image"}
                                 </Button>
                                 <Input
                                   type="file"
                                   accept="image/*"
+                                  multiple={form.watch("type") === "food"}
                                   ref={fileInputRef}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
+                                  onChange={async (e) => {
+                                    const files = e.target.files;
+                                    if (!files || files.length === 0) return;
+
+                                    if (form.watch("type") === "food" && files.length > 1) {
+                                      const maxAllowed = remaining.food;
+                                      const filesToProcess = Array.from(files).slice(0, maxAllowed);
+
+                                      if (files.length > maxAllowed) {
+                                        toast({
+                                          title: "Too many images",
+                                          description: `You can only post ${maxAllowed} more meal${maxAllowed > 1 ? 's' : ''} today. Only the first ${maxAllowed} image${maxAllowed > 1 ? 's' : ''} will be used.`,
+                                        });
+                                      }
+
+                                      const newFoodImages: { dataUrl: string; file: File }[] = [];
+                                      for (const file of filesToProcess) {
+                                        try {
+                                          const dataUrl = await new Promise<string>((resolve, reject) => {
+                                            const reader = new FileReader();
+                                            reader.onload = async () => {
+                                              try {
+                                                const compressed = await compressImage(reader.result as string);
+                                                resolve(compressed);
+                                              } catch (err) {
+                                                reject(err);
+                                              }
+                                            };
+                                            reader.onerror = reject;
+                                            reader.readAsDataURL(file);
+                                          });
+                                          newFoodImages.push({ dataUrl, file });
+                                        } catch (error) {
+                                          console.error('Error compressing image:', error);
+                                        }
+                                      }
+
+                                      if (newFoodImages.length > 0) {
+                                        setFoodImages(newFoodImages);
+                                        setImagePreview(newFoodImages[0].dataUrl);
+                                        field.onChange(newFoodImages[0].dataUrl);
+                                      }
+                                      return;
+                                    }
+
+                                    const file = files[0];
                                     if (file) {
                                       const reader = new FileReader();
                                       reader.onload = async () => {
@@ -1388,7 +1535,9 @@ export function CreatePostDialog({
                                             setImagePreview(compressed);
                                             field.onChange(compressed);
 
-                                            // Set media type to image
+                                            if (form.watch("type") === "food") {
+                                              setFoodImages([{ dataUrl: compressed, file }]);
+                                            }
                                             if (form.watch("type") === "miscellaneous") {
                                               setSelectedMediaType("image");
                                             }
@@ -1488,7 +1637,54 @@ export function CreatePostDialog({
                           </>
                         )}
                       </FormControl>
-                      {(imagePreview || videoThumbnail) && (
+                      {form.watch("type") === "food" && foodImages.length > 1 ? (
+                        <div className="mt-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            {foodImages.map((img, index) => (
+                              <div key={index} className="relative group">
+                                <img
+                                  src={img.dataUrl}
+                                  alt={`Meal ${index + 1}`}
+                                  className="w-full h-24 object-cover rounded-md border border-gray-200"
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                  onClick={() => {
+                                    const updated = foodImages.filter((_, i) => i !== index);
+                                    setFoodImages(updated);
+                                    if (updated.length === 0) {
+                                      setImagePreview(null);
+                                      field.onChange(null);
+                                      if (fileInputRef.current) fileInputRef.current.value = "";
+                                    } else {
+                                      setImagePreview(updated[0].dataUrl);
+                                      field.onChange(updated[0].dataUrl);
+                                    }
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{foodImages.length} meal{foodImages.length > 1 ? 's' : ''} selected — each will be posted individually</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="mt-1"
+                            onClick={() => {
+                              setFoodImages([]);
+                              setImagePreview(null);
+                              field.onChange(null);
+                              if (fileInputRef.current) fileInputRef.current.value = "";
+                            }}
+                          >
+                            Remove All
+                          </Button>
+                        </div>
+                      ) : (imagePreview || videoThumbnail) && (
                         <div className="mt-2">
                           {selectedMediaType === "video" ? (
                             <div className="mt-2">
@@ -1525,6 +1721,7 @@ export function CreatePostDialog({
                               setVideoThumbnail(null);
                               field.onChange(null);
                               resetUploadProgress();
+                              setFoodImages([]);
                               if (isEditMode) {
                                 setEditMediaRemoved(true);
                               }
@@ -1571,9 +1768,14 @@ export function CreatePostDialog({
                 form="create-post-form"
                 variant="default"
                 className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
-                disabled={activeMutation.isPending || uploadProgress > 0 || (!isEditMode && form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
+                disabled={activeMutation.isPending || uploadProgress > 0 || multiPostProgress !== null || (!isEditMode && form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
               >
-                {(activeMutation.isPending || uploadProgress > 0) && (
+                {multiPostProgress !== null ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-xs">Posting {multiPostProgress.current} of {multiPostProgress.total}...</span>
+                  </div>
+                ) : (activeMutation.isPending || uploadProgress > 0) ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {uploadProgress > 0 && (
@@ -1585,8 +1787,9 @@ export function CreatePostDialog({
                       </div>
                     )}
                   </div>
+                ) : (
+                  isEditMode ? "Save Changes" : foodImages.length > 1 ? `Post ${foodImages.length} Meals` : "Post"
                 )}
-                {!activeMutation.isPending && uploadProgress === 0 && (isEditMode ? "Save Changes" : "Post")}
               </Button>
             </div>
           </form>
