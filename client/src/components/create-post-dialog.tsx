@@ -938,7 +938,7 @@ export function CreatePostDialog({
         setPostScope("my_team");
         if (fileInputRef.current) fileInputRef.current.value = "";
 
-        queryClient.invalidateQueries({ queryKey: ["/api/posts"], exact: false });
+        await queryClient.resetQueries({ queryKey: ["/api/posts"], exact: false });
         queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"], exact: false });
         queryClient.invalidateQueries({
           predicate: (query) => {
