@@ -6862,17 +6862,28 @@ export const registerRoutes = async (
         else if (post.type === "memory_verse") weeklyPoints += 10;
       }
 
-      // Weekly average - Four weeks ago in user's local time
+      // Weekly average - look back up to 4 weeks, but only divide by actual weeks active
       const fourWeeksAgo = new Date(userLocalTime);
       fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
       fourWeeksAgo.setHours(0, 0, 0, 0);
+
+      // Use the later of: 4 weeks ago or user's account creation date
+      const targetUser = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1);
+      const userCreatedAt = targetUser[0]?.createdAt ? new Date(targetUser[0].createdAt) : fourWeeksAgo;
+      const effectiveStart = userCreatedAt > fourWeeksAgo ? userCreatedAt : fourWeeksAgo;
+      effectiveStart.setHours(0, 0, 0, 0);
+
       // Convert back to UTC for database query
-      const fourWeeksAgoUTC = new Date(
-        fourWeeksAgo.getTime() + tzOffset * 60000,
+      const effectiveStartUTC = new Date(
+        effectiveStart.getTime() + tzOffset * 60000,
       );
 
+      // Calculate actual weeks (minimum 1)
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      const actualWeeks = Math.max(1, Math.ceil((userLocalTime.getTime() - effectiveStart.getTime()) / msPerWeek));
+
       logger.info(
-        `Date range for weekly avg stats (in user's local timezone): ${fourWeeksAgoUTC.toISOString()} to ${endOfDayUTC.toISOString()}`,
+        `Date range for weekly avg stats: ${effectiveStartUTC.toISOString()} to ${endOfDayUTC.toISOString()}, actualWeeks=${actualWeeks}`,
       );
 
       const avgPosts = await db
@@ -6881,7 +6892,7 @@ export const registerRoutes = async (
         .where(
           and(
             eq(posts.userId, userId),
-            gte(posts.createdAt, fourWeeksAgoUTC),
+            gte(posts.createdAt, effectiveStartUTC),
             lte(posts.createdAt, endOfDayUTC),
           ),
         );
@@ -6894,11 +6905,11 @@ export const registerRoutes = async (
         else if (post.type === "memory_verse") totalPoints += 10;
       }
 
-      // Calculate weekly average (total points divided by 4 weeks)
-      const weeklyAvgPoints = Math.round(totalPoints / 4);
+      // Calculate weekly average (total points divided by actual weeks active)
+      const weeklyAvgPoints = Math.round(totalPoints / actualWeeks);
 
       logger.info(
-        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}`,
+        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}, totalPts=${totalPoints}, weeks=${actualWeeks}`,
       );
       res.json({
         dailyPoints,
