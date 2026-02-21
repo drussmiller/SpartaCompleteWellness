@@ -6867,10 +6867,10 @@ export const registerRoutes = async (
       fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
       fourWeeksAgo.setHours(0, 0, 0, 0);
 
-      // Use the later of: 4 weeks ago or user's account creation date
-      const targetUser = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1);
-      const userCreatedAt = targetUser[0]?.createdAt ? new Date(targetUser[0].createdAt) : fourWeeksAgo;
-      const effectiveStart = userCreatedAt > fourWeeksAgo ? userCreatedAt : fourWeeksAgo;
+      // Use the later of: 4 weeks ago or user's program start date
+      const targetUser = await db.select({ programStartDate: users.programStartDate, createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1);
+      const programStart = targetUser[0]?.programStartDate ? new Date(targetUser[0].programStartDate) : (targetUser[0]?.createdAt ? new Date(targetUser[0].createdAt) : fourWeeksAgo);
+      const effectiveStart = programStart > fourWeeksAgo ? programStart : fourWeeksAgo;
       effectiveStart.setHours(0, 0, 0, 0);
 
       // Convert back to UTC for database query
