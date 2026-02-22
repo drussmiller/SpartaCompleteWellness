@@ -67,6 +67,91 @@ export async function checkNotifications() {
           }
         }
 
+        // Memory verse Monday reminder: check if today is Monday and user hasn't posted a memory verse in the past 7 days
+        if (dayOfWeek === 1) {
+          const sevenDaysAgoLocal = new Date(userLocalToday.getTime() - 7 * 86400000);
+          const sevenDaysAgoUTC = new Date(sevenDaysAgoLocal.getTime() - offsetMinutes * 60000);
+
+          const memoryVersePosts = await db
+            .select({ count: sql<number>`count(*)::integer` })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, user.id),
+                eq(posts.type, 'memory_verse'),
+                gte(posts.createdAt, sevenDaysAgoUTC),
+                isNull(posts.parentId),
+              ),
+            );
+
+          const mvCount = memoryVersePosts[0]?.count || 0;
+          if (mvCount === 0) {
+            const mvMessage = "Reminder: You haven't posted your memory verse this past week. Don't forget to post it today!";
+
+            const notificationTimeParts = user.notificationTime
+              ? user.notificationTime.split(":")
+              : ["8", "00"];
+            const preferredLocalHour = parseInt(notificationTimeParts[0]);
+            const preferredLocalMinute = parseInt(notificationTimeParts[1] || "0");
+            const timezoneOffsetHours = offsetMinutes / 60;
+            const preferredUTCHour = Math.floor((preferredLocalHour - timezoneOffsetHours + 24) % 24);
+            const preferredUTCMinute = preferredLocalMinute;
+
+            const isMvTimeWindow =
+              (currentHour === preferredUTCHour &&
+                currentMinute >= preferredUTCMinute &&
+                currentMinute < preferredUTCMinute + 10) ||
+              (currentHour === preferredUTCHour + 1 &&
+                preferredUTCMinute >= 50 &&
+                currentMinute < (preferredUTCMinute + 10) % 60);
+
+            const fiftyFiveMinutesAgo = new Date(now.getTime() - 55 * 60 * 1000);
+            const recentMvNotifications = await db
+              .select()
+              .from(notifications)
+              .where(
+                and(
+                  eq(notifications.userId, user.id),
+                  eq(notifications.type, 'memory_verse_reminder'),
+                  gte(notifications.createdAt, fiftyFiveMinutesAgo),
+                ),
+              );
+
+            if (isMvTimeWindow && recentMvNotifications.length === 0) {
+              if (user.dailyNotificationsEnabled) {
+                await db.insert(notifications).values({
+                  userId: user.id,
+                  title: "Memory Verse Reminder",
+                  message: mvMessage,
+                  type: "memory_verse_reminder",
+                });
+                notificationsCreated++;
+                logger.info(`[SCHEDULER] 📖 Created memory verse reminder for ${user.username} (ID: ${user.id})`);
+
+                if (user.email) {
+                  try {
+                    await emailService.sendDailyReminderEmail(user.email, user.username, mvMessage);
+                    emailNotificationsSent++;
+                    logger.info(`[SCHEDULER] 📧 Sent memory verse reminder email to ${user.username}`);
+                  } catch (emailError) {
+                    logger.error(`[SCHEDULER] Failed to send memory verse email to ${user.username}:`, emailError);
+                  }
+                }
+
+                if (user.smsEnabled && user.phoneNumber) {
+                  try {
+                    await smsService.sendSMSToUser(user.phoneNumber, mvMessage);
+                    smsNotificationsSent++;
+                    logger.info(`[SCHEDULER] 📱 Sent memory verse reminder SMS to ${user.username}`);
+                  } catch (smsError) {
+                    logger.error(`[SCHEDULER] Failed to send memory verse SMS to ${user.username}:`, smsError);
+                  }
+                }
+              }
+            }
+          }
+        }
+
         const userPostsResult = await db
           .select({
             points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
