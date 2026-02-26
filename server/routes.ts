@@ -9309,6 +9309,22 @@ export const registerRoutes = async (
         updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
+      // Check if user's program has already started (programStartDate is today or in the past)
+      const [existingUser] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const userProgramAlreadyStarted = (() => {
+        if (!existingUser?.programStartDate) return false;
+        const startDate = new Date(existingUser.programStartDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        startDate.setHours(0, 0, 0, 0);
+        return startDate <= today;
+      })();
+
       // If team is being changed, update join date and program start date
       if (req.body.teamId !== undefined) {
         if (req.body.teamId) {
@@ -9316,8 +9332,12 @@ export const registerRoutes = async (
           updateData.teamJoinedAt = now;
           updateData.pendingOrganizationId = null;
           
-          // Set programStartDate if not explicitly provided
-          if (!updateData.programStartDate) {
+          // If user's program has already started, preserve existing programStartDate
+          if (userProgramAlreadyStarted && !updateData.programStartDate) {
+            logger.info(`User ${userId} program has already started (${existingUser?.programStartDate}), preserving programStartDate during team change`);
+          }
+          // Set programStartDate if not explicitly provided and program hasn't started yet
+          else if (!updateData.programStartDate) {
             // Get team with its group info
             const [teamWithGroup] = await db
               .select({
@@ -9647,50 +9667,71 @@ export const registerRoutes = async (
       // Assign user to the team (as Team Lead only if creating new team)
       const now = new Date();
 
-      // Calculate programStartDate using priority logic:
-      // Priority 1: Team's start date
-      // Priority 2: Group's start date
-      // Priority 3: Current date if Monday, otherwise next Monday
-      let computedProgramStartDate: Date | null = null;
-
-      const [assignedTeam] = await db
-        .select({
-          teamStartDate: teams.programStartDate,
-          groupId: teams.groupId,
-        })
-        .from(teams)
-        .where(eq(teams.id, finalTeamId))
+      // Check if user's program has already started (programStartDate is today or in the past)
+      const [selfServiceUser] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, req.user!.id))
         .limit(1);
 
-      if (assignedTeam?.teamStartDate) {
-        computedProgramStartDate = new Date(assignedTeam.teamStartDate);
-        logger.info(`[SELF-SERVICE] Setting programStartDate from team start date: ${computedProgramStartDate.toISOString()}`);
-      } else if (assignedTeam?.groupId) {
-        const [grp] = await db
-          .select({ groupStartDate: groups.programStartDate })
-          .from(groups)
-          .where(eq(groups.id, assignedTeam.groupId))
+      const selfServiceProgramStarted = (() => {
+        if (!selfServiceUser?.programStartDate) return false;
+        const startDate = new Date(selfServiceUser.programStartDate);
+        const todayCheck = new Date();
+        todayCheck.setHours(0, 0, 0, 0);
+        startDate.setHours(0, 0, 0, 0);
+        return startDate <= todayCheck;
+      })();
+
+      let computedProgramStartDate: Date | null = null;
+
+      if (selfServiceProgramStarted) {
+        computedProgramStartDate = new Date(selfServiceUser!.programStartDate!);
+        logger.info(`[SELF-SERVICE] User ${req.user!.id} program already started (${selfServiceUser?.programStartDate}), preserving programStartDate`);
+      } else {
+        // Calculate programStartDate using priority logic:
+        // Priority 1: Team's start date
+        // Priority 2: Group's start date
+        // Priority 3: Current date if Monday, otherwise next Monday
+        const [assignedTeam] = await db
+          .select({
+            teamStartDate: teams.programStartDate,
+            groupId: teams.groupId,
+          })
+          .from(teams)
+          .where(eq(teams.id, finalTeamId))
           .limit(1);
 
-        if (grp?.groupStartDate) {
-          computedProgramStartDate = new Date(grp.groupStartDate);
-          logger.info(`[SELF-SERVICE] Setting programStartDate from group start date: ${computedProgramStartDate.toISOString()}`);
-        }
-      }
+        if (assignedTeam?.teamStartDate) {
+          computedProgramStartDate = new Date(assignedTeam.teamStartDate);
+          logger.info(`[SELF-SERVICE] Setting programStartDate from team start date: ${computedProgramStartDate.toISOString()}`);
+        } else if (assignedTeam?.groupId) {
+          const [grp] = await db
+            .select({ groupStartDate: groups.programStartDate })
+            .from(groups)
+            .where(eq(groups.id, assignedTeam.groupId))
+            .limit(1);
 
-      if (!computedProgramStartDate) {
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        if (dayOfWeek === 1) {
-          computedProgramStartDate = new Date(today);
-          computedProgramStartDate.setHours(0, 0, 0, 0);
-        } else {
-          const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
-          computedProgramStartDate = new Date(today);
-          computedProgramStartDate.setDate(today.getDate() + daysUntilMonday);
-          computedProgramStartDate.setHours(0, 0, 0, 0);
+          if (grp?.groupStartDate) {
+            computedProgramStartDate = new Date(grp.groupStartDate);
+            logger.info(`[SELF-SERVICE] Setting programStartDate from group start date: ${computedProgramStartDate.toISOString()}`);
+          }
         }
-        logger.info(`[SELF-SERVICE] Setting programStartDate to computed Monday: ${computedProgramStartDate.toISOString()}`);
+
+        if (!computedProgramStartDate) {
+          const today = new Date();
+          const dayOfWeek = today.getDay();
+          if (dayOfWeek === 1) {
+            computedProgramStartDate = new Date(today);
+            computedProgramStartDate.setHours(0, 0, 0, 0);
+          } else {
+            const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+            computedProgramStartDate = new Date(today);
+            computedProgramStartDate.setDate(today.getDate() + daysUntilMonday);
+            computedProgramStartDate.setHours(0, 0, 0, 0);
+          }
+          logger.info(`[SELF-SERVICE] Setting programStartDate to computed Monday: ${computedProgramStartDate.toISOString()}`);
+        }
       }
 
       const userUpdateData: any = { 

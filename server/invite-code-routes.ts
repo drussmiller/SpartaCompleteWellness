@@ -6,6 +6,16 @@ import { authenticate } from "./auth";
 import { generateInviteCode } from "./invite-code-utils";
 import { logger } from "./logger";
 
+// Helper to check if a user's program has already started (programStartDate is today or in the past)
+function hasProgramStarted(programStartDate: Date | string | null | undefined): boolean {
+  if (!programStartDate) return false;
+  const startDate = new Date(programStartDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  startDate.setHours(0, 0, 0, 0);
+  return startDate <= today;
+}
+
 // Helper function to get next Monday (or today if today is Monday) in user's timezone
 function getNextMondayLocal(utcDate: Date, timezoneOffsetMinutes: number): Date {
   // Convert UTC time to user's local time
@@ -316,16 +326,35 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       const now = new Date();
       
-      // Determine program start date with cascading logic: Group → Team → next Monday
+      // Check if user's program has already started - if so, preserve their programStartDate
+      const [currentUserData] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
       let userProgramStartDate: Date;
-      
-      // Check if group has a program start date
-      if (group?.programStartDate) {
-        const groupStartDate = new Date(group.programStartDate);
-        if (groupStartDate > now) {
-          userProgramStartDate = groupStartDate;
+
+      if (hasProgramStarted(currentUserData?.programStartDate)) {
+        userProgramStartDate = new Date(currentUserData!.programStartDate!);
+        logger.info(`User ${userId} program already started (${currentUserData?.programStartDate}), preserving programStartDate during team admin invite`);
+      } else {
+        // Determine program start date with cascading logic: Group → Team → next Monday
+        if (group?.programStartDate) {
+          const groupStartDate = new Date(group.programStartDate);
+          if (groupStartDate > now) {
+            userProgramStartDate = groupStartDate;
+          } else if (teamAdmin.programStartDate) {
+            const teamStartDate = new Date(teamAdmin.programStartDate);
+            if (teamStartDate > now) {
+              userProgramStartDate = teamStartDate;
+            } else {
+              userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+            }
+          } else {
+            userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+          }
         } else if (teamAdmin.programStartDate) {
-          // Group date has passed, check team date
           const teamStartDate = new Date(teamAdmin.programStartDate);
           if (teamStartDate > now) {
             userProgramStartDate = teamStartDate;
@@ -335,17 +364,6 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         } else {
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
-      } else if (teamAdmin.programStartDate) {
-        // No group date, check team date
-        const teamStartDate = new Date(teamAdmin.programStartDate);
-        if (teamStartDate > now) {
-          userProgramStartDate = teamStartDate;
-        } else {
-          userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
-        }
-      } else {
-        // No group or team date, calculate next Monday in user's timezone
-        userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
       const updateData: any = { 
@@ -395,16 +413,35 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       const now = new Date();
       
-      // Determine program start date with cascading logic: Group → Team → next Monday
+      // Check if user's program has already started - if so, preserve their programStartDate
+      const [currentMemberData] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
       let userProgramStartDate: Date;
-      
-      // Check if group has a program start date
-      if (group?.programStartDate) {
-        const groupStartDate = new Date(group.programStartDate);
-        if (groupStartDate > now) {
-          userProgramStartDate = groupStartDate;
+
+      if (hasProgramStarted(currentMemberData?.programStartDate)) {
+        userProgramStartDate = new Date(currentMemberData!.programStartDate!);
+        logger.info(`User ${userId} program already started (${currentMemberData?.programStartDate}), preserving programStartDate during team member invite`);
+      } else {
+        // Determine program start date with cascading logic: Group → Team → next Monday
+        if (group?.programStartDate) {
+          const groupStartDate = new Date(group.programStartDate);
+          if (groupStartDate > now) {
+            userProgramStartDate = groupStartDate;
+          } else if (teamMember.programStartDate) {
+            const teamStartDate = new Date(teamMember.programStartDate);
+            if (teamStartDate > now) {
+              userProgramStartDate = teamStartDate;
+            } else {
+              userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+            }
+          } else {
+            userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+          }
         } else if (teamMember.programStartDate) {
-          // Group date has passed, check team date
           const teamStartDate = new Date(teamMember.programStartDate);
           if (teamStartDate > now) {
             userProgramStartDate = teamStartDate;
@@ -414,17 +451,6 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         } else {
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
-      } else if (teamMember.programStartDate) {
-        // No group date, check team date
-        const teamStartDate = new Date(teamMember.programStartDate);
-        if (teamStartDate > now) {
-          userProgramStartDate = teamStartDate;
-        } else {
-          userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
-        }
-      } else {
-        // No group or team date, calculate next Monday in user's timezone
-        userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
       const updateData: any = { 
@@ -464,18 +490,29 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
 
       const now = new Date();
       
-      // Determine program start date based on group's program start date or next Monday
+      // Check if user's program has already started - if so, preserve their programStartDate
+      const [currentGroupMemberData] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
       let userProgramStartDate: Date;
-      
-      if (groupMember.programStartDate) {
-        const groupStartDate = new Date(groupMember.programStartDate);
-        if (groupStartDate > now) {
-          userProgramStartDate = groupStartDate;
+
+      if (hasProgramStarted(currentGroupMemberData?.programStartDate)) {
+        userProgramStartDate = new Date(currentGroupMemberData!.programStartDate!);
+        logger.info(`User ${userId} program already started (${currentGroupMemberData?.programStartDate}), preserving programStartDate during group member invite`);
+      } else {
+        if (groupMember.programStartDate) {
+          const groupStartDate = new Date(groupMember.programStartDate);
+          if (groupStartDate > now) {
+            userProgramStartDate = groupStartDate;
+          } else {
+            userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
+          }
         } else {
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
-      } else {
-        userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
 
       await db
