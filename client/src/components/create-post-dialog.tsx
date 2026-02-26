@@ -58,7 +58,7 @@ export function CreatePostDialog({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(isEditMode && editPost?.createdAt ? new Date(editPost.createdAt) : new Date());
-  const { canPost, counts, refetch, remaining, memoryVerseWeekCount, foodWeekPoints } = usePostLimits(selectedDate);
+  const { canPost, counts, refetch, remaining, memoryVerseWeekCount, foodWeekPoints, workoutWeekPoints } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -278,6 +278,13 @@ export function CreatePostDialog({
     }
   }, [isEditMode, editPost, dialogOpen]);
 
+  // Reset selectedDate to today whenever the dialog opens in create mode
+  useEffect(() => {
+    if (!isEditMode && dialogOpen) {
+      setSelectedDate(new Date());
+    }
+  }, [dialogOpen, isEditMode]);
+
   // Update form type when hasAnyPosts changes or dialog opens
   useEffect(() => {
     if (open && !defaultType) {
@@ -339,6 +346,15 @@ export function CreatePostDialog({
     }
 
     if (type === 'workout') {
+      if (workoutWeekPoints >= 15) {
+        return "(weekly workout limit reached - 15/15 points)";
+      }
+      if (selectedDayOfWeek === 0 || selectedDayOfWeek === 6) {
+        if (remaining.workout === 0) {
+          return "(no makeup workouts available today)";
+        }
+        return `(${remaining.workout} makeup workout${remaining.workout !== 1 ? 's' : ''} available today)`;
+      }
       if (counts.workout > 0) {
         return "(already posted workout today)";
       }
