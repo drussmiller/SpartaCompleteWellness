@@ -364,9 +364,10 @@ export const registerRoutes = async (
         canPostWorkout = false;
         workoutDailyRemaining = 0;
       } else if (dayOfWeek === 0 || dayOfWeek === 6) {
-        // Saturday/Sunday: makeup days — allow up to remaining weekly posts
-        canPostWorkout = counts.workout < workoutWeekPostsRemaining;
-        workoutDailyRemaining = Math.max(0, workoutWeekPostsRemaining - counts.workout);
+        // Saturday/Sunday: makeup days — 1 per day, capped by weekly remaining
+        const makeupMax = Math.min(1, workoutWeekPostsRemaining);
+        canPostWorkout = counts.workout < makeupMax;
+        workoutDailyRemaining = Math.max(0, makeupMax - counts.workout);
       } else {
         // Mon-Fri: 1 per day, capped by weekly remaining
         const dailyMax = Math.min(1, workoutWeekPostsRemaining);

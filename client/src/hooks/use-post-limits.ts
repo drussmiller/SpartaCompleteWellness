@@ -153,9 +153,10 @@ export function usePostLimits(selectedDate?: Date) {
     canPostWorkout = false;
     workoutRemaining = 0;
   } else if (dayOfWeek === 0 || dayOfWeek === 6) {
-    // Sat/Sun: makeup days — up to remaining weekly posts
-    canPostWorkout = counts.workout < workoutWeekPostsRemaining;
-    workoutRemaining = Math.max(0, workoutWeekPostsRemaining - counts.workout);
+    // Sat/Sun: makeup days — 1 per day, capped by weekly remaining
+    const makeupMax = Math.min(1, workoutWeekPostsRemaining);
+    canPostWorkout = counts.workout < makeupMax;
+    workoutRemaining = Math.max(0, makeupMax - counts.workout);
   } else {
     // Mon-Fri: 1 per day, capped by weekly remaining
     const dailyMax = Math.min(1, workoutWeekPostsRemaining);
