@@ -351,9 +351,34 @@ export const registerRoutes = async (
 
       remaining.food = foodDailyRemaining;
 
+      // Workout weekly cap: 15 points (5 workouts × 3 points)
+      // Mon-Fri: 1 per day; Sat (6) and Sun (0): makeup days only
+      const workoutWeekPointsCap = 15;
+      const workoutWeekPointsRemaining = Math.max(0, workoutWeekPointsCap - workoutWeekPoints);
+      const workoutWeekPostsRemaining = Math.floor(workoutWeekPointsRemaining / 3);
+
+      let canPostWorkout: boolean;
+      let workoutDailyRemaining: number;
+
+      if (workoutWeekPoints >= workoutWeekPointsCap) {
+        canPostWorkout = false;
+        workoutDailyRemaining = 0;
+      } else if (dayOfWeek === 0 || dayOfWeek === 6) {
+        // Saturday/Sunday: makeup days — allow up to remaining weekly posts
+        canPostWorkout = counts.workout < workoutWeekPostsRemaining;
+        workoutDailyRemaining = Math.max(0, workoutWeekPostsRemaining - counts.workout);
+      } else {
+        // Mon-Fri: 1 per day, capped by weekly remaining
+        const dailyMax = Math.min(1, workoutWeekPostsRemaining);
+        canPostWorkout = counts.workout < dailyMax;
+        workoutDailyRemaining = Math.max(0, dailyMax - counts.workout);
+      }
+
+      remaining.workout = workoutDailyRemaining;
+
       const canPost = {
         food: canPostFood,
-        workout: counts.workout < maxPosts.workout && workoutWeekPoints < 15, // Limit to 15 points per week (5 workouts)
+        workout: canPostWorkout,
         scripture: counts.scripture < maxPosts.scripture, // Scripture posts every day
         memory_verse: memoryVerseWeekCount === 0, // One memory verse per week
         miscellaneous: true, // Always allow miscellaneous posts

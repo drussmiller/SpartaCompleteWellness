@@ -24,6 +24,8 @@ interface PostLimitsResponse {
   memoryVerseWeekCount?: number;
   foodWeekPoints?: number;
   foodWeekCount?: number;
+  workoutWeekPoints?: number;
+  workoutWeekCount?: number;
 }
 
 export function usePostLimits(selectedDate?: Date) {
@@ -114,12 +116,13 @@ export function usePostLimits(selectedDate?: Date) {
   // Check if we have valid data from the API before using defaults
   const counts = data?.counts || defaultCounts;
   const memoryVerseWeekCount = data?.memoryVerseWeekCount || 0;
-  
+  const dayOfWeek = stableDate.getDay();
+
+  // Food weekly cap logic
   const foodWeekPoints = data?.foodWeekPoints || 0;
   const foodWeekPointsCap = 54;
   const foodWeekPointsRemaining = Math.max(0, foodWeekPointsCap - foodWeekPoints);
   const foodWeekPostsRemaining = Math.floor(foodWeekPointsRemaining / 3);
-  const dayOfWeek = stableDate.getDay();
 
   let canPostFood: boolean;
   let foodRemaining: number;
@@ -137,9 +140,32 @@ export function usePostLimits(selectedDate?: Date) {
     foodRemaining = Math.max(0, dailyMax - counts.food);
   }
 
+  // Workout weekly cap logic: Mon-Fri regular (1/day), Sat/Sun makeup days
+  const workoutWeekPoints = data?.workoutWeekPoints || 0;
+  const workoutWeekPointsCap = 15;
+  const workoutWeekPointsRemaining = Math.max(0, workoutWeekPointsCap - workoutWeekPoints);
+  const workoutWeekPostsRemaining = Math.floor(workoutWeekPointsRemaining / 3);
+
+  let canPostWorkout: boolean;
+  let workoutRemaining: number;
+
+  if (workoutWeekPoints >= workoutWeekPointsCap) {
+    canPostWorkout = false;
+    workoutRemaining = 0;
+  } else if (dayOfWeek === 0 || dayOfWeek === 6) {
+    // Sat/Sun: makeup days — up to remaining weekly posts
+    canPostWorkout = counts.workout < workoutWeekPostsRemaining;
+    workoutRemaining = Math.max(0, workoutWeekPostsRemaining - counts.workout);
+  } else {
+    // Mon-Fri: 1 per day, capped by weekly remaining
+    const dailyMax = Math.min(1, workoutWeekPostsRemaining);
+    canPostWorkout = counts.workout < dailyMax;
+    workoutRemaining = Math.max(0, dailyMax - counts.workout);
+  }
+
   const canPost = {
     food: canPostFood,
-    workout: counts.workout < 1,
+    workout: canPostWorkout,
     scripture: counts.scripture < 1,
     memory_verse: memoryVerseWeekCount === 0,
     miscellaneous: true,
@@ -147,7 +173,7 @@ export function usePostLimits(selectedDate?: Date) {
   };
   const remaining = {
     food: foodRemaining,
-    workout: Math.max(0, 1 - counts.workout),
+    workout: workoutRemaining,
     scripture: Math.max(0, 1 - counts.scripture),
     memory_verse: (stableDate.getDay() === 6) ? Math.max(0, 1 - counts.memory_verse) : 0,
     miscellaneous: null,
@@ -179,6 +205,7 @@ export function usePostLimits(selectedDate?: Date) {
     error,
     refetch,
     memoryVerseWeekCount,
-    foodWeekPoints
+    foodWeekPoints,
+    workoutWeekPoints
   };
 }
