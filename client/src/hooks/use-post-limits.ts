@@ -18,10 +18,12 @@ interface PostLimitsResponse {
     workout: boolean;
     scripture: boolean;
     memory_verse: boolean;
-    miscellaneous: boolean; // Added miscellaneous post type
+    miscellaneous: boolean;
   };
   remaining: PostLimits;
   memoryVerseWeekCount?: number;
+  foodWeekPoints?: number;
+  foodWeekCount?: number;
 }
 
 export function usePostLimits(selectedDate?: Date) {
@@ -113,22 +115,43 @@ export function usePostLimits(selectedDate?: Date) {
   const counts = data?.counts || defaultCounts;
   const memoryVerseWeekCount = data?.memoryVerseWeekCount || 0;
   
-  // Derive canPost from counts rather than using potentially stale data from API
+  const foodWeekPoints = data?.foodWeekPoints || 0;
+  const foodWeekPointsCap = 54;
+  const foodWeekPointsRemaining = Math.max(0, foodWeekPointsCap - foodWeekPoints);
+  const foodWeekPostsRemaining = Math.floor(foodWeekPointsRemaining / 3);
+  const dayOfWeek = stableDate.getDay();
+
+  let canPostFood: boolean;
+  let foodRemaining: number;
+
+  if (foodWeekPoints >= foodWeekPointsCap) {
+    canPostFood = false;
+    foodRemaining = 0;
+  } else if (dayOfWeek === 0) {
+    const sundayMax = Math.min(3, foodWeekPostsRemaining);
+    canPostFood = counts.food < sundayMax;
+    foodRemaining = Math.max(0, sundayMax - counts.food);
+  } else {
+    const dailyMax = Math.min(3, foodWeekPostsRemaining);
+    canPostFood = counts.food < dailyMax;
+    foodRemaining = Math.max(0, dailyMax - counts.food);
+  }
+
   const canPost = {
-    food: (stableDate.getDay() !== 0) && (counts.food < 3),
+    food: canPostFood,
     workout: counts.workout < 1,
     scripture: counts.scripture < 1,
     memory_verse: memoryVerseWeekCount === 0,
-    miscellaneous: true, // Always allow miscellaneous posts
-    prayer: true // Always allow prayer requests
+    miscellaneous: true,
+    prayer: true
   };
   const remaining = {
-    food: Math.max(0, 3 - counts.food),
+    food: foodRemaining,
     workout: Math.max(0, 1 - counts.workout),
     scripture: Math.max(0, 1 - counts.scripture),
     memory_verse: (stableDate.getDay() === 6) ? Math.max(0, 1 - counts.memory_verse) : 0,
-    miscellaneous: null, // No limit
-    prayer: null // No limit for prayer requests
+    miscellaneous: null,
+    prayer: null
   };
 
   // Force a clean fetch of the data when the date changes
@@ -155,6 +178,7 @@ export function usePostLimits(selectedDate?: Date) {
     isLoading,
     error,
     refetch,
-    memoryVerseWeekCount
+    memoryVerseWeekCount,
+    foodWeekPoints
   };
 }

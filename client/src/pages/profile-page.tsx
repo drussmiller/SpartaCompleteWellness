@@ -9,7 +9,7 @@ import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Measurement, User as SelectUser } from "@shared/schema";
-import { getDisplayName, getDisplayInitial } from "@/lib/utils";
+import { getDisplayName, getDisplayInitial, formatPhoneNumber } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import ChangePasswordForm from "@/components/change-password-form";
 import { insertMeasurementSchema } from "@shared/schema";
@@ -731,7 +731,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       <div className="flex justify-between items-center">
                         <span className="text-lg text-muted-foreground">Phone Number</span>
                         <span className="font-medium">
-                          {user?.phoneNumber || "Not set"}
+                          {user?.phoneNumber ? formatPhoneNumber(user.phoneNumber) : "Not set"}
                         </span>
                       </div>
                       <div className="flex justify-end mt-1">

@@ -201,7 +201,7 @@ export const registerRoutes = async (
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
 
-      // For workout and memory verse posts, we need to check the week's total
+      // For workout, memory verse, and food posts, we need to check the week's total
       const startOfWeek = new Date(startOfDay);
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to Monday
       const endOfWeek = new Date(startOfWeek);
@@ -210,6 +210,8 @@ export const registerRoutes = async (
       // Add timezone offset back to get UTC times for query
       const queryStartTime = new Date(startOfDay.getTime() + tzOffset * 60000);
       const queryEndTime = new Date(endOfDay.getTime() + tzOffset * 60000);
+      const queryWeekStart = new Date(startOfWeek.getTime() + tzOffset * 60000);
+      const queryWeekEnd = new Date(endOfWeek.getTime() + tzOffset * 60000);
 
       // Query posts for the specified date by type
       const result = await db
@@ -240,8 +242,8 @@ export const registerRoutes = async (
           and(
             eq(posts.userId, req.user.id),
             eq(posts.type, "workout"),
-            gte(posts.createdAt, startOfWeek),
-            lt(posts.createdAt, endOfWeek),
+            gte(posts.createdAt, queryWeekStart),
+            lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
           ),
         );
@@ -259,13 +261,33 @@ export const registerRoutes = async (
           and(
             eq(posts.userId, req.user.id),
             eq(posts.type, "memory_verse"),
-            gte(posts.createdAt, startOfWeek),
-            lt(posts.createdAt, endOfWeek),
+            gte(posts.createdAt, queryWeekStart),
+            lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
           ),
         );
 
       const memoryVerseWeekCount = memoryVerseWeekResult[0]?.count || 0;
+
+      // Get food posts for the entire week (to enforce 54-point weekly cap)
+      const foodWeekResult = await db
+        .select({
+          count: sql<number>`count(*)::integer`,
+          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, req.user.id),
+            eq(posts.type, "food"),
+            gte(posts.createdAt, queryWeekStart),
+            lt(posts.createdAt, queryWeekEnd),
+            isNull(posts.parentId),
+          ),
+        );
+
+      const foodWeekCount = foodWeekResult[0]?.count || 0;
+      const foodWeekPoints = foodWeekResult[0]?.points || 0;
 
       // Initialize counts with zeros
       const counts = {
@@ -301,12 +323,36 @@ export const registerRoutes = async (
         miscellaneous: Infinity,
       };
 
-      // Calculate if user can post for each type
-      const today = new Date();
-      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      // Calculate if user can post for each type (use user's local day, not server time)
+      const dayOfWeek = userDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+      // Food weekly cap: 54 points (18 posts × 3 points)
+      const foodWeekPointsCap = 54;
+      const foodWeekPointsRemaining = Math.max(0, foodWeekPointsCap - foodWeekPoints);
+      const foodWeekPostsRemaining = Math.floor(foodWeekPointsRemaining / 3);
+
+      let canPostFood: boolean;
+      let foodDailyRemaining: number;
+
+      if (foodWeekPoints >= foodWeekPointsCap) {
+        canPostFood = false;
+        foodDailyRemaining = 0;
+      } else if (dayOfWeek === 0) {
+        // Sunday: allow up to 3 makeup posts, but not exceeding 54 weekly points
+        const sundayMax = Math.min(3, foodWeekPostsRemaining);
+        canPostFood = counts.food < sundayMax;
+        foodDailyRemaining = Math.max(0, sundayMax - counts.food);
+      } else {
+        // Mon-Sat: up to 3 per day, capped by weekly remaining
+        const dailyMax = Math.min(3, foodWeekPostsRemaining);
+        canPostFood = counts.food < dailyMax;
+        foodDailyRemaining = Math.max(0, dailyMax - counts.food);
+      }
+
+      remaining.food = foodDailyRemaining;
 
       const canPost = {
-        food: counts.food < maxPosts.food && dayOfWeek !== 0, // No food posts on Sunday
+        food: canPostFood,
         workout: counts.workout < maxPosts.workout && workoutWeekPoints < 15, // Limit to 15 points per week (5 workouts)
         scripture: counts.scripture < maxPosts.scripture, // Scripture posts every day
         memory_verse: memoryVerseWeekCount === 0, // One memory verse per week
@@ -321,6 +367,8 @@ export const registerRoutes = async (
         workoutWeekPoints,
         workoutWeekCount,
         memoryVerseWeekCount,
+        foodWeekPoints,
+        foodWeekCount,
       });
     } catch (error) {
       logger.error("Error getting post counts:", error);
@@ -9309,6 +9357,22 @@ export const registerRoutes = async (
         updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
+      // Check if user's program has already started (programStartDate is today or in the past)
+      const [existingUser] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const userProgramAlreadyStarted = (() => {
+        if (!existingUser?.programStartDate) return false;
+        const startDate = new Date(existingUser.programStartDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        startDate.setHours(0, 0, 0, 0);
+        return startDate <= today;
+      })();
+
       // If team is being changed, update join date and program start date
       if (req.body.teamId !== undefined) {
         if (req.body.teamId) {
@@ -9316,8 +9380,12 @@ export const registerRoutes = async (
           updateData.teamJoinedAt = now;
           updateData.pendingOrganizationId = null;
           
-          // Set programStartDate if not explicitly provided
-          if (!updateData.programStartDate) {
+          // If user's program has already started, preserve existing programStartDate
+          if (userProgramAlreadyStarted && !updateData.programStartDate) {
+            logger.info(`User ${userId} program has already started (${existingUser?.programStartDate}), preserving programStartDate during team change`);
+          }
+          // Set programStartDate if not explicitly provided and program hasn't started yet
+          else if (!updateData.programStartDate) {
             // Get team with its group info
             const [teamWithGroup] = await db
               .select({

@@ -58,6 +58,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { BottomNav } from "@/components/bottom-nav";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatPhoneNumber } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/app-layout";
 import {
@@ -4091,7 +4092,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                       {user.email}
                                     </CardDescription>
                                     <div className="mt-1 text-sm text-muted-foreground">
-                                      Phone: {user.phoneNumber || 'Not provided'}
+                                      Phone: {user.phoneNumber ? formatPhoneNumber(user.phoneNumber) : 'Not provided'}
                                     </div>
                                     <div className="mt-1 text-sm text-muted-foreground">
                                       Date Joined:{" "}

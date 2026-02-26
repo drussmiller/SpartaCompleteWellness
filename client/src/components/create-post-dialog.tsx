@@ -58,7 +58,7 @@ export function CreatePostDialog({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(isEditMode && editPost?.createdAt ? new Date(editPost.createdAt) : new Date());
-  const { canPost, counts, refetch, remaining, memoryVerseWeekCount } = usePostLimits(selectedDate);
+  const { canPost, counts, refetch, remaining, memoryVerseWeekCount, foodWeekPoints } = usePostLimits(selectedDate);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -323,8 +323,14 @@ export function CreatePostDialog({
     const selectedDayOfWeek = selectedDate.getDay();
 
     if (type === 'food') {
+      if (foodWeekPoints >= 54) {
+        return "(weekly food limit reached - 54/54 points)";
+      }
       if (selectedDayOfWeek === 0) {
-        return "(food posts not allowed on Sunday)";
+        if (remaining.food === 0) {
+          return "(no makeup meals available today)";
+        }
+        return `(${remaining.food} makeup meal${remaining.food !== 1 ? 's' : ''} available today)`;
       }
       if (counts.food >= 3) {
         return "(already posted 3 meals today)";

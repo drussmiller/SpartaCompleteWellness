@@ -319,13 +319,11 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       // Determine program start date with cascading logic: Group → Team → next Monday
       let userProgramStartDate: Date;
       
-      // Check if group has a program start date
       if (group?.programStartDate) {
         const groupStartDate = new Date(group.programStartDate);
         if (groupStartDate > now) {
           userProgramStartDate = groupStartDate;
         } else if (teamAdmin.programStartDate) {
-          // Group date has passed, check team date
           const teamStartDate = new Date(teamAdmin.programStartDate);
           if (teamStartDate > now) {
             userProgramStartDate = teamStartDate;
@@ -336,7 +334,6 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else if (teamAdmin.programStartDate) {
-        // No group date, check team date
         const teamStartDate = new Date(teamAdmin.programStartDate);
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
@@ -344,7 +341,6 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else {
-        // No group or team date, calculate next Monday in user's timezone
         userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
@@ -398,13 +394,11 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
       // Determine program start date with cascading logic: Group → Team → next Monday
       let userProgramStartDate: Date;
       
-      // Check if group has a program start date
       if (group?.programStartDate) {
         const groupStartDate = new Date(group.programStartDate);
         if (groupStartDate > now) {
           userProgramStartDate = groupStartDate;
         } else if (teamMember.programStartDate) {
-          // Group date has passed, check team date
           const teamStartDate = new Date(teamMember.programStartDate);
           if (teamStartDate > now) {
             userProgramStartDate = teamStartDate;
@@ -415,7 +409,6 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else if (teamMember.programStartDate) {
-        // No group date, check team date
         const teamStartDate = new Date(teamMember.programStartDate);
         if (teamStartDate > now) {
           userProgramStartDate = teamStartDate;
@@ -423,7 +416,6 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
           userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
         }
       } else {
-        // No group or team date, calculate next Monday in user's timezone
         userProgramStartDate = getNextMondayLocal(now, timezoneOffset);
       }
       
