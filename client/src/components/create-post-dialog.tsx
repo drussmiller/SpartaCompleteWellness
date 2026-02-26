@@ -278,6 +278,13 @@ export function CreatePostDialog({
     }
   }, [isEditMode, editPost, dialogOpen]);
 
+  // Reset selectedDate to today whenever the dialog opens in create mode
+  useEffect(() => {
+    if (!isEditMode && dialogOpen) {
+      setSelectedDate(new Date());
+    }
+  }, [dialogOpen, isEditMode]);
+
   // Update form type when hasAnyPosts changes or dialog opens
   useEffect(() => {
     if (open && !defaultType) {
