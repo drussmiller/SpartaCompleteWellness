@@ -137,23 +137,29 @@ export default function HomePage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId], // v2: includes thumbnailUrl field
-    queryFn: async () => {
+    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId] as const, // v2: includes thumbnailUrl field
+    queryFn: async ({ queryKey }) => {
+      // Read filter values from queryKey to avoid stale closure issues
+      const currentFilterMode = queryKey[4] as FilterMode;
+      const currentSelectedTeamId = queryKey[5] as number | null;
+
       // Specific team filter for Org Admin / Group Admin
-      if (filterMode === "specific_team" && selectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
-        console.log("Fetching posts for specific team:", selectedTeamId);
+      if (currentFilterMode === "specific_team" && currentSelectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
+        console.log("Fetching posts for specific team:", currentSelectedTeamId);
         const response = await apiRequest(
           "GET",
-          `/api/posts?page=1&limit=50&exclude=prayer&specificTeamId=${selectedTeamId}`,
+          `/api/posts?page=1&limit=50&exclude=prayer&specificTeamId=${currentSelectedTeamId}`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
         }
-        return response.json();
+        const data = await response.json();
+        console.log("Posts for specific team:", data.length);
+        return data;
       }
 
       // Admin/Group Admin/Org Admin/Team Lead filter for all posts from users not in a team (New Users mode)
-      if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
+      if (currentFilterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
         console.log("Fetching posts from users not in a team");
         const response = await apiRequest(
           "GET",
@@ -168,7 +174,7 @@ export default function HomePage() {
       }
 
       // Admin "All Users" mode - see all posts from all users
-      if (filterMode === "all_users" && user?.isAdmin) {
+      if (currentFilterMode === "all_users" && user?.isAdmin) {
         console.log("Admin fetching all posts from all users");
         const response = await apiRequest(
           "GET",
@@ -183,7 +189,7 @@ export default function HomePage() {
       }
 
       // Organization Admin "All Users" mode - see all posts from users in their organization
-      if (filterMode === "all_users" && user?.isOrganizationAdmin) {
+      if (currentFilterMode === "all_users" && user?.isOrganizationAdmin) {
         console.log("Organization Admin fetching all posts from their organization");
         const response = await apiRequest(
           "GET",
@@ -198,7 +204,7 @@ export default function HomePage() {
       }
 
       // Group Admin "All Users" mode - see all posts from users in their group
-      if (filterMode === "all_users" && user?.isGroupAdmin) {
+      if (currentFilterMode === "all_users" && user?.isGroupAdmin) {
         console.log("Group Admin fetching all posts from their group");
         const response = await apiRequest(
           "GET",
@@ -213,7 +219,7 @@ export default function HomePage() {
       }
 
       // Team Lead "All Users" mode - see all posts from their team
-      if (filterMode === "all_users" && user?.isTeamLead) {
+      if (currentFilterMode === "all_users" && user?.isTeamLead) {
         console.log("Team Lead fetching all posts from their team");
         const response = await apiRequest(
           "GET",
