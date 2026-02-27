@@ -1222,11 +1222,10 @@ export function CreatePostDialog({
                         <SelectItem value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || !hasAnyPosts}>
                           Memory Verse {getRemainingMessage('memory_verse')}
                         </SelectItem>
-                        {!hasAnyPosts ? (
-                          <SelectItem value="introductory_video">
-                            Intro Video {getRemainingMessage('introductory_video')}
-                          </SelectItem>
-                        ) : (
+                        <SelectItem value="introductory_video" disabled={isPostTypeDisabled('introductory_video') || (hasAnyPosts && hasPostedIntroVideo)}>
+                          Intro Video {getRemainingMessage('introductory_video')}
+                        </SelectItem>
+                        {hasAnyPosts && (
                           <SelectItem value="miscellaneous">
                             Miscellaneous {getRemainingMessage('miscellaneous')}
                           </SelectItem>
