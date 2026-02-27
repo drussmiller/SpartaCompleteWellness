@@ -7582,6 +7582,10 @@ export const registerRoutes = async (
       const queryStart = new Date(startOfWeek.getTime() - (tzOffset * 60000));
       const queryEnd = new Date(endOfWeek.getTime() - (tzOffset * 60000));
 
+      // Check if an admin is overriding the team
+      const overrideTeamId = req.query.teamId ? parseInt(req.query.teamId as string) : null;
+      const canOverride = req.user.isAdmin || req.user.isOrganizationAdmin || req.user.isGroupAdmin;
+
       // First get the user's team ID and group information
       const [currentUser] = await db
         .select()
@@ -7589,26 +7593,57 @@ export const registerRoutes = async (
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!currentUser || !currentUser.teamId) {
+      // Determine which team to use for the leaderboard
+      let resolvedTeamId: number | null = currentUser?.teamId ?? null;
+
+      if (overrideTeamId && canOverride) {
+        // Validate the admin has access to the override team
+        const [overrideTeam] = await db
+          .select({ id: teams.id, groupId: teams.groupId })
+          .from(teams)
+          .where(eq(teams.id, overrideTeamId))
+          .limit(1);
+
+        if (!overrideTeam) {
+          return res.status(404).json({ message: "Team not found" });
+        }
+
+        if (!req.user.isAdmin) {
+          if (req.user.isGroupAdmin && req.user.adminGroupId) {
+            if (overrideTeam.groupId !== req.user.adminGroupId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          } else if (req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
+            const [teamGroup] = await db
+              .select({ organizationId: groups.organizationId })
+              .from(groups)
+              .where(eq(groups.id, overrideTeam.groupId))
+              .limit(1);
+            if (!teamGroup || teamGroup.organizationId !== req.user.adminOrganizationId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          }
+        }
+
+        resolvedTeamId = overrideTeamId;
+      }
+
+      if (!resolvedTeamId) {
         return res.status(400).json({ message: "User not assigned to a team" });
       }
 
-      // Get the user's team to find their group
+      // Get the resolved team to find its group
       const [currentTeam] = await db
         .select()
         .from(teams)
-        .where(eq(teams.id, currentUser.teamId))
+        .where(eq(teams.id, resolvedTeamId))
         .limit(1);
 
       if (!currentTeam) {
-        return res.status(400).json({ message: "User's team not found" });
+        return res.status(400).json({ message: "Team not found" });
       }
 
-      // Debug logging
-      console.log("Current user:", JSON.stringify(currentUser, null, 2));
-      console.log("Current team:", JSON.stringify(currentTeam, null, 2));
-
-      // Get team members points
+      // Get team members points for the resolved team
       const teamMembers = await db
         .select({
           id: users.id,
@@ -7626,10 +7661,10 @@ export const registerRoutes = async (
           ), 0)::integer AS points`,
         })
         .from(users)
-        .where(eq(users.teamId, currentUser.teamId))
+        .where(eq(users.teamId, resolvedTeamId))
         .orderBy(sql`points DESC`);
 
-      // Get team average points - only from the same group as the user's team
+      // Get team average points - only from the same group as the resolved team
       const teamStats = await db.execute(sql`
           SELECT 
             t.id, 
@@ -7651,13 +7686,13 @@ export const registerRoutes = async (
           ORDER BY avg_points DESC
         `);
 
-      console.log("Filtering teams for group ID:", currentTeam.groupId);
-      console.log("Team stats query result:", JSON.stringify(teamStats.rows, null, 2));
+      logger.info(`[LEADERBOARD] team=${resolvedTeamId} group=${currentTeam.groupId} override=${!!overrideTeamId}`);
 
       res.setHeader("Content-Type", "application/json");
       res.json({
         teamMembers,
         teamStats,
+        teamName: currentTeam.name,
         weekRange: {
           start: queryStart.toISOString(),
           end: queryEnd.toISOString(),
