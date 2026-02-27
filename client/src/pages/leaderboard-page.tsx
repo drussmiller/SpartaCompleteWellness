@@ -182,7 +182,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
         <div className="container py-4 max-w-4xl mx-auto">
 
           {canSelectTeam && availableTeams.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-4 px-4">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 block">
                 View Team
               </label>
