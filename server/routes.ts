@@ -1596,6 +1596,102 @@ export const registerRoutes = async (
       const allUsers = req.query.allUsers === "true";
       const groupAllUsers = req.query.groupAllUsers === "true";
       const orgAllUsers = req.query.orgAllUsers === "true";
+      const specificTeamId = req.query.specificTeamId ? parseInt(req.query.specificTeamId as string) : null;
+
+      // Specific Team filter: Org Admin or Group Admin viewing a specific team's posts
+      if (specificTeamId && (req.user.isOrganizationAdmin || req.user.isGroupAdmin || req.user.isAdmin)) {
+        logger.info(`[SPECIFIC TEAM] User ${req.user.id} fetching posts for team ${specificTeamId}`);
+
+        // Security: verify the requesting user has access to this team
+        const [targetTeam] = await db
+          .select({ id: teams.id, groupId: teams.groupId })
+          .from(teams)
+          .where(eq(teams.id, specificTeamId))
+          .limit(1);
+
+        if (!targetTeam) {
+          return res.status(404).json({ message: "Team not found" });
+        }
+
+        if (!req.user.isAdmin) {
+          if (req.user.isGroupAdmin && req.user.adminGroupId) {
+            if (targetTeam.groupId !== req.user.adminGroupId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          } else if (req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
+            const [teamGroup] = await db
+              .select({ organizationId: groups.organizationId })
+              .from(groups)
+              .where(eq(groups.id, targetTeam.groupId))
+              .limit(1);
+            if (!teamGroup || teamGroup.organizationId !== req.user.adminOrganizationId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          }
+        }
+
+        const teamUserIds = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.teamId, specificTeamId));
+
+        const memberIds = teamUserIds.map(u => u.id);
+
+        if (memberIds.length === 0) {
+          logger.info(`[SPECIFIC TEAM] No users in team ${specificTeamId}`);
+          return res.json([]);
+        }
+
+        const teamPosts = await db
+          .select({
+            id: posts.id,
+            content: posts.content,
+            type: posts.type,
+            mediaUrl: posts.mediaUrl,
+            thumbnailUrl: posts.thumbnailUrl,
+            is_video: posts.is_video,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            points: posts.points,
+            userId: posts.userId,
+            postScope: posts.postScope,
+            targetOrganizationId: posts.targetOrganizationId,
+            targetGroupId: posts.targetGroupId,
+            targetTeamId: posts.targetTeamId,
+            author: {
+              id: users.id,
+              username: users.username,
+              preferredName: users.preferredName,
+              email: users.email,
+              imageUrl: users.imageUrl,
+              avatarColor: users.avatarColor,
+              isAdmin: users.isAdmin,
+              teamId: users.teamId,
+              pendingOrganizationId: users.pendingOrganizationId,
+            },
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              isNull(posts.parentId),
+              or(
+                inArray(posts.userId, memberIds),
+                and(
+                  eq(posts.postScope, 'team'),
+                  eq(posts.targetTeamId, specificTeamId)
+                )
+              ),
+              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+        logger.info(`[SPECIFIC TEAM] Returning ${teamPosts.length} posts for team ${specificTeamId}`);
+        return res.json(teamPosts);
+      }
 
       // Organization Admin filter: show all posts from users in their organization
       if (orgAllUsers && req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
