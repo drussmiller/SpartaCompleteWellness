@@ -4,14 +4,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
-import { ChevronLeft, Filter, Check, ChevronDown, Users } from "lucide-react";
+import { ChevronLeft, Filter, Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { getDisplayName, getDisplayInitial, cn } from "@/lib/utils";
-import { AppLayout } from "@/components/app-layout";
 import { BottomNav } from "@/components/bottom-nav";
-import { Link } from "wouter";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
@@ -170,12 +167,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
     : (data?.teamStats as any)?.rows ?? [];
 
   return (
-    <div 
-      className="flex flex-col h-screen pb-16 md:pb-0"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="flex flex-col h-screen pb-16 md:pb-0">
       <header className="sticky top-0 z-50 border-b border-border bg-background flex-shrink-0">
         <div className="container flex items-center justify-between p-4 pt-16">
           <div className="flex items-center">
@@ -254,7 +246,12 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
         </div>
       </header>
 
-      <div className={`flex-1 overflow-y-auto ${isAndroid ? 'pb-40' : ''}`}>
+      <div
+        className={`flex-1 overflow-y-auto ${isAndroid ? 'pb-40' : ''}`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="container py-4 max-w-4xl mx-auto">
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
