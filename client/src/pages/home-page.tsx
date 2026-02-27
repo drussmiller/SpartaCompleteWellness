@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
-import { Loader2, Filter, RefreshCw, ChevronDown } from "lucide-react";
+import { Loader2, Filter, RefreshCw, ChevronDown, Check, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
@@ -23,8 +23,18 @@ import {
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 
-type FilterMode = "team" | "all_users" | "new_users";
+type FilterMode = "team" | "all_users" | "new_users" | "specific_team";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -40,12 +50,47 @@ export default function HomePage() {
     const saved = sessionStorage.getItem("homePageFilterMode");
     return (saved as FilterMode) || "team";
   });
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(() => {
+    const saved = sessionStorage.getItem("homePageSelectedTeamId");
+    return saved ? parseInt(saved) : null;
+  });
+  const [selectedTeamName, setSelectedTeamName] = useState<string>(() => {
+    return sessionStorage.getItem("homePageSelectedTeamName") || "";
+  });
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  const [teamSearchOpen, setTeamSearchOpen] = useState(false);
+
+  const canFilterByTeam = !!(user?.isOrganizationAdmin || user?.isGroupAdmin || user?.isAdmin);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     sessionStorage.setItem("homePageFilterMode", filterMode);
   }, [filterMode]);
+
+  useEffect(() => {
+    if (selectedTeamId !== null) {
+      sessionStorage.setItem("homePageSelectedTeamId", selectedTeamId.toString());
+    } else {
+      sessionStorage.removeItem("homePageSelectedTeamId");
+    }
+    sessionStorage.setItem("homePageSelectedTeamName", selectedTeamName);
+  }, [selectedTeamId, selectedTeamName]);
+
+  const { data: availableTeams = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/teams/for-filter"],
+    queryFn: async () => {
+      if (user?.isGroupAdmin && !user?.isOrganizationAdmin && !user?.isAdmin) {
+        const res = await apiRequest("GET", "/api/group-admin/teams");
+        if (!res.ok) return [];
+        return res.json();
+      }
+      const res = await apiRequest("GET", "/api/teams");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: canFilterByTeam,
+    staleTime: 60000,
+  });
   
   // Use scroll direction hook for header/nav animations
   const { isHeaderVisible, isBottomNavVisible, scrollY } = useScrollDirection({
@@ -92,10 +137,29 @@ export default function HomePage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode], // v2: includes thumbnailUrl field
-    queryFn: async () => {
+    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId] as const, // v2: includes thumbnailUrl field
+    queryFn: async ({ queryKey }) => {
+      // Read filter values from queryKey to avoid stale closure issues
+      const currentFilterMode = queryKey[4] as FilterMode;
+      const currentSelectedTeamId = queryKey[5] as number | null;
+
+      // Specific team filter for Org Admin / Group Admin
+      if (currentFilterMode === "specific_team" && currentSelectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
+        console.log("Fetching posts for specific team:", currentSelectedTeamId);
+        const response = await apiRequest(
+          "GET",
+          `/api/posts?page=1&limit=50&exclude=prayer&specificTeamId=${currentSelectedTeamId}`,
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Posts for specific team:", data.length);
+        return data;
+      }
+
       // Admin/Group Admin/Org Admin/Team Lead filter for all posts from users not in a team (New Users mode)
-      if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
+      if (currentFilterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
         console.log("Fetching posts from users not in a team");
         const response = await apiRequest(
           "GET",
@@ -110,7 +174,7 @@ export default function HomePage() {
       }
 
       // Admin "All Users" mode - see all posts from all users
-      if (filterMode === "all_users" && user?.isAdmin) {
+      if (currentFilterMode === "all_users" && user?.isAdmin) {
         console.log("Admin fetching all posts from all users");
         const response = await apiRequest(
           "GET",
@@ -125,7 +189,7 @@ export default function HomePage() {
       }
 
       // Organization Admin "All Users" mode - see all posts from users in their organization
-      if (filterMode === "all_users" && user?.isOrganizationAdmin) {
+      if (currentFilterMode === "all_users" && user?.isOrganizationAdmin) {
         console.log("Organization Admin fetching all posts from their organization");
         const response = await apiRequest(
           "GET",
@@ -140,7 +204,7 @@ export default function HomePage() {
       }
 
       // Group Admin "All Users" mode - see all posts from users in their group
-      if (filterMode === "all_users" && user?.isGroupAdmin) {
+      if (currentFilterMode === "all_users" && user?.isGroupAdmin) {
         console.log("Group Admin fetching all posts from their group");
         const response = await apiRequest(
           "GET",
@@ -155,7 +219,7 @@ export default function HomePage() {
       }
 
       // Team Lead "All Users" mode - see all posts from their team
-      if (filterMode === "all_users" && user?.isTeamLead) {
+      if (currentFilterMode === "all_users" && user?.isTeamLead) {
         console.log("Team Lead fetching all posts from their team");
         const response = await apiRequest(
           "GET",
@@ -347,31 +411,38 @@ export default function HomePage() {
                   </div>
                   {/* Admin/Org Admin/Group Admin/Team Lead filter popup */}
                   {(user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin || user?.isTeamLead) && (
-                    <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
+                    <Popover open={filterPopoverOpen} onOpenChange={(open) => { setFilterPopoverOpen(open); if (!open) setTeamSearchOpen(false); }}>
                       <PopoverTrigger asChild>
                         <Button
                           variant={filterMode !== "team" ? "default" : "outline"}
                           size="sm"
-                          className="text-xs h-7"
+                          className="text-xs h-7 max-w-[160px]"
                           data-testid="button-filter-posts"
                         >
-                          <Filter className="h-3 w-3 mr-1" />
-                          {filterMode === "team" ? "Team" : filterMode === "all_users" ? "All Users" : "New Users"}
-                          <ChevronDown className="h-3 w-3 ml-1" />
+                          <Filter className="h-3 w-3 mr-1 shrink-0" />
+                          <span className="truncate">
+                            {filterMode === "team" ? "Team" : filterMode === "all_users" ? "All Users" : filterMode === "new_users" ? "New Users" : selectedTeamName || "Select Team"}
+                          </span>
+                          <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-48 p-3" align="end">
+                      <PopoverContent className="w-60 p-3" align="end">
                         <RadioGroup
-                          value={filterMode}
-                          onValueChange={(value: FilterMode) => {
-                            setFilterMode(value);
-                            setFilterPopoverOpen(false);
+                          value={filterMode === "specific_team" ? "specific_team" : filterMode}
+                          onValueChange={(value: string) => {
+                            if (value !== "specific_team") {
+                              setFilterMode(value as FilterMode);
+                              setTeamSearchOpen(false);
+                              setFilterPopoverOpen(false);
+                            } else {
+                              setTeamSearchOpen(true);
+                            }
                           }}
                           className="space-y-2"
                         >
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="team" id="filter-team" data-testid="radio-filter-team" />
-                            <Label htmlFor="filter-team" className="text-sm cursor-pointer">Team</Label>
+                            <Label htmlFor="filter-team" className="text-sm cursor-pointer">My Team</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="all_users" id="filter-all-users" data-testid="radio-filter-all-users" />
@@ -381,7 +452,55 @@ export default function HomePage() {
                             <RadioGroupItem value="new_users" id="filter-new-users" data-testid="radio-filter-new-users" />
                             <Label htmlFor="filter-new-users" className="text-sm cursor-pointer">New Users</Label>
                           </div>
+                          {canFilterByTeam && (
+                            <>
+                              <Separator className="my-1" />
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="specific_team" id="filter-specific-team" />
+                                <Label htmlFor="filter-specific-team" className="text-sm cursor-pointer flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  Select a Team
+                                </Label>
+                              </div>
+                            </>
+                          )}
                         </RadioGroup>
+
+                        {/* Team search - shown when "Select a Team" is chosen */}
+                        {canFilterByTeam && (filterMode === "specific_team" || teamSearchOpen) && (
+                          <div className="mt-3">
+                            <Command className="border rounded-md">
+                              <CommandInput placeholder="Search teams..." className="h-8 text-sm" />
+                              <CommandList className="max-h-48">
+                                <CommandEmpty>No teams found.</CommandEmpty>
+                                <CommandGroup>
+                                  {availableTeams.map((team) => (
+                                    <CommandItem
+                                      key={team.id}
+                                      value={team.name}
+                                      onSelect={() => {
+                                        setSelectedTeamId(team.id);
+                                        setSelectedTeamName(team.name);
+                                        setFilterMode("specific_team");
+                                        setTeamSearchOpen(false);
+                                        setFilterPopoverOpen(false);
+                                      }}
+                                      className="text-sm cursor-pointer"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-3 w-3 shrink-0",
+                                          selectedTeamId === team.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {team.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </div>
+                        )}
                       </PopoverContent>
                     </Popover>
                   )}

@@ -1596,6 +1596,102 @@ export const registerRoutes = async (
       const allUsers = req.query.allUsers === "true";
       const groupAllUsers = req.query.groupAllUsers === "true";
       const orgAllUsers = req.query.orgAllUsers === "true";
+      const specificTeamId = req.query.specificTeamId ? parseInt(req.query.specificTeamId as string) : null;
+
+      // Specific Team filter: Org Admin or Group Admin viewing a specific team's posts
+      if (specificTeamId && (req.user.isOrganizationAdmin || req.user.isGroupAdmin || req.user.isAdmin)) {
+        logger.info(`[SPECIFIC TEAM] User ${req.user.id} fetching posts for team ${specificTeamId}`);
+
+        // Security: verify the requesting user has access to this team
+        const [targetTeam] = await db
+          .select({ id: teams.id, groupId: teams.groupId })
+          .from(teams)
+          .where(eq(teams.id, specificTeamId))
+          .limit(1);
+
+        if (!targetTeam) {
+          return res.status(404).json({ message: "Team not found" });
+        }
+
+        if (!req.user.isAdmin) {
+          if (req.user.isGroupAdmin && req.user.adminGroupId) {
+            if (targetTeam.groupId !== req.user.adminGroupId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          } else if (req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
+            const [teamGroup] = await db
+              .select({ organizationId: groups.organizationId })
+              .from(groups)
+              .where(eq(groups.id, targetTeam.groupId))
+              .limit(1);
+            if (!teamGroup || teamGroup.organizationId !== req.user.adminOrganizationId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          }
+        }
+
+        const teamUserIds = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.teamId, specificTeamId));
+
+        const memberIds = teamUserIds.map(u => u.id);
+
+        if (memberIds.length === 0) {
+          logger.info(`[SPECIFIC TEAM] No users in team ${specificTeamId}`);
+          return res.json([]);
+        }
+
+        const teamPosts = await db
+          .select({
+            id: posts.id,
+            content: posts.content,
+            type: posts.type,
+            mediaUrl: posts.mediaUrl,
+            thumbnailUrl: posts.thumbnailUrl,
+            is_video: posts.is_video,
+            createdAt: posts.createdAt,
+            parentId: posts.parentId,
+            points: posts.points,
+            userId: posts.userId,
+            postScope: posts.postScope,
+            targetOrganizationId: posts.targetOrganizationId,
+            targetGroupId: posts.targetGroupId,
+            targetTeamId: posts.targetTeamId,
+            author: {
+              id: users.id,
+              username: users.username,
+              preferredName: users.preferredName,
+              email: users.email,
+              imageUrl: users.imageUrl,
+              avatarColor: users.avatarColor,
+              isAdmin: users.isAdmin,
+              teamId: users.teamId,
+              pendingOrganizationId: users.pendingOrganizationId,
+            },
+          })
+          .from(posts)
+          .leftJoin(users, eq(posts.userId, users.id))
+          .where(
+            and(
+              isNull(posts.parentId),
+              or(
+                inArray(posts.userId, memberIds),
+                and(
+                  eq(posts.postScope, 'team'),
+                  eq(posts.targetTeamId, specificTeamId)
+                )
+              ),
+              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+            )
+          )
+          .orderBy(desc(posts.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+        logger.info(`[SPECIFIC TEAM] Returning ${teamPosts.length} posts for team ${specificTeamId}`);
+        return res.json(teamPosts);
+      }
 
       // Organization Admin filter: show all posts from users in their organization
       if (orgAllUsers && req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
@@ -7486,6 +7582,10 @@ export const registerRoutes = async (
       const queryStart = new Date(startOfWeek.getTime() - (tzOffset * 60000));
       const queryEnd = new Date(endOfWeek.getTime() - (tzOffset * 60000));
 
+      // Check if an admin is overriding the team
+      const overrideTeamId = req.query.teamId ? parseInt(req.query.teamId as string) : null;
+      const canOverride = req.user.isAdmin || req.user.isOrganizationAdmin || req.user.isGroupAdmin;
+
       // First get the user's team ID and group information
       const [currentUser] = await db
         .select()
@@ -7493,26 +7593,57 @@ export const registerRoutes = async (
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!currentUser || !currentUser.teamId) {
+      // Determine which team to use for the leaderboard
+      let resolvedTeamId: number | null = currentUser?.teamId ?? null;
+
+      if (overrideTeamId && canOverride) {
+        // Validate the admin has access to the override team
+        const [overrideTeam] = await db
+          .select({ id: teams.id, groupId: teams.groupId })
+          .from(teams)
+          .where(eq(teams.id, overrideTeamId))
+          .limit(1);
+
+        if (!overrideTeam) {
+          return res.status(404).json({ message: "Team not found" });
+        }
+
+        if (!req.user.isAdmin) {
+          if (req.user.isGroupAdmin && req.user.adminGroupId) {
+            if (overrideTeam.groupId !== req.user.adminGroupId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          } else if (req.user.isOrganizationAdmin && req.user.adminOrganizationId) {
+            const [teamGroup] = await db
+              .select({ organizationId: groups.organizationId })
+              .from(groups)
+              .where(eq(groups.id, overrideTeam.groupId))
+              .limit(1);
+            if (!teamGroup || teamGroup.organizationId !== req.user.adminOrganizationId) {
+              return res.status(403).json({ message: "Access denied to this team" });
+            }
+          }
+        }
+
+        resolvedTeamId = overrideTeamId;
+      }
+
+      if (!resolvedTeamId) {
         return res.status(400).json({ message: "User not assigned to a team" });
       }
 
-      // Get the user's team to find their group
+      // Get the resolved team to find its group
       const [currentTeam] = await db
         .select()
         .from(teams)
-        .where(eq(teams.id, currentUser.teamId))
+        .where(eq(teams.id, resolvedTeamId))
         .limit(1);
 
       if (!currentTeam) {
-        return res.status(400).json({ message: "User's team not found" });
+        return res.status(400).json({ message: "Team not found" });
       }
 
-      // Debug logging
-      console.log("Current user:", JSON.stringify(currentUser, null, 2));
-      console.log("Current team:", JSON.stringify(currentTeam, null, 2));
-
-      // Get team members points
+      // Get team members points for the resolved team
       const teamMembers = await db
         .select({
           id: users.id,
@@ -7530,10 +7661,10 @@ export const registerRoutes = async (
           ), 0)::integer AS points`,
         })
         .from(users)
-        .where(eq(users.teamId, currentUser.teamId))
+        .where(eq(users.teamId, resolvedTeamId))
         .orderBy(sql`points DESC`);
 
-      // Get team average points - only from the same group as the user's team
+      // Get team average points - only from the same group as the resolved team
       const teamStats = await db.execute(sql`
           SELECT 
             t.id, 
@@ -7555,13 +7686,13 @@ export const registerRoutes = async (
           ORDER BY avg_points DESC
         `);
 
-      console.log("Filtering teams for group ID:", currentTeam.groupId);
-      console.log("Team stats query result:", JSON.stringify(teamStats.rows, null, 2));
+      logger.info(`[LEADERBOARD] team=${resolvedTeamId} group=${currentTeam.groupId} override=${!!overrideTeamId}`);
 
       res.setHeader("Content-Type", "application/json");
       res.json({
         teamMembers,
         teamStats,
+        teamName: currentTeam.name,
         weekRange: {
           start: queryStart.toISOString(),
           end: queryEnd.toISOString(),
