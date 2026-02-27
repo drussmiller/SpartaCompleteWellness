@@ -79,14 +79,22 @@ export default function HomePage() {
   const { data: availableTeams = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/teams/for-filter"],
     queryFn: async () => {
-      if (user?.isGroupAdmin && !user?.isOrganizationAdmin && !user?.isAdmin) {
+      if (user?.isAdmin) {
+        const res = await apiRequest("GET", "/api/teams");
+        if (!res.ok) return [];
+        return res.json();
+      }
+      if (user?.isOrganizationAdmin) {
+        const res = await apiRequest("GET", "/api/org-admin/teams");
+        if (!res.ok) return [];
+        return res.json();
+      }
+      if (user?.isGroupAdmin) {
         const res = await apiRequest("GET", "/api/group-admin/teams");
         if (!res.ok) return [];
         return res.json();
       }
-      const res = await apiRequest("GET", "/api/teams");
-      if (!res.ok) return [];
-      return res.json();
+      return [];
     },
     enabled: canFilterByTeam,
     staleTime: 60000,
