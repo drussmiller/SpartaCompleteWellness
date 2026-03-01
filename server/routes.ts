@@ -5854,6 +5854,91 @@ export const registerRoutes = async (
       await db.update(users).set({ pendingOrganizationId: organizationId }).where(eq(users.id, req.user.id));
 
       logger.info(`[CONNECT-ORG] User ${req.user.id} connected to organization ${org.name} (ID: ${organizationId})`);
+
+      // Notify Admins, Org Admins, and Team Leads in this organization
+      try {
+        const joiningName = req.user.preferredName || req.user.username;
+
+        // Find all groups belonging to this organization
+        const orgGroups = await db
+          .select({ id: groups.id })
+          .from(groups)
+          .where(eq(groups.organizationId, organizationId));
+
+        const orgGroupIds = orgGroups.map((g) => g.id);
+
+        // Find all teams belonging to those groups
+        const orgTeams = orgGroupIds.length > 0
+          ? await db.select({ id: teams.id }).from(teams).where(inArray(teams.groupId, orgGroupIds))
+          : [];
+        const orgTeamIds = orgTeams.map((t) => t.id);
+
+        // Build conditions array safely (no undefined passed to or())
+        const conditions: any[] = [
+          eq(users.isAdmin, true),
+          and(eq(users.isOrganizationAdmin, true), eq(users.adminOrganizationId, organizationId)),
+        ];
+        if (orgTeamIds.length > 0) {
+          conditions.push(and(eq(users.isTeamLead, true), inArray(users.teamId, orgTeamIds)));
+        }
+
+        const recipients = await db
+          .select({ id: users.id, email: users.email, phoneNumber: users.phoneNumber, smsEnabled: users.smsEnabled })
+          .from(users)
+          .where(or(...conditions));
+
+        logger.info(`[CONNECT-ORG] Sending notifications to ${recipients.length} recipients for org ${organizationId}`);
+
+        const notifTitle = "New Organization Member";
+        const notifMessage = `${joiningName} wants to connect to the ${org.name} organization.`;
+
+        const { sendGenericNotificationEmail } = await import("./email-service");
+
+        for (const recipient of recipients) {
+          // In-app notification
+          const [notification] = await db
+            .insert(notifications)
+            .values({
+              userId: recipient.id,
+              title: notifTitle,
+              message: notifMessage,
+              type: "organization_join",
+              isRead: false,
+            })
+            .returning();
+
+          // Real-time WebSocket push
+          const recipientSockets = clients.get(recipient.id);
+          if (recipientSockets && recipientSockets.size > 0) {
+            recipientSockets.forEach((ws) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "new_notification", notification }));
+              }
+            });
+          }
+
+          // Email notification
+          if (recipient.email) {
+            try {
+              await sendGenericNotificationEmail(recipient.email, notifTitle, notifMessage);
+            } catch (emailErr) {
+              logger.error(`Failed to send org connect email to ${recipient.email}:`, emailErr);
+            }
+          }
+
+          // SMS notification
+          if (recipient.smsEnabled && recipient.phoneNumber) {
+            try {
+              await smsService.sendSMSToUser(recipient.phoneNumber, notifMessage);
+            } catch (smsErr) {
+              logger.error(`Failed to send org connect SMS to user ${recipient.id}:`, smsErr);
+            }
+          }
+        }
+      } catch (notifError) {
+        logger.error("Error sending org connect notifications:", notifError);
+      }
+
       res.json({ message: "Successfully connected to organization" });
     } catch (error) {
       logger.error("Error connecting to organization:", error);
