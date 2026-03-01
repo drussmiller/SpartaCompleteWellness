@@ -482,7 +482,7 @@ export default function HomePage() {
                               <CommandList className="max-h-48">
                                 <CommandEmpty>No teams found.</CommandEmpty>
                                 <CommandGroup>
-                                  {availableTeams.map((team) => (
+                                  {[...availableTeams].sort((a, b) => a.name.localeCompare(b.name)).map((team) => (
                                     <CommandItem
                                       key={team.id}
                                       value={team.name}
