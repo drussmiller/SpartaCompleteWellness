@@ -1375,12 +1375,20 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   );
 
   // Filter variables for the search/filter dropdowns
-  const filteredGroupsForFilter =
+  const filteredGroupsForFilter = (
     selectedOrgFilter === "all"
       ? filteredGroups
       : filteredGroups.filter(
           (group) => group.organizationId.toString() === selectedOrgFilter,
-        );
+        )
+  ).filter((group) => {
+    const org = sortedOrganizations.find((o) => o.id === group.organizationId);
+    if (!org) return true;
+    const groupsInOrg = filteredGroups.filter((g) => g.organizationId === group.organizationId);
+    const isSoleGroup = groupsInOrg.length === 1;
+    const sameNameAsOrg = group.name.trim().toLowerCase() === org.name.trim().toLowerCase();
+    return !(isSoleGroup && sameNameAsOrg);
+  });
 
   const filteredTeamsForFilter = sortedTeams.filter((team) => {
     // If a specific group is selected, filter by that group
