@@ -1384,10 +1384,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   ).filter((group) => {
     const org = sortedOrganizations.find((o) => o.id === group.organizationId);
     if (!org) return true;
-    const groupsInOrg = filteredGroups.filter((g) => g.organizationId === group.organizationId);
-    const isSoleGroup = groupsInOrg.length === 1;
     const sameNameAsOrg = group.name.trim().toLowerCase() === org.name.trim().toLowerCase();
-    return !(isSoleGroup && sameNameAsOrg);
+    return !sameNameAsOrg;
   });
 
   const filteredTeamsForFilter = sortedTeams.filter((team) => {
