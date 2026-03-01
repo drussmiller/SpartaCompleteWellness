@@ -1,10 +1,12 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db";
-import { groups, teams, users, organizations } from "@shared/schema";
-import { eq, or, isNull, and } from "drizzle-orm";
+import { groups, teams, users, organizations, notifications } from "@shared/schema";
+import { eq, or, isNull, and, inArray } from "drizzle-orm";
 import { authenticate } from "./auth";
 import { generateInviteCode } from "./invite-code-utils";
 import { logger } from "./logger";
+import { WebSocket } from "ws";
+import { clients } from "./ws-clients";
 
 // Helper function to get next Monday (or today if today is Monday) in user's timezone
 function getNextMondayLocal(utcDate: Date, timezoneOffsetMinutes: number): Date {
@@ -501,6 +503,68 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
         .update(users)
         .set({ pendingOrganizationId: org.id })
         .where(eq(users.id, userId));
+
+      // Notify Admins, Org Admins, and Team Leads in this organization
+      try {
+        const joiningUser = req.user!;
+        const joiningName = joiningUser.preferredName || joiningUser.username;
+
+        // Find all groups belonging to this organization
+        const orgGroups = await db
+          .select({ id: groups.id })
+          .from(groups)
+          .where(eq(groups.organizationId, org.id));
+
+        const orgGroupIds = orgGroups.map(g => g.id);
+
+        // Find all teams belonging to those groups
+        const orgTeams = orgGroupIds.length > 0
+          ? await db.select({ id: teams.id }).from(teams).where(inArray(teams.groupId, orgGroupIds))
+          : [];
+        const orgTeamIds = orgTeams.map(t => t.id);
+
+        // Collect recipients: global admins, org admins for this org, team leads in this org
+        const recipients = await db
+          .select({ id: users.id, email: users.email })
+          .from(users)
+          .where(
+            or(
+              eq(users.isAdmin, true),
+              and(eq(users.isOrganizationAdmin, true), eq(users.adminOrganizationId, org.id)),
+              orgTeamIds.length > 0
+                ? and(eq(users.isTeamLead, true), inArray(users.teamId, orgTeamIds))
+                : undefined
+            )
+          );
+
+        const notifTitle = "New Organization Member";
+        const notifMessage = `${joiningName} has joined the ${org.name} organization.`;
+
+        for (const recipient of recipients) {
+          const [notification] = await db
+            .insert(notifications)
+            .values({
+              userId: recipient.id,
+              title: notifTitle,
+              message: notifMessage,
+              type: "organization_join",
+              isRead: false,
+            })
+            .returning();
+
+          // Push real-time notification via WebSocket
+          const recipientSockets = clients.get(recipient.id);
+          if (recipientSockets && recipientSockets.size > 0) {
+            recipientSockets.forEach((ws) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "new_notification", notification }));
+              }
+            });
+          }
+        }
+      } catch (notifError) {
+        logger.error("Error sending org join notifications:", notifError);
+      }
 
       return res.json({
         success: true,
