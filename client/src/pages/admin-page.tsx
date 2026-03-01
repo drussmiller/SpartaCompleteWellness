@@ -2966,7 +2966,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All Divisions</SelectItem>
-                                {groupsForTeamFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
+                                {[...(groupsForTeamFilter?.filter(group => !defaultGroupIds.has(group.id) && (showInactiveGroups ? true : group.status === 1)) || [])].sort((a, b) => a.name.localeCompare(b.name)).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
                                   </SelectItem>
@@ -2998,7 +2998,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All Divisions</SelectItem>
-                                {filteredGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
+                                {[...(filteredGroups?.filter(group => !defaultGroupIds.has(group.id) && (showInactiveGroups ? true : group.status === 1)) || [])].sort((a, b) => a.name.localeCompare(b.name)).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
                                   </SelectItem>
