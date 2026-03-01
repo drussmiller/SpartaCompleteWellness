@@ -1,12 +1,14 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db";
 import { groups, teams, users, organizations, notifications } from "@shared/schema";
-import { eq, or, isNull, and, inArray } from "drizzle-orm";
+import { eq, or, isNull, and, inArray, SQL } from "drizzle-orm";
 import { authenticate } from "./auth";
 import { generateInviteCode } from "./invite-code-utils";
 import { logger } from "./logger";
 import { WebSocket } from "ws";
 import { clients } from "./ws-clients";
+import { sendGenericNotificationEmail } from "./email-service";
+import { smsService } from "./sms-service";
 
 // Helper function to get next Monday (or today if today is Monday) in user's timezone
 function getNextMondayLocal(utcDate: Date, timezoneOffsetMinutes: number): Date {
@@ -523,24 +525,28 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
           : [];
         const orgTeamIds = orgTeams.map(t => t.id);
 
+        // Build conditions array (avoid passing undefined to or())
+        const conditions: SQL[] = [
+          eq(users.isAdmin, true),
+          and(eq(users.isOrganizationAdmin, true), eq(users.adminOrganizationId, org.id)) as SQL,
+        ];
+        if (orgTeamIds.length > 0) {
+          conditions.push(and(eq(users.isTeamLead, true), inArray(users.teamId, orgTeamIds)) as SQL);
+        }
+
         // Collect recipients: global admins, org admins for this org, team leads in this org
         const recipients = await db
-          .select({ id: users.id, email: users.email })
+          .select({ id: users.id, email: users.email, phoneNumber: users.phoneNumber, smsEnabled: users.smsEnabled })
           .from(users)
-          .where(
-            or(
-              eq(users.isAdmin, true),
-              and(eq(users.isOrganizationAdmin, true), eq(users.adminOrganizationId, org.id)),
-              orgTeamIds.length > 0
-                ? and(eq(users.isTeamLead, true), inArray(users.teamId, orgTeamIds))
-                : undefined
-            )
-          );
+          .where(or(...conditions));
+
+        logger.info(`Org join notifications: found ${recipients.length} recipients for org ${org.id}`);
 
         const notifTitle = "New Organization Member";
         const notifMessage = `${joiningName} has joined the ${org.name} organization.`;
 
         for (const recipient of recipients) {
+          // In-app notification
           const [notification] = await db
             .insert(notifications)
             .values({
@@ -552,7 +558,7 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
             })
             .returning();
 
-          // Push real-time notification via WebSocket
+          // Push real-time notification via WebSocket if the user is online
           const recipientSockets = clients.get(recipient.id);
           if (recipientSockets && recipientSockets.size > 0) {
             recipientSockets.forEach((ws) => {
@@ -560,6 +566,24 @@ inviteCodeRouter.post("/api/redeem-invite-code", authenticate, async (req: Reque
                 ws.send(JSON.stringify({ type: "new_notification", notification }));
               }
             });
+          }
+
+          // Email notification
+          if (recipient.email) {
+            try {
+              await sendGenericNotificationEmail(recipient.email, notifTitle, notifMessage);
+            } catch (emailErr) {
+              logger.error(`Failed to send org join email to ${recipient.email}:`, emailErr);
+            }
+          }
+
+          // SMS notification
+          if (recipient.smsEnabled && recipient.phoneNumber) {
+            try {
+              await smsService.sendSMSToUser(recipient.phoneNumber, notifMessage);
+            } catch (smsErr) {
+              logger.error(`Failed to send org join SMS to user ${recipient.id}:`, smsErr);
+            }
           }
         }
       } catch (notifError) {
