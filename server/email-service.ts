@@ -275,11 +275,54 @@ async function sendInviteCodeEmail(
   }
 }
 
-export { sendVerificationEmail, sendPasswordResetCode, sendFeedbackEmail, sendDailyReminderEmail, sendInviteCodeEmail };
+async function sendGenericNotificationEmail(
+  recipientEmail: string,
+  subject: string,
+  message: string
+): Promise<boolean> {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
+      logger.warn("Gmail credentials not configured. Logging notification to console.");
+      console.log(`\n=== NOTIFICATION EMAIL for ${recipientEmail} ===`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Message: ${message}`);
+      console.log(`=======================================\n`);
+      return true;
+    }
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: recipientEmail,
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">${subject}</h2>
+          <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0; border-left: 4px solid #6366F1;">
+            <p>${message}</p>
+          </div>
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            This is an automated message from Sparta Complete Wellness.
+          </p>
+        </div>
+      `,
+      text: `${subject}\n\n${message}`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info(`Notification email sent to ${recipientEmail}`);
+    return true;
+  } catch (error) {
+    logger.error("Error sending notification email:", error);
+    return false;
+  }
+}
+
+export { sendVerificationEmail, sendPasswordResetCode, sendFeedbackEmail, sendDailyReminderEmail, sendInviteCodeEmail, sendGenericNotificationEmail };
 export const emailService = {
   sendVerificationEmail,
   sendPasswordResetCode,
   sendFeedbackEmail,
   sendDailyReminderEmail,
   sendInviteCodeEmail,
+  sendGenericNotificationEmail,
 };
