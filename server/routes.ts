@@ -3487,6 +3487,29 @@ export const registerRoutes = async (
     }
   });
 
+  // Get teams accessible to the current organization admin
+  router.get("/api/org-admin/teams", authenticate, async (req, res) => {
+    try {
+      if (!req.user.isOrganizationAdmin || !req.user.adminOrganizationId) {
+        return res.status(403).json({ message: "Organization Admin access required" });
+      }
+      const orgGroups = await db
+        .select({ id: groups.id })
+        .from(groups)
+        .where(eq(groups.organizationId, req.user.adminOrganizationId));
+      const groupIds = orgGroups.map(g => g.id);
+      if (groupIds.length === 0) return res.json([]);
+      const orgTeams = await db
+        .select({ id: teams.id, name: teams.name })
+        .from(teams)
+        .where(inArray(teams.groupId, groupIds));
+      res.json(orgTeams);
+    } catch (error) {
+      logger.error("Error fetching org admin teams:", error);
+      res.status(500).json({ message: "Failed to fetch teams" });
+    }
+  });
+
   // Check if a team is in a competitive group
   router.get("/api/teams/:teamId/competitive", authenticate, async (req, res) => {
     try {
