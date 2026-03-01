@@ -4154,6 +4154,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         );
                                       })()}
                                     </div>
+                                    {user.pendingOrganizationId && (
+                                      <div className="mt-1 text-sm text-muted-foreground" data-testid={`text-requested-org-${user.id}`}>
+                                        <span className="font-medium">Requested Organization: </span>
+                                        {(() => {
+                                          const org = (organizations || []).find(o => o.id === user.pendingOrganizationId);
+                                          return org ? org.name : "Unknown";
+                                        })()}
+                                      </div>
+                                    )}
                                     <p className="text-sm mt-2">
                                       <span className="font-medium">
                                         Status:{" "}
