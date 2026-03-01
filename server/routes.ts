@@ -63,6 +63,7 @@ import { requestLogger } from "./middleware/request-logger";
 import { errorHandler } from "./middleware/error-handler";
 import { logger } from "./logger";
 import { WebSocketServer, WebSocket } from "ws";
+import { clients } from "./ws-clients";
 import fs from "fs";
 import path from "path";
 // Object Storage routes removed - not needed
@@ -6446,9 +6447,6 @@ export const registerRoutes = async (
     server: httpServer,
     path: "/ws",
   });
-
-  // Map to store active client connections by user ID
-  const clients = new Map<number, Set<WebSocket>>();
 
   // Handle WebSocket connections
   wss.on("connection", (ws: WebSocket) => {
