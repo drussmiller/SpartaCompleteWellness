@@ -1303,14 +1303,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   );
 
   const defaultGroupIds = new Set(
-    Object.values(
-      (groups || []).reduce<Record<number, number>>((acc, g) => {
-        if (!acc[g.organizationId] || g.id < acc[g.organizationId]) {
-          acc[g.organizationId] = g.id;
-        }
-        return acc;
-      }, {})
-    )
+    (groups || []).filter(g => {
+      const org = (organizations || []).find(o => o.id === g.organizationId);
+      return org && g.name.trim().toLowerCase() === org.name.trim().toLowerCase();
+    }).map(g => g.id)
   );
 
   // Filter teams based on user role
