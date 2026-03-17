@@ -324,14 +324,30 @@ export default function HomePage() {
   // Function to load more posts
   const loadMore = useCallback(async () => {
     if (isLoadingMore || !hasMorePosts) return;
-    
-    setIsLoadingMore(true);
-    try {
-      setPage((prev) => prev + 1);
-    } finally {
-      setIsLoadingMore(false);
-    }
+    setPage((prev) => prev + 1);
   }, [isLoadingMore, hasMorePosts]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMorePosts && !isLoadingMore && !isLoading && allPosts.length > 0) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadingRef.current) {
+      observer.observe(loadingRef.current);
+    }
+
+    return () => {
+      if (loadingRef.current) {
+        observer.unobserve(loadingRef.current);
+      }
+    };
+  }, [hasMorePosts, isLoadingMore, isLoading, allPosts.length, loadMore]);
 
   // Import usePrayerRequests hook to mark prayer requests as viewed
   const { markAsViewed, unreadCount: prayerRequestCount } = usePrayerRequests();
@@ -637,30 +653,9 @@ export default function HomePage() {
                   </div>
                 ) : null}
 
-                {/* Load More button */}
-                {hasMorePosts && allPosts.length > 0 && (
-                  <div className="flex justify-center py-6">
-                    <Button
-                      onClick={loadMore}
-                      disabled={isLoadingMore || isLoading}
-                      variant="outline"
-                      className="w-full max-w-xs"
-                    >
-                      {isLoadingMore ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        "Load More Posts"
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Loading indicator for initial load */}
+                {/* Loading indicator for infinite scroll */}
                 <div ref={loadingRef} className="flex justify-center py-4">
-                  {isLoading && page === 1 && <Loader2 className="h-8 w-8 animate-spin" />}
+                  {(isLoading || isLoadingMore) && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
               </div>
               </main>
