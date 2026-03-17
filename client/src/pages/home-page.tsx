@@ -8,7 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,6 @@ export default function HomePage() {
   const { user } = useAuth();
   const { remaining, counts, refetch: refetchLimits } = usePostLimits();
   const loadingRef = useRef<HTMLDivElement>(null);
-  const pageRef = useRef(1);
   const [_, navigate] = useLocation();
   const [filterMode, setFilterMode] = useState<FilterMode>(() => {
     const saved = sessionStorage.getItem("homePageFilterMode");
@@ -59,6 +58,10 @@ export default function HomePage() {
   });
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [teamSearchOpen, setTeamSearchOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
 
   const canFilterByTeam = !!(user?.isOrganizationAdmin || user?.isGroupAdmin || user?.isAdmin);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -139,24 +142,32 @@ export default function HomePage() {
     }
   }, [user, refetchLimits]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+    setAllPosts([]);
+    setHasMorePosts(true);
+  }, [filterMode, selectedTeamId, user?.teamId]);
+
   const {
-    data: posts = [],
+    data: initialPosts = [],
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId] as const, // v2: includes thumbnailUrl field
+    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId, page] as const, // v2: includes thumbnailUrl field
     queryFn: async ({ queryKey }) => {
       // Read filter values from queryKey to avoid stale closure issues
       const currentFilterMode = queryKey[4] as FilterMode;
       const currentSelectedTeamId = queryKey[5] as number | null;
+      const currentPage = queryKey[6] as number;
 
       // Specific team filter for Org Admin / Group Admin
       if (currentFilterMode === "specific_team" && currentSelectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
         console.log("Fetching posts for specific team:", currentSelectedTeamId);
         const response = await apiRequest(
           "GET",
-          `/api/posts?page=1&limit=50&exclude=prayer&specificTeamId=${currentSelectedTeamId}`,
+          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&specificTeamId=${currentSelectedTeamId}`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -171,7 +182,7 @@ export default function HomePage() {
         console.log("Fetching posts from users not in a team");
         const response = await apiRequest(
           "GET",
-          `/api/posts?teamlessIntroOnly=true`,
+          `/api/posts?page=${currentPage}&limit=50&teamlessIntroOnly=true`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -186,7 +197,7 @@ export default function HomePage() {
         console.log("Admin fetching all posts from all users");
         const response = await apiRequest(
           "GET",
-          `/api/posts?page=1&limit=50&exclude=prayer&allUsers=true`,
+          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&allUsers=true`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -201,7 +212,7 @@ export default function HomePage() {
         console.log("Organization Admin fetching all posts from their organization");
         const response = await apiRequest(
           "GET",
-          `/api/posts?page=1&limit=50&exclude=prayer&orgAllUsers=true`,
+          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&orgAllUsers=true`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -216,7 +227,7 @@ export default function HomePage() {
         console.log("Group Admin fetching all posts from their group");
         const response = await apiRequest(
           "GET",
-          `/api/posts?page=1&limit=50&exclude=prayer&groupAllUsers=true`,
+          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&groupAllUsers=true`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -231,7 +242,7 @@ export default function HomePage() {
         console.log("Team Lead fetching all posts from their team");
         const response = await apiRequest(
           "GET",
-          `/api/posts?page=1&limit=50&exclude=prayer&teamOnly=true`,
+          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&teamOnly=true`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -246,7 +257,7 @@ export default function HomePage() {
         console.log("Admin user not in team, fetching all posts");
         const response = await apiRequest(
           "GET",
-          `/api/posts?page=1&limit=50&exclude=prayer&teamOnly=true`,
+          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&teamOnly=true`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -261,7 +272,7 @@ export default function HomePage() {
         console.log("User not in team, fetching only their introductory video");
         const response = await apiRequest(
           "GET",
-          `/api/posts?type=introductory_video&userId=${user?.id}`,
+          `/api/posts?page=${currentPage}&limit=50&type=introductory_video&userId=${user?.id}`,
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -275,7 +286,7 @@ export default function HomePage() {
       console.log("Fetching posts for team...");
       const response = await apiRequest(
         "GET",
-        `/api/posts?page=1&limit=50&exclude=prayer&teamOnly=true`,
+        `/api/posts?page=${currentPage}&limit=50&exclude=prayer&teamOnly=true`,
       );
       if (!response.ok) {
         throw new Error(`Failed to fetch posts: ${response.status}`);
@@ -294,6 +305,33 @@ export default function HomePage() {
     refetchOnWindowFocus: false, // Prevent refetch on window focus
     staleTime: 0, // TEMPORARY: Force fresh fetch to get thumbnailUrl field
   });
+
+  // Accumulate posts when initial posts arrive
+  useEffect(() => {
+    if (page === 1) {
+      setAllPosts(initialPosts);
+      // If we got fewer than 50 posts, there are no more posts to load
+      setHasMorePosts(initialPosts.length === 50);
+    } else if (initialPosts.length > 0) {
+      setAllPosts((prev) => [...prev, ...initialPosts]);
+      // If we got fewer than 50 posts, there are no more posts to load
+      setHasMorePosts(initialPosts.length === 50);
+    } else {
+      setHasMorePosts(false);
+    }
+  }, [initialPosts, page]);
+
+  // Function to load more posts
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMorePosts) return;
+    
+    setIsLoadingMore(true);
+    try {
+      setPage((prev) => prev + 1);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMorePosts]);
 
   // Import usePrayerRequests hook to mark prayer requests as viewed
   const { markAsViewed, unreadCount: prayerRequestCount } = usePrayerRequests();
@@ -574,13 +612,13 @@ export default function HomePage() {
             </div>
 
               <div className="space-y-2">
-                {posts?.length > 0 ? (
-                  posts.map((post: Post, index: number) => (
+                {allPosts?.length > 0 ? (
+                  allPosts.map((post: Post, index: number) => (
                     <div key={post.id}>
                       <ErrorBoundary>
                         <PostCard post={post} onPostUpdated={refetch} />
                       </ErrorBoundary>
-                      {index < posts.length - 1 && (
+                      {index < allPosts.length - 1 && (
                         <div className="h-[6px] bg-border my-2 -mx-4" />
                       )}
                     </div>
@@ -599,9 +637,30 @@ export default function HomePage() {
                   </div>
                 ) : null}
 
-                {/* Loading indicator */}
+                {/* Load More button */}
+                {hasMorePosts && allPosts.length > 0 && (
+                  <div className="flex justify-center py-6">
+                    <Button
+                      onClick={loadMore}
+                      disabled={isLoadingMore || isLoading}
+                      variant="outline"
+                      className="w-full max-w-xs"
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        "Load More Posts"
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Loading indicator for initial load */}
                 <div ref={loadingRef} className="flex justify-center py-4">
-                  {isLoading && <Loader2 className="h-8 w-8 animate-spin" />}
+                  {isLoading && page === 1 && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
               </div>
               </main>
