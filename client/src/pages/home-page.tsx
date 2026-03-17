@@ -9,6 +9,7 @@ import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useRef, useEffect, useState, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { Button } from "@/components/ui/button";
@@ -327,6 +328,15 @@ export default function HomePage() {
     setPage((prev) => prev + 1);
   }, [isLoadingMore, hasMorePosts]);
 
+  // Virtualizer for efficient rendering - large overscan so content loads before you see it
+  const rowVirtualizer = useVirtualizer({
+    count: allPosts.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 500,
+    overscan: 20,
+    measureElement: (el) => el.getBoundingClientRect().height,
+  });
+
   // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -627,18 +637,38 @@ export default function HomePage() {
               <div style={{ height: "75px" }}></div>
             </div>
 
-              <div className="space-y-2">
+              <div>
                 {allPosts?.length > 0 ? (
-                  allPosts.map((post: Post, index: number) => (
-                    <div key={post.id}>
-                      <ErrorBoundary>
-                        <PostCard post={post} onPostUpdated={refetch} />
-                      </ErrorBoundary>
-                      {index < allPosts.length - 1 && (
-                        <div className="h-[6px] bg-border my-2 -mx-4" />
-                      )}
-                    </div>
-                  ))
+                  <div
+                    style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}
+                  >
+                    {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                      const post = allPosts[virtualItem.index];
+                      return (
+                        <div
+                          key={virtualItem.key}
+                          data-index={virtualItem.index}
+                          ref={rowVirtualizer.measureElement}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            transform: `translateY(${virtualItem.start}px)`,
+                          }}
+                        >
+                          <div className="pb-2">
+                            <ErrorBoundary>
+                              <PostCard post={post} onPostUpdated={refetch} />
+                            </ErrorBoundary>
+                            {virtualItem.index < allPosts.length - 1 && (
+                              <div className="h-[6px] bg-border mt-2 -mx-4" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : !isLoading ? (
                   <div className="text-center text-muted-foreground py-8">
                     {!user?.teamId ? (
@@ -653,7 +683,7 @@ export default function HomePage() {
                   </div>
                 ) : null}
 
-                {/* Loading indicator for infinite scroll */}
+                {/* Infinite scroll trigger + loading indicator */}
                 <div ref={loadingRef} className="flex justify-center py-4">
                   {(isLoading || isLoadingMore) && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
