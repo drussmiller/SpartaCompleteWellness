@@ -4150,6 +4150,26 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         );
                                       })()}
                                     </div>
+                                    {(() => {
+                                      const userTeam = user.teamId ? (teams || []).find(t => t.id === user.teamId) : null;
+                                      const userGroup = userTeam ? (groups || []).find(g => g.id === userTeam.groupId) : null;
+                                      const userOrg = userGroup ? (organizations || []).find(o => o.id === userGroup.organizationId) : null;
+                                      const isNonDefaultGroup = userGroup && !defaultGroupIds.has(userGroup.id);
+                                      return (
+                                        <>
+                                          {userOrg && (
+                                            <div className="mt-1 text-sm text-muted-foreground">
+                                              <span className="font-medium">Organization: </span>{userOrg.name}
+                                            </div>
+                                          )}
+                                          {isNonDefaultGroup && userGroup && (
+                                            <div className="mt-1 text-sm text-muted-foreground">
+                                              <span className="font-medium">Division: </span>{userGroup.name}
+                                            </div>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                     {user.pendingOrganizationId && (
                                       <div className="mt-1 text-sm text-muted-foreground" data-testid={`text-requested-org-${user.id}`}>
                                         <span className="font-medium">Requested Organization: </span>
