@@ -520,13 +520,33 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         title: "Success",
         description: "User's team updated successfully",
       });
-      // Update the users cache with the updated user data
+      // Update the users cache with the updated user data, recalculating week/day
+      // the same way the GET /api/users endpoint does so the display is correct
       queryClient.setQueryData(["/api/users"], (oldUsers: any) => {
         if (!oldUsers) return oldUsers;
-        return oldUsers.map((user: any) =>
-          user.id === updatedUser.id ? updatedUser : user
-        );
+        return oldUsers.map((user: any) => {
+          if (user.id !== updatedUser.id) return user;
+          if (updatedUser.programStartDate) {
+            const programStart = new Date(updatedUser.programStartDate);
+            programStart.setHours(0, 0, 0, 0);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const daysSinceStart = Math.floor((now.getTime() - programStart.getTime()) / (1000 * 60 * 60 * 24));
+            const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
+            const jsDay = new Date().getDay();
+            const currentDay = jsDay === 0 ? 7 : jsDay;
+            return { ...updatedUser, currentWeek, currentDay };
+          }
+          return updatedUser;
+        });
       });
+
+      // If the current logged-in user changed their own team, refresh auth and
+      // invalidate the message page's user list so it reflects the new team
+      if (updatedUser.id === currentUser?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/users", updatedUser.teamId] });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -624,6 +644,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       // Only refetch current user data if we modified the logged-in user
       if (updatedUser.id === currentUser?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       }
     },
     onError: (error: Error) => {

@@ -9620,20 +9620,24 @@ export const registerRoutes = async (
         updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
-      // Check if user's program has already started (programStartDate is today or in the past)
+      // Check if user's program has already started (programStartDate is today or in the past, OR currentWeek is already set)
       const [existingUser] = await db
-        .select({ programStartDate: users.programStartDate })
+        .select({ programStartDate: users.programStartDate, currentWeek: users.currentWeek, currentDay: users.currentDay })
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
 
       const userProgramAlreadyStarted = (() => {
-        if (!existingUser?.programStartDate) return false;
-        const startDate = new Date(existingUser.programStartDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        startDate.setHours(0, 0, 0, 0);
-        return startDate <= today;
+        if (existingUser?.programStartDate) {
+          const startDate = new Date(existingUser.programStartDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          startDate.setHours(0, 0, 0, 0);
+          if (startDate <= today) return true;
+        }
+        // Also treat as already started if the user has a stored currentWeek
+        if (existingUser?.currentWeek && existingUser.currentWeek > 0) return true;
+        return false;
       })();
 
       // If team is being changed, update join date and program start date
@@ -9645,7 +9649,24 @@ export const registerRoutes = async (
           
           // If user's program has already started, preserve existing programStartDate
           if (userProgramAlreadyStarted && !updateData.programStartDate) {
-            logger.info(`User ${userId} program has already started (${existingUser?.programStartDate}), preserving programStartDate during team change`);
+            // If programStartDate is missing but currentWeek is stored, compute a retroactive start date
+            // so the week stays consistent after the team move
+            if (!existingUser?.programStartDate && existingUser?.currentWeek) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              // Find the most recent Monday (start of this week)
+              const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
+              const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek === 1 ? 0 : dayOfWeek - 1;
+              const thisMonday = new Date(today);
+              thisMonday.setDate(today.getDate() - daysToMonday);
+              // Compute programStartDate as (currentWeek - 1) full weeks before this Monday
+              const retroStartDate = new Date(thisMonday);
+              retroStartDate.setDate(thisMonday.getDate() - (existingUser.currentWeek - 1) * 7);
+              updateData.programStartDate = retroStartDate;
+              logger.info(`User ${userId} has no programStartDate but currentWeek=${existingUser.currentWeek}, computed retroactive programStartDate: ${retroStartDate.toISOString()}`);
+            } else {
+              logger.info(`User ${userId} program has already started (${existingUser?.programStartDate}), preserving programStartDate during team change`);
+            }
           }
           // Set programStartDate if not explicitly provided and program hasn't started yet
           else if (!updateData.programStartDate) {
