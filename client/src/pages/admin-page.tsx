@@ -540,6 +540,13 @@ export default function AdminPage({ onClose }: AdminPageProps) {
           return updatedUser;
         });
       });
+
+      // If the current logged-in user changed their own team, refresh auth and
+      // invalidate the message page's user list so it reflects the new team
+      if (updatedUser.id === currentUser?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/users", updatedUser.teamId] });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -637,6 +644,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
 
       // Only refetch current user data if we modified the logged-in user
       if (updatedUser.id === currentUser?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       }
     },
     onError: (error: Error) => {
