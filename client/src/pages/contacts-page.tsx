@@ -1,15 +1,15 @@
 import { useLocation } from "wouter";
-import { ChevronLeft, Plus, Loader2 } from "lucide-react";
+import { ChevronLeft, Plus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { BottomNav } from "@/components/bottom-nav";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import { getDisplayName, getDisplayInitial } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -59,6 +59,33 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
       }
     },
     enabled: !!user?.teamId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    gcTime: 0,
+  });
+
+  const { data: addedContacts = [], isLoading: addedContactsLoading } = useQuery<User[]>({
+    queryKey: ["/api/contacts"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/contacts");
+        if (!response.ok) return [];
+        return await response.json();
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!user,
+  });
+
+  const removeContactMutation = useMutation({
+    mutationFn: async (contactUserId: number) => {
+      await apiRequest("DELETE", `/api/contacts/${contactUserId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+    },
   });
 
   const { data: unreadMessagesData = [] } = useQuery<Array<{senderId: number, count: number}>>({
@@ -91,6 +118,12 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
     return lookup;
   }, [unreadMessagesData]);
 
+  const teamMemberIds = useMemo(() => new Set(teamMembers.map(m => m.id)), [teamMembers]);
+  const nonTeamAddedContacts = useMemo(
+    () => addedContacts.filter(c => !teamMemberIds.has(c.id)),
+    [addedContacts, teamMemberIds]
+  );
+
   if (!user) return null;
 
   const handleBackClick = () => {
@@ -106,6 +139,13 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
       onSelectContact(member);
     }
   };
+
+  const allExistingIds = [
+    ...teamMembers.map(m => m.id),
+    ...addedContacts.map(c => c.id),
+  ];
+
+  const isLoading = teamMembersLoading || addedContactsLoading;
 
   return (
     <div
@@ -133,7 +173,7 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
             size="icon"
             className="scale-125"
             onClick={() => setAddContactOpen(true)}
-            disabled={!user?.teamId}
+            data-testid="button-add-contact"
           >
             <Plus className="h-6 w-6" />
           </Button>
@@ -142,42 +182,91 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
 
       <div className={`flex-1 overflow-y-auto ${isAndroid ? 'pb-40' : ''}`}>
         <div className="container py-4 max-w-4xl mx-auto">
-          {teamMembersLoading ? (
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-2" />
               <p className="text-gray-500 text-sm">Loading contacts...</p>
             </div>
-          ) : teamMembers.length === 0 ? (
+          ) : teamMembers.length === 0 && nonTeamAddedContacts.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
-              {user?.teamId ? "No team members found" : "Join a team to see contacts"}
+              {user?.teamId ? "No contacts yet. Tap + to add someone." : "Join a team to see contacts"}
             </div>
           ) : (
             <div className="space-y-2 px-2">
-              {teamMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer border border-border"
-                  onClick={() => handleContactSelect(member)}
-                >
-                  <Avatar>
-                    {member.imageUrl && <AvatarImage src={member.imageUrl} alt={getDisplayName(member)} />}
-                    <AvatarFallback
-                      style={{ backgroundColor: member.avatarColor || '#6366F1' }}
-                      className="text-white"
+              {teamMembers.length > 0 && (
+                <>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide px-3 pt-2" data-testid="text-team-section">Team Members</p>
+                  {teamMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer border border-border"
+                      onClick={() => handleContactSelect(member)}
+                      data-testid={`card-contact-${member.id}`}
                     >
-                      {getDisplayInitial(member)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-foreground`}>
-                      {getDisplayName(member)}
-                    </p>
-                  </div>
-                  {unreadMessages[member.id] && (
-                    <Badge variant="destructive" className="text-xs">New</Badge>
-                  )}
-                </div>
-              ))}
+                      <Avatar>
+                        {member.imageUrl && <AvatarImage src={member.imageUrl} alt={getDisplayName(member)} />}
+                        <AvatarFallback
+                          style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                          className="text-white"
+                        >
+                          {getDisplayInitial(member)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-foreground`}>
+                          {getDisplayName(member)}
+                        </p>
+                      </div>
+                      {unreadMessages[member.id] && (
+                        <Badge variant="destructive" className="text-xs">New</Badge>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+              {nonTeamAddedContacts.length > 0 && (
+                <>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide px-3 pt-4" data-testid="text-added-section">Added Contacts</p>
+                  {nonTeamAddedContacts.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer border border-border"
+                      onClick={() => handleContactSelect(member)}
+                      data-testid={`card-contact-${member.id}`}
+                    >
+                      <Avatar>
+                        {member.imageUrl && <AvatarImage src={member.imageUrl} alt={getDisplayName(member)} />}
+                        <AvatarFallback
+                          style={{ backgroundColor: member.avatarColor || '#6366F1' }}
+                          className="text-white"
+                        >
+                          {getDisplayInitial(member)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className={`${unreadMessages[member.id] ? 'font-extrabold' : 'font-normal'} text-foreground`}>
+                          {getDisplayName(member)}
+                        </p>
+                      </div>
+                      {unreadMessages[member.id] && (
+                        <Badge variant="destructive" className="text-xs mr-2">New</Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeContactMutation.mutate(member.id);
+                        }}
+                        data-testid={`button-remove-contact-${member.id}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -186,8 +275,10 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
       <AddContactDialog
         open={addContactOpen}
         onOpenChange={setAddContactOpen}
-        existingContactIds={teamMembers.map(m => m.id)}
-        onSelectContact={handleContactSelect}
+        existingContactIds={allExistingIds}
+        onContactAdded={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+        }}
       />
 
       <BottomNav />
@@ -199,12 +290,12 @@ function AddContactDialog({
   open,
   onOpenChange,
   existingContactIds,
-  onSelectContact,
+  onContactAdded,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   existingContactIds: number[];
-  onSelectContact: (member: User) => void;
+  onContactAdded: () => void;
 }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -223,9 +314,18 @@ function AddContactDialog({
     enabled: open && !!user,
   });
 
-  const nonTeamUsers = useMemo(() => {
+  const addContactMutation = useMutation({
+    mutationFn: async (contactUserId: number) => {
+      await apiRequest("POST", "/api/contacts", { contactUserId });
+    },
+    onSuccess: () => {
+      onContactAdded();
+    },
+  });
+
+  const availableUsers = useMemo(() => {
+    if (!search.trim()) return [];
     const filtered = allUsers.filter(u => !existingContactIds.includes(u.id));
-    if (!search.trim()) return filtered;
     const term = search.toLowerCase();
     return filtered.filter(u => {
       const name = getDisplayName(u).toLowerCase();
@@ -245,23 +345,27 @@ function AddContactDialog({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground mb-2"
+          data-testid="input-search-contact"
         />
         <div className="flex-1 overflow-y-auto space-y-2">
-          {isLoading ? (
+          {!search.trim() ? (
+            <p className="text-center text-muted-foreground py-4">Type a name to search</p>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
-          ) : nonTeamUsers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">No additional contacts found</p>
+          ) : availableUsers.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">No contacts found</p>
           ) : (
-            nonTeamUsers.map((member) => (
+            availableUsers.map((member) => (
               <div
                 key={member.id}
                 className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer"
                 onClick={() => {
-                  onSelectContact(member);
+                  addContactMutation.mutate(member.id);
                   onOpenChange(false);
                 }}
+                data-testid={`card-add-contact-${member.id}`}
               >
                 <Avatar className="h-8 w-8">
                   {member.imageUrl && <AvatarImage src={member.imageUrl} alt={getDisplayName(member)} />}

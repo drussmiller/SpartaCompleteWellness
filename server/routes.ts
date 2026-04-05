@@ -5681,6 +5681,22 @@ export const registerRoutes = async (
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
+      if (req.user.isAdmin) {
+        const allOrgUsers = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            preferredName: users.preferredName,
+            imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
+            teamId: users.teamId,
+          })
+          .from(users)
+          .where(sql`${users.id} != ${req.user.id}`);
+
+        return res.json(allOrgUsers);
+      }
+
       if (!req.user.teamId) {
         return res.json([]);
       }
@@ -5721,8 +5737,7 @@ export const registerRoutes = async (
         .select({
           id: users.id,
           username: users.username,
-          firstName: users.firstName,
-          lastName: users.lastName,
+          preferredName: users.preferredName,
           imageUrl: users.imageUrl,
           avatarColor: users.avatarColor,
           teamId: users.teamId,
@@ -5742,6 +5757,83 @@ export const registerRoutes = async (
         message: "Failed to get organization users",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  router.get("/api/contacts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const userContacts = await storage.getContactsByUserId(req.user.id);
+      const contactUserIds = userContacts.map(c => c.contactUserId);
+      if (contactUserIds.length === 0) return res.json([]);
+      const contactUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          preferredName: users.preferredName,
+          imageUrl: users.imageUrl,
+          avatarColor: users.avatarColor,
+          teamId: users.teamId,
+        })
+        .from(users)
+        .where(inArray(users.id, contactUserIds));
+      res.json(contactUsers);
+    } catch (error) {
+      logger.error("Error getting contacts:", error);
+      res.status(500).json({ message: "Failed to get contacts" });
+    }
+  });
+
+  router.post("/api/contacts", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const { contactUserId } = req.body;
+      if (!contactUserId || typeof contactUserId !== "number") {
+        return res.status(400).json({ message: "contactUserId must be a valid number" });
+      }
+      if (contactUserId === req.user.id) return res.status(400).json({ message: "Cannot add yourself" });
+
+      const [targetUser] = await db.select({ id: users.id, teamId: users.teamId }).from(users).where(eq(users.id, contactUserId)).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "User not found" });
+
+      if (!req.user.isAdmin) {
+        if (!req.user.teamId) return res.status(403).json({ message: "You must be on a team to add contacts" });
+        const userTeam = await db.select({ groupId: teams.groupId }).from(teams).where(eq(teams.id, req.user.teamId)).limit(1);
+        if (userTeam.length === 0) return res.status(403).json({ message: "Team not found" });
+        const userGroup = await db.select({ organizationId: groups.organizationId }).from(groups).where(eq(groups.id, userTeam[0].groupId)).limit(1);
+        if (userGroup.length === 0) return res.status(403).json({ message: "Group not found" });
+        const orgId = userGroup[0].organizationId;
+
+        let targetInSameOrg = false;
+        if (targetUser.teamId) {
+          const targetTeam = await db.select({ groupId: teams.groupId }).from(teams).where(eq(teams.id, targetUser.teamId)).limit(1);
+          if (targetTeam.length > 0) {
+            const targetGroup = await db.select({ organizationId: groups.organizationId }).from(groups).where(eq(groups.id, targetTeam[0].groupId)).limit(1);
+            if (targetGroup.length > 0 && targetGroup[0].organizationId === orgId) {
+              targetInSameOrg = true;
+            }
+          }
+        }
+        if (!targetInSameOrg) return res.status(403).json({ message: "Contact must be in your organization" });
+      }
+
+      const contact = await storage.addContact(req.user.id, contactUserId);
+      res.json(contact);
+    } catch (error) {
+      logger.error("Error adding contact:", error);
+      res.status(500).json({ message: "Failed to add contact" });
+    }
+  });
+
+  router.delete("/api/contacts/:contactUserId", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const contactUserId = parseInt(req.params.contactUserId);
+      await storage.removeContact(req.user.id, contactUserId);
+      res.json({ success: true });
+    } catch (error) {
+      logger.error("Error removing contact:", error);
+      res.status(500).json({ message: "Failed to remove contact" });
     }
   });
 

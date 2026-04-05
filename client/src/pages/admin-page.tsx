@@ -541,8 +541,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
         });
       });
 
-      // If the current logged-in user changed their own team, refresh auth and
-      // invalidate the message page's user list so it reflects the new team
+      queryClient.invalidateQueries({ queryKey: ["/api/users", currentUser?.teamId, "contacts"] });
+
       if (updatedUser.id === currentUser?.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/user"] });
         queryClient.invalidateQueries({ queryKey: ["/api/users", updatedUser.teamId] });

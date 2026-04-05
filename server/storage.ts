@@ -13,6 +13,7 @@ import {
   workoutVideos,
   workoutTypes,
   messages,
+  contacts,
   type Post,
   type Team,
   type Group,
@@ -24,6 +25,7 @@ import {
   type Measurement,
   type WorkoutVideo,
   type WorkoutType,
+  type Contact,
   type InsertTeam,
   type InsertGroup,
   type InsertOrganization,
@@ -994,6 +996,40 @@ export const storage = {
       await db.delete(workoutTypes).where(eq(workoutTypes.id, id));
     } catch (error) {
       logger.error(`Failed to delete workout type ${id}: ${error}`);
+      throw error;
+    }
+  },
+
+  async getContactsByUserId(userId: number): Promise<Contact[]> {
+    try {
+      return await db.select().from(contacts).where(eq(contacts.userId, userId));
+    } catch (error) {
+      logger.error(`Failed to get contacts for user ${userId}: ${error}`);
+      throw error;
+    }
+  },
+
+  async addContact(userId: number, contactUserId: number): Promise<Contact> {
+    try {
+      const existing = await db.select().from(contacts).where(
+        and(eq(contacts.userId, userId), eq(contacts.contactUserId, contactUserId))
+      );
+      if (existing.length > 0) return existing[0];
+      const [contact] = await db.insert(contacts).values({ userId, contactUserId }).returning();
+      return contact;
+    } catch (error) {
+      logger.error(`Failed to add contact: ${error}`);
+      throw error;
+    }
+  },
+
+  async removeContact(userId: number, contactUserId: number): Promise<void> {
+    try {
+      await db.delete(contacts).where(
+        and(eq(contacts.userId, userId), eq(contacts.contactUserId, contactUserId))
+      );
+    } catch (error) {
+      logger.error(`Failed to remove contact: ${error}`);
       throw error;
     }
   }
