@@ -8,20 +8,33 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMemo } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect, useCallback } from "react";
+import { CommentDrawer } from "@/components/comments/comment-drawer";
 
 export default function NotificationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [, navigate] = useLocation();
-  
-  const isAndroid = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    const userAgent = navigator.userAgent.toLowerCase();
-    return userAgent.indexOf('android') > -1;
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+
+  const closeDrawer = useCallback(() => {
+    setSelectedPostId(null);
   }, []);
+
+  useEffect(() => {
+    if (selectedPostId === null) return;
+
+    const handlePopState = () => {
+      closeDrawer();
+    };
+
+    window.history.pushState({ drawerOpen: true }, "");
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [selectedPostId, closeDrawer]);
 
   const { data: notifications, isLoading, error } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -132,7 +145,7 @@ export default function NotificationsPage() {
       if (!notification.read) {
         markAsReadMutation.mutate(notification.id);
       }
-      navigate(`/comments/${notification.postId}?from=notifications`);
+      setSelectedPostId(notification.postId);
     }
   };
 
@@ -268,6 +281,20 @@ export default function NotificationsPage() {
           </div>
         )}
       </main>
+
+      {selectedPostId && (
+        <CommentDrawer
+          postId={selectedPostId}
+          isOpen={true}
+          onClose={() => {
+            if (window.history.state?.drawerOpen) {
+              window.history.back();
+            } else {
+              setSelectedPostId(null);
+            }
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

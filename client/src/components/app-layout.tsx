@@ -62,7 +62,7 @@ export function AppLayout({
           </div>
           
           {/* Portal root for overlays that need to respect layout constraints */}
-          <div id="app-portal-root" className={`pointer-events-none fixed top-16 bottom-0 right-0 flex justify-center ${isMobile ? 'left-0' : 'left-20'}`}>
+          <div id="app-portal-root" className="pointer-events-none fixed inset-x-0 top-16 bottom-0 flex justify-center">
             <div className="w-full max-w-[1000px]"></div>
           </div>
           
