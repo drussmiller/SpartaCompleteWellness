@@ -171,7 +171,9 @@ export const storage = {
           title: data.title,
           message: data.message,
           read: data.read ?? false,
-          createdAt: new Date()
+          createdAt: new Date(),
+          type: data.type ?? "general",
+          postId: data.postId ?? null,
         })
         .returning();
       logger.debug("Notification created successfully:", notification.id);

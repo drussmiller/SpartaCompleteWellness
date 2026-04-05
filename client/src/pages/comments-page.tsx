@@ -26,6 +26,10 @@ export default function CommentsPage() {
   const formRef = useRef<HTMLDivElement>(null);
   const [isEditingOrReplying, setIsEditingOrReplying] = useState(false);
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const fromPage = searchParams.get('from');
+  const backPath = fromPage === 'notifications' ? '/notifications' : '/';
+
   // Add swipe-to-close functionality - detect swipe on scrollable area only, exclude form
   useEffect(() => {
     const scrollableElement = scrollableRef.current;
@@ -64,10 +68,10 @@ export default function CommentsPage() {
       
       // Right swipe detection: swipe right > 80px, limited vertical movement
       if (deltaX > 80 && deltaY < 120) {
-        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to home');
+        console.log('✅ COMMENTS PAGE - RIGHT SWIPE DETECTED! Going back to', backPath);
         e.preventDefault();
         e.stopPropagation();
-        navigate("/");
+        navigate(backPath);
       }
     };
 
@@ -82,7 +86,7 @@ export default function CommentsPage() {
       scrollableElement.removeEventListener('touchstart', handleTouchStart);
       scrollableElement.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [navigate]);
+  }, [navigate, backPath]);
 
   // Fetch original post
   const { data: originalPost, isLoading: isPostLoading, error: postError } = useQuery({
