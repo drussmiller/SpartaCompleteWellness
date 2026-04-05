@@ -323,8 +323,8 @@ function AddContactDialog({
   });
 
   const availableUsers = useMemo(() => {
+    if (!search.trim()) return [];
     const filtered = allUsers.filter(u => !existingContactIds.includes(u.id));
-    if (!search.trim()) return filtered;
     const term = search.toLowerCase();
     return filtered.filter(u => {
       const name = getDisplayName(u).toLowerCase();
@@ -347,12 +347,14 @@ function AddContactDialog({
           data-testid="input-search-contact"
         />
         <div className="flex-1 overflow-y-auto space-y-2">
-          {isLoading ? (
+          {!search.trim() ? (
+            <p className="text-center text-muted-foreground py-4">Type a name to search</p>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
           ) : availableUsers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">No additional contacts found</p>
+            <p className="text-center text-muted-foreground py-4">No contacts found</p>
           ) : (
             availableUsers.map((member) => (
               <div
