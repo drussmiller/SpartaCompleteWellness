@@ -59,6 +59,8 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
       }
     },
     enabled: !!user?.teamId,
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: addedContacts = [], isLoading: addedContactsLoading } = useQuery<User[]>({
