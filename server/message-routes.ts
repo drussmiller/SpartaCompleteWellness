@@ -409,6 +409,55 @@ messageRouter.post("/api/messages/read", authenticate, async (req, res) => {
   }
 });
 
+// Get conversation partners (users you've messaged or received messages from)
+messageRouter.get("/api/messages/conversations", authenticate, async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const sentTo = await db
+      .selectDistinct({ userId: messages.recipientId })
+      .from(messages)
+      .where(eq(messages.senderId, req.user.id));
+
+    const receivedFrom = await db
+      .selectDistinct({ userId: messages.senderId })
+      .from(messages)
+      .where(eq(messages.recipientId, req.user.id));
+
+    const uniqueUserIds = new Set<number>();
+    sentTo.forEach(r => uniqueUserIds.add(r.userId));
+    receivedFrom.forEach(r => uniqueUserIds.add(r.userId));
+    uniqueUserIds.delete(req.user.id);
+
+    if (uniqueUserIds.size === 0) {
+      return res.json([]);
+    }
+
+    const userIdArray = Array.from(uniqueUserIds);
+    const partners: any[] = [];
+    for (const uid of userIdArray) {
+      const [u] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          preferredName: users.preferredName,
+          imageUrl: users.imageUrl,
+          avatarColor: users.avatarColor,
+          teamId: users.teamId,
+        })
+        .from(users)
+        .where(eq(users.id, uid));
+      if (u) partners.push(u);
+    }
+
+    return res.json(partners);
+  } catch (error) {
+    console.error("Error getting conversation partners:", error);
+    logger.error("Error getting conversation partners:", error);
+    return res.status(500).json({ message: "Failed to get conversation partners" });
+  }
+});
+
 // Get messages between users - GENERIC ROUTE LAST
 messageRouter.get("/api/messages/:userId", authenticate, async (req, res) => {
   try {

@@ -59,6 +59,7 @@ The application uses a monorepo structure, separating client, server, and shared
 - **Post Creation**: Client submits post data, media processed/stored, DB transaction creates record, thumbnails generated, WebSocket notification sent.
 
 ## Recent Changes
+- **Apr 5, 2026**: Messaging & Contacts refactor. Messages page now shows conversation history (users you've messaged or received messages from) instead of team members list. Added new Contacts page (`contacts-page.tsx`) accessible via Menu, styled like the Welcome page. Contacts page lists team members; a "+" button opens an Add Contact dialog limited to users in the same organization (`/api/users/same-organization`). Selecting a contact opens the message view. New API endpoints: `GET /api/messages/conversations` (conversation partners), `GET /api/users/same-organization` (org-scoped user list).
 - **Feb 19, 2026**: Added "..." dropdown menu on post cards (replacing separate edit/delete buttons). Menu shows Edit and Delete for post authors, plus "Send Team Invite" option for Admins/Team Leads on introductory video posts. The invite dialog allows selecting a team (filtered by admin's organization) and role (Team Lead or Team Member), auto-generates an invite code if needed, and emails it to the post author.
 
 ## External Dependencies

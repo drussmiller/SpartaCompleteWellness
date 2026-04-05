@@ -5501,6 +5501,74 @@ export const registerRoutes = async (
     }
   });
 
+  router.get("/api/users/same-organization", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      if (!req.user.teamId) {
+        return res.json([]);
+      }
+
+      const userTeam = await db
+        .select({ groupId: teams.groupId })
+        .from(teams)
+        .where(eq(teams.id, req.user.teamId))
+        .limit(1);
+
+      if (userTeam.length === 0) return res.json([]);
+
+      const userGroup = await db
+        .select({ organizationId: groups.organizationId })
+        .from(groups)
+        .where(eq(groups.id, userTeam[0].groupId))
+        .limit(1);
+
+      if (userGroup.length === 0) return res.json([]);
+
+      const orgId = userGroup[0].organizationId;
+
+      const orgGroups = await db
+        .select({ id: groups.id })
+        .from(groups)
+        .where(eq(groups.organizationId, orgId));
+
+      if (orgGroups.length === 0) return res.json([]);
+
+      const orgTeams = await db
+        .select({ id: teams.id })
+        .from(teams)
+        .where(inArray(teams.groupId, orgGroups.map(g => g.id)));
+
+      if (orgTeams.length === 0) return res.json([]);
+
+      const orgUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          imageUrl: users.imageUrl,
+          avatarColor: users.avatarColor,
+          teamId: users.teamId,
+        })
+        .from(users)
+        .where(
+          and(
+            inArray(users.teamId, orgTeams.map(t => t.id)),
+            sql`${users.id} != ${req.user.id}`
+          )
+        );
+
+      res.json(orgUsers);
+    } catch (error) {
+      logger.error("Error getting same-organization users:", error);
+      res.status(500).json({
+        message: "Failed to get organization users",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Add messages endpoints before return statement
   router.get(
     "/api/messages/unread/by-sender",

@@ -3,7 +3,7 @@ import { getDisplayName, getDisplayInitial } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Bell, Settings, Trophy, Heart, QrCode, Users, MessageSquare, Shield } from "lucide-react";
+import { Menu, Bell, Settings, Trophy, Heart, QrCode, Users, MessageSquare, Shield, Contact } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import ProfilePage from "./profile-page";
 import AdminPage from "./admin-page";
@@ -14,11 +14,14 @@ import { PrivacyPolicyPage } from "./privacy-policy-page";
 import InviteCodePage from "./invite-code-page";
 import { NotificationSettings } from "@/components/notification-settings";
 import { WelcomePage } from "./welcome-page";
+import { ContactsPage } from "./contacts-page";
+import { MessageSlideCard } from "@/components/messaging/message-slide-card";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import { useOnboarding } from "@/hooks/use-onboarding";
+import { User } from "@shared/schema";
 
 export default function MenuPage() {
   const { user } = useAuth();
@@ -34,6 +37,8 @@ export default function MenuPage() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [selectedContactMember, setSelectedContactMember] = useState<User | null>(null);
   const [location, setLocation] = useLocation();
   
   // Check if user has posted an introductory video
@@ -103,6 +108,27 @@ export default function MenuPage() {
             </SheetTrigger>
             <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
               {welcomeOpen && <WelcomePage onClose={() => setWelcomeOpen(false)} />}
+            </SheetContent>
+          </Sheet>
+
+          {/* Contacts */}
+          <Sheet open={contactsOpen} onOpenChange={setContactsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full justify-start active:bg-background focus:bg-background" size="lg">
+                <Contact className="mr-2 h-5 w-5" />
+                Contacts
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="p-0 md:left-[calc(50vw+40px)] md:-translate-x-1/2 md:right-auto">
+              {contactsOpen && (
+                <ContactsPage
+                  onClose={() => setContactsOpen(false)}
+                  onSelectContact={(member) => {
+                    setContactsOpen(false);
+                    setSelectedContactMember(member);
+                  }}
+                />
+              )}
             </SheetContent>
           </Sheet>
 
@@ -227,6 +253,13 @@ export default function MenuPage() {
           )}
         </div>
       </div>
+
+      {selectedContactMember && (
+        <MessageSlideCard
+          initialMember={selectedContactMember}
+          onClearInitialMember={() => setSelectedContactMember(null)}
+        />
+      )}
     </AppLayout>
   );
 }
