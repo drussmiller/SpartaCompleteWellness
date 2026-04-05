@@ -59,7 +59,7 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
       }
     },
     enabled: !!user?.teamId,
-    staleTime: 30000,
+    staleTime: 0,
     refetchOnWindowFocus: true,
   });
 
