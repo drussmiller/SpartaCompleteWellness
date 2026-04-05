@@ -328,8 +328,10 @@ function AddContactDialog({
     const filtered = allUsers.filter(u => !existingContactIds.includes(u.id));
     const term = search.toLowerCase();
     return filtered.filter(u => {
-      const name = getDisplayName(u).toLowerCase();
-      return name.includes(term);
+      const displayName = getDisplayName(u).toLowerCase();
+      const username = (u.username || "").toLowerCase();
+      const preferred = ((u as any).preferredName || "").toLowerCase();
+      return displayName.includes(term) || username.includes(term) || preferred.includes(term);
     });
   }, [allUsers, existingContactIds, search]);
 
@@ -341,7 +343,7 @@ function AddContactDialog({
         </DialogHeader>
         <input
           type="text"
-          placeholder="Search by name..."
+          placeholder="Search by name or username..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground mb-2"
