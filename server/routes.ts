@@ -1042,40 +1042,61 @@ export const registerRoutes = async (
           },
         };
 
-        // Send notification to the post author (if not self-commenting)
+        // Send notification to the post author and all previous commenters
         try {
-          const [parentPost] = await db
-            .select()
-            .from(posts)
-            .where(eq(posts.id, parentIdNum))
-            .limit(1);
+          let rootPostId = parentIdNum;
+          let rootPost = await db.select().from(posts).where(eq(posts.id, rootPostId)).limit(1).then(r => r[0]);
 
-          if (parentPost && parentPost.userId !== req.user.id) {
+          while (rootPost && rootPost.parentId) {
+            rootPostId = rootPost.parentId;
+            rootPost = await db.select().from(posts).where(eq(posts.id, rootPostId)).limit(1).then(r => r[0]);
+          }
+
+          if (rootPost) {
             const commenterName = req.user.preferredName || req.user.username;
-            const notification = await storage.createNotification({
-              userId: parentPost.userId,
-              title: "New Comment",
-              message: `${commenterName} commented on your post`,
-              read: false,
-              createdAt: new Date(),
-              type: "comment",
-              sound: null,
-              postId: parentPost.id,
-            });
 
-            const authorSockets = clients.get(parentPost.userId);
-            if (authorSockets && authorSockets.size > 0) {
-              authorSockets.forEach((ws) => {
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(
-                    JSON.stringify({
-                      type: "new_notification",
-                      notification,
-                    })
-                  );
-                }
-              });
+            const previousComments = await db
+              .selectDistinct({ userId: posts.userId })
+              .from(posts)
+              .where(eq(posts.parentId, rootPostId));
+
+            const usersToNotify = new Set<number>();
+            usersToNotify.add(rootPost.userId);
+            for (const comment of previousComments) {
+              usersToNotify.add(comment.userId);
             }
+            usersToNotify.delete(req.user.id);
+
+            const notificationPromises = Array.from(usersToNotify).map(async (notifyUserId) => {
+              const isPostAuthor = notifyUserId === rootPost!.userId;
+              const notification = await storage.createNotification({
+                userId: notifyUserId,
+                title: "New Comment",
+                message: isPostAuthor
+                  ? `${commenterName} commented on your post`
+                  : `${commenterName} also commented on a post you commented on`,
+                read: false,
+                createdAt: new Date(),
+                type: "comment",
+                sound: null,
+                postId: rootPost!.id,
+              });
+
+              const userSockets = clients.get(notifyUserId);
+              if (userSockets && userSockets.size > 0) {
+                userSockets.forEach((ws) => {
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(
+                      JSON.stringify({
+                        type: "new_notification",
+                        notification,
+                      })
+                    );
+                  }
+                });
+              }
+            });
+            await Promise.all(notificationPromises);
           }
         } catch (notifError) {
           logger.error("Error sending comment notification:", notifError);
@@ -2678,40 +2699,62 @@ export const registerRoutes = async (
         
         console.log(`Comment created with ID ${post.id}, is_video: ${post.is_video}`);
 
-        // Send notification to the post author (if not self-commenting)
+        // Send notification to the post author and all previous commenters
         try {
-          const [parentPost] = await db
-            .select()
-            .from(posts)
-            .where(eq(posts.id, parseInt(postData.parentId)))
-            .limit(1);
+          const parentIdParsed = parseInt(postData.parentId);
+          let rootPostId = parentIdParsed;
+          let rootPost = await db.select().from(posts).where(eq(posts.id, rootPostId)).limit(1).then(r => r[0]);
 
-          if (parentPost && parentPost.userId !== req.user!.id) {
+          while (rootPost && rootPost.parentId) {
+            rootPostId = rootPost.parentId;
+            rootPost = await db.select().from(posts).where(eq(posts.id, rootPostId)).limit(1).then(r => r[0]);
+          }
+
+          if (rootPost) {
             const commenterName = req.user!.preferredName || req.user!.username;
-            const notification = await storage.createNotification({
-              userId: parentPost.userId,
-              title: "New Comment",
-              message: `${commenterName} commented on your post`,
-              read: false,
-              createdAt: new Date(),
-              type: "comment",
-              sound: null,
-              postId: parentPost.id,
-            });
 
-            const authorSockets = clients.get(parentPost.userId);
-            if (authorSockets && authorSockets.size > 0) {
-              authorSockets.forEach((ws) => {
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(
-                    JSON.stringify({
-                      type: "new_notification",
-                      notification,
-                    })
-                  );
-                }
-              });
+            const previousComments = await db
+              .selectDistinct({ userId: posts.userId })
+              .from(posts)
+              .where(eq(posts.parentId, rootPostId));
+
+            const usersToNotify = new Set<number>();
+            usersToNotify.add(rootPost.userId);
+            for (const comment of previousComments) {
+              usersToNotify.add(comment.userId);
             }
+            usersToNotify.delete(req.user!.id);
+
+            const notificationPromises = Array.from(usersToNotify).map(async (notifyUserId) => {
+              const isPostAuthor = notifyUserId === rootPost!.userId;
+              const notification = await storage.createNotification({
+                userId: notifyUserId,
+                title: "New Comment",
+                message: isPostAuthor
+                  ? `${commenterName} commented on your post`
+                  : `${commenterName} also commented on a post you commented on`,
+                read: false,
+                createdAt: new Date(),
+                type: "comment",
+                sound: null,
+                postId: rootPost!.id,
+              });
+
+              const userSockets = clients.get(notifyUserId);
+              if (userSockets && userSockets.size > 0) {
+                userSockets.forEach((ws) => {
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(
+                      JSON.stringify({
+                        type: "new_notification",
+                        notification,
+                      })
+                    );
+                  }
+                });
+              }
+            });
+            await Promise.all(notificationPromises);
           }
         } catch (notifError) {
           logger.error("Error sending comment notification:", notifError);
