@@ -2677,6 +2677,46 @@ export const registerRoutes = async (
         });
         
         console.log(`Comment created with ID ${post.id}, is_video: ${post.is_video}`);
+
+        // Send notification to the post author (if not self-commenting)
+        try {
+          const [parentPost] = await db
+            .select()
+            .from(posts)
+            .where(eq(posts.id, parseInt(postData.parentId)))
+            .limit(1);
+
+          if (parentPost && parentPost.userId !== req.user!.id) {
+            const commenterName = req.user!.preferredName || req.user!.username;
+            const notification = await storage.createNotification({
+              userId: parentPost.userId,
+              title: "New Comment",
+              message: `${commenterName} commented on your post`,
+              read: false,
+              createdAt: new Date(),
+              type: "comment",
+              sound: null,
+              postId: parentPost.id,
+            });
+
+            const authorSockets = clients.get(parentPost.userId);
+            if (authorSockets && authorSockets.size > 0) {
+              authorSockets.forEach((ws) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(
+                    JSON.stringify({
+                      type: "new_notification",
+                      notification,
+                    })
+                  );
+                }
+              });
+            }
+          }
+        } catch (notifError) {
+          logger.error("Error sending comment notification:", notifError);
+        }
+
         return res.status(201).json(post);
       }
 
