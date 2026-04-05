@@ -6003,10 +6003,16 @@ export const registerRoutes = async (
       const { preferredName } = req.body;
       console.log("[UPDATING] preferredName for user", req.user.id, "to", preferredName);
 
-      // Update user's preferred name
+      if (preferredName && preferredName.trim()) {
+        const existingUser = await storage.getUserByPreferredName(preferredName.trim());
+        if (existingUser && existingUser.id !== req.user.id) {
+          return res.status(400).json({ message: "That preferred name is already taken. Please choose a different one." });
+        }
+      }
+
       const [updatedUser] = await db
         .update(users)
-        .set({ preferredName })
+        .set({ preferredName: preferredName ? preferredName.trim() : preferredName })
         .where(eq(users.id, req.user.id))
         .returning();
 
