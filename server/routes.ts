@@ -2680,14 +2680,17 @@ export const registerRoutes = async (
 
         // Send notification to the post author (if not self-commenting)
         try {
+          console.log(`[COMMENT NOTIF] Looking up parent post: ${postData.parentId}, parsed: ${parseInt(postData.parentId)}`);
           const [parentPost] = await db
             .select()
             .from(posts)
             .where(eq(posts.id, parseInt(postData.parentId)))
             .limit(1);
 
+          console.log(`[COMMENT NOTIF] Parent post found: ${!!parentPost}, parentUserId: ${parentPost?.userId}, commenterId: ${req.user!.id}`);
           if (parentPost && parentPost.userId !== req.user!.id) {
             const commenterName = req.user!.preferredName || req.user!.username;
+            console.log(`[COMMENT NOTIF] Creating notification for user ${parentPost.userId} from ${commenterName}`);
             const notification = await storage.createNotification({
               userId: parentPost.userId,
               title: "New Comment",
