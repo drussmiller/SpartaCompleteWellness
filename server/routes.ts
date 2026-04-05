@@ -1042,6 +1042,45 @@ export const registerRoutes = async (
           },
         };
 
+        // Send notification to the post author (if not self-commenting)
+        try {
+          const [parentPost] = await db
+            .select()
+            .from(posts)
+            .where(eq(posts.id, parentIdNum))
+            .limit(1);
+
+          if (parentPost && parentPost.userId !== req.user.id) {
+            const commenterName = req.user.preferredName || req.user.username;
+            const notification = await storage.createNotification({
+              userId: parentPost.userId,
+              title: "New Comment",
+              message: `${commenterName} commented on your post`,
+              read: false,
+              createdAt: new Date(),
+              type: "comment",
+              sound: null,
+              postId: parentPost.id,
+            });
+
+            const authorSockets = clients.get(parentPost.userId);
+            if (authorSockets && authorSockets.size > 0) {
+              authorSockets.forEach((ws) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(
+                    JSON.stringify({
+                      type: "new_notification",
+                      notification,
+                    })
+                  );
+                }
+              });
+            }
+          }
+        } catch (notifError) {
+          logger.error("Error sending comment notification:", notifError);
+        }
+
         // Make sure only JSON data is sent for the response
         res.set({
           "Cache-Control": "no-store",
@@ -3076,6 +3115,60 @@ export const registerRoutes = async (
           postId,
           type,
         });
+
+        // Send notification to the post author (if not self-reacting)
+        try {
+          const [post] = await db
+            .select()
+            .from(posts)
+            .where(eq(posts.id, postId))
+            .limit(1);
+
+          if (post && post.userId !== req.user!.id) {
+            const existingNotifs = await db
+              .select()
+              .from(notifications)
+              .where(
+                and(
+                  eq(notifications.userId, post.userId),
+                  eq(notifications.type, "reaction"),
+                  eq(notifications.postId, post.id),
+                  gte(notifications.createdAt, new Date(Date.now() - 60 * 60 * 1000))
+                )
+              )
+              .limit(1);
+
+            if (existingNotifs.length === 0) {
+              const reactorName = req.user!.preferredName || req.user!.username;
+              const notification = await storage.createNotification({
+                userId: post.userId,
+                title: "New Reaction",
+                message: `${reactorName} reacted to your post`,
+                read: false,
+                createdAt: new Date(),
+                type: "reaction",
+                sound: null,
+                postId: post.id,
+              });
+
+              const authorSockets = clients.get(post.userId);
+              if (authorSockets && authorSockets.size > 0) {
+                authorSockets.forEach((ws) => {
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(
+                      JSON.stringify({
+                        type: "new_notification",
+                        notification,
+                      })
+                    );
+                  }
+                });
+              }
+            }
+          }
+        } catch (notifError) {
+          logger.error("Error sending reaction notification:", notifError);
+        }
 
         return res.status(201).json(reaction);
       } catch (error) {

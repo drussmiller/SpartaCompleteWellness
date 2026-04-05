@@ -226,6 +226,7 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
   type: text("type").default("general"),
   sound: text("sound"),
+  postId: integer("post_id"),
 });
 
 export const videos = pgTable("videos", {
