@@ -440,8 +440,6 @@ messageRouter.get("/api/messages/conversations", authenticate, async (req, res) 
         .select({
           id: users.id,
           username: users.username,
-          firstName: users.firstName,
-          lastName: users.lastName,
           preferredName: users.preferredName,
           imageUrl: users.imageUrl,
           avatarColor: users.avatarColor,
