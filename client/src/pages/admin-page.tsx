@@ -1324,14 +1324,10 @@ export default function AdminPage({ onClose }: AdminPageProps) {
   );
 
   const defaultGroupIds = new Set(
-    Object.values(
-      (groups || []).reduce<Record<number, number>>((acc, g) => {
-        if (!acc[g.organizationId] || g.id < acc[g.organizationId]) {
-          acc[g.organizationId] = g.id;
-        }
-        return acc;
-      }, {})
-    )
+    (groups || []).filter(g => {
+      const org = (organizations || []).find(o => o.id === g.organizationId);
+      return org && g.name.trim().toLowerCase() === org.name.trim().toLowerCase();
+    }).map(g => g.id)
   );
 
   // Filter teams based on user role
@@ -2987,7 +2983,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All Divisions</SelectItem>
-                                {groupsForTeamFilter?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
+                                {[...(groupsForTeamFilter?.filter(group => !defaultGroupIds.has(group.id) && (showInactiveGroups ? true : group.status === 1)) || [])].sort((a, b) => a.name.localeCompare(b.name)).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
                                   </SelectItem>
@@ -3019,7 +3015,7 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All Divisions</SelectItem>
-                                {filteredGroups?.filter(group => showInactiveGroups ? true : group.status === 1).map((group) => (
+                                {[...(filteredGroups?.filter(group => !defaultGroupIds.has(group.id) && (showInactiveGroups ? true : group.status === 1)) || [])].sort((a, b) => a.name.localeCompare(b.name)).map((group) => (
                                   <SelectItem key={group.id} value={group.id.toString()}>
                                     {group.name}
                                   </SelectItem>
@@ -4195,6 +4191,15 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         </>
                                       );
                                     })()}
+                                    {user.pendingOrganizationId && (
+                                      <div className="mt-1 text-sm text-muted-foreground" data-testid={`text-requested-org-${user.id}`}>
+                                        <span className="font-medium">Requested Organization: </span>
+                                        {(() => {
+                                          const org = (organizations || []).find(o => o.id === user.pendingOrganizationId);
+                                          return org ? org.name : "Unknown";
+                                        })()}
+                                      </div>
+                                    )}
                                     <p className="text-sm mt-2">
                                       <span className="font-medium">
                                         Status:{" "}
