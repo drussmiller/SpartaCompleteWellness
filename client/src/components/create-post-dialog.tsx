@@ -82,22 +82,24 @@ export function CreatePostDialog({
     setUploadStatusMessage('');
   };
 
-  // Fetch organizations for admin users
+  const isPrayerDefault = defaultType === "prayer";
+
+  // Fetch organizations for admin users or prayer posts
   const { data: organizations = [] } = useQuery({
     queryKey: ["/api/organizations"],
-    enabled: !!user?.isAdmin && dialogOpen,
+    enabled: (!!user?.isAdmin || isPrayerDefault) && dialogOpen,
   });
 
-  // Fetch groups for admin and group admin users
+  // Fetch groups for admin, group admin users, or prayer posts
   const { data: groups = [] } = useQuery({
     queryKey: ["/api/groups"],
-    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && dialogOpen,
+    enabled: (!!(user?.isAdmin || user?.isGroupAdmin) || isPrayerDefault) && dialogOpen,
   });
 
-  // Fetch teams for admin and group admin users
+  // Fetch teams for admin, group admin users, or prayer posts
   const { data: teams = [] } = useQuery({
     queryKey: ["/api/teams"],
-    enabled: !!(user?.isAdmin || user?.isGroupAdmin) && dialogOpen,
+    enabled: (!!(user?.isAdmin || user?.isGroupAdmin) || isPrayerDefault) && dialogOpen,
   });
 
   // Check if user's team is in a competitive group
@@ -182,8 +184,8 @@ export function CreatePostDialog({
   // For users who have posted, default to food
   const shouldDefaultToIntroVideo = !hasAnyPosts;
   const getDefaultType = () => {
-    if (shouldDefaultToIntroVideo) return "introductory_video";
     if (defaultType) return defaultType;
+    if (shouldDefaultToIntroVideo) return "introductory_video";
     if (!user?.programStartDate) return "food";
     
     const programStart = parseProgramStartDate(user.programStartDate);
@@ -1247,8 +1249,11 @@ export function CreatePostDialog({
               </div>
             ) : null}
 
-            {/* Post Scope Selector - Only show for Admin and Group Admin when posting Miscellaneous (not in edit mode) */}
-            {!isEditMode && (user?.isAdmin || user?.isGroupAdmin) && form.watch("type") === "miscellaneous" && (
+            {/* Post Scope Selector - Show for Admin/Group Admin on Miscellaneous, and for ALL users on Prayer */}
+            {!isEditMode && (
+              ((user?.isAdmin || user?.isGroupAdmin) && form.watch("type") === "miscellaneous") ||
+              form.watch("type") === "prayer"
+            ) && (
               <>
                 <FormField
                   control={form.control}
@@ -1269,10 +1274,10 @@ export function CreatePostDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {user?.isAdmin && <SelectItem value="everyone">Everyone</SelectItem>}
-                          {user?.isAdmin && <SelectItem value="organization">Organization</SelectItem>}
-                          <SelectItem value="group">Division</SelectItem>
-                          <SelectItem value="team">Team</SelectItem>
+                          {(user?.isAdmin || form.watch("type") === "prayer") && <SelectItem value="everyone">Everyone</SelectItem>}
+                          {(user?.isAdmin || form.watch("type") === "prayer") && <SelectItem value="organization">Organization</SelectItem>}
+                          {(user?.isAdmin || user?.isGroupAdmin || form.watch("type") === "prayer") && <SelectItem value="group">Division</SelectItem>}
+                          {(user?.isAdmin || user?.isGroupAdmin || form.watch("type") === "prayer") && <SelectItem value="team">Team</SelectItem>}
                           <SelectItem value="my_team">My Team (Default)</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1282,7 +1287,7 @@ export function CreatePostDialog({
                 />
 
                 {/* Organization Selector */}
-                {postScope === "organization" && user?.isAdmin && (
+                {postScope === "organization" && (user?.isAdmin || form.watch("type") === "prayer") && (
                   <FormField
                     control={form.control}
                     name="targetOrganizationId"
@@ -1331,7 +1336,7 @@ export function CreatePostDialog({
                           </FormControl>
                           <SelectContent>
                             {groups
-                              .filter((group: any) => user?.isAdmin || group.id === user?.adminGroupId)
+                              .filter((group: any) => user?.isAdmin || form.watch("type") === "prayer" || group.id === user?.adminGroupId)
                               .map((group: any) => (
                                 <SelectItem key={group.id} value={group.id.toString()}>
                                   {group.name}
@@ -1356,9 +1361,7 @@ export function CreatePostDialog({
                         <Select
                           value={field.value?.toString()}
                           onValueChange={(value) => {
-                            console.log("🎯 Team selected:", { rawValue: value, parsedValue: parseInt(value), fieldValue: field.value });
                             field.onChange(parseInt(value));
-                            console.log("🎯 After onChange, field value:", field.value);
                           }}
                         >
                           <FormControl>
@@ -1370,8 +1373,8 @@ export function CreatePostDialog({
                             {teams
                               .filter((team: any) => {
                                 if (user?.isAdmin) return true;
+                                if (form.watch("type") === "prayer") return true;
                                 if (user?.isGroupAdmin) {
-                                  // Group admins can only see teams in their group
                                   return team.groupId === user.adminGroupId;
                                 }
                                 return false;

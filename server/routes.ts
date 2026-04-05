@@ -2206,6 +2206,8 @@ export const registerRoutes = async (
 
         // Build scope filter conditions
         const scopeConditions = [
+          // User's own posts - always visible regardless of scope
+          eq(posts.userId, req.user.id),
           // Everyone posts - visible to all
           eq(posts.postScope, 'everyone'),
           // My team posts - user must be in the same team as the author
