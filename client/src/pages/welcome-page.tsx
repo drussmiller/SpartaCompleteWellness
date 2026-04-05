@@ -262,6 +262,117 @@ export function WelcomePage({ onClose }: WelcomePageProps = {}) {
           ) : (
             <DefaultWelcomeContent videoId={videoId} />
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Meal Plan</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-base font-semibold">
+                Here is what makes Level 1 meals an approved meal. Do NOT consume these two items:
+              </p>
+              <div className="space-y-1">
+                <p className="font-bold text-destructive">1) NO Simple sugars</p>
+                <p className="font-bold text-destructive">2) NO Dairy products</p>
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <h3 className="font-bold text-base">1) NO Simple Sugars</h3>
+                <p className="text-sm text-muted-foreground">
+                  Carbohydrates (sugars) are a component of food that supplies energy through calories to the body. The energy value of digestible carbohydrates is four calories per gram. Along with proteins and fats, carbohydrates are one of the three macronutrients that your body needs. We need all three to be healthy.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  The two basic types of carbohydrates that we consume daily are Starches, called <span className="font-semibold text-foreground">Complex carbohydrates (whole)</span> and sugars, called <span className="font-semibold text-foreground">Simple carbohydrates (refined)</span>. Whole carbs are unprocessed and contain the fiber found naturally in the food, while refined carbs have been processed and had the natural fiber stripped out.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Examples of whole carbs include vegetables, whole fruit, legumes, sweet potatoes and whole grains used for sustained energy. These foods are healthy. Refined carbs include sugar-sweetened beverages, fruit juices, pastries, bread, white pasta, white rice and others causing major spikes in blood sugar levels, which leads to a crash that can trigger hunger and cravings for more simple carb foods.
+                </p>
+                <p className="text-sm text-muted-foreground italic">
+                  This is the "blood sugar roller coaster" that many people are familiar with.
+                </p>
+                <p className="text-sm text-muted-foreground font-semibold">
+                  Only whole carbs for you on this journey. By whole, we mean single ingredient foods in their original form: not mixed or processed with preservatives.
+                </p>
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <h3 className="font-semibold text-base">Fuel Foods to eat that contain NO unhealthy Simple sugars:</h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">All Vegetables</h4>
+                    <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-4">
+                      <li>Spinach</li>
+                      <li>Kale</li>
+                      <li>Carrots</li>
+                      <li>Broccoli</li>
+                      <li>Chard</li>
+                      <li>Ginger</li>
+                      <li>Sweet potatoes</li>
+                      <li>Red potatoes</li>
+                      <li>Squash</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Whole Fruits</h4>
+                    <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-4">
+                      <li>Berries (blueberries, blackberries, raspberries, strawberries, cranberries)</li>
+                      <li>Apples</li>
+                      <li>Bananas</li>
+                      <li>Grapefruits</li>
+                      <li>Grapes</li>
+                      <li>Pomegranate</li>
+                      <li>Cherries</li>
+                      <li>Avocados</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Legumes</h4>
+                    <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-4">
+                      <li>Beans</li>
+                      <li>Peas</li>
+                      <li>Lentils</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Nuts</h4>
+                    <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-4">
+                      <li>Almonds</li>
+                      <li>Walnuts</li>
+                      <li>Cashews</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Seeds</h4>
+                    <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-4">
+                      <li>Chia</li>
+                      <li>Pumpkin</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Whole Grains</h4>
+                    <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-4">
+                      <li>Quinoa</li>
+                      <li>Brown rice</li>
+                      <li>Whole grain oats</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <h3 className="font-bold text-base">2) NO Dairy Products</h3>
+                <p className="text-sm text-muted-foreground">
+                  The definition of dairy includes foods produced from the milk of mammals, such as cows, sheep, goats. Milk and any food products made from milk, such as cheese, cream, butter, milk yogurt, etc... <span className="font-semibold text-foreground">(eggs are NOT dairy)</span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
       <BottomNav />
