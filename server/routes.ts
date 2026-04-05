@@ -5681,6 +5681,23 @@ export const registerRoutes = async (
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
+      if (req.user.isAdmin) {
+        const allOrgUsers = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            imageUrl: users.imageUrl,
+            avatarColor: users.avatarColor,
+            teamId: users.teamId,
+          })
+          .from(users)
+          .where(sql`${users.id} != ${req.user.id}`);
+
+        return res.json(allOrgUsers);
+      }
+
       if (!req.user.teamId) {
         return res.json([]);
       }
