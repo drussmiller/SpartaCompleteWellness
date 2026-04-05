@@ -275,7 +275,6 @@ export function ContactsPage({ onClose, onSelectContact }: ContactsPageProps = {
         onContactAdded={() => {
           queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
         }}
-        onSelectContact={handleContactSelect}
       />
 
       <BottomNav />
@@ -288,13 +287,11 @@ function AddContactDialog({
   onOpenChange,
   existingContactIds,
   onContactAdded,
-  onSelectContact,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   existingContactIds: number[];
   onContactAdded: () => void;
-  onSelectContact: (member: User) => void;
 }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -362,7 +359,6 @@ function AddContactDialog({
                 className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer"
                 onClick={() => {
                   addContactMutation.mutate(member.id);
-                  onSelectContact(member);
                   onOpenChange(false);
                 }}
                 data-testid={`card-add-contact-${member.id}`}
