@@ -1274,10 +1274,10 @@ export function CreatePostDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {user?.isAdmin && <SelectItem value="everyone">Everyone</SelectItem>}
-                          {user?.isAdmin && <SelectItem value="organization">Organization</SelectItem>}
-                          {(user?.isAdmin || user?.isGroupAdmin) && <SelectItem value="group">Division</SelectItem>}
-                          {(user?.isAdmin || user?.isGroupAdmin) && <SelectItem value="team">Team</SelectItem>}
+                          {(user?.isAdmin || form.watch("type") === "prayer") && <SelectItem value="everyone">Everyone</SelectItem>}
+                          {(user?.isAdmin || form.watch("type") === "prayer") && <SelectItem value="organization">Organization</SelectItem>}
+                          {(user?.isAdmin || user?.isGroupAdmin || form.watch("type") === "prayer") && <SelectItem value="group">Division</SelectItem>}
+                          {(user?.isAdmin || user?.isGroupAdmin || form.watch("type") === "prayer") && <SelectItem value="team">Team</SelectItem>}
                           <SelectItem value="my_team">My Team (Default)</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1287,7 +1287,7 @@ export function CreatePostDialog({
                 />
 
                 {/* Organization Selector */}
-                {postScope === "organization" && user?.isAdmin && (
+                {postScope === "organization" && (user?.isAdmin || form.watch("type") === "prayer") && (
                   <FormField
                     control={form.control}
                     name="targetOrganizationId"
@@ -1336,7 +1336,7 @@ export function CreatePostDialog({
                           </FormControl>
                           <SelectContent>
                             {groups
-                              .filter((group: any) => user?.isAdmin || group.id === user?.adminGroupId)
+                              .filter((group: any) => user?.isAdmin || form.watch("type") === "prayer" || group.id === user?.adminGroupId)
                               .map((group: any) => (
                                 <SelectItem key={group.id} value={group.id.toString()}>
                                   {group.name}
@@ -1373,6 +1373,7 @@ export function CreatePostDialog({
                             {teams
                               .filter((team: any) => {
                                 if (user?.isAdmin) return true;
+                                if (form.watch("type") === "prayer") return true;
                                 if (user?.isGroupAdmin) {
                                   return team.groupId === user.adminGroupId;
                                 }
