@@ -5686,8 +5686,7 @@ export const registerRoutes = async (
           .select({
             id: users.id,
             username: users.username,
-            firstName: users.firstName,
-            lastName: users.lastName,
+            preferredName: users.preferredName,
             imageUrl: users.imageUrl,
             avatarColor: users.avatarColor,
             teamId: users.teamId,
@@ -5738,8 +5737,7 @@ export const registerRoutes = async (
         .select({
           id: users.id,
           username: users.username,
-          firstName: users.firstName,
-          lastName: users.lastName,
+          preferredName: users.preferredName,
           imageUrl: users.imageUrl,
           avatarColor: users.avatarColor,
           teamId: users.teamId,
