@@ -51,7 +51,7 @@ interface Message {
   posterUrl?: string | null;   // Video thumbnail URL
 }
 
-export function MessageSlideCard() {
+export function MessageSlideCard({ initialMember, onClearInitialMember }: { initialMember?: User | null; onClearInitialMember?: () => void } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isConversationClosing, setIsConversationClosing] = useState(false);
@@ -143,8 +143,9 @@ export function MessageSlideCard() {
     setTimeout(() => {
       setIsClosing(false);
       setIsOpen(false);
+      if (onClearInitialMember) onClearInitialMember();
     }, 300);
-  }, [isClosing]);
+  }, [isClosing, onClearInitialMember]);
 
   // Handle closing conversation view with animation
   const handleCloseConversation = React.useCallback(() => {
@@ -167,54 +168,23 @@ export function MessageSlideCard() {
     }
   });
 
-  // Query for team members
-  const { data: teamMembers = [], error: teamError, isLoading: teamMembersLoading } = useQuery<User[]>({
-    queryKey: ["/api/users", user?.teamId],
+  // Query for conversation partners (users you've messaged or received messages from)
+  const { data: conversationPartners = [], isLoading: conversationPartnersLoading } = useQuery<User[]>({
+    queryKey: ["/api/messages/conversations"],
     queryFn: async () => {
-      if (!user?.teamId) {
-        return []; // Return empty array instead of throwing error
-      }
       try {
-        const response = await apiRequest("GET", "/api/users");
-
-        // If user is not authorized (not admin), return empty array
-        if (response.status === 403) {
-          console.log("User not authorized to fetch all users, returning empty team members list");
-          return [];
-        }
-
-        if (!response.ok) {
-          console.log("Failed to fetch users, returning empty array");
-          return [];
-        }
-
-        const users = await response.json();
-
-        // Debug log to verify avatarColor is in the data
-        if (users.length > 0) {
-          console.log('Frontend received user data:', {
-            id: users[0].id,
-            username: users[0].username,
-            avatarColor: users[0].avatarColor
-          });
-        }
-
-        // Filter users to only show team members (excluding current user)
-        const filteredUsers = users.filter((member: User) => {
-          return member.teamId === user.teamId && member.id !== user.id;
-        });
-
-        return filteredUsers;
+        const response = await apiRequest("GET", "/api/messages/conversations");
+        if (!response.ok) return [];
+        return await response.json();
       } catch (error) {
-        console.error("Error fetching users:", error);
-        // Return empty array instead of throwing error
+        console.error("Error fetching conversation partners:", error);
         return [];
       }
     },
-    enabled: isOpen && !!user?.teamId,
+    enabled: isOpen,
     retry: 2,
-    staleTime: 0, // Force fresh data every time
-    gcTime: 10 * 60 * 1000 // 10 minutes
+    staleTime: 0,
+    gcTime: 10 * 60 * 1000
   });
 
   // Query for messages with selected member
@@ -274,6 +244,13 @@ export function MessageSlideCard() {
   useEffect(() => {
     setUnreadCount(messageCount);
   }, [messageCount]);
+
+  useEffect(() => {
+    if (initialMember) {
+      setIsOpen(true);
+      setSelectedMember(initialMember);
+    }
+  }, [initialMember]);
 
   // Query for unread messages by sender
   const { data: unreadMessagesData = [] } = useQuery<Array<{senderId: number, count: number, sender: any}>>({
@@ -481,17 +458,15 @@ export function MessageSlideCard() {
       }
     },
     onSuccess: () => {
-      // Invalidate all message-related queries to force fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/by-sender"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
 
-      // Clean up states
       setMessageText("");
       setPastedImage(null);
       setIsVideoFile(false);
 
-      // Clear the stored video file
       if (window._SPARTA_ORIGINAL_VIDEO_FILE) {
         console.log("Clearing stored video file after successful send");
         window._SPARTA_ORIGINAL_VIDEO_FILE = null;
@@ -787,25 +762,29 @@ export function MessageSlideCard() {
     }
   }, [editingMessageId]);
 
+  const hideButton = Boolean(initialMember);
+
   return (
     <>
-      <Button
-        size="icon"
-        className="h-10 w-10 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-900 ml-2 relative"
-        onClick={() => {
-          console.log('Opening message slide card. User team ID:', user?.teamId);
-          setIsOpen(true);
-        }}
-        disabled={!user?.teamId} // Disable button if user has no teamId
-        style={!user?.teamId ? { opacity: 0.5, cursor: 'not-allowed' } : {}} // Visual indication
-      >
-        <MessagesSquare className="h-4 w-4 text-black dark:text-white font-extrabold" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-            {unreadCount}
-          </span>
-        )}
-      </Button>
+      {!hideButton && (
+        <Button
+          size="icon"
+          className="h-10 w-10 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-900 ml-2 relative"
+          onClick={() => {
+            console.log('Opening message slide card. User team ID:', user?.teamId);
+            setIsOpen(true);
+          }}
+          disabled={!user?.teamId}
+          style={!user?.teamId ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+        >
+          <MessagesSquare className="h-4 w-4 text-black dark:text-white font-extrabold" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+              {unreadCount}
+            </span>
+          )}
+        </Button>
+      )}
 
       {/* Full screen slide-out panel - rendered via Portal at document body level */}
       {isOpen && createPortal(
@@ -852,20 +831,20 @@ export function MessageSlideCard() {
 
           {/* Content Area */}
           {!selectedMember ? (
-            // Team Members List
+            // Conversation Partners List
             <div className={`flex-1 overflow-y-auto bg-white ${isAndroid ? 'pb-40' : ''}`}>
               <div className="space-y-2 p-4 pb-32 bg-white">
-                {teamMembersLoading ? (
+                {conversationPartnersLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 bg-white">
                     <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-2" />
-                    <p className="text-gray-500 text-sm">Loading team members...</p>
+                    <p className="text-gray-500 text-sm">Loading conversations...</p>
                   </div>
-                ) : teamMembers.length === 0 ? (
+                ) : conversationPartners.length === 0 ? (
                   <div className="text-center text-gray-500 py-8 bg-white">
-                    No team members available
+                    No conversations yet. Start one from your Contacts.
                   </div>
                 ) : (
-                  teamMembers.map((member) => (
+                  conversationPartners.map((member) => (
                     <div
                       key={member.id}
                       className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg cursor-pointer bg-white border border-gray-100"
@@ -1126,9 +1105,9 @@ export function MessageSlideCard() {
                         window._SPARTA_ORIGINAL_VIDEO_FILE = null;
                       }
 
-                      // Update queries to show the new message
                       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMember.id] });
                       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread/count"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
 
                       // Show success toast
                       toast({
