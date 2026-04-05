@@ -210,6 +210,15 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email already exists" });
       }
 
+      // Check for existing preferred name (case insensitive)
+      if (req.body.preferredName && req.body.preferredName.trim()) {
+        const existingPreferredName = await storage.getUserByPreferredName(req.body.preferredName.trim());
+        if (existingPreferredName) {
+          console.log('Preferred name already exists:', req.body.preferredName);
+          return res.status(400).json({ message: "That preferred name is already taken. Please choose a different one." });
+        }
+      }
+
       // Verify email with code before creating account
       if (!verificationCode) {
         return res.status(400).json({ 
