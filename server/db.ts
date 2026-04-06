@@ -3,7 +3,13 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+class JsonSafeWebSocket extends ws {
+  constructor(...args: ConstructorParameters<typeof ws>) {
+    super(...args);
+    this.addEventListener('error', () => {});
+  }
+}
+neonConfig.webSocketConstructor = JsonSafeWebSocket as any;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(

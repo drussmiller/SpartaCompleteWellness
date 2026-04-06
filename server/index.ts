@@ -15,6 +15,18 @@ import { StripeWebhookHandlers } from "./stripeWebhookHandlers";
 
 const execAsync = promisify(exec);
 
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err.message);
+  if (err.message.includes('ErrorEvent') || err.message.includes('only a getter')) {
+    console.warn('WebSocket ErrorEvent compatibility issue — ignoring to keep server alive');
+    return;
+  }
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
+
 const app = express();
 const server = createServer(app);
 
