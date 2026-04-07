@@ -272,11 +272,11 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = '38px';
-              const newHeight = Math.min(200, target.scrollHeight); 
+              const maxTextareaHeight = 200;
+              const newHeight = Math.min(maxTextareaHeight, target.scrollHeight); 
               target.style.height = `${newHeight}px`;
               
-              // Enable scrolling if content exceeds max height
-              if (target.scrollHeight > 200) {
+              if (target.scrollHeight > maxTextareaHeight) {
                 target.style.overflowY = 'auto';
               } else {
                 target.style.overflowY = 'hidden';
