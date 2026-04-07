@@ -288,7 +288,10 @@ export default function CommentsPage() {
       </AppLayout>
       
       {createPortal(
-        <div className="pointer-events-auto flex flex-col h-full w-full max-w-[1000px] md:border-x md:border-border bg-white animate-slide-in-from-right">
+        <div 
+          className="pointer-events-auto flex flex-col w-full max-w-[1000px] md:border-x md:border-border bg-white animate-slide-in-from-right"
+          style={{ height: keyboardHeight > 0 ? `calc(100% - ${keyboardHeight}px)` : '100%' }}
+        >
           {/* Fixed Title Box at Top */}
           <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
             <h3 className="text-lg font-semibold">Original Post</h3>
