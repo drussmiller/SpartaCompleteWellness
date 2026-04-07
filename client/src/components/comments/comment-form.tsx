@@ -66,9 +66,9 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
     if (textareaRef.current && defaultValue) {
       const textarea = textareaRef.current;
       textarea.style.height = '38px';
-      const newHeight = Math.min(200, textarea.scrollHeight);
+      const newHeight = Math.min(120, textarea.scrollHeight);
       textarea.style.height = `${newHeight}px`;
-      if (textarea.scrollHeight > 200) {
+      if (textarea.scrollHeight > 120) {
         textarea.style.overflowY = 'auto';
       } else {
         textarea.style.overflowY = 'hidden';
@@ -272,7 +272,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = '38px';
-              const maxTextareaHeight = 200;
+              const maxTextareaHeight = 120;
               const newHeight = Math.min(maxTextareaHeight, target.scrollHeight); 
               target.style.height = `${newHeight}px`;
               
@@ -292,7 +292,7 @@ export const CommentForm = forwardRef<HTMLTextAreaElement, CommentFormProps>(({
             style={{ 
               height: '38px', 
               minHeight: '38px', 
-              maxHeight: '200px', 
+              maxHeight: '120px', 
               overflowY: 'auto',
               pointerEvents: 'auto',
               WebkitUserSelect: 'text',
