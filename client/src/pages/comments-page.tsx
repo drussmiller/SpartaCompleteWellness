@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -11,7 +11,6 @@ import { PostView } from "@/components/comments/post-view";
 import { CommentList } from "@/components/comments/comment-list";
 import { CommentForm } from "@/components/comments/comment-form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useKeyboardAdjustmentMessages } from "@/hooks/use-keyboard-adjustment-messages";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function CommentsPage() {
@@ -21,10 +20,32 @@ export default function CommentsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const keyboardHeight = useKeyboardAdjustmentMessages();
   const scrollableRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [isEditingOrReplying, setIsEditingOrReplying] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateHeight);
+      window.visualViewport.addEventListener('scroll', updateHeight);
+    }
+    window.addEventListener('resize', () => setViewportHeight(window.innerHeight));
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateHeight);
+        window.visualViewport.removeEventListener('scroll', updateHeight);
+      }
+      window.removeEventListener('resize', () => setViewportHeight(window.innerHeight));
+    };
+  }, []);
 
   const searchParams = new URLSearchParams(window.location.search);
   const fromPage = searchParams.get('from');
@@ -290,7 +311,7 @@ export default function CommentsPage() {
       {createPortal(
         <div 
           className="pointer-events-auto flex flex-col w-full max-w-[1000px] md:border-x md:border-border bg-white animate-slide-in-from-right"
-          style={{ height: keyboardHeight > 0 ? `calc(100% - ${keyboardHeight}px)` : '100%' }}
+          style={{ height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px`, overflow: 'hidden' }}
         >
           {/* Fixed Title Box at Top */}
           <div className="border-b border-gray-200 p-4 bg-white flex-shrink-0">
