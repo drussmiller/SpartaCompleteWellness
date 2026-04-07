@@ -10079,6 +10079,117 @@ export const registerRoutes = async (
         }
       }
 
+      // Check if programStartDate is being moved later (user going back to an earlier week)
+      // If so, delete all posts and media from the new start date onward (excluding introductory videos)
+      let deletedPostsCount = 0;
+      if (updateData.programStartDate && existingUser?.programStartDate) {
+        const newStartDate = new Date(updateData.programStartDate);
+        const oldStartDate = new Date(existingUser.programStartDate);
+        newStartDate.setHours(0, 0, 0, 0);
+        oldStartDate.setHours(0, 0, 0, 0);
+
+        if (newStartDate.getTime() > oldStartDate.getTime()) {
+          logger.info(`[ADMIN RESET] Program start date moved later for user ${userId}: ${oldStartDate.toISOString()} -> ${newStartDate.toISOString()}`);
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const daysSinceNewStart = Math.floor((today.getTime() - newStartDate.getTime()) / (1000 * 60 * 60 * 24));
+          const newCurrentWeek = Math.max(1, Math.floor(daysSinceNewStart / 7) + 1);
+
+          const cutoffDate = new Date(oldStartDate);
+          cutoffDate.setDate(cutoffDate.getDate() + (newCurrentWeek - 1) * 7);
+          cutoffDate.setHours(0, 0, 0, 0);
+
+          logger.info(`[ADMIN RESET] User will be at Week ${newCurrentWeek} under new start date`);
+          logger.info(`[ADMIN RESET] Deleting posts from ${cutoffDate.toISOString()} onwards (excluding introductory videos)`);
+
+          const postsToDelete = await db
+            .select({
+              id: posts.id,
+              mediaUrl: posts.mediaUrl,
+              is_video: posts.is_video,
+              type: posts.type
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, userId),
+                gte(posts.createdAt, cutoffDate),
+                ne(posts.type, 'introductory_video')
+              )
+            );
+
+          logger.info(`[ADMIN RESET] Found ${postsToDelete.length} posts to delete for user ${userId}`);
+
+          if (postsToDelete.length > 0) {
+            const { spartaObjectStorage } = await import('./sparta-object-storage-final');
+
+            for (const post of postsToDelete) {
+              if (post.mediaUrl) {
+                try {
+                  let filename = '';
+                  if (post.mediaUrl.includes('filename=')) {
+                    const urlParams = new URLSearchParams(post.mediaUrl.split('?')[1]);
+                    filename = urlParams.get('filename') || '';
+                  } else {
+                    filename = post.mediaUrl.split('/').pop() || '';
+                  }
+
+                  if (filename) {
+                    const filePath = `shared/uploads/${filename}`;
+
+                    try {
+                      await spartaObjectStorage.deleteFile(filePath);
+                      logger.info(`[ADMIN RESET] Deleted media file: ${filePath} for post ${post.id}`);
+                    } catch (err) {
+                      logger.error(`[ADMIN RESET] Could not delete media file ${filePath}: ${err}`);
+                    }
+
+                    if (post.is_video) {
+                      const baseName = filename.substring(0, filename.lastIndexOf('.'));
+                      const thumbnailPath = `shared/uploads/${baseName}.jpg`;
+
+                      try {
+                        await spartaObjectStorage.deleteFile(thumbnailPath);
+                        logger.info(`[ADMIN RESET] Deleted video thumbnail: ${thumbnailPath} for post ${post.id}`);
+                      } catch (err) {
+                        logger.error(`[ADMIN RESET] Could not delete thumbnail ${thumbnailPath}: ${err}`);
+                      }
+                    }
+                  }
+                } catch (err) {
+                  logger.error(`[ADMIN RESET] Error deleting media for post ${post.id}:`, err);
+                }
+              }
+            }
+
+            const deletedPosts = await db
+              .delete(posts)
+              .where(
+                and(
+                  eq(posts.userId, userId),
+                  gte(posts.createdAt, cutoffDate),
+                  ne(posts.type, 'introductory_video')
+                )
+              )
+              .returning();
+
+            deletedPostsCount = deletedPosts.length;
+            logger.info(`[ADMIN RESET] Deleted ${deletedPostsCount} posts from database for user ${userId}`);
+
+            const userPosts = await db
+              .select()
+              .from(posts)
+              .where(eq(posts.userId, userId));
+
+            const totalPoints = userPosts.reduce((sum, post) => sum + (post.points || 0), 0);
+
+            updateData.points = totalPoints;
+            logger.info(`[ADMIN RESET] Recalculated points for user ${userId}: ${totalPoints}`);
+          }
+        }
+      }
+
       // Update user
       const [updatedUser] = await db
         .update(users)
@@ -10088,6 +10199,10 @@ export const registerRoutes = async (
 
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      if (deletedPostsCount > 0) {
+        logger.info(`[ADMIN RESET] User ${userId} reset complete: ${deletedPostsCount} posts deleted, new points: ${updatedUser.points}`);
       }
 
       // If user was assigned to a team, update their introductory_video posts to 'my_team' scope
