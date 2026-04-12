@@ -332,7 +332,7 @@ export function CreatePostDialog({
     const selectedDayOfWeek = selectedDate.getDay();
 
     if (type === 'food') {
-      if (foodWeekPoints >= 54) {
+      if (foodWeekPoints > 54) {
         return "(weekly food limit reached - 54/54 points)";
       }
       if (selectedDayOfWeek === 0) {

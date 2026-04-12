@@ -127,7 +127,7 @@ export function usePostLimits(selectedDate?: Date) {
   let canPostFood: boolean;
   let foodRemaining: number;
 
-  if (foodWeekPoints >= foodWeekPointsCap) {
+  if (foodWeekPoints > foodWeekPointsCap) {
     canPostFood = false;
     foodRemaining = 0;
   } else if (dayOfWeek === 0) {
