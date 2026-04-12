@@ -131,13 +131,13 @@ export function usePostLimits(selectedDate?: Date) {
     canPostFood = false;
     foodRemaining = 0;
   } else if (dayOfWeek === 0) {
-    const sundayMax = Math.min(3, foodWeekPostsRemaining);
-    canPostFood = counts.food < sundayMax;
-    foodRemaining = Math.max(0, sundayMax - counts.food);
+    const sundayDailyMax = 3;
+    canPostFood = counts.food < sundayDailyMax && foodWeekPostsRemaining > 0;
+    foodRemaining = Math.max(0, Math.min(sundayDailyMax - counts.food, foodWeekPostsRemaining));
   } else {
-    const dailyMax = Math.min(3, foodWeekPostsRemaining);
-    canPostFood = counts.food < dailyMax;
-    foodRemaining = Math.max(0, dailyMax - counts.food);
+    const dailyMax = 3;
+    canPostFood = counts.food < dailyMax && foodWeekPostsRemaining > 0;
+    foodRemaining = Math.max(0, Math.min(dailyMax - counts.food, foodWeekPostsRemaining));
   }
 
   // Workout weekly cap logic: Mon-Fri regular (1/day), Sat/Sun makeup days
