@@ -339,15 +339,17 @@ export const registerRoutes = async (
         canPostFood = false;
         foodDailyRemaining = 0;
       } else if (dayOfWeek === 0) {
-        // Sunday: allow up to 3 makeup posts, but not exceeding 54 weekly points
-        const sundayMax = Math.min(3, foodWeekPostsRemaining);
-        canPostFood = counts.food < sundayMax;
-        foodDailyRemaining = Math.max(0, sundayMax - counts.food);
+        // Sunday: allow up to 3 makeup posts, but not exceeding weekly cap
+        const sundayDailyMax = 3;
+        const sundayRemaining = Math.min(sundayDailyMax - counts.food, foodWeekPostsRemaining);
+        canPostFood = counts.food < sundayDailyMax && foodWeekPostsRemaining > 0;
+        foodDailyRemaining = Math.max(0, sundayRemaining);
       } else {
-        // Mon-Sat: up to 3 per day, capped by weekly remaining
-        const dailyMax = Math.min(3, foodWeekPostsRemaining);
-        canPostFood = counts.food < dailyMax;
-        foodDailyRemaining = Math.max(0, dailyMax - counts.food);
+        // Mon-Sat: up to 3 per day, but not exceeding weekly cap
+        const dailyMax = 3;
+        const dailyRemaining = Math.min(dailyMax - counts.food, foodWeekPostsRemaining);
+        canPostFood = counts.food < dailyMax && foodWeekPostsRemaining > 0;
+        foodDailyRemaining = Math.max(0, dailyRemaining);
       }
 
       remaining.food = foodDailyRemaining;
