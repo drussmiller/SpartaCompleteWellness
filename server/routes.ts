@@ -335,7 +335,7 @@ export const registerRoutes = async (
       let canPostFood: boolean;
       let foodDailyRemaining: number;
 
-      if (foodWeekPoints > foodWeekPointsCap) {
+      if (foodWeekPoints >= foodWeekPointsCap) {
         canPostFood = false;
         foodDailyRemaining = 0;
       } else if (dayOfWeek === 0) {
