@@ -363,19 +363,19 @@ export const registerRoutes = async (
       let canPostWorkout: boolean;
       let workoutDailyRemaining: number;
 
-      if (workoutWeekPoints >= workoutWeekPointsCap) {
+      if (workoutWeekPoints >= workoutWeekPointsCap || workoutWeekCount >= 5) {
         canPostWorkout = false;
         workoutDailyRemaining = 0;
       } else if (dayOfWeek === 0 || dayOfWeek === 6) {
-        // Saturday/Sunday: makeup days — 1 per day, capped by weekly remaining
-        const makeupMax = Math.min(1, workoutWeekPostsRemaining);
-        canPostWorkout = counts.workout < makeupMax;
-        workoutDailyRemaining = Math.max(0, makeupMax - counts.workout);
+        // Saturday/Sunday: makeup days — 1 per day, only if under 5 workouts for the week
+        const dailyMax = 1;
+        canPostWorkout = counts.workout < dailyMax && workoutWeekPostsRemaining > 0;
+        workoutDailyRemaining = Math.max(0, Math.min(dailyMax - counts.workout, workoutWeekPostsRemaining));
       } else {
-        // Mon-Fri: 1 per day, capped by weekly remaining
-        const dailyMax = Math.min(1, workoutWeekPostsRemaining);
-        canPostWorkout = counts.workout < dailyMax;
-        workoutDailyRemaining = Math.max(0, dailyMax - counts.workout);
+        // Mon-Fri: 1 per day, only if under 5 workouts for the week
+        const dailyMax = 1;
+        canPostWorkout = counts.workout < dailyMax && workoutWeekPostsRemaining > 0;
+        workoutDailyRemaining = Math.max(0, Math.min(dailyMax - counts.workout, workoutWeekPostsRemaining));
       }
 
       remaining.workout = workoutDailyRemaining;
@@ -2602,6 +2602,48 @@ export const registerRoutes = async (
         type: postData.type,
         assignedPoints: points
       });
+
+      // Server-side enforcement of weekly caps for food and workout posts
+      if (type === 'food' || type === 'workout') {
+        const tzOffset = parseInt(postData.tzOffset as string) || req.user.timezoneOffset || 0;
+        const serverNow = new Date();
+        const userNow = new Date(serverNow.getTime() + (tzOffset * 60000));
+        const userDay = userNow.getDay();
+        const userDayDiff = userDay === 0 ? 6 : userDay - 1;
+        const weekStart = new Date(userNow);
+        weekStart.setHours(0, 0, 0, 0);
+        weekStart.setDate(userNow.getDate() - userDayDiff);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        const queryWeekStartUTC = new Date(weekStart.getTime() - (tzOffset * 60000));
+        const queryWeekEndUTC = new Date(weekEnd.getTime() - (tzOffset * 60000));
+
+        const [weekResult] = await db
+          .select({
+            count: sql<number>`count(*)::integer`,
+            points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
+          })
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, req.user.id),
+              eq(posts.type, type),
+              gte(posts.createdAt, queryWeekStartUTC),
+              lt(posts.createdAt, queryWeekEndUTC),
+              isNull(posts.parentId),
+            ),
+          );
+
+        const weekPoints = weekResult?.points || 0;
+        const weekCount = weekResult?.count || 0;
+
+        if (type === 'food' && weekPoints >= 54) {
+          return res.status(400).json({ message: "Weekly food post limit reached (54 points / 18 posts)" });
+        }
+        if (type === 'workout' && (weekPoints >= 15 || weekCount >= 5)) {
+          return res.status(400).json({ message: "Weekly workout post limit reached (15 points / 5 posts)" });
+        }
+      }
 
       // For comments, handle separately
       if (postData.type === "comment") {
