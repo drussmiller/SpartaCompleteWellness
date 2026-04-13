@@ -1003,19 +1003,19 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
                             )}
                           </>
                         )}
-                        {message.createdAt && (
-                          <p className={`text-[10px] mt-1 ${message.sender.id === user?.id ? 'text-white/60' : 'text-muted-foreground'}`}>
-                            {new Date(message.createdAt).toLocaleString('en-US', {
-                              month: 'numeric',
-                              day: 'numeric',
-                              year: '2-digit',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </p>
-                        )}
                       </div>
+                      {message.createdAt && (
+                        <p className={`text-[10px] mt-0.5 text-muted-foreground ${message.sender.id === user?.id ? 'text-right' : 'text-left'}`}>
+                          {new Date(message.createdAt).toLocaleString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: '2-digit',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
