@@ -900,7 +900,7 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
                       }`}
                     >
                       {message.sender.id !== user?.id && (
-                        <Avatar className="mr-2">
+                        <Avatar className="mr-2 flex-shrink-0 self-start">
                           {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={getDisplayName(message.sender)} />}
                           <AvatarFallback
                             style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
@@ -910,8 +910,9 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
                           </AvatarFallback>
                         </Avatar>
                       )}
+                      <div className="flex flex-col">
                       <div
-                        className={`max-w-[70%] ${(message.imageUrl || message.mediaUrl) ? 'min-w-[200px]' : ''} p-3 rounded-lg ${
+                        className={`max-w-full ${(message.imageUrl || message.mediaUrl) ? 'min-w-[200px]' : ''} p-3 rounded-lg ${
                           message.sender.id === user?.id
                             ? "bg-[#8A2BE2] text-white ml-2"
                             : "bg-muted mr-2"
@@ -1016,6 +1017,7 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
                           })}
                         </p>
                       )}
+                      </div>
                     </div>
                   ))}
                 </div>
