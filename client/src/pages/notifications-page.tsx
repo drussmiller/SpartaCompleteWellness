@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Notification } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bell, Check, Trash2, MessageCircle, Heart, ChevronRight } from "lucide-react";
+import { Bell, Check, Trash2, MessageCircle, Heart, ChevronRight, HandHeart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -221,6 +221,8 @@ export default function NotificationsPage() {
                           <MessageCircle className="h-5 w-5 text-blue-500" />
                         ) : notification.type === 'reaction' ? (
                           <Heart className="h-5 w-5 text-red-500" />
+                        ) : notification.type === 'prayer' ? (
+                          <HandHeart className="h-5 w-5 text-purple-500" />
                         ) : (
                           <Bell className="h-5 w-5 text-muted-foreground" />
                         )}

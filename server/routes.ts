@@ -3028,6 +3028,74 @@ export const registerRoutes = async (
         // Non-fatal error, continue without blocking post creation
       }
 
+      // Send notifications for prayer requests based on scope
+      if (post.type === 'prayer') {
+        try {
+          const posterName = req.user.preferredName || req.user.username;
+          let userIdsToNotify: number[] = [];
+
+          if (postScope === 'my_team' && req.user.teamId) {
+            const teamUsers = await db.select({ id: users.id }).from(users).where(eq(users.teamId, req.user.teamId));
+            userIdsToNotify = teamUsers.map(u => u.id);
+          } else if (postScope === 'team' && post.targetTeamId) {
+            const teamUsers = await db.select({ id: users.id }).from(users).where(eq(users.teamId, post.targetTeamId));
+            userIdsToNotify = teamUsers.map(u => u.id);
+          } else if (postScope === 'group' && post.targetGroupId) {
+            const groupTeams = await db.select({ id: teams.id }).from(teams).where(eq(teams.groupId, post.targetGroupId));
+            const teamIds = groupTeams.map(t => t.id);
+            if (teamIds.length > 0) {
+              const groupUsers = await db.select({ id: users.id }).from(users).where(inArray(users.teamId, teamIds));
+              userIdsToNotify = groupUsers.map(u => u.id);
+            }
+          } else if (postScope === 'organization' && post.targetOrganizationId) {
+            const orgGroups = await db.select({ id: groups.id }).from(groups).where(eq(groups.organizationId, post.targetOrganizationId));
+            const groupIds = orgGroups.map(g => g.id);
+            if (groupIds.length > 0) {
+              const orgTeams = await db.select({ id: teams.id }).from(teams).where(inArray(teams.groupId, groupIds));
+              const teamIds = orgTeams.map(t => t.id);
+              if (teamIds.length > 0) {
+                const orgUsers = await db.select({ id: users.id }).from(users).where(inArray(users.teamId, teamIds));
+                userIdsToNotify = orgUsers.map(u => u.id);
+              }
+            }
+          } else if (postScope === 'everyone') {
+            const allUsers = await db.select({ id: users.id }).from(users);
+            userIdsToNotify = allUsers.map(u => u.id);
+          }
+
+          // Remove the poster from notification list
+          userIdsToNotify = userIdsToNotify.filter(id => id !== req.user.id);
+
+          if (userIdsToNotify.length > 0) {
+            logger.info(`Sending prayer request notifications to ${userIdsToNotify.length} users (scope: ${postScope})`);
+            const notificationPromises = userIdsToNotify.map(async (notifyUserId) => {
+              const notification = await storage.createNotification({
+                userId: notifyUserId,
+                title: "Prayer Request",
+                message: `${posterName} shared a prayer request`,
+                read: false,
+                createdAt: new Date(),
+                type: "prayer",
+                sound: null,
+                postId: post.id,
+              });
+
+              const userSockets = clients.get(notifyUserId);
+              if (userSockets && userSockets.size > 0) {
+                userSockets.forEach((ws) => {
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "new_notification", notification }));
+                  }
+                });
+              }
+            });
+            await Promise.all(notificationPromises);
+          }
+        } catch (notificationError) {
+          logger.error("Error sending prayer request notifications:", notificationError);
+        }
+      }
+
       res.status(201).json(post);
     } catch (error) {
       logger.error("Error in post creation:", error);

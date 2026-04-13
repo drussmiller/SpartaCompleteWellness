@@ -279,6 +279,17 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
     return lookup;
   }, [unreadMessagesData]);
 
+  // Scroll to bottom when conversation opens or messages load
+  useEffect(() => {
+    if (selectedMember && messages.length > 0 && scrollAreaRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [selectedMember, messages.length]);
+
   // Mark messages as read when selecting a member
   useEffect(() => {
     if (selectedMember) {
@@ -889,7 +900,7 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
                       }`}
                     >
                       {message.sender.id !== user?.id && (
-                        <Avatar className="mr-2">
+                        <Avatar className="mr-2 flex-shrink-0 self-start">
                           {message.sender.imageUrl && <AvatarImage src={message.sender.imageUrl} alt={getDisplayName(message.sender)} />}
                           <AvatarFallback
                             style={{ backgroundColor: message.sender.avatarColor || '#6366F1' }}
@@ -899,8 +910,9 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
                           </AvatarFallback>
                         </Avatar>
                       )}
+                      <div className="flex flex-col">
                       <div
-                        className={`max-w-[70%] ${(message.imageUrl || message.mediaUrl) ? 'min-w-[200px]' : ''} p-3 rounded-lg ${
+                        className={`max-w-full ${(message.imageUrl || message.mediaUrl) ? 'min-w-[200px]' : ''} p-3 rounded-lg ${
                           message.sender.id === user?.id
                             ? "bg-[#8A2BE2] text-white ml-2"
                             : "bg-muted mr-2"
@@ -992,6 +1004,19 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
                             )}
                           </>
                         )}
+                      </div>
+                      {message.createdAt && (
+                        <p className={`text-[10px] mt-0.5 text-muted-foreground ${message.sender.id === user?.id ? 'text-right' : 'text-left'}`}>
+                          {new Date(message.createdAt).toLocaleString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: '2-digit',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </p>
+                      )}
                       </div>
                     </div>
                   ))}
