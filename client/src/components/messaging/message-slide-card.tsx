@@ -279,6 +279,17 @@ export function MessageSlideCard({ initialMember, onClearInitialMember }: { init
     return lookup;
   }, [unreadMessagesData]);
 
+  // Scroll to bottom when conversation opens or messages load
+  useEffect(() => {
+    if (selectedMember && messages.length > 0 && scrollAreaRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [selectedMember, messages.length]);
+
   // Mark messages as read when selecting a member
   useEffect(() => {
     if (selectedMember) {
