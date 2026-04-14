@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Post } from "@shared/schema";
 import { PostCard } from "@/components/post-card";
 import { CreatePostDialog } from "@/components/create-post-dialog";
@@ -8,7 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePostLimits } from "@/hooks/use-post-limits";
 import { AppLayout } from "@/components/app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSlideCard } from "@/components/messaging/message-slide-card";
@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 type FilterMode = "team" | "all_users" | "new_users" | "specific_team";
 
 const MOBILE_BREAKPOINT = 768;
+const PAGE_SIZE = 50;
 
 
 export default function HomePage() {
@@ -59,10 +60,6 @@ export default function HomePage() {
   });
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [teamSearchOpen, setTeamSearchOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [allPosts, setAllPosts] = useState<Post[]>([]);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMorePosts, setHasMorePosts] = useState(true);
 
   const canFilterByTeam = !!(user?.isOrganizationAdmin || user?.isGroupAdmin || user?.isAdmin);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -104,24 +101,20 @@ export default function HomePage() {
     staleTime: 60000,
   });
   
-  // Use scroll direction hook for header/nav animations
   const { isHeaderVisible, isBottomNavVisible, scrollY } = useScrollDirection({
     scrollContainerRef,
     threshold: 50,
     velocityThreshold: 1.5
   });
   
-  // Pull-to-refresh state
   const [pullStartY, setPullStartY] = useState(0);
   const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const pullThreshold = 80; // Pull distance needed to trigger refresh
+  const pullThreshold = 80;
   
-  // Restore scroll position when returning from video player
   useRestoreScroll(scrollContainerRef);
   
-  // ONE-TIME: Clear stale posts cache to force refetch with thumbnailUrl field
   useEffect(() => {
     const cacheCleared = localStorage.getItem("postsv2CacheCleared");
     if (!cacheCleared) {
@@ -131,7 +124,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // Only refetch post limits when needed
   useEffect(() => {
     if (user) {
       const lastRefetchTime = localStorage.getItem("lastPostLimitsRefetch");
@@ -143,192 +135,84 @@ export default function HomePage() {
     }
   }, [user, refetchLimits]);
 
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-    setAllPosts([]);
-    setHasMorePosts(true);
-  }, [filterMode, selectedTeamId, user?.teamId]);
+  const buildPostsUrl = useCallback((page: number) => {
+    if (filterMode === "specific_team" && selectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&specificTeamId=${selectedTeamId}`;
+    }
+    if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&teamlessIntroOnly=true`;
+    }
+    if (filterMode === "all_users" && user?.isAdmin) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&allUsers=true`;
+    }
+    if (filterMode === "all_users" && user?.isOrganizationAdmin) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&orgAllUsers=true`;
+    }
+    if (filterMode === "all_users" && user?.isGroupAdmin) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&groupAllUsers=true`;
+    }
+    if (filterMode === "all_users" && user?.isTeamLead) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+    }
+    if (!user?.teamId && user?.isAdmin) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+    }
+    if (!user?.teamId) {
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&type=introductory_video&userId=${user?.id}`;
+    }
+    return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+  }, [filterMode, selectedTeamId, user]);
 
   const {
-    data: initialPosts = [],
+    data,
     isLoading,
     error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     refetch,
-  } = useQuery({
-    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId, page] as const, // v2: includes thumbnailUrl field
-    queryFn: async ({ queryKey }) => {
-      // Read filter values from queryKey to avoid stale closure issues
-      const currentFilterMode = queryKey[4] as FilterMode;
-      const currentSelectedTeamId = queryKey[5] as number | null;
-      const currentPage = queryKey[6] as number;
-
-      // Specific team filter for Org Admin / Group Admin
-      if (currentFilterMode === "specific_team" && currentSelectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
-        console.log("Fetching posts for specific team:", currentSelectedTeamId);
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&specificTeamId=${currentSelectedTeamId}`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("Posts for specific team:", data.length);
-        return data;
-      }
-
-      // Admin/Group Admin/Org Admin/Team Lead filter for all posts from users not in a team (New Users mode)
-      if (currentFilterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
-        console.log("Fetching posts from users not in a team");
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&teamlessIntroOnly=true`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("Posts from users not in a team:", data.length);
-        return data;
-      }
-
-      // Admin "All Users" mode - see all posts from all users
-      if (currentFilterMode === "all_users" && user?.isAdmin) {
-        console.log("Admin fetching all posts from all users");
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&allUsers=true`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("All posts for admin:", data.length);
-        return data;
-      }
-
-      // Organization Admin "All Users" mode - see all posts from users in their organization
-      if (currentFilterMode === "all_users" && user?.isOrganizationAdmin) {
-        console.log("Organization Admin fetching all posts from their organization");
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&orgAllUsers=true`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("All posts for org admin:", data.length);
-        return data;
-      }
-
-      // Group Admin "All Users" mode - see all posts from users in their group
-      if (currentFilterMode === "all_users" && user?.isGroupAdmin) {
-        console.log("Group Admin fetching all posts from their group");
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&groupAllUsers=true`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("All posts for group admin:", data.length);
-        return data;
-      }
-
-      // Team Lead "All Users" mode - see all posts from their team
-      if (currentFilterMode === "all_users" && user?.isTeamLead) {
-        console.log("Team Lead fetching all posts from their team");
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&teamOnly=true`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("All posts for team lead:", data.length);
-        return data;
-      }
-
-      // If user is not in a team and is an Admin, fetch all posts
-      if (!user?.teamId && user?.isAdmin) {
-        console.log("Admin user not in team, fetching all posts");
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&exclude=prayer&teamOnly=true`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("All posts for team-less admin:", data.length);
-        return data;
-      }
-
-      // If user is not in a team (and not Admin), fetch only their own introductory video posts
-      if (!user?.teamId) {
-        console.log("User not in team, fetching only their introductory video");
-        const response = await apiRequest(
-          "GET",
-          `/api/posts?page=${currentPage}&limit=50&type=introductory_video&userId=${user?.id}`,
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch posts: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("Introductory video posts for team-less user:", data.length);
-        return data;
-      }
-
-      // Default: Team mode - Make sure to exclude prayer posts from Team page
-      console.log("Fetching posts for team...");
-      const response = await apiRequest(
-        "GET",
-        `/api/posts?page=${currentPage}&limit=50&exclude=prayer&teamOnly=true`,
-      );
+  } = useInfiniteQuery({
+    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId] as const,
+    queryFn: async ({ pageParam = 1 }) => {
+      const url = buildPostsUrl(pageParam as number);
+      const response = await apiRequest("GET", url);
       if (!response.ok) {
         throw new Error(`Failed to fetch posts: ${response.status}`);
       }
-      const data = await response.json();
-
-      console.log("Posts received from API:", data.length, "posts");
-
-      // Double-check to filter out any prayer posts that might have slipped through
-      const filtered = data.filter((post) => post.type !== "prayer");
-      console.log("Posts after prayer filtering:", filtered.length);
-
-      return filtered;
+      const posts = await response.json();
+      const filtered = posts.filter((post: any) => post.type !== "prayer");
+      return filtered as Post[];
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < PAGE_SIZE) return undefined;
+      return allPages.length + 1;
     },
     enabled: !!user,
-    refetchOnWindowFocus: false, // Prevent refetch on window focus
-    staleTime: 0, // TEMPORARY: Force fresh fetch to get thumbnailUrl field
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 
-  // Accumulate posts when initial posts arrive
-  useEffect(() => {
-    if (page === 1) {
-      setAllPosts(initialPosts);
-      // If we got fewer than 50 posts, there are no more posts to load
-      setHasMorePosts(initialPosts.length === 50);
-    } else if (initialPosts.length > 0) {
-      setAllPosts((prev) => [...prev, ...initialPosts]);
-      // If we got fewer than 50 posts, there are no more posts to load
-      setHasMorePosts(initialPosts.length === 50);
-    } else {
-      setHasMorePosts(false);
-    }
-  }, [initialPosts, page]);
+  const allPosts = useMemo(() => {
+    if (!data) return [];
+    return data.pages.flat();
+  }, [data]);
 
-  // Function to load more posts
-  const loadMore = useCallback(async () => {
-    if (isLoadingMore || !hasMorePosts) return;
-    setPage((prev) => prev + 1);
-  }, [isLoadingMore, hasMorePosts]);
+  const handlePostDeleted = useCallback((postId: number) => {
+    queryClient.setQueryData(
+      ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId],
+      (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: Post[]) =>
+            page.filter((post) => post.id !== postId)
+          ),
+        };
+      }
+    );
+  }, [user?.teamId, user?.id, filterMode, selectedTeamId]);
 
-  // Virtualizer for efficient rendering - large overscan so content loads before you see it
   const rowVirtualizer = useVirtualizer({
     count: allPosts.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -337,12 +221,11 @@ export default function HomePage() {
     measureElement: (el) => el.getBoundingClientRect().height,
   });
 
-  // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMorePosts && !isLoadingMore && !isLoading && allPosts.length > 0) {
-          loadMore();
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading && allPosts.length > 0) {
+          fetchNextPage();
         }
       },
       { threshold: 0.1 }
@@ -357,24 +240,20 @@ export default function HomePage() {
         observer.unobserve(loadingRef.current);
       }
     };
-  }, [hasMorePosts, isLoadingMore, isLoading, allPosts.length, loadMore]);
+  }, [hasNextPage, isFetchingNextPage, isLoading, allPosts.length, fetchNextPage]);
 
-  // Import usePrayerRequests hook to mark prayer requests as viewed
   const { markAsViewed, unreadCount: prayerRequestCount } = usePrayerRequests();
 
   const handlePrayerRequestsClick = () => {
-    // Mark prayer requests as viewed before navigating
     markAsViewed();
     navigate("/prayer-requests");
   };
 
-  // Pull-to-refresh handlers - use container scrollTop instead of window.scrollY
   const handleTouchStart = (e: React.TouchEvent) => {
     const container = scrollContainerRef.current;
     if (!container) return;
     
     const scrollTop = container.scrollTop;
-    // Only start pull if at the top of the container
     if (scrollTop === 0) {
       setPullStartY(e.touches[0].clientY);
       setIsPulling(true);
@@ -397,9 +276,7 @@ export default function HomePage() {
     const currentY = e.touches[0].clientY;
     const distance = currentY - pullStartY;
     
-    // Only track pull down (positive distance)
     if (distance > 0) {
-      // Apply resistance to make pull feel natural (diminishing returns)
       const resistedDistance = Math.min(distance * 0.5, pullThreshold * 1.5);
       setPullDistance(resistedDistance);
     }
@@ -410,7 +287,6 @@ export default function HomePage() {
     
     setIsPulling(false);
     
-    // Trigger refresh if pulled past threshold
     if (pullDistance >= pullThreshold && !isRefreshing) {
       setIsRefreshing(true);
       try {
@@ -646,7 +522,7 @@ export default function HomePage() {
                       const post = allPosts[virtualItem.index];
                       return (
                         <div
-                          key={virtualItem.key}
+                          key={post.id}
                           data-index={virtualItem.index}
                           ref={rowVirtualizer.measureElement}
                           style={{
@@ -659,7 +535,7 @@ export default function HomePage() {
                         >
                           <div className="pb-2">
                             <ErrorBoundary>
-                              <PostCard post={post} onPostUpdated={refetch} onPostDeleted={(postId) => setAllPosts(prev => prev.filter(p => p.id !== postId))} />
+                              <PostCard post={post} onPostUpdated={() => refetch()} onPostDeleted={handlePostDeleted} />
                             </ErrorBoundary>
                             {virtualItem.index < allPosts.length - 1 && (
                               <div className="h-[6px] bg-border mt-2 -mx-4" />
@@ -685,7 +561,7 @@ export default function HomePage() {
 
                 {/* Infinite scroll trigger + loading indicator */}
                 <div ref={loadingRef} className="flex justify-center py-4">
-                  {(isLoading || isLoadingMore) && <Loader2 className="h-8 w-8 animate-spin" />}
+                  {(isLoading || isFetchingNextPage) && <Loader2 className="h-8 w-8 animate-spin" />}
                 </div>
               </div>
               </main>
