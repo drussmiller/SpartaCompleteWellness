@@ -659,7 +659,7 @@ export default function HomePage() {
                         >
                           <div className="pb-2">
                             <ErrorBoundary>
-                              <PostCard post={post} onPostUpdated={refetch} />
+                              <PostCard post={post} onPostUpdated={refetch} onPostDeleted={(postId) => setAllPosts(prev => prev.filter(p => p.id !== postId))} />
                             </ErrorBoundary>
                             {virtualItem.index < allPosts.length - 1 && (
                               <div className="h-[6px] bg-border mt-2 -mx-4" />

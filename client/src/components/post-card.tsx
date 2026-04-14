@@ -103,7 +103,7 @@ function convertUrlsToLinks(text: string): string {
   });
 }
 
-export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { post: Post & { author: User }; onPostUpdated?: () => void }) {
+export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPostDeleted }: { post: Post & { author: User }; onPostUpdated?: () => void; onPostDeleted?: (postId: number) => void }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -173,10 +173,12 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
       await apiRequest('DELETE', `/api/posts/${post.id}`);
     },
     onSuccess: () => {
-      // Post deletion success - no toast notification as requested
       console.log("Post deleted successfully:", post.id);
 
-      // Invalidate and refetch
+      if (onPostDeleted) {
+        onPostDeleted(post.id);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
 
       // Invalidate post counts to update limits in Create Post dialog
