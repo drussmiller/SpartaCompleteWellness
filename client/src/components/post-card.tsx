@@ -435,13 +435,21 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPo
                 />
               </div>
             ) : imageLoadFailed ? (
-              <div className="w-full h-48 bg-gray-100 flex flex-col items-center justify-center text-gray-400 rounded-md">
+              <div
+                className="w-full h-48 bg-gray-100 flex flex-col items-center justify-center text-gray-400 rounded-md cursor-pointer"
+                onClick={() => {
+                  setImageLoadFailed(false);
+                  setImageRetryCount(0);
+                }}
+                data-testid={`img-retry-${post.id}`}
+              >
                 <ImageOff className="h-10 w-10 mb-2" />
                 <span className="text-sm">Image unavailable</span>
+                <span className="text-xs mt-1 text-muted-foreground">Tap to retry</span>
               </div>
             ) : (
               <img
-                src={imageUrl || undefined}
+                src={imageRetryCount > 0 ? `${imageUrl}${imageUrl?.includes('?') ? '&' : '?'}retry=${imageRetryCount}` : imageUrl || undefined}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
@@ -452,17 +460,20 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPo
                     originalUrl: post.mediaUrl,
                     postId: post.id,
                     postType: post.type,
-                    error: 'Image failed to load'
+                    attempt: imageRetryCount + 1
                   });
-                  setImageLoadFailed(true);
+                  if (imageRetryCount < maxImageRetries) {
+                    setTimeout(() => {
+                      setImageRetryCount(prev => prev + 1);
+                    }, 1000 * (imageRetryCount + 1));
+                  } else {
+                    setImageLoadFailed(true);
+                  }
                 }}
                 onLoad={() => {
-                  console.log('[Image Load Success]', {
-                    src: imageUrl,
-                    originalUrl: post.mediaUrl,
-                    postId: post.id,
-                    postType: post.type
-                  });
+                  if (imageRetryCount > 0) {
+                    setImageRetryCount(0);
+                  }
                 }}
                 onClick={() => {
                   setIsImageViewerOpen(true);
