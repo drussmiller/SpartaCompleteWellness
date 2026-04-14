@@ -116,6 +116,8 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPo
   const [thumbnailError, setThumbnailError] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [imageRetryCount, setImageRetryCount] = useState(0);
+  const maxImageRetries = 3;
   const { remaining } = usePostLimits();
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
