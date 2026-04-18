@@ -8184,16 +8184,12 @@ export const registerRoutes = async (
             AND p.parent_id IS NULL
           ), 0)::integer AS points`,
           weeklyAvg: sql<number>`COALESCE((
-            SELECT ROUND(AVG(week_total))::integer
-            FROM (
-              SELECT SUM(p.points) AS week_total
-              FROM posts p
-              WHERE p.user_id = users.id
-                AND p.created_at >= ${fourWeeksStart}
-                AND p.created_at <= ${queryEnd}
-                AND p.parent_id IS NULL
-              GROUP BY date_trunc('week', p.created_at)
-            ) wk
+            SELECT ROUND(SUM(p.points)::numeric / 4)::integer
+            FROM posts p
+            WHERE p.user_id = users.id
+              AND p.created_at >= ${fourWeeksStart}
+              AND p.created_at <= ${queryEnd}
+              AND p.parent_id IS NULL
           ), 0)::integer AS weekly_avg`,
         })
         .from(users)
