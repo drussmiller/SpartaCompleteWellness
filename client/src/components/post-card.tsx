@@ -103,7 +103,7 @@ function convertUrlsToLinks(text: string): string {
   });
 }
 
-export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { post: Post & { author: User }; onPostUpdated?: () => void }) {
+export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPostDeleted }: { post: Post & { author: User }; onPostUpdated?: () => void; onPostDeleted?: (postId: number) => void }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -116,6 +116,8 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
   const [thumbnailError, setThumbnailError] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [imageRetryCount, setImageRetryCount] = useState(0);
+  const maxImageRetries = 3;
   const { remaining } = usePostLimits();
 
   const avatarKey = useMemo(() => post.author?.imageUrl, [post.author?.imageUrl]);
@@ -173,10 +175,12 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
       await apiRequest('DELETE', `/api/posts/${post.id}`);
     },
     onSuccess: () => {
-      // Post deletion success - no toast notification as requested
       console.log("Post deleted successfully:", post.id);
 
-      // Invalidate and refetch
+      if (onPostDeleted) {
+        onPostDeleted(post.id);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
 
       // Invalidate post counts to update limits in Create Post dialog
@@ -431,13 +435,21 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
                 />
               </div>
             ) : imageLoadFailed ? (
-              <div className="w-full h-48 bg-gray-100 flex flex-col items-center justify-center text-gray-400 rounded-md">
+              <div
+                className="w-full h-48 bg-gray-100 flex flex-col items-center justify-center text-gray-400 rounded-md cursor-pointer"
+                onClick={() => {
+                  setImageLoadFailed(false);
+                  setImageRetryCount(0);
+                }}
+                data-testid={`img-retry-${post.id}`}
+              >
                 <ImageOff className="h-10 w-10 mb-2" />
                 <span className="text-sm">Image unavailable</span>
+                <span className="text-xs mt-1 text-muted-foreground">Tap to retry</span>
               </div>
             ) : (
               <img
-                src={imageUrl || undefined}
+                src={imageRetryCount > 0 ? `${imageUrl}${imageUrl?.includes('?') ? '&' : '?'}retry=${imageRetryCount}` : imageUrl || undefined}
                 alt={`${post.type} post content`}
                 loading="lazy"
                 decoding="async"
@@ -448,17 +460,20 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated }: { 
                     originalUrl: post.mediaUrl,
                     postId: post.id,
                     postType: post.type,
-                    error: 'Image failed to load'
+                    attempt: imageRetryCount + 1
                   });
-                  setImageLoadFailed(true);
+                  if (imageRetryCount < maxImageRetries) {
+                    setTimeout(() => {
+                      setImageRetryCount(prev => prev + 1);
+                    }, 1000 * (imageRetryCount + 1));
+                  } else {
+                    setImageLoadFailed(true);
+                  }
                 }}
                 onLoad={() => {
-                  console.log('[Image Load Success]', {
-                    src: imageUrl,
-                    originalUrl: post.mediaUrl,
-                    postId: post.id,
-                    postType: post.type
-                  });
+                  if (imageRetryCount > 0) {
+                    setImageRetryCount(0);
+                  }
                 }}
                 onClick={() => {
                   setIsImageViewerOpen(true);

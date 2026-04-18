@@ -333,7 +333,7 @@ export function CreatePostDialog({
 
     if (type === 'food') {
       if (foodWeekPoints >= 54) {
-        return "(weekly food limit reached - 54/54 points)";
+        return "(weekly limit reached)";
       }
       if (selectedDayOfWeek === 0) {
         if (remaining.food === 0) {
@@ -349,7 +349,7 @@ export function CreatePostDialog({
 
     if (type === 'workout') {
       if (workoutWeekPoints >= 15) {
-        return "(weekly workout limit reached - 15/15 points)";
+        return "(weekly limit reached)";
       }
       if (selectedDayOfWeek === 0 || selectedDayOfWeek === 6) {
         if (remaining.workout === 0) {
