@@ -244,7 +244,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="w-16 text-right">Week Total</div>
-                          <div className="w-16 text-right">Week Avg</div>
+                          <div className="w-16 text-right">Weekly Avg</div>
                         </div>
                       </div>
                     )}
