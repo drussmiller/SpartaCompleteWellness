@@ -238,7 +238,7 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                     {Array.isArray(data?.teamMembers) && data?.teamMembers.length > 0 && (
                       <div className="flex items-center justify-between px-2 pb-1 border-b text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         <div className="flex items-center space-x-3">
-                          <div className="w-6 text-center">#</div>
+                          <div className="w-6 text-center" />
                           <div className="w-10" />
                           <div>Member</div>
                         </div>
