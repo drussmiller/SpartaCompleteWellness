@@ -19,6 +19,7 @@ type TeamMember = {
   imageUrl: string | null;
   avatarColor: string | null;
   points: number;
+  weeklyAvg: number;
 };
 
 type TeamStat = {
@@ -234,6 +235,19 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                     <CardDescription>{weekRangeText}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
+                    {Array.isArray(data?.teamMembers) && data?.teamMembers.length > 0 && (
+                      <div className="flex items-center justify-between px-2 pb-1 border-b text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-6 text-center" />
+                          <div className="w-10" />
+                          <div>Member</div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 text-right">Week Total</div>
+                          <div className="w-16 text-right">Weekly Avg</div>
+                        </div>
+                      </div>
+                    )}
                     {Array.isArray(data?.teamMembers) && data?.teamMembers.map((member, index) => (
                       <div key={member.id} className="flex items-center justify-between p-2 border-b last:border-b-0">
                         <div className="flex items-center space-x-3">
@@ -249,7 +263,10 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
                           </Avatar>
                           <div className="font-medium">{getDisplayName(member)}</div>
                         </div>
-                        <div className="font-bold text-primary">{member.points} pts</div>
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 text-right font-bold text-primary">{member.points}</div>
+                          <div className="w-16 text-right font-semibold text-muted-foreground">{member.weeklyAvg ?? 0}%</div>
+                        </div>
                       </div>
                     ))}
 
