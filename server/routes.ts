@@ -8163,6 +8163,10 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Team not found" });
       }
 
+      // Calculate the start of the 4-week window (3 weeks before current week start)
+      const fourWeeksStart = new Date(queryStart);
+      fourWeeksStart.setDate(fourWeeksStart.getDate() - 21);
+
       // Get team members points for the resolved team
       const teamMembers = await db
         .select({
@@ -8179,6 +8183,18 @@ export const registerRoutes = async (
             AND p.created_at <= ${queryEnd}
             AND p.parent_id IS NULL
           ), 0)::integer AS points`,
+          weeklyAvg: sql<number>`COALESCE((
+            SELECT ROUND(AVG(week_total))::integer
+            FROM (
+              SELECT SUM(p.points) AS week_total
+              FROM posts p
+              WHERE p.user_id = users.id
+                AND p.created_at >= ${fourWeeksStart}
+                AND p.created_at <= ${queryEnd}
+                AND p.parent_id IS NULL
+              GROUP BY date_trunc('week', p.created_at)
+            ) wk
+          ), 0)::integer AS weekly_avg`,
         })
         .from(users)
         .where(eq(users.teamId, resolvedTeamId))
