@@ -204,7 +204,10 @@ export const registerRoutes = async (
 
       // For workout, memory verse, and food posts, we need to check the week's total
       const startOfWeek = new Date(startOfDay);
-      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to Monday
+      // Set to Monday of the current week (treat Sunday as end of the week, not start)
+      const dowForWeek = startOfWeek.getDay();
+      const diffToMonday = dowForWeek === 0 ? 6 : dowForWeek - 1;
+      startOfWeek.setDate(startOfWeek.getDate() - diffToMonday);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(endOfWeek.getDate() + 7); // Set to next Monday
 
