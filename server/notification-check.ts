@@ -217,8 +217,27 @@ export async function checkNotifications() {
             missedItems.push("your scripture reading");
           }
 
-          if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
-            missedItems.push("your memory verse");
+          if (yesterdayDayOfWeek === 6) {
+            const sevenDaysAgoLocal = new Date(userLocalToday.getTime() - 7 * 86400000);
+            const sevenDaysAgoUTC = new Date(sevenDaysAgoLocal.getTime() - offsetMinutes * 60000);
+
+            const weeklyMvResult = await db
+              .select({ count: sql<number>`count(*)::integer` })
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, user.id),
+                  eq(posts.type, 'memory_verse'),
+                  gte(posts.createdAt, sevenDaysAgoUTC),
+                  lt(posts.createdAt, todayUTC),
+                  isNull(posts.parentId),
+                ),
+              );
+
+            const weeklyMvCount = weeklyMvResult[0]?.count || 0;
+            if (weeklyMvCount < 1) {
+              missedItems.push("your memory verse");
+            }
           }
 
           let message = "";
