@@ -204,7 +204,10 @@ export const registerRoutes = async (
 
       // For workout, memory verse, and food posts, we need to check the week's total
       const startOfWeek = new Date(startOfDay);
-      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Set to Monday
+      // Set to Monday of the current week (treat Sunday as end of the week, not start)
+      const dowForWeek = startOfWeek.getDay();
+      const diffToMonday = dowForWeek === 0 ? 6 : dowForWeek - 1;
+      startOfWeek.setDate(startOfWeek.getDate() - diffToMonday);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(endOfWeek.getDate() + 7); // Set to next Monday
 
@@ -338,18 +341,11 @@ export const registerRoutes = async (
       if (foodWeekPoints >= foodWeekPointsCap) {
         canPostFood = false;
         foodDailyRemaining = 0;
-      } else if (dayOfWeek === 0) {
-        // Sunday: allow up to 3 makeup posts, but not exceeding weekly cap
-        const sundayDailyMax = 3;
-        const sundayRemaining = Math.min(sundayDailyMax - counts.food, foodWeekPostsRemaining);
-        canPostFood = counts.food < sundayDailyMax && foodWeekPostsRemaining > 0;
-        foodDailyRemaining = Math.max(0, sundayRemaining);
       } else {
-        // Mon-Sat: up to 3 per day, but not exceeding weekly cap
+        // Any day: up to 3 per day, but not exceeding weekly cap (18 posts / 54 points)
         const dailyMax = 3;
-        const dailyRemaining = Math.min(dailyMax - counts.food, foodWeekPostsRemaining);
-        canPostFood = counts.food < dailyMax && foodWeekPostsRemaining > 0;
-        foodDailyRemaining = Math.max(0, dailyRemaining);
+        foodDailyRemaining = Math.max(0, Math.min(dailyMax - counts.food, foodWeekPostsRemaining));
+        canPostFood = foodDailyRemaining > 0;
       }
 
       remaining.food = foodDailyRemaining;
