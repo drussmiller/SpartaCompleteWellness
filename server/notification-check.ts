@@ -218,8 +218,8 @@ export async function checkNotifications() {
           }
 
           if (yesterdayDayOfWeek === 6) {
-            const sevenDaysAgoLocal = new Date(userLocalToday.getTime() - 7 * 86400000);
-            const sevenDaysAgoUTC = new Date(sevenDaysAgoLocal.getTime() - offsetMinutes * 60000);
+            const weekStartLocal = new Date(userLocalToday.getTime() - dayOfWeek * 86400000);
+            const weekStartUTC = new Date(weekStartLocal.getTime() - offsetMinutes * 60000);
 
             const weeklyMvResult = await db
               .select({ count: sql<number>`count(*)::integer` })
@@ -228,7 +228,7 @@ export async function checkNotifications() {
                 and(
                   eq(posts.userId, user.id),
                   eq(posts.type, 'memory_verse'),
-                  gte(posts.createdAt, sevenDaysAgoUTC),
+                  gte(posts.createdAt, weekStartUTC),
                   lt(posts.createdAt, todayUTC),
                   isNull(posts.parentId),
                 ),
