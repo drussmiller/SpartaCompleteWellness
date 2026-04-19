@@ -218,7 +218,10 @@ export async function checkNotifications() {
           }
 
           if (yesterdayDayOfWeek === 6) {
-            const weekStartLocal = new Date(userLocalToday.getTime() - dayOfWeek * 86400000);
+            // Program week is Monday through Sunday. Today is Sunday (the last day of
+            // the week), so check Monday through Saturday of the current program week
+            // in the user's local timezone.
+            const weekStartLocal = new Date(userLocalToday.getTime() - 6 * 86400000);
             const weekStartUTC = new Date(weekStartLocal.getTime() - offsetMinutes * 60000);
 
             const weeklyMvResult = await db
