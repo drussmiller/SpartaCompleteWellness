@@ -339,9 +339,10 @@ export const registerRoutes = async (
         canPostFood = false;
         foodDailyRemaining = 0;
       } else {
-        // Any day: allow remaining posts up to weekly cap (no daily cap)
-        canPostFood = foodWeekPostsRemaining > 0;
-        foodDailyRemaining = foodWeekPostsRemaining;
+        // Any day: up to 3 per day, but not exceeding weekly cap (18 posts / 54 points)
+        const dailyMax = 3;
+        foodDailyRemaining = Math.max(0, Math.min(dailyMax - counts.food, foodWeekPostsRemaining));
+        canPostFood = foodDailyRemaining > 0;
       }
 
       remaining.food = foodDailyRemaining;
