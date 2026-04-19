@@ -217,8 +217,30 @@ export async function checkNotifications() {
             missedItems.push("your scripture reading");
           }
 
-          if (yesterdayDayOfWeek === 6 && counts.memory_verse < 1) {
-            missedItems.push("your memory verse");
+          if (yesterdayDayOfWeek === 6) {
+            // Program week is Monday through Sunday. Today is Sunday (the last day of
+            // the week), so check Monday through Saturday of the current program week
+            // in the user's local timezone.
+            const weekStartLocal = new Date(userLocalToday.getTime() - 6 * 86400000);
+            const weekStartUTC = new Date(weekStartLocal.getTime() - offsetMinutes * 60000);
+
+            const weeklyMvResult = await db
+              .select({ count: sql<number>`count(*)::integer` })
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, user.id),
+                  eq(posts.type, 'memory_verse'),
+                  gte(posts.createdAt, weekStartUTC),
+                  lt(posts.createdAt, todayUTC),
+                  isNull(posts.parentId),
+                ),
+              );
+
+            const weeklyMvCount = weeklyMvResult[0]?.count || 0;
+            if (weeklyMvCount < 1) {
+              missedItems.push("your memory verse");
+            }
           }
 
           let message = "";
