@@ -3060,20 +3060,19 @@ export const registerRoutes = async (app: express.Application): Promise<HttpServ
             }
 
             // Create the notification message
-            let message = "";
-            if (missedItems.length > 0) {
-              message = "Yesterday you missed posting ";
+            if (missedItems.length === 0) {
+              // User completed everything yesterday — no reminder needed.
+              continue;
+            }
 
-              if (missedItems.length === 1) {
-                message += missedItems[0] + ".";
-              } else if (missedItems.length === 2) {
-                message += missedItems[0] + " and " + missedItems[1] + ".";
-              } else {
-                const lastItem = missedItems.pop();
-                message += missedItems.join(", ") + ", and " + lastItem + ".";
-              }
+            let message = "Yesterday you missed posting ";
+            if (missedItems.length === 1) {
+              message += missedItems[0] + ".";
+            } else if (missedItems.length === 2) {
+              message += missedItems[0] + " and " + missedItems[1] + ".";
             } else {
-              message = `Your total points for yesterday was ${totalPoints}. You should aim for ${expectedPoints} points daily for optimal progress!`;
+              const lastItem = missedItems.pop();
+              message += missedItems.join(", ") + ", and " + lastItem + ".";
             }
 
             // Check if a reminder notification has already been sent today
