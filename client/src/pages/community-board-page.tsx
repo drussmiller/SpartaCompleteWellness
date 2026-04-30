@@ -30,7 +30,7 @@ export default function CommunityBoardPage() {
   // Restore scroll position when returning from video player
   useRestoreScroll();
 
-  // Mark prayer requests as viewed when page loads
+  // Mark community board items as viewed when page loads
   useEffect(() => {
     if (user) {
       console.log("Community Board Page: Marking items as viewed");
