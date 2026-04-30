@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import DOMPurify from 'dompurify';
+import { convertUrlsToLinks } from "@/lib/url-utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,17 +90,6 @@ function isLikelyVideo(url: string, content?: string | null): boolean {
   }
 
   return false;
-}
-
-function convertUrlsToLinks(text: string): string {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const html = text.replace(urlRegex, (url) => {
-    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-  });
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['a'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
-  });
 }
 
 export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPostDeleted }: { post: Post & { author: User }; onPostUpdated?: () => void; onPostDeleted?: (postId: number) => void }) {
