@@ -137,30 +137,30 @@ export default function HomePage() {
 
   const buildPostsUrl = useCallback((page: number) => {
     if (filterMode === "specific_team" && selectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&specificTeamId=${selectedTeamId}`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&specificTeamId=${selectedTeamId}`;
     }
     if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
       return `/api/posts?page=${page}&limit=${PAGE_SIZE}&teamlessIntroOnly=true`;
     }
     if (filterMode === "all_users" && user?.isAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&allUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&allUsers=true`;
     }
     if (filterMode === "all_users" && user?.isOrganizationAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&orgAllUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&orgAllUsers=true`;
     }
     if (filterMode === "all_users" && user?.isGroupAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&groupAllUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&groupAllUsers=true`;
     }
     if (filterMode === "all_users" && user?.isTeamLead) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
     }
     if (!user?.teamId && user?.isAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
     }
     if (!user?.teamId) {
       return `/api/posts?page=${page}&limit=${PAGE_SIZE}&type=introductory_video&userId=${user?.id}`;
     }
-    return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+    return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
   }, [filterMode, selectedTeamId, user]);
 
   const {

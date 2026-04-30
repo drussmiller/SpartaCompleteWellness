@@ -1653,6 +1653,14 @@ export const registerRoutes = async (
         ? postType.split(",").map(t => t.trim()).filter(Boolean)
         : null;
       const excludeType = req.query.exclude as string;
+      const excludeTypes = excludeType
+        ? excludeType.split(",").map(t => t.trim()).filter(Boolean)
+        : [];
+      const buildExcludeFilter = () => {
+        if (excludeTypes.length === 0) return undefined;
+        if (excludeTypes.length === 1) return ne(posts.type, excludeTypes[0]);
+        return not(inArray(posts.type, excludeTypes as any));
+      };
       const teamOnly = req.query.teamOnly === "true";
       const teamlessIntroOnly = req.query.teamlessIntroOnly === "true";
       const allUsers = req.query.allUsers === "true";
@@ -1744,7 +1752,7 @@ export const registerRoutes = async (
                   eq(posts.targetTeamId, specificTeamId)
                 )
               ),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1826,7 +1834,7 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, orgUserIds),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1897,7 +1905,7 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, userIds),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1946,7 +1954,7 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -2171,8 +2179,9 @@ export const registerRoutes = async (
       }
 
       // Add exclude filter if specified
-      if (excludeType) {
-        conditions.push(ne(posts.type, excludeType));
+      const excludeCondition = buildExcludeFilter();
+      if (excludeCondition) {
+        conditions.push(excludeCondition);
       }
 
       // Add scope-based filtering
