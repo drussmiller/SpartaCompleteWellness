@@ -181,7 +181,7 @@ export type InsertVerificationCode = z.infer<typeof insertVerificationCodeSchema
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video"] }).notNull(),
+  type: text("type", { enum: ["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video", "recipe", "share"] }).notNull(),
   content: text("content"),
   mediaUrl: text("image_url"), // Using the existing image_url column for both images and videos
   thumbnailUrl: text("thumbnail_url"), // Thumbnail URL for videos (especially HLS videos)
@@ -381,7 +381,7 @@ export const insertPostSchema = createInsertSchema(posts)
   .extend({
     content: z.string().nullable(),
     mediaUrl: z.string().nullable(), // Updated from imageUrl to mediaUrl
-    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video"]),
+    type: z.enum(["food", "workout", "scripture", "memory_verse", "comment", "miscellaneous", "prayer", "introductory_video", "recipe", "share"]),
     points: z.number().default(1),
     parentId: z.number().optional().nullable(),
     depth: z.number().default(0),

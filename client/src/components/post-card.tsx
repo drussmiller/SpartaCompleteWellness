@@ -195,9 +195,19 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPo
         exact: false 
       });
 
-      // If this was a prayer post, also invalidate the prayer requests cache
-      if (post.type === "prayer") {
+      // If this was a community board post, also invalidate the community board caches
+      if (post.type === "prayer" || post.type === "recipe" || post.type === "share") {
         queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            if (Array.isArray(key) && key[0] === "/api/posts" && typeof key[1] === "object" && key[1] !== null) {
+              const t = (key[1] as any).type;
+              return typeof t === "string" && (t === "prayer" || t.includes("recipe") || t.includes("share") || t.includes("prayer"));
+            }
+            return false;
+          },
+        });
       }
     },
     onError: (error) => {

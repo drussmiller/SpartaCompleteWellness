@@ -35,6 +35,7 @@ export function CreatePostDialog({
   initialType = "food",
   defaultType = null,
   hideTypeField = false,
+  allowedTypes,
   editPost = null,
   editOpen = false,
   onEditOpenChange,
@@ -44,6 +45,7 @@ export function CreatePostDialog({
   initialType?: string;
   defaultType?: string | null;
   hideTypeField?: boolean;
+  allowedTypes?: string[];
   editPost?: (Post & { author?: User }) | null;
   editOpen?: boolean;
   onEditOpenChange?: (open: boolean) => void;
@@ -82,24 +84,30 @@ export function CreatePostDialog({
     setUploadStatusMessage('');
   };
 
-  const isPrayerDefault = defaultType === "prayer";
+  const COMMUNITY_TYPES = ["prayer", "recipe", "share"] as const;
+  const isCommunityType = (t: string | null | undefined) =>
+    !!t && (COMMUNITY_TYPES as readonly string[]).includes(t);
+  const isCommunityDefault = isCommunityType(defaultType)
+    || (allowedTypes !== undefined && allowedTypes.every(t => isCommunityType(t)));
+  // Backwards-compat alias used elsewhere in this file
+  const isPrayerDefault = isCommunityDefault;
 
-  // Fetch organizations for admin users or prayer posts
+  // Fetch organizations for admin users or community board posts
   const { data: organizations = [] } = useQuery({
     queryKey: ["/api/organizations"],
-    enabled: (!!user?.isAdmin || isPrayerDefault) && dialogOpen,
+    enabled: (!!user?.isAdmin || isCommunityDefault) && dialogOpen,
   });
 
-  // Fetch groups for admin, group admin users, or prayer posts
+  // Fetch groups for admin, group admin users, or community board posts
   const { data: groups = [] } = useQuery({
     queryKey: ["/api/groups"],
-    enabled: (!!(user?.isAdmin || user?.isGroupAdmin) || isPrayerDefault) && dialogOpen,
+    enabled: (!!(user?.isAdmin || user?.isGroupAdmin) || isCommunityDefault) && dialogOpen,
   });
 
-  // Fetch teams for admin, group admin users, or prayer posts
+  // Fetch teams for admin, group admin users, or community board posts
   const { data: teams = [] } = useQuery({
     queryKey: ["/api/teams"],
-    enabled: (!!(user?.isAdmin || user?.isGroupAdmin) || isPrayerDefault) && dialogOpen,
+    enabled: (!!(user?.isAdmin || user?.isGroupAdmin) || isCommunityDefault) && dialogOpen,
   });
 
   // Check if user's team is in a competitive group
@@ -212,7 +220,7 @@ export function CreatePostDialog({
       type: actualType,
       content: "",
       mediaUrl: null,
-      points: actualType === "introductory_video" ? 0 : actualType === "prayer" ? 0 : actualType === "memory_verse" ? 10 : 3,
+      points: actualType === "introductory_video" ? 0 : (actualType === "prayer" || actualType === "recipe" || actualType === "share") ? 0 : actualType === "memory_verse" ? 10 : 3,
       postDate: selectedDate,
       postScope: user?.teamId ? "my_team" : "everyone",
       targetOrganizationId: null,
@@ -299,7 +307,7 @@ export function CreatePostDialog({
         newType = "food";
       }
       form.setValue("type", newType);
-      const newPoints = newType === "introductory_video" ? 0 : newType === "prayer" ? 0 : newType === "memory_verse" ? 10 : 3;
+      const newPoints = newType === "introductory_video" ? 0 : (newType === "prayer" || newType === "recipe" || newType === "share") ? 0 : newType === "memory_verse" ? 10 : 3;
       form.setValue("points", newPoints);
     }
   }, [open, hasAnyPosts, defaultType, form]);
@@ -461,7 +469,7 @@ export function CreatePostDialog({
 
           try {
             // Handle memory verse, introductory video, miscellaneous, and prayer post video uploads
-            if ((data.type === 'memory_verse' || data.type === 'introductory_video' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || (data.type === 'prayer' && selectedMediaType === 'video')) &&
+            if ((data.type === 'memory_verse' || data.type === 'introductory_video' || (data.type === 'miscellaneous' && selectedMediaType === 'video') || ((data.type === 'prayer' || data.type === 'recipe' || data.type === 'share') && selectedMediaType === 'video')) &&
                 videoInputRef.current && videoInputRef.current.files && videoInputRef.current.files.length > 0) {
               const videoFile = videoInputRef.current.files[0];
               
@@ -738,8 +746,8 @@ export function CreatePostDialog({
 
       console.log("Post created successfully, invalidating queries to update UI");
 
-      // Also update prayer requests cache if this is a prayer post
-      if (newPost.type === "prayer") {
+      // Also update community board cache if this is a community board post
+      if (newPost.type === "prayer" || newPost.type === "recipe" || newPost.type === "share") {
         queryClient.setQueryData(["/api/posts/prayer-requests"], (old: any[] = []) => {
           return [newPost, ...old];
         });
@@ -757,9 +765,19 @@ export function CreatePostDialog({
         exact: false
       });
 
-      // If this was a prayer post, also invalidate the prayer requests cache
-      if (newPost.type === "prayer") {
+      // If this was a community board post, also invalidate the prayer requests / community board caches
+      if (newPost.type === "prayer" || newPost.type === "recipe" || newPost.type === "share") {
         queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            if (Array.isArray(key) && key[0] === "/api/posts" && typeof key[1] === "object" && key[1] !== null) {
+              const t = (key[1] as any).type;
+              return typeof t === "string" && (t === "prayer" || t.includes("recipe") || t.includes("share") || t.includes("prayer"));
+            }
+            return false;
+          },
+        });
       }
 
       // Then use predicate for any other post-related queries we might have missed
@@ -1051,6 +1069,9 @@ export function CreatePostDialog({
 
   const activeMutation = isEditMode ? updatePostMutation : createPostMutation;
 
+  const watchedType = form.watch("type");
+  const isCommunityFormType = watchedType === "prayer" || watchedType === "recipe" || watchedType === "share";
+
   return (
     <Dialog open={dialogOpen} onOpenChange={(isOpen) => {
       setDialogOpen(isOpen);
@@ -1212,27 +1233,44 @@ export function CreatePostDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="food" disabled={isPostTypeDisabled('food') || !hasAnyPosts}>
-                          Food {getRemainingMessage('food')}
-                        </SelectItem>
-                        <SelectItem value="workout" disabled={isPostTypeDisabled('workout') || !hasAnyPosts}>
-                          Workout {getRemainingMessage('workout')}
-                        </SelectItem>
-                        <SelectItem value="scripture" disabled={isPostTypeDisabled('scripture') || !hasAnyPosts}>
-                          Scripture {getRemainingMessage('scripture')}
-                        </SelectItem>
-                        <SelectItem value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || !hasAnyPosts}>
-                          Memory Verse {getRemainingMessage('memory_verse')}
-                        </SelectItem>
-                        {!(hasAnyPosts && hasPostedIntroVideo) && (
+                        {(!allowedTypes || allowedTypes.includes('food')) && (
+                          <SelectItem value="food" disabled={isPostTypeDisabled('food') || !hasAnyPosts}>
+                            Food {getRemainingMessage('food')}
+                          </SelectItem>
+                        )}
+                        {(!allowedTypes || allowedTypes.includes('workout')) && (
+                          <SelectItem value="workout" disabled={isPostTypeDisabled('workout') || !hasAnyPosts}>
+                            Workout {getRemainingMessage('workout')}
+                          </SelectItem>
+                        )}
+                        {(!allowedTypes || allowedTypes.includes('scripture')) && (
+                          <SelectItem value="scripture" disabled={isPostTypeDisabled('scripture') || !hasAnyPosts}>
+                            Scripture {getRemainingMessage('scripture')}
+                          </SelectItem>
+                        )}
+                        {(!allowedTypes || allowedTypes.includes('memory_verse')) && (
+                          <SelectItem value="memory_verse" disabled={isPostTypeDisabled('memory_verse') || !hasAnyPosts}>
+                            Memory Verse {getRemainingMessage('memory_verse')}
+                          </SelectItem>
+                        )}
+                        {(!allowedTypes || allowedTypes.includes('introductory_video')) && !(hasAnyPosts && hasPostedIntroVideo) && (
                           <SelectItem value="introductory_video" disabled={isPostTypeDisabled('introductory_video')}>
                             Intro Video {getRemainingMessage('introductory_video')}
                           </SelectItem>
                         )}
-                        {hasAnyPosts && (
+                        {(!allowedTypes || allowedTypes.includes('miscellaneous')) && hasAnyPosts && (
                           <SelectItem value="miscellaneous">
                             Miscellaneous {getRemainingMessage('miscellaneous')}
                           </SelectItem>
+                        )}
+                        {allowedTypes?.includes('prayer') && (
+                          <SelectItem value="prayer">Prayer Request</SelectItem>
+                        )}
+                        {allowedTypes?.includes('recipe') && (
+                          <SelectItem value="recipe">Recipe</SelectItem>
+                        )}
+                        {allowedTypes?.includes('share') && (
+                          <SelectItem value="share">Share</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
@@ -1249,10 +1287,10 @@ export function CreatePostDialog({
               </div>
             ) : null}
 
-            {/* Post Scope Selector - Show for Admin/Group Admin on Miscellaneous, and for ALL users on Prayer */}
+            {/* Post Scope Selector - Show for Admin/Group Admin on Miscellaneous, and for ALL users on Community Board posts */}
             {!isEditMode && (
               ((user?.isAdmin || user?.isGroupAdmin) && form.watch("type") === "miscellaneous") ||
-              form.watch("type") === "prayer"
+              isCommunityFormType
             ) && (
               <>
                 <FormField
@@ -1274,10 +1312,10 @@ export function CreatePostDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {(user?.isAdmin || form.watch("type") === "prayer") && <SelectItem value="everyone">Everyone</SelectItem>}
-                          {(user?.isAdmin || form.watch("type") === "prayer") && <SelectItem value="organization">Organization</SelectItem>}
-                          {(user?.isAdmin || user?.isGroupAdmin || form.watch("type") === "prayer") && <SelectItem value="group">Division</SelectItem>}
-                          {(user?.isAdmin || user?.isGroupAdmin || form.watch("type") === "prayer") && <SelectItem value="team">Team</SelectItem>}
+                          {(user?.isAdmin || isCommunityFormType) && <SelectItem value="everyone">Everyone</SelectItem>}
+                          {(user?.isAdmin || isCommunityFormType) && <SelectItem value="organization">Organization</SelectItem>}
+                          {(user?.isAdmin || user?.isGroupAdmin || isCommunityFormType) && <SelectItem value="group">Division</SelectItem>}
+                          {(user?.isAdmin || user?.isGroupAdmin || isCommunityFormType) && <SelectItem value="team">Team</SelectItem>}
                           <SelectItem value="my_team">My Team (Default)</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1287,7 +1325,7 @@ export function CreatePostDialog({
                 />
 
                 {/* Organization Selector */}
-                {postScope === "organization" && (user?.isAdmin || form.watch("type") === "prayer") && (
+                {postScope === "organization" && (user?.isAdmin || isCommunityFormType) && (
                   <FormField
                     control={form.control}
                     name="targetOrganizationId"
@@ -1336,7 +1374,7 @@ export function CreatePostDialog({
                           </FormControl>
                           <SelectContent>
                             {groups
-                              .filter((group: any) => user?.isAdmin || form.watch("type") === "prayer" || group.id === user?.adminGroupId)
+                              .filter((group: any) => user?.isAdmin || isCommunityFormType || group.id === user?.adminGroupId)
                               .map((group: any) => (
                                 <SelectItem key={group.id} value={group.id.toString()}>
                                   {group.name}
@@ -1373,7 +1411,7 @@ export function CreatePostDialog({
                             {teams
                               .filter((team: any) => {
                                 if (user?.isAdmin) return true;
-                                if (form.watch("type") === "prayer") return true;
+                                if (isCommunityFormType) return true;
                                 if (user?.isGroupAdmin) {
                                   return team.groupId === user.adminGroupId;
                                 }
@@ -1395,7 +1433,7 @@ export function CreatePostDialog({
               </>
             )}
 
-            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || form.watch("type") === "prayer" || form.watch("type") === "introductory_video") && (
+            {(form.watch("type") === "food" || form.watch("type") === "workout" || form.watch("type") === "miscellaneous" || form.watch("type") === "memory_verse" || isCommunityFormType || form.watch("type") === "introductory_video") && (
               <FormField
                 control={form.control}
                 name="mediaUrl"
@@ -1405,7 +1443,7 @@ export function CreatePostDialog({
                       {(form.watch("type") === "memory_verse") ? "Video" :
                        (form.watch("type") === "introductory_video") ? "Intro Video" :
                        (form.watch("type") === "miscellaneous" && !hasAnyPosts) ? "Intro Video" :
-                       (form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") ? "Media" : "Image"}
+                       (form.watch("type") === "miscellaneous" || isCommunityFormType) ? "Media" : "Image"}
                     </FormLabel>
                     <div className="space-y-4">
                       {form.watch("type") === "memory_verse" && (
@@ -1647,7 +1685,7 @@ export function CreatePostDialog({
                             )}
 
                             {/* Add Select Video button for Introductory Video, Miscellaneous and Prayer Request post types */}
-                            {(form.watch("type") === "introductory_video" || form.watch("type") === "miscellaneous" || form.watch("type") === "prayer") && (
+                            {(form.watch("type") === "introductory_video" || form.watch("type") === "miscellaneous" || isCommunityFormType) && (
                               <div className={hasAnyPosts ? "mt-3" : ""}>
                                 <Button
                                   type="button"
@@ -1920,7 +1958,7 @@ export function CreatePostDialog({
                               if (videoInputRef.current) videoInputRef.current.value = "";
                             }}
                           >
-                            Remove {form.watch("type") === "memory_verse" || form.watch("type") === "introductory_video" || (form.watch("type") === "miscellaneous" && videoThumbnail) || (form.watch("type") === "prayer" && videoThumbnail) ? "Video" : "Image"}
+                            Remove {form.watch("type") === "memory_verse" || form.watch("type") === "introductory_video" || (form.watch("type") === "miscellaneous" && videoThumbnail) || (isCommunityFormType && videoThumbnail) ? "Video" : "Image"}
                           </Button>
                         </div>
                       )}
@@ -1956,7 +1994,7 @@ export function CreatePostDialog({
                 form="create-post-form"
                 variant="default"
                 className="w-[calc(95%-2rem)] max-w-full bg-violet-700 hover:bg-violet-800 z-10 sm:w-full"
-                disabled={activeMutation.isPending || uploadProgress > 0 || multiPostProgress !== null || (!isEditMode && form.watch("type") !== "prayer" && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
+                disabled={activeMutation.isPending || uploadProgress > 0 || multiPostProgress !== null || (!isEditMode && !isCommunityFormType && form.watch("type") !== "introductory_video" && !canPost[form.watch("type") as keyof typeof canPost])}
               >
                 {multiPostProgress !== null ? (
                   <div className="flex items-center gap-2">

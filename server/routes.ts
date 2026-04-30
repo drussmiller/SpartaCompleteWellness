@@ -1649,6 +1649,9 @@ export const registerRoutes = async (
         ? new Date(req.query.endDate as string)
         : undefined;
       const postType = req.query.type as string;
+      const postTypes = postType && postType.includes(",")
+        ? postType.split(",").map(t => t.trim()).filter(Boolean)
+        : null;
       const excludeType = req.query.exclude as string;
       const teamOnly = req.query.teamOnly === "true";
       const teamlessIntroOnly = req.query.teamlessIntroOnly === "true";
@@ -2085,10 +2088,15 @@ export const registerRoutes = async (
         }
       }
 
-      // Special handling for prayer posts - filter by group instead of team
-      if (postType === "prayer") {
+      // Special handling for community board posts (prayer/recipe/share) - filter by group instead of team
+      const communityTypes = ["prayer", "recipe", "share"];
+      const isCommunityRequest = postType === "prayer"
+        || postType === "recipe"
+        || postType === "share"
+        || (postTypes !== null && postTypes.length > 0 && postTypes.every(t => communityTypes.includes(t)));
+      if (isCommunityRequest) {
         if (!req.user.teamId) {
-          logger.info(`User ${req.user.id} has no team, returning empty prayer posts array`);
+          logger.info(`User ${req.user.id} has no team, returning empty community posts array`);
           return res.json([]);
         }
 
@@ -2124,16 +2132,16 @@ export const registerRoutes = async (
           return res.json([]);
         }
 
-        // Override any existing user filter for prayer posts to use group-level filtering
+        // Override any existing user filter for community posts to use group-level filtering
         conditions = conditions.filter(condition => {
           // Remove any existing userId conditions
           const conditionStr = condition.toString();
           return !conditionStr.includes('user_id') && !conditionStr.includes('userId');
         });
 
-        // Add group-level user filtering for prayer posts
+        // Add group-level user filtering for community posts
         conditions.push(inArray(posts.userId, userIds));
-        logger.info(`Filtering prayer posts for group ${userTeamData.groupId} with ${userIds.length} users from ${teamIds.length} teams`);
+        logger.info(`Filtering community posts for group ${userTeamData.groupId} with ${userIds.length} users from ${teamIds.length} teams`);
       }
 
       // Add user filter if specified
@@ -2155,7 +2163,11 @@ export const registerRoutes = async (
 
       // Add type filter if specified and not 'all'
       if (postType && postType !== "all") {
-        conditions.push(eq(posts.type, postType));
+        if (postTypes && postTypes.length > 0) {
+          conditions.push(inArray(posts.type, postTypes as any));
+        } else {
+          conditions.push(eq(posts.type, postType));
+        }
       }
 
       // Add exclude filter if specified
@@ -2585,6 +2597,12 @@ export const registerRoutes = async (
         case 'prayer':
           points = 0; // 0 points for prayer requests
           break;
+        case 'recipe':
+          points = 0; // 0 points for community board recipes
+          break;
+        case 'share':
+          points = 0; // 0 points for community board shares
+          break;
         case 'miscellaneous':
         default:
           points = 0;
@@ -2877,7 +2895,9 @@ export const registerRoutes = async (
 
             // Handle specialized types
             const isMiscellaneousPost = postData.type === 'miscellaneous';
-            const isPrayerPost = postData.type === 'prayer';
+            const isPrayerPost = postData.type === 'prayer'
+              || postData.type === 'recipe'
+              || postData.type === 'share';
 
             console.log("Post type detection:", {
               isMemoryVersePost,
@@ -3066,8 +3086,8 @@ export const registerRoutes = async (
         // Non-fatal error, continue without blocking post creation
       }
 
-      // Send notifications for prayer requests based on scope
-      if (post.type === 'prayer') {
+      // Send notifications for community board posts (prayer/recipe/share) based on scope
+      if (post.type === 'prayer' || post.type === 'recipe' || post.type === 'share') {
         try {
           const posterName = req.user.preferredName || req.user.username;
           let userIdsToNotify: number[] = [];
@@ -3105,15 +3125,21 @@ export const registerRoutes = async (
           userIdsToNotify = userIdsToNotify.filter(id => id !== req.user.id);
 
           if (userIdsToNotify.length > 0) {
-            logger.info(`Sending prayer request notifications to ${userIdsToNotify.length} users (scope: ${postScope})`);
+            const notifTitle = post.type === 'prayer' ? "Prayer Request"
+              : post.type === 'recipe' ? "Recipe Shared"
+              : "Community Post";
+            const notifMessage = post.type === 'prayer' ? `${posterName} shared a prayer request`
+              : post.type === 'recipe' ? `${posterName} shared a recipe`
+              : `${posterName} shared something on the Community Board`;
+            logger.info(`Sending community board notifications (${post.type}) to ${userIdsToNotify.length} users (scope: ${postScope})`);
             const notificationPromises = userIdsToNotify.map(async (notifyUserId) => {
               const notification = await storage.createNotification({
                 userId: notifyUserId,
-                title: "Prayer Request",
-                message: `${posterName} shared a prayer request`,
+                title: notifTitle,
+                message: notifMessage,
                 read: false,
                 createdAt: new Date(),
-                type: "prayer",
+                type: post.type,
                 sound: null,
                 postId: post.id,
               });
@@ -3130,7 +3156,7 @@ export const registerRoutes = async (
             await Promise.all(notificationPromises);
           }
         } catch (notificationError) {
-          logger.error("Error sending prayer request notifications:", notificationError);
+          logger.error("Error sending community board notifications:", notificationError);
         }
       }
 

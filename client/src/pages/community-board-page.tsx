@@ -109,11 +109,11 @@ export default function CommunityBoardPage() {
   }, [user, refetchLimits]);
 
   const { data: prayerRequests = [], isLoading, error, refetch, isSuccess } = useQuery({
-    queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
+    queryKey: ["/api/posts", { type: "prayer,recipe,share", page: 1, limit: 50 }],
     queryFn: async () => {
       try {
         console.log('Fetching community board posts...');
-        const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
+        const response = await apiRequest("GET", `/api/posts?type=prayer,recipe,share&page=1&limit=50`);
         console.log('Community board response status:', response.status);
         
         if (!response.ok) {
@@ -198,7 +198,11 @@ export default function CommunityBoardPage() {
                 </div>
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} defaultType="prayer" hideTypeField={true} />
+                <CreatePostDialog
+                  remaining={remaining}
+                  defaultType="prayer"
+                  allowedTypes={["prayer", "recipe", "share"]}
+                />
                 <MessageSlideCard />
               </div>
             </div>
