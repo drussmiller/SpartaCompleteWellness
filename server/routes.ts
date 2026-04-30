@@ -3134,12 +3134,13 @@ export const registerRoutes = async (
           userIdsToNotify = userIdsToNotify.filter(id => id !== req.user.id);
 
           if (userIdsToNotify.length > 0) {
-            const notifTitle = post.type === 'prayer' ? "Prayer Request"
-              : post.type === 'recipe' ? "Recipe Shared"
-              : "Community Post";
-            const notifMessage = post.type === 'prayer' ? `${posterName} shared a prayer request`
-              : post.type === 'recipe' ? `${posterName} shared a recipe`
-              : `${posterName} shared something on the Community Board`;
+            const postTypeLabel = post.type === 'prayer' ? "prayer request"
+              : post.type === 'recipe' ? "recipe"
+              : "share";
+            const notifTitle = post.type === 'prayer' ? "New Prayer Request"
+              : post.type === 'recipe' ? "New Recipe"
+              : "New Share";
+            const notifMessage = `${posterName} posted a ${postTypeLabel} on the Community Board`;
             logger.info(`Sending community board notifications (${post.type}) to ${userIdsToNotify.length} users (scope: ${postScope})`);
             const notificationPromises = userIdsToNotify.map(async (notifyUserId) => {
               const notification = await storage.createNotification({
