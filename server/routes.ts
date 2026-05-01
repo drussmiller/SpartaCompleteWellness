@@ -3065,6 +3065,64 @@ export const registerRoutes = async (
         logger.info(`[INTRODUCTORY VIDEO SCOPE] Setting scope to '${postScope}' for user ${req.user.id} (teamId: ${req.user.teamId})`);
       }
 
+      // Resolve target IDs. If the client picked a scope (organization/group/team)
+      // but didn't pick a specific target, default to the poster's own
+      // organization/group/team derived from their team membership.
+      let targetOrganizationId: number | null = postData.targetOrganizationId || null;
+      let targetGroupId: number | null = postData.targetGroupId || null;
+      let targetTeamId: number | null = postData.targetTeamId || null;
+
+      const needsOrgFallback = postScope === 'organization' && !targetOrganizationId;
+      const needsGroupFallback = postScope === 'group' && !targetGroupId;
+      const needsTeamFallback = postScope === 'team' && !targetTeamId;
+
+      if ((needsOrgFallback || needsGroupFallback || needsTeamFallback) && req.user.teamId) {
+        try {
+          const [posterTeam] = await db
+            .select({ id: teams.id, groupId: teams.groupId })
+            .from(teams)
+            .where(eq(teams.id, req.user.teamId))
+            .limit(1);
+
+          if (posterTeam) {
+            if (needsTeamFallback) {
+              targetTeamId = posterTeam.id;
+            }
+            if (needsGroupFallback || needsOrgFallback) {
+              if (posterTeam.groupId) {
+                if (needsGroupFallback) {
+                  targetGroupId = posterTeam.groupId;
+                }
+                if (needsOrgFallback) {
+                  const [posterGroup] = await db
+                    .select({ organizationId: groups.organizationId })
+                    .from(groups)
+                    .where(eq(groups.id, posterTeam.groupId))
+                    .limit(1);
+                  if (posterGroup?.organizationId) {
+                    targetOrganizationId = posterGroup.organizationId;
+                  }
+                }
+              }
+            }
+          }
+        } catch (scopeFallbackError) {
+          logger.error("Error resolving default scope target from poster's team:", scopeFallbackError);
+        }
+      }
+
+      // If we still couldn't resolve a target for organization/group/team scope,
+      // fall back to 'my_team' so the post is at least visible to the poster's team
+      // (and avoid silently dropping notifications).
+      if (
+        (postScope === 'organization' && !targetOrganizationId) ||
+        (postScope === 'group' && !targetGroupId) ||
+        (postScope === 'team' && !targetTeamId)
+      ) {
+        logger.warn(`Could not resolve target for scope '${postScope}' on post by user ${req.user.id}; falling back to 'my_team'`);
+        postScope = req.user.teamId ? 'my_team' : 'everyone';
+      }
+
       const post = await db
         .insert(posts)
         .values({
@@ -3076,9 +3134,9 @@ export const registerRoutes = async (
           is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
           postScope: postScope,
-          targetOrganizationId: postData.targetOrganizationId || null,
-          targetGroupId: postData.targetGroupId || null,
-          targetTeamId: postData.targetTeamId || null,
+          targetOrganizationId: targetOrganizationId,
+          targetGroupId: targetGroupId,
+          targetTeamId: targetTeamId,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
         .returning()
