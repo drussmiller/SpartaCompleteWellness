@@ -27,6 +27,7 @@ export async function checkNotifications() {
         dailyNotificationsEnabled: users.dailyNotificationsEnabled,
         smsEnabled: users.smsEnabled,
         programStartDate: users.programStartDate,
+        points: users.points,
       })
       .from(users);
 
@@ -63,6 +64,22 @@ export async function checkNotifications() {
           programStart.setHours(0, 0, 0, 0);
           if (programStart > todayUTC) {
             logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - program start date hasn't passed yet`);
+            continue;
+          }
+
+          // Skip inactive users: 0 points and past the 3rd day of the program.
+          // These users haven't engaged at all, so don't keep nagging them.
+          // Compute program start in the same UTC frame as todayUTC (user's local
+          // midnight expressed in UTC) so the day count is correct regardless of
+          // server timezone.
+          const programStartUserLocalMs = Date.UTC(year, month - 1, day);
+          const programStartUTCMs = programStartUserLocalMs - offsetMinutes * 60000;
+          const msSinceStart = todayUTC.getTime() - programStartUTCMs;
+          const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
+          const programDay = daysSinceStart + 1;
+          const userPoints = user.points ?? 0;
+          if (programDay > 3 && userPoints === 0) {
+            logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - 0 points and past day 3 of the program (day ${programDay})`);
             continue;
           }
         }

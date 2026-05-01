@@ -22,21 +22,21 @@ export function convertUrlsToLinks(text: string): string {
     return DOMPurify.sanitize(text, DOMPURIFY_CONFIG);
   }
 
-  const urlRegex = /(?:^|\s)(https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/g;
+  const urlRegex = /(^|\s)((?:https?:\/\/|www\.)(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/g;
 
   const matches = text.match(urlRegex);
   if (!matches || matches.length === 0) {
     return DOMPurify.sanitize(text, DOMPURIFY_CONFIG);
   }
 
-  const html = text.replace(urlRegex, (match, url) => {
+  const html = text.replace(urlRegex, (_match, lead, url) => {
     if (url.match(/(?:youtube\.com|youtu\.be)/i)) {
-      return match;
+      return `${lead}${url}`;
     }
-    
+
     const cleanUrl = url.replace(/[.,;:!?'")\]]+$/, '');
-    const leadingSpace = match.startsWith(' ') ? ' ' : '';
-    return `${leadingSpace}<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${cleanUrl}</a>`;
+    const href = cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`;
+    return `${lead}<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${cleanUrl}</a>`;
   });
 
   return DOMPurify.sanitize(html, DOMPURIFY_CONFIG);

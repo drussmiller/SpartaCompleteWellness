@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import DOMPurify from 'dompurify';
+import { convertUrlsToLinks } from "@/lib/url-utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,17 +90,6 @@ function isLikelyVideo(url: string, content?: string | null): boolean {
   }
 
   return false;
-}
-
-function convertUrlsToLinks(text: string): string {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const html = text.replace(urlRegex, (url) => {
-    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-  });
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['a'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
-  });
 }
 
 export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPostDeleted }: { post: Post & { author: User }; onPostUpdated?: () => void; onPostDeleted?: (postId: number) => void }) {
@@ -195,9 +184,19 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPo
         exact: false 
       });
 
-      // If this was a prayer post, also invalidate the prayer requests cache
-      if (post.type === "prayer") {
+      // If this was a community board post, also invalidate the community board caches
+      if (post.type === "prayer" || post.type === "recipe" || post.type === "share") {
         queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey;
+            if (Array.isArray(key) && key[0] === "/api/posts" && typeof key[1] === "object" && key[1] !== null) {
+              const t = (key[1] as any).type;
+              return typeof t === "string" && (t === "prayer" || t.includes("recipe") || t.includes("share") || t.includes("prayer"));
+            }
+            return false;
+          },
+        });
       }
     },
     onError: (error) => {

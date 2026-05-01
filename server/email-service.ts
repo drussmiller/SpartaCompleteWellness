@@ -122,31 +122,35 @@ async function sendFeedbackEmail(
     }
 
     const userInfoHtml = `
-      <hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;" />
-      <p style="color: #666; font-size: 14px;">
-        <strong>Submitted by:</strong><br />
-        Name: ${userName}<br />
-        Email: ${userEmail}${userPhone ? `<br />Phone: ${userPhone}` : ''}
-      </p>
+      <div style="background-color: #eef2ff; padding: 16px; margin: 16px 0; border-left: 4px solid #6366F1; border-radius: 4px;">
+        <p style="margin: 0 0 8px 0; color: #333; font-size: 15px;">
+          <strong>From:</strong> ${userName}
+        </p>
+        <p style="margin: 0 0 ${userPhone ? '8px' : '0'} 0; color: #333; font-size: 15px;">
+          <strong>Email:</strong> <a href="mailto:${userEmail}" style="color: #6366F1;">${userEmail}</a>
+        </p>
+        ${userPhone ? `<p style="margin: 0; color: #333; font-size: 15px;"><strong>Phone:</strong> ${userPhone}</p>` : ''}
+      </div>
     `;
 
-    const userInfoText = `\n\n---\nSubmitted by:\nName: ${userName}\nEmail: ${userEmail}${userPhone ? `\nPhone: ${userPhone}` : ''}`;
+    const userInfoText = `From: ${userName}\nEmail: ${userEmail}${userPhone ? `\nPhone: ${userPhone}` : ''}\n\n`;
 
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: "SpartaCompleteWellnessApp@gmail.com",
-      subject: `Feedback: ${subject}`,
+      replyTo: userEmail,
+      subject: `Feedback from ${userName}: ${subject}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">New Feedback Submission</h2>
+          ${userInfoHtml}
           <p><strong>Subject:</strong> ${subject}</p>
           <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0; border-left: 4px solid #6366F1;">
             ${message.replace(/\n/g, '<br />')}
           </div>
-          ${userInfoHtml}
         </div>
       `,
-      text: `New Feedback Submission\n\nSubject: ${subject}\n\n${message}${userInfoText}`,
+      text: `New Feedback Submission\n\n${userInfoText}Subject: ${subject}\n\n${message}`,
     };
 
     await transporter.sendMail(mailOptions);

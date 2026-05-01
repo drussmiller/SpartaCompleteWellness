@@ -137,30 +137,30 @@ export default function HomePage() {
 
   const buildPostsUrl = useCallback((page: number) => {
     if (filterMode === "specific_team" && selectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&specificTeamId=${selectedTeamId}`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&specificTeamId=${selectedTeamId}`;
     }
     if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
       return `/api/posts?page=${page}&limit=${PAGE_SIZE}&teamlessIntroOnly=true`;
     }
     if (filterMode === "all_users" && user?.isAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&allUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&allUsers=true`;
     }
     if (filterMode === "all_users" && user?.isOrganizationAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&orgAllUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&orgAllUsers=true`;
     }
     if (filterMode === "all_users" && user?.isGroupAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&groupAllUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&groupAllUsers=true`;
     }
     if (filterMode === "all_users" && user?.isTeamLead) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
     }
     if (!user?.teamId && user?.isAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
     }
     if (!user?.teamId) {
       return `/api/posts?page=${page}&limit=${PAGE_SIZE}&type=introductory_video&userId=${user?.id}`;
     }
-    return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer&teamOnly=true`;
+    return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
   }, [filterMode, selectedTeamId, user]);
 
   const {
@@ -242,11 +242,11 @@ export default function HomePage() {
     };
   }, [hasNextPage, isFetchingNextPage, isLoading, allPosts.length, fetchNextPage]);
 
-  const { markAsViewed, unreadCount: prayerRequestCount } = usePrayerRequests();
+  const { markAsViewed, unreadCount: communityBoardCount } = usePrayerRequests();
 
-  const handlePrayerRequestsClick = () => {
+  const handleCommunityBoardClick = () => {
     markAsViewed();
-    navigate("/prayer-requests");
+    navigate("/community-board");
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -467,13 +467,13 @@ export default function HomePage() {
                   variant="outline"
                   className={`flex-1 ml-2 h-10 text-sm font-medium ${!user?.teamId ? 'opacity-50 cursor-not-allowed' : ''}`}
                   disabled={!user?.teamId}
-                  onClick={handlePrayerRequestsClick}
+                  onClick={handleCommunityBoardClick}
                 >
                   <div className="relative">
-                    Prayer Requests
-                    {user?.teamId && prayerRequestCount > 0 && (
+                    Community Board
+                    {user?.teamId && communityBoardCount > 0 && (
                       <div className="absolute -top-2 -right-8 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {prayerRequestCount > 99 ? "99+" : prayerRequestCount}
+                        {communityBoardCount > 99 ? "99+" : communityBoardCount}
                       </div>
                     )}
                   </div>

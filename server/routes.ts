@@ -1649,7 +1649,18 @@ export const registerRoutes = async (
         ? new Date(req.query.endDate as string)
         : undefined;
       const postType = req.query.type as string;
+      const postTypes = postType && postType.includes(",")
+        ? postType.split(",").map(t => t.trim()).filter(Boolean)
+        : null;
       const excludeType = req.query.exclude as string;
+      const excludeTypes = excludeType
+        ? excludeType.split(",").map(t => t.trim()).filter(Boolean)
+        : [];
+      const buildExcludeFilter = () => {
+        if (excludeTypes.length === 0) return undefined;
+        if (excludeTypes.length === 1) return ne(posts.type, excludeTypes[0]);
+        return not(inArray(posts.type, excludeTypes as any));
+      };
       const teamOnly = req.query.teamOnly === "true";
       const teamlessIntroOnly = req.query.teamlessIntroOnly === "true";
       const allUsers = req.query.allUsers === "true";
@@ -1741,7 +1752,7 @@ export const registerRoutes = async (
                   eq(posts.targetTeamId, specificTeamId)
                 )
               ),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1823,7 +1834,7 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, orgUserIds),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1894,7 +1905,7 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, userIds),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1943,7 +1954,7 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              excludeType ? sql`${posts.type} != ${excludeType}` : undefined
+              buildExcludeFilter()
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -2085,10 +2096,15 @@ export const registerRoutes = async (
         }
       }
 
-      // Special handling for prayer posts - filter by group instead of team
-      if (postType === "prayer") {
+      // Special handling for community board posts (prayer/recipe/share) - filter by group instead of team
+      const communityTypes = ["prayer", "recipe", "share"];
+      const isCommunityRequest = postType === "prayer"
+        || postType === "recipe"
+        || postType === "share"
+        || (postTypes !== null && postTypes.length > 0 && postTypes.every(t => communityTypes.includes(t)));
+      if (isCommunityRequest) {
         if (!req.user.teamId) {
-          logger.info(`User ${req.user.id} has no team, returning empty prayer posts array`);
+          logger.info(`User ${req.user.id} has no team, returning empty community posts array`);
           return res.json([]);
         }
 
@@ -2124,16 +2140,16 @@ export const registerRoutes = async (
           return res.json([]);
         }
 
-        // Override any existing user filter for prayer posts to use group-level filtering
+        // Override any existing user filter for community posts to use group-level filtering
         conditions = conditions.filter(condition => {
           // Remove any existing userId conditions
           const conditionStr = condition.toString();
           return !conditionStr.includes('user_id') && !conditionStr.includes('userId');
         });
 
-        // Add group-level user filtering for prayer posts
+        // Add group-level user filtering for community posts
         conditions.push(inArray(posts.userId, userIds));
-        logger.info(`Filtering prayer posts for group ${userTeamData.groupId} with ${userIds.length} users from ${teamIds.length} teams`);
+        logger.info(`Filtering community posts for group ${userTeamData.groupId} with ${userIds.length} users from ${teamIds.length} teams`);
       }
 
       // Add user filter if specified
@@ -2155,12 +2171,17 @@ export const registerRoutes = async (
 
       // Add type filter if specified and not 'all'
       if (postType && postType !== "all") {
-        conditions.push(eq(posts.type, postType));
+        if (postTypes && postTypes.length > 0) {
+          conditions.push(inArray(posts.type, postTypes as any));
+        } else {
+          conditions.push(eq(posts.type, postType));
+        }
       }
 
       // Add exclude filter if specified
-      if (excludeType) {
-        conditions.push(ne(posts.type, excludeType));
+      const excludeCondition = buildExcludeFilter();
+      if (excludeCondition) {
+        conditions.push(excludeCondition);
       }
 
       // Add scope-based filtering
@@ -2585,6 +2606,12 @@ export const registerRoutes = async (
         case 'prayer':
           points = 0; // 0 points for prayer requests
           break;
+        case 'recipe':
+          points = 0; // 0 points for community board recipes
+          break;
+        case 'share':
+          points = 0; // 0 points for community board shares
+          break;
         case 'miscellaneous':
         default:
           points = 0;
@@ -2877,7 +2904,9 @@ export const registerRoutes = async (
 
             // Handle specialized types
             const isMiscellaneousPost = postData.type === 'miscellaneous';
-            const isPrayerPost = postData.type === 'prayer';
+            const isPrayerPost = postData.type === 'prayer'
+              || postData.type === 'recipe'
+              || postData.type === 'share';
 
             console.log("Post type detection:", {
               isMemoryVersePost,
@@ -3036,6 +3065,64 @@ export const registerRoutes = async (
         logger.info(`[INTRODUCTORY VIDEO SCOPE] Setting scope to '${postScope}' for user ${req.user.id} (teamId: ${req.user.teamId})`);
       }
 
+      // Resolve target IDs. If the client picked a scope (organization/group/team)
+      // but didn't pick a specific target, default to the poster's own
+      // organization/group/team derived from their team membership.
+      let targetOrganizationId: number | null = postData.targetOrganizationId || null;
+      let targetGroupId: number | null = postData.targetGroupId || null;
+      let targetTeamId: number | null = postData.targetTeamId || null;
+
+      const needsOrgFallback = postScope === 'organization' && !targetOrganizationId;
+      const needsGroupFallback = postScope === 'group' && !targetGroupId;
+      const needsTeamFallback = postScope === 'team' && !targetTeamId;
+
+      if ((needsOrgFallback || needsGroupFallback || needsTeamFallback) && req.user.teamId) {
+        try {
+          const [posterTeam] = await db
+            .select({ id: teams.id, groupId: teams.groupId })
+            .from(teams)
+            .where(eq(teams.id, req.user.teamId))
+            .limit(1);
+
+          if (posterTeam) {
+            if (needsTeamFallback) {
+              targetTeamId = posterTeam.id;
+            }
+            if (needsGroupFallback || needsOrgFallback) {
+              if (posterTeam.groupId) {
+                if (needsGroupFallback) {
+                  targetGroupId = posterTeam.groupId;
+                }
+                if (needsOrgFallback) {
+                  const [posterGroup] = await db
+                    .select({ organizationId: groups.organizationId })
+                    .from(groups)
+                    .where(eq(groups.id, posterTeam.groupId))
+                    .limit(1);
+                  if (posterGroup?.organizationId) {
+                    targetOrganizationId = posterGroup.organizationId;
+                  }
+                }
+              }
+            }
+          }
+        } catch (scopeFallbackError) {
+          logger.error("Error resolving default scope target from poster's team:", scopeFallbackError);
+        }
+      }
+
+      // If we still couldn't resolve a target for organization/group/team scope,
+      // fall back to 'my_team' so the post is at least visible to the poster's team
+      // (and avoid silently dropping notifications).
+      if (
+        (postScope === 'organization' && !targetOrganizationId) ||
+        (postScope === 'group' && !targetGroupId) ||
+        (postScope === 'team' && !targetTeamId)
+      ) {
+        logger.warn(`Could not resolve target for scope '${postScope}' on post by user ${req.user.id}; falling back to 'my_team'`);
+        postScope = req.user.teamId ? 'my_team' : 'everyone';
+      }
+
       const post = await db
         .insert(posts)
         .values({
@@ -3047,9 +3134,9 @@ export const registerRoutes = async (
           is_video: isVideo || false, // Set is_video flag based on our detection logic
           points: points,
           postScope: postScope,
-          targetOrganizationId: postData.targetOrganizationId || null,
-          targetGroupId: postData.targetGroupId || null,
-          targetTeamId: postData.targetTeamId || null,
+          targetOrganizationId: targetOrganizationId,
+          targetGroupId: targetGroupId,
+          targetTeamId: targetTeamId,
           createdAt: postData.createdAt ? new Date(postData.createdAt) : new Date()
         })
         .returning()
@@ -3066,8 +3153,8 @@ export const registerRoutes = async (
         // Non-fatal error, continue without blocking post creation
       }
 
-      // Send notifications for prayer requests based on scope
-      if (post.type === 'prayer') {
+      // Send notifications for community board posts (prayer/recipe/share) based on scope
+      if (post.type === 'prayer' || post.type === 'recipe' || post.type === 'share') {
         try {
           const posterName = req.user.preferredName || req.user.username;
           let userIdsToNotify: number[] = [];
@@ -3105,15 +3192,22 @@ export const registerRoutes = async (
           userIdsToNotify = userIdsToNotify.filter(id => id !== req.user.id);
 
           if (userIdsToNotify.length > 0) {
-            logger.info(`Sending prayer request notifications to ${userIdsToNotify.length} users (scope: ${postScope})`);
+            const postTypeLabel = post.type === 'prayer' ? "prayer request"
+              : post.type === 'recipe' ? "recipe"
+              : "share";
+            const notifTitle = post.type === 'prayer' ? "New Prayer Request"
+              : post.type === 'recipe' ? "New Recipe"
+              : "New Share";
+            const notifMessage = `${posterName} posted a ${postTypeLabel} on the Community Board`;
+            logger.info(`Sending community board notifications (${post.type}) to ${userIdsToNotify.length} users (scope: ${postScope})`);
             const notificationPromises = userIdsToNotify.map(async (notifyUserId) => {
               const notification = await storage.createNotification({
                 userId: notifyUserId,
-                title: "Prayer Request",
-                message: `${posterName} shared a prayer request`,
+                title: notifTitle,
+                message: notifMessage,
                 read: false,
                 createdAt: new Date(),
-                type: "prayer",
+                type: post.type,
                 sound: null,
                 postId: post.id,
               });
@@ -3130,7 +3224,7 @@ export const registerRoutes = async (
             await Promise.all(notificationPromises);
           }
         } catch (notificationError) {
-          logger.error("Error sending prayer request notifications:", notificationError);
+          logger.error("Error sending community board notifications:", notificationError);
         }
       }
 

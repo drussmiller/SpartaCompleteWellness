@@ -30,7 +30,7 @@ import NotificationSchedulePage from "@/pages/notification-schedule-page";
 import { LeaderboardPage } from "@/pages/leaderboard-page";
 import { DebugApi } from "./debug-api";
 import { AchievementsContainer } from "@/components/achievements/achievements-container";
-import PrayerRequestsPage from "@/pages/prayer-requests-page";
+import CommunityBoardPage from "@/pages/community-board-page";
 
 import { VideoPlayerPage } from "./pages/video-player-page";
 import CommentsPage from "@/pages/comments-page";
@@ -149,7 +149,7 @@ function MainContent() {
           <Route path="/help" component={HelpPage} />
           <Route path="/menu" component={MenuPage} />
           <Route path="/leaderboard" component={() => <LeaderboardPage />} />
-          <Route path="/prayer-requests" component={PrayerRequestsPage} />
+          <Route path="/community-board" component={CommunityBoardPage} />
           <Route path="/debug" component={() => <DebugApi />} />
 
           <Route path="/video-player" component={() => <VideoPlayerPage />} />

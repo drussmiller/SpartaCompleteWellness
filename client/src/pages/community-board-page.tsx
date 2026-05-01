@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { usePrayerRequests } from "@/hooks/use-prayer-requests";
 import { useRestoreScroll } from "@/hooks/use-restore-scroll";
 
-export default function PrayerRequestsPage() {
+export default function CommunityBoardPage() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { remaining, refetch: refetchLimits } = usePostLimits();
@@ -30,10 +30,10 @@ export default function PrayerRequestsPage() {
   // Restore scroll position when returning from video player
   useRestoreScroll();
 
-  // Mark prayer requests as viewed when page loads
+  // Mark community board items as viewed when page loads
   useEffect(() => {
     if (user) {
-      console.log("Prayer Requests Page: Marking prayer requests as viewed");
+      console.log("Community Board Page: Marking items as viewed");
       markAsViewed();
     }
   }, [user, markAsViewed]);
@@ -53,12 +53,12 @@ export default function PrayerRequestsPage() {
         scrollVelocity = Math.abs(currentScrollY - lastScrollY.current) / timeDelta;
       }
 
-      console.log('Prayer Requests - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
+      console.log('Community Board - Scroll detected - scrollY:', currentScrollY, 'last:', lastScrollY.current, 'velocity:', scrollVelocity.toFixed(3));
 
       // Hide header when scrolling down past 50px
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         // Scrolling down - hide header and bottom nav
-        console.log('Prayer Requests - Hiding header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to false');
+        console.log('Community Board - Hiding header and bottom nav - scrollY:', currentScrollY, 'setting isBottomNavVisible to false');
         setIsHeaderVisible(false);
         setIsBottomNavVisible(false);
       } 
@@ -66,7 +66,7 @@ export default function PrayerRequestsPage() {
       else if (currentScrollY <= 50 || (currentScrollY < lastScrollY.current && scrollVelocity > 1.5)) {
         // Near top OR scrolling up fast - show header and bottom nav
         const reason = currentScrollY <= 50 ? 'near top' : `fast scroll up (velocity: ${scrollVelocity.toFixed(3)})`;
-        console.log(`Prayer Requests - Showing header and bottom nav - ${reason} - scrollY:`, currentScrollY, 'setting isBottomNavVisible to true');
+        console.log(`Community Board - Showing header and bottom nav - ${reason} - scrollY:`, currentScrollY, 'setting isBottomNavVisible to true');
         setIsHeaderVisible(true);
         setIsBottomNavVisible(true);
       }
@@ -109,12 +109,12 @@ export default function PrayerRequestsPage() {
   }, [user, refetchLimits]);
 
   const { data: prayerRequests = [], isLoading, error, refetch, isSuccess } = useQuery({
-    queryKey: ["/api/posts", { type: "prayer", page: 1, limit: 50 }],
+    queryKey: ["/api/posts", { type: "prayer,recipe,share", page: 1, limit: 50 }],
     queryFn: async () => {
       try {
-        console.log('Fetching prayer requests...');
-        const response = await apiRequest("GET", `/api/posts?type=prayer&page=1&limit=50`);
-        console.log('Prayer requests response status:', response.status);
+        console.log('Fetching community board posts...');
+        const response = await apiRequest("GET", `/api/posts?type=prayer,recipe,share&page=1&limit=50`);
+        console.log('Community board response status:', response.status);
         
         if (!response.ok) {
           let errorMessage = `HTTP ${response.status}`;
@@ -128,10 +128,10 @@ export default function PrayerRequestsPage() {
         }
         
         const data = await response.json();
-        console.log('Prayer requests fetched successfully:', data.length, 'posts');
+        console.log('Community board fetched successfully:', data.length, 'posts');
         return data;
       } catch (err) {
-        console.error('Prayer requests fetch error:', err);
+        console.error('Community board fetch error:', err);
         throw err;
       }
     },
@@ -153,7 +153,7 @@ export default function PrayerRequestsPage() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center p-4 max-w-md mx-auto">
-            <h2 className="text-xl font-bold mb-2 text-destructive">Error loading prayer requests</h2>
+            <h2 className="text-xl font-bold mb-2 text-destructive">Error loading community board</h2>
             <p className="text-muted-foreground mb-4">{error instanceof Error ? error.message : 'Unknown error occurred'}</p>
             <div className="flex gap-2 justify-center">
               <Button onClick={() => refetch()}>Try Again</Button>
@@ -165,7 +165,7 @@ export default function PrayerRequestsPage() {
     );
   }
   
-  console.log('Prayer Requests Page State:', { 
+  console.log('Community Board Page State:', { 
     isLoading, 
     error: error ? error.message : null, 
     isSuccess, 
@@ -198,7 +198,11 @@ export default function PrayerRequestsPage() {
                 </div>
               </div>
               <div className="flex items-center">
-                <CreatePostDialog remaining={remaining} defaultType="prayer" hideTypeField={true} />
+                <CreatePostDialog
+                  remaining={remaining}
+                  defaultType="prayer"
+                  allowedTypes={["prayer", "recipe", "share"]}
+                />
                 <MessageSlideCard />
               </div>
             </div>
@@ -216,7 +220,7 @@ export default function PrayerRequestsPage() {
                 variant="default"
                 className="flex-1 ml-2 bg-violet-700 text-white hover:bg-violet-800 h-10 text-sm font-medium"
               >
-                Prayer Requests
+                Community Board
               </Button>
             </div>
           </div>
@@ -228,9 +232,9 @@ export default function PrayerRequestsPage() {
             <main className="p-4 pt-32 pb-24">
               {prayerRequests?.length === 0 && (
                 <div className="mb-6">
-                  <h1 className="text-2xl font-bold mb-2">Prayer Requests</h1>
+                  <h1 className="text-2xl font-bold mb-2">Community Board</h1>
                   <p className="text-muted-foreground">
-                    Share your prayer requests and pray for others
+                    Share prayer requests, recipes, encouragement, and more
                   </p>
                 </div>
               )}
@@ -247,7 +251,7 @@ export default function PrayerRequestsPage() {
                     ))
                   ) : !isLoading ? (
                     <div className="text-center text-muted-foreground py-8">
-                      No prayer requests yet. Share one to get started!
+                      No posts yet. Share one to get started!
                     </div>
                   ) : null}
 

@@ -33,7 +33,7 @@ export const VerticalNav = () => {
   const [location] = useLocation();
   const { user } = useAuth();
   const { connectionStatus } = useNotifications();
-  const { unreadCount: prayerRequestCount } = usePrayerRequests();
+  const { unreadCount: communityBoardCount } = usePrayerRequests();
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Home", path: "/" },
@@ -93,7 +93,7 @@ export const VerticalNav = () => {
               ) : item.status === "offline" ? (
                 <p>Notification service offline - click to manage</p>
               ) : item.count && item.count > 0 ? (
-                <p>{item.count} new prayer request{item.count !== 1 ? 's' : ''}</p>
+                <p>{item.count} new community board post{item.count !== 1 ? 's' : ''}</p>
               ) : (
                 <p>{item.label}</p>
               )}

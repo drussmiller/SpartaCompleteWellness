@@ -68,22 +68,22 @@ prayerRoutes.get("/api/prayer-requests/unread", authenticate, async (req, res) =
 
     const userIds = groupUsers.map(u => u.id);
 
-    // Count prayer request posts since last view time from users in the same group
+    // Count Community Board posts (prayer/recipe/share) since last view time from users in the same group
     const newPrayerRequests = await db
       .select({ count: sql<number>`count(*)::integer` })
       .from(posts)
       .where(
         and(
-          eq(posts.type, 'prayer'),
+          inArray(posts.type, ['prayer', 'recipe', 'share'] as any),
           gt(posts.createdAt, lastViewTime),
-          // Only count prayer requests from users in the same group
+          // Only count posts from users in the same group
           inArray(posts.userId, userIds),
-          // Don't count user's own prayer requests as "new"
+          // Don't count user's own posts as "new"
           not(eq(posts.userId, req.user.id))
         )
       );
 
-    logger.info(`Unread prayer requests for user ${req.user.id} (group ${userTeamData.groupId}): ${newPrayerRequests[0].count}. Last viewed: ${lastViewTime}`);
+    logger.info(`Unread community board posts for user ${req.user.id} (group ${userTeamData.groupId}): ${newPrayerRequests[0].count}. Last viewed: ${lastViewTime}`);
     return res.json({ unreadCount: newPrayerRequests[0].count });
   } catch (error) {
     logger.error('Error fetching unread prayer requests:', error);
