@@ -478,6 +478,12 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Reaction = typeof reactions.$inferSelect;
 export type InsertReaction = z.infer<typeof insertReactionSchema>;
 
+export type ReactionWithUser = Reaction & {
+  username: string | null;
+  preferredName: string | null;
+  imageUrl: string | null;
+};
+
 // Add a new type for structured comments
 export type CommentWithAuthor = Post & {
   author: {
