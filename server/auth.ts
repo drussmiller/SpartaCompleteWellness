@@ -353,6 +353,18 @@ export function setupAuth(app: Express) {
           return next(err);
         }
         console.log('Login successful for:', freshUser.username);
+
+        // Record the login timestamp now that the session is established.
+        // This re-activates inactive users so the notification scheduler
+        // resumes sending them reminders. Failures are logged but don't
+        // fail the login — the user is already authenticated.
+        db.update(users)
+          .set({ lastLoginAt: new Date() })
+          .where(eq(users.id, freshUser.id))
+          .catch((loginErr: any) => {
+            console.error(`Failed to update lastLoginAt for ${freshUser.username} (ID: ${freshUser.id}):`, loginErr);
+          });
+
           res.json(freshUser);
         });
       }).catch((error) => {

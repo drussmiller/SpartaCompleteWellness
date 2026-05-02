@@ -43,6 +43,7 @@ export const users = pgTable("users", {
   hasDonated: boolean("has_donated").default(false), // Whether user has made a donation via Donorbox
   donatedAt: timestamp("donated_at"), // When the donation was made
   pendingOrganizationId: integer("pending_organization_id"), // Organization claimed during signup (before team assignment)
+  lastLoginAt: timestamp("last_login_at"), // When the user last logged in (used to re-activate notifications for inactive users)
 });
 
 // Organizations table (top level)
