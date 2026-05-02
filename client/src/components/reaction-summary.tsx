@@ -87,7 +87,10 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
     setIsOpen(true);
   };
 
-  const startLongPress = () => {
+  const startLongPress = (e?: React.TouchEvent | React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     longPressTriggeredRef.current = false;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
@@ -96,7 +99,10 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
     }, 450);
   };
 
-  const cancelLongPress = () => {
+  const cancelLongPress = (e?: React.TouchEvent | React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
@@ -162,6 +168,7 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
         onMouseLeave={cancelLongPress}
         onContextMenu={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           openPopup();
         }}
         data-testid={`button-reaction-summary-${postId}`}
