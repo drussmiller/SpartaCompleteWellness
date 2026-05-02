@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { db } from './db';
 import { messages, users } from '@shared/schema';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, or, sql } from 'drizzle-orm';
 import { logger } from './logger';
 import { spartaObjectStorage } from './sparta-object-storage-final';
 
@@ -414,41 +414,50 @@ messageRouter.get("/api/messages/conversations", authenticate, async (req, res) 
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-    const sentTo = await db
-      .selectDistinct({ userId: messages.recipientId })
-      .from(messages)
-      .where(eq(messages.senderId, req.user.id));
+    // Get each conversation partner along with the timestamp of the most
+    // recent message exchanged with them, sorted newest-first. We join
+    // users in the same query to avoid N+1 lookups.
+    const result = await db.execute(sql`
+      WITH partner_last AS (
+        SELECT
+          CASE
+            WHEN ${messages.senderId} = ${req.user.id} THEN ${messages.recipientId}
+            ELSE ${messages.senderId}
+          END AS partner_id,
+          MAX(${messages.createdAt}) AS last_message_at
+        FROM ${messages}
+        WHERE ${messages.senderId} = ${req.user.id}
+           OR ${messages.recipientId} = ${req.user.id}
+        GROUP BY partner_id
+      )
+      SELECT
+        ${users.id} AS id,
+        ${users.username} AS username,
+        ${users.preferredName} AS "preferredName",
+        ${users.imageUrl} AS "imageUrl",
+        ${users.avatarColor} AS "avatarColor",
+        ${users.teamId} AS "teamId",
+        partner_last.last_message_at AS "lastMessageAt"
+      FROM partner_last
+      JOIN ${users} ON ${users.id} = partner_last.partner_id
+      WHERE partner_last.partner_id <> ${req.user.id}
+      ORDER BY partner_last.last_message_at DESC, ${users.id} ASC
+    `);
 
-    const receivedFrom = await db
-      .selectDistinct({ userId: messages.senderId })
-      .from(messages)
-      .where(eq(messages.recipientId, req.user.id));
-
-    const uniqueUserIds = new Set<number>();
-    sentTo.forEach(r => uniqueUserIds.add(r.userId));
-    receivedFrom.forEach(r => uniqueUserIds.add(r.userId));
-    uniqueUserIds.delete(req.user.id);
-
-    if (uniqueUserIds.size === 0) {
-      return res.json([]);
-    }
-
-    const userIdArray = Array.from(uniqueUserIds);
-    const partners: any[] = [];
-    for (const uid of userIdArray) {
-      const [u] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          preferredName: users.preferredName,
-          imageUrl: users.imageUrl,
-          avatarColor: users.avatarColor,
-          teamId: users.teamId,
-        })
-        .from(users)
-        .where(eq(users.id, uid));
-      if (u) partners.push(u);
-    }
+    const partners = (result.rows as Array<{
+      id: number;
+      username: string;
+      preferredName: string | null;
+      imageUrl: string | null;
+      avatarColor: string | null;
+      teamId: number | null;
+      lastMessageAt: string | Date | null;
+    }>).map(r => ({
+      ...r,
+      lastMessageAt: r.lastMessageAt instanceof Date
+        ? r.lastMessageAt.toISOString()
+        : r.lastMessageAt,
+    }));
 
     return res.json(partners);
   } catch (error) {
