@@ -21,6 +21,7 @@ import {
   type User,
   type Activity,
   type Reaction,
+  type ReactionWithUser,
   type Notification,
   type Measurement,
   type WorkoutVideo,
@@ -419,12 +420,23 @@ export const storage = {
     }
   },
 
-  async getReactionsByPost(postId: number): Promise<Reaction[]> {
+  async getReactionsByPost(postId: number): Promise<ReactionWithUser[]> {
     try {
-      return await db
-        .select()
+      const rows = await db
+        .select({
+          id: reactions.id,
+          userId: reactions.userId,
+          postId: reactions.postId,
+          type: reactions.type,
+          createdAt: reactions.createdAt,
+          username: users.username,
+          preferredName: users.preferredName,
+          imageUrl: users.imageUrl,
+        })
         .from(reactions)
+        .leftJoin(users, eq(reactions.userId, users.id))
         .where(eq(reactions.postId, postId));
+      return rows;
     } catch (error) {
       logger.error(`Failed to get reactions for post ${postId}: ${error}`);
       throw error;

@@ -87,15 +87,27 @@ export function setupAuth(app: Express) {
           console.log('[AUTH] Admin login path');
           const adminUser = await storage.getUserByUsername('admin');
           if (adminUser && await comparePasswords(password, adminUser.password)) {
-            // Check if admin is blocked
+            // Check if admin is blocked (separate moderation flag, not auto-cleared)
             if (adminUser.isBlocked) {
               console.log('[AUTH] BLOCKED: Admin user is blocked:', username);
               return done(null, false);
             }
-            // Check if admin is inactive
-            if (adminUser.status === 0) {
-              console.log('[AUTH] BLOCKED: Admin user is inactive:', username);
-              return done(null, false);
+            // If the admin was marked inactive, a successful login re-activates them.
+            if (adminUser.status !== 1) {
+              console.log('[AUTH] Re-activating admin user on successful login, previous status=', adminUser.status);
+              try {
+                const [reactivated] = await db
+                  .update(users)
+                  .set({ status: 1 })
+                  .where(eq(users.id, adminUser.id))
+                  .returning();
+                if (reactivated) {
+                  return done(null, reactivated);
+                }
+              } catch (reactivateErr) {
+                console.error('[AUTH] Failed to re-activate admin user:', reactivateErr);
+                return done(reactivateErr as Error);
+              }
             }
             console.log('[AUTH] Admin login successful');
             return done(null, adminUser);
@@ -133,18 +145,33 @@ export function setupAuth(app: Express) {
           return done(null, false);
         }
         
-        // CRITICAL: Check if user is inactive - must happen before password check
-        console.log('[AUTH] Status check - value:', user.status, 'type:', typeof user.status, 'is zero?:', user.status === 0);
-        if (user.status === 0 || user.status === null || user.status === undefined) {
-          console.log('[AUTH] BLOCKED: User is inactive (status=' + user.status + '):', username);
-          return done(null, false);
-        }
-
-        console.log('[AUTH] Status check passed, verifying password');
+        console.log('[AUTH] Verifying password for user:', username);
         const isValid = await comparePasswords(password, user.password);
         if (!isValid) {
           console.log('[AUTH] Invalid password for user:', username);
           return done(null, false);
+        }
+
+        // If the user was manually marked inactive by an admin (status = 0
+        // / null / undefined), a successful login re-activates them.
+        // isBlocked is a separate moderation flag and is NOT auto-cleared.
+        if (user.status !== 1) {
+          console.log('[AUTH] Re-activating inactive user on successful login:', username, 'previous status=', user.status);
+          try {
+            const [reactivated] = await db
+              .update(users)
+              .set({ status: 1 })
+              .where(eq(users.id, user.id))
+              .returning();
+            if (reactivated) {
+              user = reactivated;
+            } else {
+              user = { ...user, status: 1 };
+            }
+          } catch (reactivateErr) {
+            console.error('[AUTH] Failed to re-activate user:', username, reactivateErr);
+            return done(reactivateErr as Error);
+          }
         }
 
         console.log('[AUTH] Authentication successful for:', username);
@@ -329,11 +356,10 @@ export function setupAuth(app: Express) {
           return res.status(403).json({ message: "Account has been blocked. Please contact an administrator." });
         }
         
-        if (freshUser.status === 0) {
-          console.log('Login blocked for inactive user:', freshUser.username);
-          return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
-        }
-        
+        // Note: status === 0 is no longer a login blocker — the LocalStrategy
+        // re-activates inactive users on successful login. isBlocked is still
+        // a hard block.
+
         const timezoneOffset = req.body.timezoneOffset;
         if (typeof timezoneOffset === 'number' && freshUser.timezoneOffset !== timezoneOffset) {
           db.update(users)
