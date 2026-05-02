@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { users, posts, notifications, systemState } from "@shared/schema";
-import { eq, gte, lt, and, isNull, sql } from "drizzle-orm";
+import { eq, gte, lt, and, isNull, sql, desc } from "drizzle-orm";
 import { logger } from "./logger";
 import { smsService } from "./sms-service";
 import { emailService } from "./email-service";
@@ -82,6 +82,30 @@ export async function checkNotifications() {
             logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - 0 points and past day 3 of the program (day ${programDay})`);
             continue;
           }
+        }
+
+        // Skip users who haven't posted anything in over a week.
+        // "Posted" means a top-level post (parentId is null), matching the
+        // convention used elsewhere in this file. Comments/replies don't count.
+        // If the user has no top-level posts at all, or their most recent one
+        // is older than 7 days, stop sending reminder notifications until they
+        // post again.
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+        const [latestPost] = await db
+          .select({ createdAt: posts.createdAt })
+          .from(posts)
+          .where(and(eq(posts.userId, user.id), isNull(posts.parentId)))
+          .orderBy(desc(posts.createdAt))
+          .limit(1);
+
+        if (!latestPost || !latestPost.createdAt) {
+          logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - has never posted`);
+          continue;
+        }
+
+        if (latestPost.createdAt < sevenDaysAgo) {
+          logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - no posts in over a week (last post: ${latestPost.createdAt.toISOString()})`);
+          continue;
         }
 
         // Memory verse Monday reminder: check if today is Monday and user hasn't posted a memory verse in the past 7 days
