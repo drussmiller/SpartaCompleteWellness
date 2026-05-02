@@ -28,7 +28,7 @@ export async function checkNotifications() {
         smsEnabled: users.smsEnabled,
         programStartDate: users.programStartDate,
         points: users.points,
-        lastLoginAt: users.lastLoginAt,
+        status: users.status,
       })
       .from(users);
 
@@ -42,6 +42,13 @@ export async function checkNotifications() {
       try {
         if (!user.teamId) {
           logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - not in a team`);
+          continue;
+        }
+
+        // Skip users an admin has manually marked inactive (status = 0).
+        // They will be re-activated when they next log in.
+        if (user.status !== 1) {
+          logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - admin-marked inactive (status=${user.status})`);
           continue;
         }
 
@@ -78,14 +85,8 @@ export async function checkNotifications() {
           const msSinceStart = todayUTC.getTime() - programStartUTCMs;
           const daysSinceStart = Math.floor(msSinceStart / (1000 * 60 * 60 * 24));
           const programDay = daysSinceStart + 1;
-          // A recent login re-activates an otherwise inactive user, so only
-          // skip the "0 points past day 3" check if they also haven't logged
-          // in within the last 7 days.
-          const sevenDaysAgoForLogin = new Date(now.getTime() - 7 * 86400000);
-          const loggedInRecently =
-            !!user.lastLoginAt && user.lastLoginAt >= sevenDaysAgoForLogin;
           const userPoints = user.points ?? 0;
-          if (programDay > 3 && userPoints === 0 && !loggedInRecently) {
+          if (programDay > 3 && userPoints === 0) {
             logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - 0 points and past day 3 of the program (day ${programDay})`);
             continue;
           }
@@ -95,12 +96,9 @@ export async function checkNotifications() {
         // "Posted" means a top-level post (parentId is null), matching the
         // convention used elsewhere in this file. Comments/replies don't count.
         // If the user has no top-level posts at all, or their most recent one
-        // is older than 7 days, stop sending reminder notifications — UNLESS
-        // they've logged in within the last 7 days, which re-activates them.
+        // is older than 7 days, stop sending reminder notifications until they
+        // post again.
         const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
-        const loggedInRecently =
-          !!user.lastLoginAt && user.lastLoginAt >= sevenDaysAgo;
-
         const [latestPost] = await db
           .select({ createdAt: posts.createdAt })
           .from(posts)
@@ -109,12 +107,12 @@ export async function checkNotifications() {
           .limit(1);
 
         if (!latestPost || !latestPost.createdAt) {
-          if (!loggedInRecently) {
-            logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - has never posted and not logged in within the last 7 days`);
-            continue;
-          }
-        } else if (latestPost.createdAt < sevenDaysAgo && !loggedInRecently) {
-          logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - no posts in over a week (last post: ${latestPost.createdAt.toISOString()}) and not logged in within the last 7 days`);
+          logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - has never posted`);
+          continue;
+        }
+
+        if (latestPost.createdAt < sevenDaysAgo) {
+          logger.info(`[SCHEDULER] Skipping ${user.username} (ID: ${user.id}) - no posts in over a week (last post: ${latestPost.createdAt.toISOString()})`);
           continue;
         }
 
