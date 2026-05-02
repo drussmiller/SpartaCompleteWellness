@@ -186,7 +186,8 @@ export function ReactionSummary({ postId }: ReactionSummaryProps) {
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent
-          className="sm:max-w-md"
+          className="sm:max-w-md z-[2147483647]"
+          overlayClassName="z-[2147483646]"
           data-testid={`dialog-reactions-${postId}`}
         >
           <DialogHeader>
