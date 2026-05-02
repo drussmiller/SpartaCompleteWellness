@@ -436,10 +436,25 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
             <Card
                 className={`w-full ${depth > 0 ? 'bg-gray-200 rounded-tl-none' : 'bg-gray-100'}`}
                 onTouchStart={(e) => {
+                  const target = e.target as HTMLElement;
+                  // Don't start long-press tracking if the touch is on a button/link
+                  // (e.g. the reaction summary emoji icons) — those have their own handlers
+                  if (target.closest('button') || target.closest('a')) {
+                    touchTimeRef.current = 0;
+                    return;
+                  }
                   touchTimeRef.current = Date.now();
                 }}
                 onTouchEnd={(e) => {
-                  const touchDuration = Date.now() - touchTimeRef.current;
+                  const target = e.target as HTMLElement;
+                  if (target.closest('button') || target.closest('a')) {
+                    touchTimeRef.current = 0;
+                    return;
+                  }
+                  const startTime = touchTimeRef.current;
+                  touchTimeRef.current = 0;
+                  if (!startTime) return;
+                  const touchDuration = Date.now() - startTime;
                   // Long press detected if touch lasted >500ms
                   if (touchDuration > 500) {
                     setSelectedComment(comment.id);
@@ -447,6 +462,11 @@ export function CommentList({ comments: initialComments, postId, onVisibilityCha
                   }
                 }}
                 onContextMenu={(e) => {
+                  const target = e.target as HTMLElement;
+                  // Let buttons/links (like the reaction summary) handle their own context menu
+                  if (target.closest('button') || target.closest('a')) {
+                    return;
+                  }
                   e.preventDefault();
                   e.stopPropagation();
                   setSelectedComment(comment.id);
