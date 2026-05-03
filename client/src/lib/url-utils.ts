@@ -10,32 +10,39 @@ const DOMPURIFY_CONFIG = {
 const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 
 export function convertUrlsToLinks(text: string): string {
-  if (text.includes('<') || text.includes('>')) {
-    return DOMPurify.sanitize(text, DOMPURIFY_CONFIG);
+  // Strip angle-bracket wrapping that some mobile share sheets add: <https://example.com>
+  let working = text.replace(/<((?:https?:\/\/|www\.)[^\s<>]+)>/gi, '$1');
+
+  // Only bail out when real HTML tags are present (not bare `<`/`>` characters
+  // that mobile users might naturally type, e.g. "2 < 3 https://...").
+  const htmlTagRegex = /<\/?[a-zA-Z][^>]*>/;
+  if (htmlTagRegex.test(working)) {
+    return DOMPurify.sanitize(working, DOMPURIFY_CONFIG);
   }
 
-  if (text.includes('%3C') || text.includes('%3E') || text.includes('bible:verse')) {
-    return DOMPurify.sanitize(text, DOMPURIFY_CONFIG);
+  if (working.includes('%3C') || working.includes('%3E') || working.includes('bible:verse')) {
+    return DOMPurify.sanitize(working, DOMPURIFY_CONFIG);
   }
 
-  if (text.includes('href=')) {
-    return DOMPurify.sanitize(text, DOMPURIFY_CONFIG);
+  if (working.includes('href=')) {
+    return DOMPurify.sanitize(working, DOMPURIFY_CONFIG);
   }
 
-  const urlRegex = /(^|\s)((?:https?:\/\/|www\.)(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/g;
+  // Case-insensitive so mobile auto-capitalized URLs (Https://, Www.) still match.
+  const urlRegex = /(^|\s)((?:https?:\/\/|www\.)(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)/gi;
 
-  const matches = text.match(urlRegex);
+  const matches = working.match(urlRegex);
   if (!matches || matches.length === 0) {
-    return DOMPurify.sanitize(text, DOMPURIFY_CONFIG);
+    return DOMPurify.sanitize(working, DOMPURIFY_CONFIG);
   }
 
-  const html = text.replace(urlRegex, (_match, lead, url) => {
+  const html = working.replace(urlRegex, (_match, lead, url) => {
     if (url.match(/(?:youtube\.com|youtu\.be)/i)) {
       return `${lead}${url}`;
     }
 
     const cleanUrl = url.replace(/[.,;:!?'")\]]+$/, '');
-    const href = cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`;
+    const href = /^https?:\/\//i.test(cleanUrl) ? cleanUrl : `https://${cleanUrl}`;
     return `${lead}<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${cleanUrl}</a>`;
   });
 
