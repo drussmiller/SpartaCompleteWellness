@@ -19,17 +19,17 @@ if (!process.env.DATABASE_URL) {
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 5000, // 5 seconds (faster for deployment)
-  max: 2, // Minimal connections for startup
-  idleTimeoutMillis: 60000, // 1 minute (faster cleanup)
-  statement_timeout: 15000, // 15 seconds (faster failure)
-  query_timeout: 15000, // 15 seconds (faster failure)
+  connectionTimeoutMillis: 10000,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  statement_timeout: 15000,
+  query_timeout: 15000,
   keepAlive: true,
-  keepAliveInitialDelayMillis: 500, // Faster initial delay
+  keepAliveInitialDelayMillis: 500,
   application_name: 'app',
   ssl: true,
-  maxUses: 100, // Lower limit to prevent resource issues
-  allowExitOnIdle: true // Allow connections to close when idle for deployment
+  maxUses: 50,
+  allowExitOnIdle: false
 };
 
 // Create pool with error handling
