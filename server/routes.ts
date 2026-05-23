@@ -8301,8 +8301,16 @@ export const registerRoutes = async (
 
       // Get team members points for the resolved team
       // Weekly Avg matches profile page calculation: total points (food/workout/scripture/memory_verse)
-      // since program start, divided by weeks since program start.
+      // since program start, divided by COMPLETED weeks since program start.
+      // The current (in-progress) week is excluded so partial data doesn't drag
+      // the average down.
       const nowForAvg = new Date();
+      const startOfThisWeek = new Date(
+        nowForAvg.getFullYear(),
+        nowForAvg.getMonth(),
+        nowForAvg.getDate() - nowForAvg.getDay(),
+        0, 0, 0, 0,
+      );
       const teamMembers = await db
         .select({
           id: users.id,
@@ -8318,30 +8326,36 @@ export const registerRoutes = async (
             AND p.created_at <= ${queryEnd}
             AND p.parent_id IS NULL
           ), 0)::integer AS points`,
-          weeklyAvg: sql<number>`COALESCE(
-            ROUND(
-              (
-                SELECT SUM(
-                  CASE p.type
-                    WHEN 'food' THEN 3
-                    WHEN 'workout' THEN 3
-                    WHEN 'scripture' THEN 3
-                    WHEN 'memory_verse' THEN 10
-                    ELSE 0
-                  END
-                )
-                FROM posts p
-                WHERE p.user_id = users.id
-                  AND p.created_at >= COALESCE(users.program_start_date, users.created_at)
-                  AND p.created_at <= ${nowForAvg}
-                  AND p.parent_id IS NULL
-              )::numeric
-              / GREATEST(1, CEIL(
-                  EXTRACT(EPOCH FROM (${nowForAvg}::timestamp - COALESCE(users.program_start_date, users.created_at)))
-                  / (7 * 24 * 3600)
-                ))
-            )
-          , 0)::integer AS weekly_avg`,
+          weeklyAvg: sql<number>`CASE
+            WHEN FLOOR(
+              EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
+              / (7 * 24 * 3600)
+            ) < 1 THEN 0
+            ELSE COALESCE(
+              ROUND(
+                (
+                  SELECT SUM(
+                    CASE p.type
+                      WHEN 'food' THEN 3
+                      WHEN 'workout' THEN 3
+                      WHEN 'scripture' THEN 3
+                      WHEN 'memory_verse' THEN 10
+                      ELSE 0
+                    END
+                  )
+                  FROM posts p
+                  WHERE p.user_id = users.id
+                    AND p.created_at >= COALESCE(users.program_start_date, users.created_at)
+                    AND p.created_at < ${startOfThisWeek}
+                    AND p.parent_id IS NULL
+                )::numeric
+                / FLOOR(
+                    EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
+                    / (7 * 24 * 3600)
+                  )
+              )
+            , 0)
+          END::integer AS weekly_avg`,
         })
         .from(users)
         .where(eq(users.teamId, resolvedTeamId))
