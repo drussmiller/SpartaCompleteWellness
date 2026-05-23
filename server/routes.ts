@@ -7694,38 +7694,42 @@ export const registerRoutes = async (
         programStart.getTime() + tzOffset * 60000,
       );
 
-      // Calculate actual weeks since program start (minimum 1)
+      // Calculate completed weeks since program start (excluding the current,
+      // in-progress week). The current week's points aren't fully counted yet,
+      // so including it would drag the average down artificially.
       const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-      const weeksSinceStart = Math.max(1, Math.ceil((userLocalTime.getTime() - programStart.getTime()) / msPerWeek));
+      const completedWeeks = Math.floor((startOfWeek.getTime() - programStart.getTime()) / msPerWeek);
 
       logger.info(
-        `Date range for weekly avg stats: ${programStartUTC.toISOString()} to ${endOfDayUTC.toISOString()}, weeksSinceStart=${weeksSinceStart}`,
+        `Date range for weekly avg stats: ${programStartUTC.toISOString()} to ${startOfWeekUTC.toISOString()}, completedWeeks=${completedWeeks}`,
       );
 
-      const allTimePosts = await db
-        .select()
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, programStartUTC),
-            lte(posts.createdAt, endOfDayUTC),
-          ),
-        );
+      let weeklyAvgPoints = 0;
+      if (completedWeeks >= 1) {
+        const allTimePosts = await db
+          .select()
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, userId),
+              gte(posts.createdAt, programStartUTC),
+              lt(posts.createdAt, startOfWeekUTC),
+            ),
+          );
 
-      let totalPoints = 0;
-      for (const post of allTimePosts) {
-        if (post.type === "food") totalPoints += 3;
-        else if (post.type === "workout") totalPoints += 3;
-        else if (post.type === "scripture") totalPoints += 3;
-        else if (post.type === "memory_verse") totalPoints += 10;
+        let totalPoints = 0;
+        for (const post of allTimePosts) {
+          if (post.type === "food") totalPoints += 3;
+          else if (post.type === "workout") totalPoints += 3;
+          else if (post.type === "scripture") totalPoints += 3;
+          else if (post.type === "memory_verse") totalPoints += 10;
+        }
+
+        weeklyAvgPoints = Math.round(totalPoints / completedWeeks);
       }
 
-      // Calculate weekly average (total points since program start / weeks since program start)
-      const weeklyAvgPoints = Math.round(totalPoints / weeksSinceStart);
-
       logger.info(
-        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}, totalPts=${totalPoints}, weeks=${weeksSinceStart}`,
+        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}, completedWeeks=${completedWeeks}`,
       );
       res.json({
         dailyPoints,
