@@ -7647,12 +7647,13 @@ export const registerRoutes = async (
         else if (post.type === "memory_verse") dailyPoints += 10;
       }
 
-      // Weekly stats - Start from Sunday in user's local time
+      // Weekly stats - Program week runs Monday → Sunday in user's local time
       const dayOfWeek = userLocalTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const startOfWeek = new Date(
         userLocalTime.getFullYear(),
         userLocalTime.getMonth(),
-        userLocalTime.getDate() - dayOfWeek, // Go back to the start of the week (Sunday)
+        userLocalTime.getDate() - daysFromMonday, // Go back to Monday
         0,
         0,
         0,
@@ -8305,10 +8306,12 @@ export const registerRoutes = async (
       // The current (in-progress) week is excluded so partial data doesn't drag
       // the average down.
       const nowForAvg = new Date();
+      const nowDow = nowForAvg.getDay(); // 0 = Sunday
+      const daysFromMondayAvg = nowDow === 0 ? 6 : nowDow - 1;
       const startOfThisWeek = new Date(
         nowForAvg.getFullYear(),
         nowForAvg.getMonth(),
-        nowForAvg.getDate() - nowForAvg.getDay(),
+        nowForAvg.getDate() - daysFromMondayAvg, // Program week starts Monday
         0, 0, 0, 0,
       );
       const teamMembers = await db
