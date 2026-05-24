@@ -7694,38 +7694,42 @@ export const registerRoutes = async (
         programStart.getTime() + tzOffset * 60000,
       );
 
-      // Calculate actual weeks since program start (minimum 1)
+      // Calculate completed weeks since program start (excluding the current,
+      // in-progress week). The current week's points aren't fully counted yet,
+      // so including it would drag the average down artificially.
       const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-      const weeksSinceStart = Math.max(1, Math.ceil((userLocalTime.getTime() - programStart.getTime()) / msPerWeek));
+      const completedWeeks = Math.floor((startOfWeek.getTime() - programStart.getTime()) / msPerWeek);
 
       logger.info(
-        `Date range for weekly avg stats: ${programStartUTC.toISOString()} to ${endOfDayUTC.toISOString()}, weeksSinceStart=${weeksSinceStart}`,
+        `Date range for weekly avg stats: ${programStartUTC.toISOString()} to ${startOfWeekUTC.toISOString()}, completedWeeks=${completedWeeks}`,
       );
 
-      const allTimePosts = await db
-        .select()
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, programStartUTC),
-            lte(posts.createdAt, endOfDayUTC),
-          ),
-        );
+      let weeklyAvgPoints = 0;
+      if (completedWeeks >= 1) {
+        const allTimePosts = await db
+          .select()
+          .from(posts)
+          .where(
+            and(
+              eq(posts.userId, userId),
+              gte(posts.createdAt, programStartUTC),
+              lt(posts.createdAt, startOfWeekUTC),
+            ),
+          );
 
-      let totalPoints = 0;
-      for (const post of allTimePosts) {
-        if (post.type === "food") totalPoints += 3;
-        else if (post.type === "workout") totalPoints += 3;
-        else if (post.type === "scripture") totalPoints += 3;
-        else if (post.type === "memory_verse") totalPoints += 10;
+        let totalPoints = 0;
+        for (const post of allTimePosts) {
+          if (post.type === "food") totalPoints += 3;
+          else if (post.type === "workout") totalPoints += 3;
+          else if (post.type === "scripture") totalPoints += 3;
+          else if (post.type === "memory_verse") totalPoints += 10;
+        }
+
+        weeklyAvgPoints = Math.round(totalPoints / completedWeeks);
       }
 
-      // Calculate weekly average (total points since program start / weeks since program start)
-      const weeklyAvgPoints = Math.round(totalPoints / weeksSinceStart);
-
       logger.info(
-        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}, totalPts=${totalPoints}, weeks=${weeksSinceStart}`,
+        `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}, completedWeeks=${completedWeeks}`,
       );
       res.json({
         dailyPoints,
@@ -8297,8 +8301,16 @@ export const registerRoutes = async (
 
       // Get team members points for the resolved team
       // Weekly Avg matches profile page calculation: total points (food/workout/scripture/memory_verse)
-      // since program start, divided by weeks since program start.
+      // since program start, divided by COMPLETED weeks since program start.
+      // The current (in-progress) week is excluded so partial data doesn't drag
+      // the average down.
       const nowForAvg = new Date();
+      const startOfThisWeek = new Date(
+        nowForAvg.getFullYear(),
+        nowForAvg.getMonth(),
+        nowForAvg.getDate() - nowForAvg.getDay(),
+        0, 0, 0, 0,
+      );
       const teamMembers = await db
         .select({
           id: users.id,
@@ -8314,30 +8326,36 @@ export const registerRoutes = async (
             AND p.created_at <= ${queryEnd}
             AND p.parent_id IS NULL
           ), 0)::integer AS points`,
-          weeklyAvg: sql<number>`COALESCE(
-            ROUND(
-              (
-                SELECT SUM(
-                  CASE p.type
-                    WHEN 'food' THEN 3
-                    WHEN 'workout' THEN 3
-                    WHEN 'scripture' THEN 3
-                    WHEN 'memory_verse' THEN 10
-                    ELSE 0
-                  END
-                )
-                FROM posts p
-                WHERE p.user_id = users.id
-                  AND p.created_at >= COALESCE(users.program_start_date, users.created_at)
-                  AND p.created_at <= ${nowForAvg}
-                  AND p.parent_id IS NULL
-              )::numeric
-              / GREATEST(1, CEIL(
-                  EXTRACT(EPOCH FROM (${nowForAvg}::timestamp - COALESCE(users.program_start_date, users.created_at)))
-                  / (7 * 24 * 3600)
-                ))
-            )
-          , 0)::integer AS weekly_avg`,
+          weeklyAvg: sql<number>`CASE
+            WHEN FLOOR(
+              EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
+              / (7 * 24 * 3600)
+            ) < 1 THEN 0
+            ELSE COALESCE(
+              ROUND(
+                (
+                  SELECT SUM(
+                    CASE p.type
+                      WHEN 'food' THEN 3
+                      WHEN 'workout' THEN 3
+                      WHEN 'scripture' THEN 3
+                      WHEN 'memory_verse' THEN 10
+                      ELSE 0
+                    END
+                  )
+                  FROM posts p
+                  WHERE p.user_id = users.id
+                    AND p.created_at >= COALESCE(users.program_start_date, users.created_at)
+                    AND p.created_at < ${startOfThisWeek}
+                    AND p.parent_id IS NULL
+                )::numeric
+                / FLOOR(
+                    EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
+                    / (7 * 24 * 3600)
+                  )
+              )
+            , 0)
+          END::integer AS weekly_avg`,
         })
         .from(users)
         .where(eq(users.teamId, resolvedTeamId))
