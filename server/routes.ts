@@ -8305,15 +8305,11 @@ export const registerRoutes = async (
       // since program start, divided by COMPLETED weeks since program start.
       // The current (in-progress) week is excluded so partial data doesn't drag
       // the average down.
-      const nowForAvg = new Date();
-      const nowDow = nowForAvg.getDay(); // 0 = Sunday
-      const daysFromMondayAvg = nowDow === 0 ? 6 : nowDow - 1;
-      const startOfThisWeek = new Date(
-        nowForAvg.getFullYear(),
-        nowForAvg.getMonth(),
-        nowForAvg.getDate() - daysFromMondayAvg, // Program week starts Monday
-        0, 0, 0, 0,
-      );
+      // queryStart (computed above) is already the Monday-00:00 of the viewer's
+      // current local week, converted back to UTC. That's exactly the cutoff we
+      // need for "all posts strictly before this week" and for comparing to
+      // program_start_date (which is stored as a UTC timestamp).
+      const startOfThisWeek = queryStart;
       const teamMembers = await db
         .select({
           id: users.id,
