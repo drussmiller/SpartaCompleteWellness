@@ -8360,23 +8360,54 @@ export const registerRoutes = async (
         .where(eq(users.teamId, resolvedTeamId))
         .orderBy(sql`points DESC`);
 
-      // Get team average points - only from the same group as the resolved team
+      // Get team average % - only from the same group as the resolved team.
+      // Each team's value is the AVERAGE of its members' Weekly Average %
+      // (the same per-member figure shown on the team-members tab), NOT the
+      // current week's raw points. The per-user weekly avg = total points
+      // since program start / completed weeks, excluding the current week.
       const teamStats = await db.execute(sql`
           SELECT 
             t.id, 
             t.name, 
-            COALESCE(AVG(user_points.total_points), 0)::integer as avg_points
+            COALESCE(ROUND(AVG(user_avg.weekly_avg)), 0)::integer as avg_points
           FROM teams t
           LEFT JOIN (
             SELECT 
               u.team_id,
               u.id as user_id,
-              COALESCE(SUM(p.points), 0) as total_points
+              CASE
+                WHEN FLOOR(
+                  EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(u.program_start_date, u.created_at)))
+                  / (7 * 24 * 3600)
+                ) < 1 THEN 0
+                ELSE COALESCE(
+                  ROUND(
+                    (
+                      SELECT SUM(
+                        CASE p.type
+                          WHEN 'food' THEN 3
+                          WHEN 'workout' THEN 3
+                          WHEN 'scripture' THEN 3
+                          WHEN 'memory_verse' THEN 10
+                          ELSE 0
+                        END
+                      )
+                      FROM posts p
+                      WHERE p.user_id = u.id
+                        AND p.created_at >= COALESCE(u.program_start_date, u.created_at)
+                        AND p.created_at < ${startOfThisWeek}
+                        AND p.parent_id IS NULL
+                    )::numeric
+                    / FLOOR(
+                        EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(u.program_start_date, u.created_at)))
+                        / (7 * 24 * 3600)
+                      )
+                  )
+                , 0)
+              END as weekly_avg
             FROM users u
-            LEFT JOIN posts p ON p.user_id = u.id AND p.created_at >= ${queryStart} AND p.created_at <= ${queryEnd} AND p.parent_id IS NULL
             WHERE u.team_id IS NOT NULL
-            GROUP BY u.id
-          ) user_points ON user_points.team_id = t.id
+          ) user_avg ON user_avg.team_id = t.id
           WHERE t.group_id = ${currentTeam.groupId}
           GROUP BY t.id, t.name
           ORDER BY avg_points DESC
