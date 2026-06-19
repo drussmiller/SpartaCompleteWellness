@@ -10291,6 +10291,22 @@ export const registerRoutes = async (
           }
           // Set programStartDate if not explicitly provided and program hasn't started yet
           else if (!updateData.programStartDate) {
+            // Determine whether this user has any previous posts (excluding the
+            // introductory video). Brand-new users only have an intro video, so
+            // they should start fresh (today if Monday, otherwise next Monday)
+            // rather than inheriting the team/group's (possibly past) start date.
+            const [{ priorPostCount }] = await db
+              .select({ priorPostCount: sql<number>`count(*)` })
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.userId, userId),
+                  ne(posts.type, 'introductory_video'),
+                  isNull(posts.parentId), // Don't count comments
+                ),
+              );
+            const hasPreviousPosts = Number(priorPostCount) > 0;
+
             // Get team with its group info
             const [teamWithGroup] = await db
               .select({
@@ -10310,23 +10326,31 @@ export const registerRoutes = async (
 
             let programStartDate: Date | null = null;
 
-            // Priority 1: Team's start date
-            if (teamWithGroup.teamStartDate) {
-              programStartDate = new Date(teamWithGroup.teamStartDate);
-              logger.info(`Setting user programStartDate from team start date: ${programStartDate.toISOString()}`);
-            }
-            // Priority 2: Group's start date
-            else if (teamWithGroup.groupId) {
-              const [group] = await db
-                .select({ groupStartDate: groups.programStartDate })
-                .from(groups)
-                .where(eq(groups.id, teamWithGroup.groupId))
-                .limit(1);
-
-              if (group?.groupStartDate) {
-                programStartDate = new Date(group.groupStartDate);
-                logger.info(`Setting user programStartDate from group start date: ${programStartDate.toISOString()}`);
+            // Only inherit the team/group start date for users who already have
+            // posts (i.e. an admin is re-assigning an existing participant so
+            // they can continue in the program). Brand-new users skip straight
+            // to the "today if Monday, otherwise next Monday" computation below.
+            if (hasPreviousPosts) {
+              // Priority 1: Team's start date
+              if (teamWithGroup.teamStartDate) {
+                programStartDate = new Date(teamWithGroup.teamStartDate);
+                logger.info(`Setting user programStartDate from team start date: ${programStartDate.toISOString()}`);
               }
+              // Priority 2: Group's start date
+              else if (teamWithGroup.groupId) {
+                const [group] = await db
+                  .select({ groupStartDate: groups.programStartDate })
+                  .from(groups)
+                  .where(eq(groups.id, teamWithGroup.groupId))
+                  .limit(1);
+
+                if (group?.groupStartDate) {
+                  programStartDate = new Date(group.groupStartDate);
+                  logger.info(`Setting user programStartDate from group start date: ${programStartDate.toISOString()}`);
+                }
+              }
+            } else {
+              logger.info(`User ${userId} has no previous posts (only intro video) - using fresh next-Monday start date instead of team/group start date`);
             }
 
             // Priority 3: Current date if Monday, otherwise next Monday
