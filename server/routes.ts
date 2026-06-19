@@ -10267,9 +10267,31 @@ export const registerRoutes = async (
           const now = new Date();
           updateData.teamJoinedAt = now;
           updateData.pendingOrganizationId = null;
-          
-          // If user's program has already started, preserve existing programStartDate
-          if (userProgramAlreadyStarted && !updateData.programStartDate) {
+
+          // Determine whether this user has any previous posts (excluding the
+          // introductory video and comments). Brand-new users only have an intro
+          // video, so they should start fresh (today if Monday, otherwise next
+          // Monday) rather than preserving/inheriting a past start date. The
+          // "preserve existing start date" behavior is only for participants who
+          // have actually started posting and are being re-assigned to continue.
+          const [{ priorPostCount }] = await db
+            .select({ priorPostCount: sql<number>`count(*)` })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, userId),
+                ne(posts.type, 'introductory_video'),
+                isNull(posts.parentId), // Don't count comments
+              ),
+            );
+          const hasPreviousPosts = Number(priorPostCount) > 0;
+
+          // If user's program has already started AND they have previous posts,
+          // preserve their existing programStartDate so they continue where they
+          // left off. Users with no previous posts are treated as brand-new
+          // regardless of any stale start date and fall through to the
+          // "next Monday" computation below.
+          if (userProgramAlreadyStarted && hasPreviousPosts && !updateData.programStartDate) {
             // If programStartDate is missing but currentWeek is stored, compute a retroactive start date
             // so the week stays consistent after the team move
             if (!existingUser?.programStartDate && existingUser?.currentWeek) {
@@ -10291,22 +10313,6 @@ export const registerRoutes = async (
           }
           // Set programStartDate if not explicitly provided and program hasn't started yet
           else if (!updateData.programStartDate) {
-            // Determine whether this user has any previous posts (excluding the
-            // introductory video). Brand-new users only have an intro video, so
-            // they should start fresh (today if Monday, otherwise next Monday)
-            // rather than inheriting the team/group's (possibly past) start date.
-            const [{ priorPostCount }] = await db
-              .select({ priorPostCount: sql<number>`count(*)` })
-              .from(posts)
-              .where(
-                and(
-                  eq(posts.userId, userId),
-                  ne(posts.type, 'introductory_video'),
-                  isNull(posts.parentId), // Don't count comments
-                ),
-              );
-            const hasPreviousPosts = Number(priorPostCount) > 0;
-
             // Get team with its group info
             const [teamWithGroup] = await db
               .select({
