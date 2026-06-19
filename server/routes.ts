@@ -10269,11 +10269,13 @@ export const registerRoutes = async (
           updateData.pendingOrganizationId = null;
 
           // Determine whether this user has any previous posts (excluding the
-          // introductory video and comments). Brand-new users only have an intro
-          // video, so they should start fresh (today if Monday, otherwise next
-          // Monday) rather than preserving/inheriting a past start date. The
-          // "preserve existing start date" behavior is only for participants who
-          // have actually started posting and are being re-assigned to continue.
+          // introductory video and comments). "Previous" means any real post,
+          // which is by definition dated before the upcoming Monday. Brand-new
+          // users only have an intro video, so they start fresh (today if Monday,
+          // otherwise next Monday). A user who already has a post this week is
+          // anchored to the previous Monday so that post counts. The "preserve
+          // existing start date" behavior is only for participants who have
+          // actually started posting and are being re-assigned to continue.
           const [{ priorPostCount }] = await db
             .select({ priorPostCount: sql<number>`count(*)` })
             .from(posts)
@@ -10359,23 +10361,34 @@ export const registerRoutes = async (
               logger.info(`User ${userId} has no previous posts (only intro video) - using fresh next-Monday start date instead of team/group start date`);
             }
 
-            // Priority 3: Current date if Monday, otherwise next Monday
+            // Priority 3: Compute a Monday start date.
             if (!programStartDate) {
               const today = new Date();
               const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-              
-              if (dayOfWeek === 1) {
+
+              if (hasPreviousPosts) {
+                // The user already has a post in the current week (before the
+                // upcoming Monday), so they have effectively started this week.
+                // Anchor them to the previous Monday (the start of this week) so
+                // that this week's post counts toward week 1.
+                const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                programStartDate = new Date(today);
+                programStartDate.setDate(today.getDate() - daysSinceMonday);
+                programStartDate.setHours(0, 0, 0, 0);
+                logger.info(`User ${userId} has a post this week - setting programStartDate to the previous Monday: ${programStartDate.toISOString()}`);
+              } else if (dayOfWeek === 1) {
                 // Today is Monday
                 programStartDate = new Date(today);
                 programStartDate.setHours(0, 0, 0, 0);
+                logger.info(`Setting user programStartDate to today (Monday): ${programStartDate.toISOString()}`);
               } else {
                 // Calculate next Monday
                 const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
                 programStartDate = new Date(today);
                 programStartDate.setDate(today.getDate() + daysUntilMonday);
                 programStartDate.setHours(0, 0, 0, 0);
+                logger.info(`Setting user programStartDate to next Monday: ${programStartDate.toISOString()}`);
               }
-              logger.info(`Setting user programStartDate to computed Monday: ${programStartDate.toISOString()}`);
             }
 
             updateData.programStartDate = programStartDate;
