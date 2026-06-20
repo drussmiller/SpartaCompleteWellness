@@ -10241,6 +10241,16 @@ export const registerRoutes = async (
         updateData.programStartDate = new Date(updateData.programStartDate);
       }
 
+      // Track whether the admin explicitly provided a new program start date in
+      // the request body. Only an explicit change should trigger the destructive
+      // "[ADMIN RESET]" post-deletion further below. Start dates we auto-compute
+      // when assigning/changing a user's team must NEVER delete the user's
+      // existing posts.
+      const programStartDateExplicitlyProvided =
+        req.body.programStartDate !== undefined &&
+        req.body.programStartDate !== null &&
+        req.body.programStartDate !== '';
+
       // Check if user's program has already started (programStartDate is today or in the past, OR currentWeek is already set)
       const [existingUser] = await db
         .select({ programStartDate: users.programStartDate, currentWeek: users.currentWeek, currentDay: users.currentDay })
@@ -10267,9 +10277,34 @@ export const registerRoutes = async (
           const now = new Date();
           updateData.teamJoinedAt = now;
           updateData.pendingOrganizationId = null;
-          
-          // If user's program has already started, preserve existing programStartDate
-          if (userProgramAlreadyStarted && !updateData.programStartDate) {
+
+          // Determine whether this user has any previous posts (excluding the
+          // introductory video and comments). Brand-new users only have an intro
+          // video, so they start fresh (today if Monday, otherwise next Monday).
+          // A user who has ANY real (non-intro) post has effectively started the
+          // program, so when no team/group date applies they are anchored to the
+          // previous Monday (the start of the current week) so this week counts
+          // as week 1. The "preserve existing start date" behavior is only for
+          // participants who have already started AND are being re-assigned to
+          // continue where they left off.
+          const [{ priorPostCount }] = await db
+            .select({ priorPostCount: sql<number>`count(*)` })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, userId),
+                ne(posts.type, 'introductory_video'),
+                isNull(posts.parentId), // Don't count comments
+              ),
+            );
+          const hasPreviousPosts = Number(priorPostCount) > 0;
+
+          // If user's program has already started AND they have previous posts,
+          // preserve their existing programStartDate so they continue where they
+          // left off. Users with no previous posts are treated as brand-new
+          // regardless of any stale start date and fall through to the
+          // "next Monday" computation below.
+          if (userProgramAlreadyStarted && hasPreviousPosts && !updateData.programStartDate) {
             // If programStartDate is missing but currentWeek is stored, compute a retroactive start date
             // so the week stays consistent after the team move
             if (!existingUser?.programStartDate && existingUser?.currentWeek) {
@@ -10310,42 +10345,61 @@ export const registerRoutes = async (
 
             let programStartDate: Date | null = null;
 
-            // Priority 1: Team's start date
-            if (teamWithGroup.teamStartDate) {
-              programStartDate = new Date(teamWithGroup.teamStartDate);
-              logger.info(`Setting user programStartDate from team start date: ${programStartDate.toISOString()}`);
-            }
-            // Priority 2: Group's start date
-            else if (teamWithGroup.groupId) {
-              const [group] = await db
-                .select({ groupStartDate: groups.programStartDate })
-                .from(groups)
-                .where(eq(groups.id, teamWithGroup.groupId))
-                .limit(1);
-
-              if (group?.groupStartDate) {
-                programStartDate = new Date(group.groupStartDate);
-                logger.info(`Setting user programStartDate from group start date: ${programStartDate.toISOString()}`);
+            // Only inherit the team/group start date for users who already have
+            // posts (i.e. an admin is re-assigning an existing participant so
+            // they can continue in the program). Brand-new users skip straight
+            // to the "today if Monday, otherwise next Monday" computation below.
+            if (hasPreviousPosts) {
+              // Priority 1: Team's start date
+              if (teamWithGroup.teamStartDate) {
+                programStartDate = new Date(teamWithGroup.teamStartDate);
+                logger.info(`Setting user programStartDate from team start date: ${programStartDate.toISOString()}`);
               }
+              // Priority 2: Group's start date
+              else if (teamWithGroup.groupId) {
+                const [group] = await db
+                  .select({ groupStartDate: groups.programStartDate })
+                  .from(groups)
+                  .where(eq(groups.id, teamWithGroup.groupId))
+                  .limit(1);
+
+                if (group?.groupStartDate) {
+                  programStartDate = new Date(group.groupStartDate);
+                  logger.info(`Setting user programStartDate from group start date: ${programStartDate.toISOString()}`);
+                }
+              }
+            } else {
+              logger.info(`User ${userId} has no previous posts (only intro video) - using fresh next-Monday start date instead of team/group start date`);
             }
 
-            // Priority 3: Current date if Monday, otherwise next Monday
+            // Priority 3: Compute a Monday start date.
             if (!programStartDate) {
               const today = new Date();
               const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-              
-              if (dayOfWeek === 1) {
+
+              if (hasPreviousPosts) {
+                // The user already has at least one real post, so they have
+                // effectively started the program. Anchor them to the previous
+                // Monday (the start of the current week) so this week counts
+                // toward week 1.
+                const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                programStartDate = new Date(today);
+                programStartDate.setDate(today.getDate() - daysSinceMonday);
+                programStartDate.setHours(0, 0, 0, 0);
+                logger.info(`User ${userId} has prior posts - setting programStartDate to the previous Monday (start of current week): ${programStartDate.toISOString()}`);
+              } else if (dayOfWeek === 1) {
                 // Today is Monday
                 programStartDate = new Date(today);
                 programStartDate.setHours(0, 0, 0, 0);
+                logger.info(`Setting user programStartDate to today (Monday): ${programStartDate.toISOString()}`);
               } else {
                 // Calculate next Monday
                 const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
                 programStartDate = new Date(today);
                 programStartDate.setDate(today.getDate() + daysUntilMonday);
                 programStartDate.setHours(0, 0, 0, 0);
+                logger.info(`Setting user programStartDate to next Monday: ${programStartDate.toISOString()}`);
               }
-              logger.info(`Setting user programStartDate to computed Monday: ${programStartDate.toISOString()}`);
             }
 
             updateData.programStartDate = programStartDate;
@@ -10359,7 +10413,7 @@ export const registerRoutes = async (
       // Check if programStartDate is being moved later (user going back to an earlier week)
       // If so, delete all posts and media from the new start date onward (excluding introductory videos)
       let deletedPostsCount = 0;
-      if (updateData.programStartDate && existingUser?.programStartDate) {
+      if (programStartDateExplicitlyProvided && updateData.programStartDate && existingUser?.programStartDate) {
         const newStartDate = new Date(updateData.programStartDate);
         const oldStartDate = new Date(existingUser.programStartDate);
         newStartDate.setHours(0, 0, 0, 0);
