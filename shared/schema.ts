@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, primaryKey, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, primaryKey, real, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -592,3 +592,18 @@ export const contacts = pgTable("contacts", {
 export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true });
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Contact = typeof contacts.$inferSelect;
+// Skipped weeks - lets a user mark a program week (Monday-Sunday) as skipped.
+// weekStartDate follows the same storage convention as users.programStartDate:
+// a timestamp at midnight of the Monday that starts the skipped week.
+export const skippedWeeks = pgTable("skipped_weeks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  weekStartDate: timestamp("week_start_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userWeekUnique: unique("skipped_weeks_user_week_unique").on(table.userId, table.weekStartDate),
+}));
+
+export const insertSkippedWeekSchema = createInsertSchema(skippedWeeks).omit({ id: true, createdAt: true });
+export type InsertSkippedWeek = z.infer<typeof insertSkippedWeekSchema>;
+export type SkippedWeek = typeof skippedWeeks.$inferSelect;

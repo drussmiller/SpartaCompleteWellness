@@ -48,6 +48,7 @@ import {
   insertMessageSchema,
   systemState,
   pageContent,
+  skippedWeeks,
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
 import express, { Request, Response, NextFunction } from "express";
@@ -5861,8 +5862,22 @@ export const registerRoutes = async (
       // Check if program has started - true if daysSinceStart is 0 or positive
       const programHasStarted = !!(user.programStartDate && daysSinceStart >= 0);
 
+      // Skipped weeks do not count toward the user's progress week
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      const skippedRows = await db
+        .select()
+        .from(skippedWeeks)
+        .where(eq(skippedWeeks.userId, req.user.id));
+      let skippedCount = 0;
+      for (const s of skippedRows) {
+        const d = new Date(s.weekStartDate);
+        d.setHours(0, 0, 0, 0);
+        const idx = Math.round((d.getTime() - programStart.getTime()) / msPerWeek);
+        if (idx >= 0 && idx < currentWeek) skippedCount++;
+      }
+
       // Don't allow negative weeks/days
-      const week = Math.max(1, currentWeek);
+      const week = Math.max(1, currentWeek - skippedCount);
       const day = Math.max(1, currentDay);
 
       res.json({
@@ -7504,6 +7519,22 @@ export const registerRoutes = async (
         users = [];
       }
 
+      // Fetch skipped weeks for all listed users (skipped weeks don't count
+      // toward the progress week shown on Admin/Profile pages)
+      const listedUserIds = users.map((u) => u.id);
+      const allSkippedRows = listedUserIds.length
+        ? await db
+            .select()
+            .from(skippedWeeks)
+            .where(inArray(skippedWeeks.userId, listedUserIds))
+        : [];
+      const skippedByUser = new Map<number, Date[]>();
+      for (const s of allSkippedRows) {
+        const list = skippedByUser.get(s.userId) || [];
+        list.push(new Date(s.weekStartDate));
+        skippedByUser.set(s.userId, list);
+      }
+
       // Calculate currentWeek and currentDay dynamically for each user
       const usersWithCalculatedProgress = users.map(user => {
         if (!user.programStartDate) {
@@ -7533,8 +7564,18 @@ export const registerRoutes = async (
         const jsDay = userLocalNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
         const currentDay = jsDay === 0 ? 7 : jsDay; // Convert to Monday=1, Sunday=7
 
+        // Skipped weeks do not count toward the user's progress week
+        const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+        let skippedCount = 0;
+        for (const skippedDate of skippedByUser.get(user.id) || []) {
+          const d = new Date(skippedDate);
+          d.setHours(0, 0, 0, 0);
+          const idx = Math.round((d.getTime() - programStart.getTime()) / msPerWeek);
+          if (idx >= 0 && idx < currentWeek) skippedCount++;
+        }
+
         // Don't allow negative weeks/days
-        const week = Math.max(1, currentWeek);
+        const week = Math.max(1, currentWeek - skippedCount);
         const day = Math.max(1, currentDay);
 
         return {
@@ -7699,7 +7740,32 @@ export const registerRoutes = async (
       // in-progress week). The current week's points aren't fully counted yet,
       // so including it would drag the average down artificially.
       const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-      const completedWeeks = Math.floor((startOfWeek.getTime() - programStart.getTime()) / msPerWeek);
+      const completedWeeksRaw = Math.floor((startOfWeek.getTime() - programStart.getTime()) / msPerWeek);
+
+      // Skipped weeks: excluded from totals, averages, and the week count
+      const userSkippedRows = await db
+        .select()
+        .from(skippedWeeks)
+        .where(eq(skippedWeeks.userId, userId));
+      const skippedWeekIdxs = new Set<number>();
+      for (const s of userSkippedRows) {
+        const d = new Date(s.weekStartDate);
+        d.setHours(0, 0, 0, 0);
+        skippedWeekIdxs.add(Math.round((d.getTime() - programStart.getTime()) / msPerWeek));
+      }
+
+      // Index of the current (in-progress) week
+      const currentWeekIdx = Math.round((startOfWeek.getTime() - programStart.getTime()) / msPerWeek);
+      if (skippedWeekIdxs.has(currentWeekIdx)) {
+        // Current week is skipped - its points don't count toward totals
+        weeklyPoints = 0;
+        dailyPoints = 0;
+      }
+
+      const skippedCompletedCount = Array.from(skippedWeekIdxs).filter(
+        (idx) => idx >= 0 && idx < completedWeeksRaw,
+      ).length;
+      const completedWeeks = completedWeeksRaw - skippedCompletedCount;
 
       logger.info(
         `Date range for weekly avg stats: ${programStartUTC.toISOString()} to ${startOfWeekUTC.toISOString()}, completedWeeks=${completedWeeks}`,
@@ -7720,6 +7786,12 @@ export const registerRoutes = async (
 
         let totalPoints = 0;
         for (const post of allTimePosts) {
+          if (!post.createdAt) continue;
+          // Exclude posts that fall inside a skipped week
+          const postWeekIdx = Math.floor(
+            (new Date(post.createdAt).getTime() - programStartUTC.getTime()) / msPerWeek,
+          );
+          if (skippedWeekIdxs.has(postWeekIdx)) continue;
           if (post.type === "food") totalPoints += 3;
           else if (post.type === "workout") totalPoints += 3;
           else if (post.type === "scripture") totalPoints += 3;
@@ -7742,6 +7814,166 @@ export const registerRoutes = async (
         `Error calculating user stats: ${error instanceof Error ? error.message : String(error)}`,
       );
       next(error);
+    }
+  });
+
+  // ----- Skipped weeks -----
+  // Weeks a user marks as skipped (Monday-Sunday). Skipped weeks are excluded
+  // from totals/averages and don't count toward the progress week.
+
+  // List all program weeks (from program start to the current week) with their
+  // skipped status, so the client can render the Skip a Week panel.
+  router.get("/api/skipped-weeks", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Clamp to plausible UTC offsets (-14h..+14h)
+      const tzOffset = Math.max(-840, Math.min(840, parseInt(req.query.tzOffset as string) || 0));
+      const [user] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user?.programStartDate) {
+        return res.json({ weeks: [] });
+      }
+
+      const programStartRaw = new Date(user.programStartDate);
+      const programStart = new Date(programStartRaw);
+      programStart.setHours(0, 0, 0, 0);
+
+      // Current Monday in the user's local time
+      const userLocalNow = new Date(Date.now() - tzOffset * 60000);
+      const dayOfWeek = userLocalNow.getDay();
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const startOfWeek = new Date(
+        userLocalNow.getFullYear(),
+        userLocalNow.getMonth(),
+        userLocalNow.getDate() - daysFromMonday,
+        0, 0, 0, 0,
+      );
+
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      const totalWeeks = Math.floor((startOfWeek.getTime() - programStart.getTime()) / msPerWeek) + 1;
+      if (totalWeeks < 1) return res.json({ weeks: [] });
+
+      const skippedRows = await db
+        .select()
+        .from(skippedWeeks)
+        .where(eq(skippedWeeks.userId, req.user.id));
+      const skippedIdxs = new Set<number>();
+      for (const s of skippedRows) {
+        const d = new Date(s.weekStartDate);
+        d.setHours(0, 0, 0, 0);
+        skippedIdxs.add(Math.round((d.getTime() - programStart.getTime()) / msPerWeek));
+      }
+
+      const weeks = Array.from({ length: totalWeeks }, (_, i) => ({
+        weekNumber: i + 1,
+        weekStart: new Date(programStartRaw.getTime() + i * msPerWeek).toISOString(),
+        isCurrentWeek: i === totalWeeks - 1,
+        skipped: skippedIdxs.has(i),
+      }));
+
+      res.json({ weeks });
+    } catch (error) {
+      logger.error(`Error listing skipped weeks: ${error instanceof Error ? error.message : String(error)}`);
+      res.status(500).json({ message: "Failed to list skipped weeks" });
+    }
+  });
+
+  // Mark a week as skipped
+  router.post("/api/skipped-weeks", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const { weekStart, tzOffset: tzOffsetRaw } = req.body || {};
+      // Clamp to plausible UTC offsets (-14h..+14h)
+      const tzOffset = Math.max(-840, Math.min(840, parseInt(tzOffsetRaw) || 0));
+      if (!weekStart) return res.status(400).json({ message: "weekStart is required" });
+
+      const [user] = await db
+        .select({ programStartDate: users.programStartDate })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      if (!user?.programStartDate) {
+        return res.status(400).json({ message: "Program has not started yet" });
+      }
+
+      const programStartRaw = new Date(user.programStartDate);
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const msPerWeek = 7 * msPerDay;
+
+      const requested = new Date(weekStart);
+      if (isNaN(requested.getTime())) {
+        return res.status(400).json({ message: "Invalid weekStart date" });
+      }
+
+      // Require the canonical week-start value: exactly programStart + k*7 days
+      const k = Math.round((requested.getTime() - programStartRaw.getTime()) / msPerDay);
+      const normalized = new Date(programStartRaw.getTime() + Math.round(k / 7) * msPerWeek);
+      if (k < 0 || k % 7 !== 0 || requested.getTime() !== normalized.getTime()) {
+        return res.status(400).json({ message: "weekStart must be the Monday of a program week" });
+      }
+
+      // Must not be a future week (current week is allowed)
+      const programStart = new Date(programStartRaw);
+      programStart.setHours(0, 0, 0, 0);
+      const userLocalNow = new Date(Date.now() - tzOffset * 60000);
+      const dayOfWeek = userLocalNow.getDay();
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const startOfWeek = new Date(
+        userLocalNow.getFullYear(),
+        userLocalNow.getMonth(),
+        userLocalNow.getDate() - daysFromMonday,
+        0, 0, 0, 0,
+      );
+      const currentIdx = Math.floor((startOfWeek.getTime() - programStart.getTime()) / msPerWeek);
+      if (k / 7 > currentIdx) {
+        return res.status(400).json({ message: "Cannot skip a future week" });
+      }
+
+      await db
+        .insert(skippedWeeks)
+        .values({ userId: req.user.id, weekStartDate: normalized })
+        .onConflictDoNothing();
+
+      logger.info(`User ${req.user.id} skipped week starting ${normalized.toISOString()}`);
+      res.json({ success: true, weekStart: normalized.toISOString() });
+    } catch (error) {
+      logger.error(`Error skipping week: ${error instanceof Error ? error.message : String(error)}`);
+      res.status(500).json({ message: "Failed to skip week" });
+    }
+  });
+
+  // Un-skip a week
+  router.delete("/api/skipped-weeks", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      const weekStart = req.query.weekStart as string;
+      if (!weekStart) return res.status(400).json({ message: "weekStart is required" });
+      const requested = new Date(weekStart);
+      if (isNaN(requested.getTime())) {
+        return res.status(400).json({ message: "Invalid weekStart date" });
+      }
+
+      await db
+        .delete(skippedWeeks)
+        .where(
+          and(
+            eq(skippedWeeks.userId, req.user.id),
+            eq(skippedWeeks.weekStartDate, requested),
+          ),
+        );
+
+      logger.info(`User ${req.user.id} un-skipped week starting ${requested.toISOString()}`);
+      res.json({ success: true });
+    } catch (error) {
+      logger.error(`Error un-skipping week: ${error instanceof Error ? error.message : String(error)}`);
+      res.status(500).json({ message: "Failed to un-skip week" });
     }
   });
 
@@ -8317,18 +8549,34 @@ export const registerRoutes = async (
           preferredName: users.preferredName,
           imageUrl: users.imageUrl,
           avatarColor: users.avatarColor,
-          points: sql<number>`COALESCE((
-            SELECT SUM(p.points)
-            FROM posts p
-            WHERE p.user_id = users.id
-            AND p.created_at >= ${queryStart}
-            AND p.created_at <= ${queryEnd}
-            AND p.parent_id IS NULL
-          ), 0)::integer AS points`,
+          points: sql<number>`CASE
+            WHEN EXISTS (
+              SELECT 1 FROM skipped_weeks sw
+              WHERE sw.user_id = users.id
+                AND ${queryStart} >= (sw.week_start_date - (${tzOffset} * interval '1 minute'))
+                AND ${queryStart} < (sw.week_start_date - (${tzOffset} * interval '1 minute') + interval '7 days')
+            ) THEN 0
+            ELSE COALESCE((
+              SELECT SUM(p.points)
+              FROM posts p
+              WHERE p.user_id = users.id
+              AND p.created_at >= ${queryStart}
+              AND p.created_at <= ${queryEnd}
+              AND p.parent_id IS NULL
+            ), 0)
+          END::integer AS points`,
           weeklyAvg: sql<number>`CASE
-            WHEN FLOOR(
-              EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
-              / (7 * 24 * 3600)
+            WHEN (
+              FLOOR(
+                EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
+                / (7 * 24 * 3600)
+              )
+              - (
+                SELECT COUNT(*) FROM skipped_weeks sw
+                WHERE sw.user_id = users.id
+                  AND sw.week_start_date >= COALESCE(users.program_start_date, users.created_at)
+                  AND (sw.week_start_date - (${tzOffset} * interval '1 minute')) < ${startOfThisWeek}
+              )
             ) < 1 THEN 0
             ELSE COALESCE(
               ROUND(
@@ -8347,10 +8595,24 @@ export const registerRoutes = async (
                     AND p.created_at >= COALESCE(users.program_start_date, users.created_at)
                     AND p.created_at < ${startOfThisWeek}
                     AND p.parent_id IS NULL
+                    AND NOT EXISTS (
+                      SELECT 1 FROM skipped_weeks sw2
+                      WHERE sw2.user_id = users.id
+                        AND p.created_at >= (sw2.week_start_date - (${tzOffset} * interval '1 minute'))
+                        AND p.created_at < (sw2.week_start_date - (${tzOffset} * interval '1 minute') + interval '7 days')
+                    )
                 )::numeric
-                / FLOOR(
-                    EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
-                    / (7 * 24 * 3600)
+                / (
+                    FLOOR(
+                      EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(users.program_start_date, users.created_at)))
+                      / (7 * 24 * 3600)
+                    )
+                    - (
+                      SELECT COUNT(*) FROM skipped_weeks sw
+                      WHERE sw.user_id = users.id
+                        AND sw.week_start_date >= COALESCE(users.program_start_date, users.created_at)
+                        AND (sw.week_start_date - (${tzOffset} * interval '1 minute')) < ${startOfThisWeek}
+                    )
                   )
               )
             , 0)
@@ -8376,9 +8638,17 @@ export const registerRoutes = async (
               u.team_id,
               u.id as user_id,
               CASE
-                WHEN FLOOR(
-                  EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(u.program_start_date, u.created_at)))
-                  / (7 * 24 * 3600)
+                WHEN (
+                  FLOOR(
+                    EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(u.program_start_date, u.created_at)))
+                    / (7 * 24 * 3600)
+                  )
+                  - (
+                    SELECT COUNT(*) FROM skipped_weeks sw
+                    WHERE sw.user_id = u.id
+                      AND sw.week_start_date >= COALESCE(u.program_start_date, u.created_at)
+                      AND (sw.week_start_date - (${tzOffset} * interval '1 minute')) < ${startOfThisWeek}
+                  )
                 ) < 1 THEN 0
                 ELSE COALESCE(
                   ROUND(
@@ -8397,10 +8667,24 @@ export const registerRoutes = async (
                         AND p.created_at >= COALESCE(u.program_start_date, u.created_at)
                         AND p.created_at < ${startOfThisWeek}
                         AND p.parent_id IS NULL
+                        AND NOT EXISTS (
+                          SELECT 1 FROM skipped_weeks sw2
+                          WHERE sw2.user_id = u.id
+                            AND p.created_at >= (sw2.week_start_date - (${tzOffset} * interval '1 minute'))
+                            AND p.created_at < (sw2.week_start_date - (${tzOffset} * interval '1 minute') + interval '7 days')
+                        )
                     )::numeric
-                    / FLOOR(
-                        EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(u.program_start_date, u.created_at)))
-                        / (7 * 24 * 3600)
+                    / (
+                        FLOOR(
+                          EXTRACT(EPOCH FROM (${startOfThisWeek}::timestamp - COALESCE(u.program_start_date, u.created_at)))
+                          / (7 * 24 * 3600)
+                        )
+                        - (
+                          SELECT COUNT(*) FROM skipped_weeks sw
+                          WHERE sw.user_id = u.id
+                            AND sw.week_start_date >= COALESCE(u.program_start_date, u.created_at)
+                            AND (sw.week_start_date - (${tzOffset} * interval '1 minute')) < ${startOfThisWeek}
+                        )
                       )
                   )
                 , 0)
