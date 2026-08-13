@@ -126,6 +126,8 @@ export function LeaderboardPage({ onClose }: LeaderboardPageProps = {}) {
       return res.json();
     },
     refetchInterval: 60000,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   if (!user) {
