@@ -225,6 +225,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
     error: usersError,
   } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    // The global queryClient uses refetchOnMount: false, so invalidations
+    // made while this page is unmounted (e.g. Start Over on the home page)
+    // would never trigger a refetch. Always refetch fresh data on mount.
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Fetch autonomous mode setting
