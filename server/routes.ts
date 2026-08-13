@@ -7977,7 +7977,16 @@ export const registerRoutes = async (
       const alreadySkipped = existing.some(
         (s) => new Date(s.weekStartDate).getTime() === normalized.getTime(),
       );
-      if (!alreadySkipped && existing.length >= 4) {
+      // Only count skips that belong to the current schedule (on/after the
+      // current program start) toward the 4-week limit, so skips from a
+      // previous program year or an old start date don't block new ones.
+      // Compare on UTC calendar days so legacy rows stored at local-midnight-
+      // as-UTC (e.g. 06:00Z) normalize to the same basis as the start date.
+      const utcDayIndex = (d: Date) => Math.floor(d.getTime() / msPerDay);
+      const currentScheduleSkips = existing.filter(
+        (s) => utcDayIndex(new Date(s.weekStartDate)) >= utcDayIndex(programStartRaw),
+      ).length;
+      if (!alreadySkipped && currentScheduleSkips >= 4) {
         return res.status(400).json({ message: "You can skip at most 4 weeks" });
       }
 
@@ -10640,6 +10649,17 @@ export const registerRoutes = async (
       // Convert programStartDate string to Date object if provided
       if (updateData.programStartDate && typeof updateData.programStartDate === 'string') {
         updateData.programStartDate = new Date(updateData.programStartDate);
+        // Normalize to UTC midnight of the intended calendar day. Clients may
+        // serialize a locally-picked date (e.g. Monday 00:00 local -> Sunday or
+        // Monday off-midnight in UTC); rounding to the nearest UTC midnight
+        // recovers the intended day for any timezone, so a Monday start always
+        // counts as Week 1 Day 1.
+        if (!isNaN(updateData.programStartDate.getTime())) {
+          const msPerDay = 24 * 60 * 60 * 1000;
+          updateData.programStartDate = new Date(
+            Math.round(updateData.programStartDate.getTime() / msPerDay) * msPerDay,
+          );
+        }
       }
 
       // Track whether the admin explicitly provided a new program start date in
@@ -10918,6 +10938,27 @@ export const registerRoutes = async (
 
             updateData.points = totalPoints;
             logger.info(`[ADMIN RESET] Recalculated points for user ${userId}: ${totalPoints}`);
+          }
+        }
+      }
+
+      // An explicit program start date change makes previously skipped weeks
+      // meaningless — they belong to the old schedule and would otherwise be
+      // miscounted against the new one (making the progress week appear one
+      // or more weeks short). Clear them only on explicit admin start-date
+      // edits, never for auto-computed team-change dates.
+      if (programStartDateExplicitlyProvided && updateData.programStartDate) {
+        const newStartMs = new Date(updateData.programStartDate).getTime();
+        const oldStartMs = existingUser?.programStartDate
+          ? new Date(existingUser.programStartDate).getTime()
+          : null;
+        if (oldStartMs === null || newStartMs !== oldStartMs) {
+          const removedSkips = await db
+            .delete(skippedWeeks)
+            .where(eq(skippedWeeks.userId, userId))
+            .returning();
+          if (removedSkips.length > 0) {
+            logger.info(`[ADMIN RESET] Cleared ${removedSkips.length} skipped week(s) for user ${userId} after program start date change`);
           }
         }
       }
