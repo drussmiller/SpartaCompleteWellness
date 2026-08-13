@@ -889,7 +889,7 @@ export default function ActivityPage() {
                   <div className="space-y-4">
                     <div className="text-sm text-muted-foreground space-y-2">
                       <p>Need a break? Skip the current week or a past week.</p>
-                      <p>Skipped weeks (Monday–Sunday) are not counted in your totals, weekly averages, or program progress. Your posts are kept.</p>
+                      <p>Skipped weeks (Monday–Sunday) are not counted in your totals, weekly averages, or program progress. Your posts are kept. You can skip a maximum of 4 weeks.</p>
                     </div>
 
                     <div className="space-y-2">
@@ -912,12 +912,21 @@ export default function ActivityPage() {
 
                     <Button
                       onClick={handleSkipWeek}
-                      disabled={skipWeekMutation.isPending || !skipWeekSelection}
+                      disabled={
+                        skipWeekMutation.isPending ||
+                        !skipWeekSelection ||
+                        (skippedWeeksData?.weeks || []).filter((w) => w.skipped).length >= 4
+                      }
                       className="w-full"
                       data-testid="button-skip-week"
                     >
                       {skipWeekMutation.isPending ? "Skipping..." : "Skip Week"}
                     </Button>
+                    {(skippedWeeksData?.weeks || []).filter((w) => w.skipped).length >= 4 && (
+                      <p className="text-sm text-muted-foreground">
+                        You've reached the limit of 4 skipped weeks. Un-skip a week below to skip a different one.
+                      </p>
+                    )}
 
                     {(skippedWeeksData?.weeks || []).some((w) => w.skipped) && (
                       <div className="space-y-2 pt-2 border-t">

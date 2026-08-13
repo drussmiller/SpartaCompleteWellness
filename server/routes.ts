@@ -7967,6 +7967,18 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Cannot skip a future week" });
       }
 
+      // Limit: at most 4 skipped weeks per user
+      const existing = await db
+        .select({ weekStartDate: skippedWeeks.weekStartDate })
+        .from(skippedWeeks)
+        .where(eq(skippedWeeks.userId, req.user.id));
+      const alreadySkipped = existing.some(
+        (s) => new Date(s.weekStartDate).getTime() === normalized.getTime(),
+      );
+      if (!alreadySkipped && existing.length >= 4) {
+        return res.status(400).json({ message: "You can skip at most 4 weeks" });
+      }
+
       await db
         .insert(skippedWeeks)
         .values({ userId: req.user.id, weekStartDate: normalized })
