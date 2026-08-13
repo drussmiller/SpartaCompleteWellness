@@ -178,6 +178,10 @@ export const PostCard = React.memo(function PostCard({ post, onPostUpdated, onPo
         exact: false 
       });
 
+      // Points changed: refresh leaderboard and profile stats
+      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+
       // Invalidate has-any-posts check to update dialog state
       queryClient.invalidateQueries({ 
         queryKey: ["/api/posts/has-any-posts"],

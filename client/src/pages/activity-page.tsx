@@ -88,6 +88,18 @@ export default function ActivityPage() {
   
   const [reengageWeek, setReengageWeek] = useState<string>("");
 
+  const [skipWeekOpen, setSkipWeekOpen] = useState(() => {
+    const saved = localStorage.getItem('activityPage_skipWeekOpen');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
+
+  const [skipWeekSelection, setSkipWeekSelection] = useState<string>("");
+
+  // Persist skipWeekOpen state to localStorage
+  useEffect(() => {
+    localStorage.setItem('activityPage_skipWeekOpen', JSON.stringify(skipWeekOpen));
+  }, [skipWeekOpen]);
+
   // Persist weekContentOpen state to localStorage
   useEffect(() => {
     localStorage.setItem('activityPage_weekContentOpen', JSON.stringify(weekContentOpen));
@@ -120,6 +132,17 @@ export default function ActivityPage() {
       if (!user?.teamId) return { competitive: false };
       const response = await fetch(`/api/teams/${user.teamId}/competitive`);
       if (!response.ok) throw new Error("Failed to fetch competitive status");
+      return response.json();
+    },
+    enabled: !!user?.teamId,
+  });
+
+  // Skipped weeks list for the Skip a Week panel
+  const { data: skippedWeeksData } = useQuery<{ weeks: { weekNumber: number; weekStart: string; isCurrentWeek: boolean; skipped: boolean }[] }>({
+    queryKey: ["/api/skipped-weeks"],
+    queryFn: async () => {
+      const response = await fetch(`/api/skipped-weeks?tzOffset=${new Date().getTimezoneOffset()}`);
+      if (!response.ok) throw new Error("Failed to fetch skipped weeks");
       return response.json();
     },
     enabled: !!user?.teamId,
@@ -253,6 +276,83 @@ export default function ActivityPage() {
       });
     },
   });
+
+  const invalidateSkipQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/skipped-weeks"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+  };
+
+  // Skip week mutation
+  const skipWeekMutation = useMutation({
+    mutationFn: async (weekStart: string) => {
+      const response = await apiRequest("POST", "/api/skipped-weeks", {
+        weekStart,
+        tzOffset: new Date().getTimezoneOffset(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to skip week");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Week skipped",
+        description: "This week will not count toward your totals, averages, or progress.",
+      });
+      invalidateSkipQueries();
+      setSkipWeekSelection("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Un-skip week mutation
+  const unskipWeekMutation = useMutation({
+    mutationFn: async (weekStart: string) => {
+      const response = await apiRequest("DELETE", `/api/skipped-weeks?weekStart=${encodeURIComponent(weekStart)}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to un-skip week");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Week restored",
+        description: "This week now counts toward your totals and progress again.",
+      });
+      invalidateSkipQueries();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const formatWeekRange = (weekStartIso: string) => {
+    const start = new Date(weekStartIso);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `${fmt(start)} – ${fmt(end)}`;
+  };
+
+  const handleSkipWeek = () => {
+    if (!skipWeekSelection) {
+      toast({
+        title: "Error",
+        description: "Please select a week to skip",
+        variant: "destructive",
+      });
+      return;
+    }
+    skipWeekMutation.mutate(skipWeekSelection);
+  };
 
   const handleReengage = () => {
     if (!reengageWeek) {
@@ -761,6 +861,87 @@ export default function ActivityPage() {
                     >
                       {reengageMutation.isPending ? "Resetting..." : "Reset Program"}
                     </Button>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
+
+        {/* Skip a Week Section */}
+        {(skippedWeeksData?.weeks?.length || 0) > 0 && (
+          <Collapsible open={skipWeekOpen} onOpenChange={setSkipWeekOpen} className="mt-6">
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Skip a Week</CardTitle>
+                    <ChevronDown
+                      className={`h-5 w-5 transition-transform ${
+                        skipWeekOpen ? "transform rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <p>Need a break? Skip the current week or a past week.</p>
+                      <p>Skipped weeks (Monday–Sunday) are not counted in your totals, weekly averages, or program progress. Your posts are kept.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select Week</label>
+                      <Select value={skipWeekSelection} onValueChange={setSkipWeekSelection}>
+                        <SelectTrigger data-testid="select-skip-week">
+                          <SelectValue placeholder="Choose a week" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(skippedWeeksData?.weeks || [])
+                            .filter((w) => !w.skipped)
+                            .map((w) => (
+                              <SelectItem key={w.weekStart} value={w.weekStart}>
+                                Week {w.weekNumber} ({formatWeekRange(w.weekStart)}){w.isCurrentWeek ? " – current" : ""}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button
+                      onClick={handleSkipWeek}
+                      disabled={skipWeekMutation.isPending || !skipWeekSelection}
+                      className="w-full"
+                      data-testid="button-skip-week"
+                    >
+                      {skipWeekMutation.isPending ? "Skipping..." : "Skip Week"}
+                    </Button>
+
+                    {(skippedWeeksData?.weeks || []).some((w) => w.skipped) && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <p className="text-sm font-medium">Skipped weeks</p>
+                        {(skippedWeeksData?.weeks || [])
+                          .filter((w) => w.skipped)
+                          .map((w) => (
+                            <div key={w.weekStart} className="flex items-center justify-between text-sm">
+                              <span>
+                                Week {w.weekNumber} ({formatWeekRange(w.weekStart)})
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => unskipWeekMutation.mutate(w.weekStart)}
+                                disabled={unskipWeekMutation.isPending}
+                                data-testid={`button-unskip-week-${w.weekNumber}`}
+                              >
+                                Un-skip
+                              </Button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </CollapsibleContent>

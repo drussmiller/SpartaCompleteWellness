@@ -765,6 +765,10 @@ export function CreatePostDialog({
         exact: false
       });
 
+      // Points changed: refresh leaderboard and profile stats
+      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+
       // If this was a community board post, also invalidate the prayer requests / community board caches
       if (newPost.type === "prayer" || newPost.type === "recipe" || newPost.type === "share") {
         queryClient.invalidateQueries({ queryKey: ["/api/posts/prayer-requests"] });
@@ -885,6 +889,8 @@ export function CreatePostDialog({
       await globalQueryClient.resetQueries({
         queryKey: ["/api/posts"],
       });
+      globalQueryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+      globalQueryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
 
       if (onPostUpdated) {
         onPostUpdated();
@@ -988,6 +994,8 @@ export function CreatePostDialog({
 
         await queryClient.resetQueries({ queryKey: ["/api/posts"], exact: false });
         queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key0 = typeof query.queryKey[0] === 'string' ? query.queryKey[0] : '';

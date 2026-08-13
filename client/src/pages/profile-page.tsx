@@ -282,7 +282,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
       if (!response.ok) throw new Error("Failed to fetch user stats");
       return response.json();
     },
-    staleTime: 60000, // 1 minute
+    staleTime: 0,
+    refetchOnMount: true,
     enabled: !!authUser,
   });
 
