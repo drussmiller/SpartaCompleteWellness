@@ -25,6 +25,8 @@ export const users = pgTable("users", {
   programStartDate: timestamp("program_start_date"), // First Monday on or after team join date
   currentWeek: integer("current_week").default(1),
   currentDay: integer("current_day").default(1),
+  programYear: integer("program_year").default(1), // Increments each time the user finishes week 50 and starts over
+
   notificationTime: text("notification_time").default("09:00"), // Adding notification time preference
   timezoneOffset: integer("timezone_offset"), // Timezone offset in minutes (e.g., -300 for Central Time)
   dailyNotificationsEnabled: boolean("daily_notifications_enabled").default(true), // Whether daily reminder notifications are enabled

@@ -786,6 +786,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                                   </span>
                                   <span className="font-medium">
                                     Week {activityProgress.currentWeek}
+                                    {(activityProgress.programYear || 1) > 1 &&
+                                      ` · Year ${activityProgress.programYear}`}
                                   </span>
                                 </div>
                                 <div className="flex justify-between items-center">
