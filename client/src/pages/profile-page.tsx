@@ -974,7 +974,8 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       type="category"
                       dataKey="week"
                       width={64}
-                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      tick={{ fontSize: 11 }}
                       tickFormatter={(w: number) => `Week ${w}`}
                     />
                     <RechartsTooltip
