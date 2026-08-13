@@ -3859,7 +3859,11 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                         let currentDay = 1;
 
                                         if (programStartDateValue) {
-                                          const startDate = new Date(programStartDateValue);
+                                          // Parse "YYYY-MM-DD" as a LOCAL calendar date. new Date("YYYY-MM-DD")
+                                          // parses as UTC midnight, which setHours() shifts to the PREVIOUS local
+                                          // day in western timezones — making the Day appear one too high.
+                                          const [sy, sm, sd] = programStartDateValue.split("T")[0].split("-").map(Number);
+                                          const startDate = new Date(sy, sm - 1, sd);
                                           const today = new Date();
                                           today.setHours(0, 0, 0, 0);
                                           startDate.setHours(0, 0, 0, 0);
