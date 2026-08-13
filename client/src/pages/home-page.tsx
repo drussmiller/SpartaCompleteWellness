@@ -34,6 +34,15 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { useMutation } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type FilterMode = "team" | "all_users" | "new_users" | "specific_team";
 
@@ -63,6 +72,45 @@ export default function HomePage() {
 
   const canFilterByTeam = !!(user?.isOrganizationAdmin || user?.isGroupAdmin || user?.isAdmin);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Program-complete (finished Week 50) popup
+  const tzOffset = new Date().getTimezoneOffset();
+  const { data: activityProgress } = useQuery<{
+    currentWeek: number | null;
+    programYear?: number;
+    programHasStarted?: boolean;
+  }>({
+    queryKey: ["/api/activities/current", tzOffset],
+    queryFn: async () => {
+      const res = await fetch(`/api/activities/current?tzOffset=${tzOffset}`);
+      if (!res.ok) throw new Error("Failed to fetch program progress");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+  const [startOverDismissed, setStartOverDismissed] = useState(false);
+  const programComplete =
+    !!activityProgress?.programHasStarted &&
+    (activityProgress?.currentWeek || 0) > 50;
+
+  const startOverMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/user/start-over", { tzOffset });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || "Failed to start over");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/skipped-weeks"] });
+    },
+  });
   
   useEffect(() => {
     sessionStorage.setItem("homePageFilterMode", filterMode);
@@ -320,6 +368,37 @@ export default function HomePage() {
       isBottomNavVisible={isBottomNavVisible}
       scrollContainerRef={scrollContainerRef}
     >
+      <Dialog
+        open={programComplete && !startOverDismissed}
+        onOpenChange={(open) => !open && setStartOverDismissed(true)}
+      >
+        <DialogContent data-testid="dialog-start-over">
+          <DialogHeader>
+            <DialogTitle>Congratulations - you finished Week 50! 🎉</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              You've completed the full 50-week program. Ready for{" "}
+              Year {(activityProgress?.programYear || 1) + 1}? Starting over
+              takes you back to Week 1 as of this week - all of your posts,
+              points, and history are kept.
+            </DialogDescription>
+          </DialogHeader>
+          {startOverMutation.isError && (
+            <p className="text-sm text-destructive">
+              {(startOverMutation.error as Error)?.message}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => startOverMutation.mutate()}
+              disabled={startOverMutation.isPending}
+              className="w-full"
+              data-testid="button-start-over"
+            >
+              {startOverMutation.isPending ? "Starting over..." : "Start Over"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="min-h-screen bg-background">
         {/* Border wrapper for desktop */}
         <div className={`${!isMobile ? 'max-w-[1000px] mx-auto px-6 md:px-44 md:pl-56' : 'w-full'}`}>

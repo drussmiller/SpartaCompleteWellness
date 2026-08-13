@@ -5833,7 +5833,8 @@ export const registerRoutes = async (
           currentWeek: programHasStarted ? 1 : null,
           currentDay: programHasStarted ? (userLocalNow.getDay() === 0 ? 7 : userLocalNow.getDay()) : null,
           programHasStarted: programHasStarted,
-          daysSinceStart: programHasStarted ? 0 : -daysUntilMonday
+          daysSinceStart: programHasStarted ? 0 : -daysUntilMonday,
+          programYear: user.programYear || 1,
         });
       }
 
@@ -5885,7 +5886,8 @@ export const registerRoutes = async (
         currentDay: day,
         programStartDate: user.programStartDate,
         daysSinceStart: daysSinceStart,
-        programHasStarted: !!programHasStarted
+        programHasStarted: !!programHasStarted,
+        programYear: user.programYear || 1,
       });
     } catch (error) {
       logger.error("Error getting current activity:", error);
@@ -7967,6 +7969,27 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "Cannot skip a future week" });
       }
 
+      // Limit: at most 4 skipped weeks per user
+      const existing = await db
+        .select({ weekStartDate: skippedWeeks.weekStartDate })
+        .from(skippedWeeks)
+        .where(eq(skippedWeeks.userId, req.user.id));
+      const alreadySkipped = existing.some(
+        (s) => new Date(s.weekStartDate).getTime() === normalized.getTime(),
+      );
+      // Only count skips that belong to the current schedule (on/after the
+      // current program start) toward the 4-week limit, so skips from a
+      // previous program year or an old start date don't block new ones.
+      // Compare on UTC calendar days so legacy rows stored at local-midnight-
+      // as-UTC (e.g. 06:00Z) normalize to the same basis as the start date.
+      const utcDayIndex = (d: Date) => Math.floor(d.getTime() / msPerDay);
+      const currentScheduleSkips = existing.filter(
+        (s) => utcDayIndex(new Date(s.weekStartDate)) >= utcDayIndex(programStartRaw),
+      ).length;
+      if (!alreadySkipped && currentScheduleSkips >= 4) {
+        return res.status(400).json({ message: "You can skip at most 4 weeks" });
+      }
+
       await db
         .insert(skippedWeeks)
         .values({ userId: req.user.id, weekStartDate: normalized })
@@ -8006,6 +8029,77 @@ export const registerRoutes = async (
     } catch (error) {
       logger.error(`Error un-skipping week: ${error instanceof Error ? error.message : String(error)}`);
       res.status(500).json({ message: "Failed to un-skip week" });
+    }
+  });
+
+  // Start over after finishing week 50: resets the program to Week 1 (starting
+  // this week's Monday) and increments the user's program year. Nothing is
+  // deleted - all posts and history are kept.
+  router.post("/api/user/start-over", authenticate, async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+      // Clamp to plausible UTC offsets (-14h..+14h)
+      const tzOffset = Math.max(-840, Math.min(840, parseInt(req.body?.tzOffset) || 0));
+
+      const [user] = await db
+        .select({ programStartDate: users.programStartDate, programYear: users.programYear })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      if (!user?.programStartDate) {
+        return res.status(400).json({ message: "Program has not started yet" });
+      }
+
+      const programStart = new Date(user.programStartDate);
+      programStart.setHours(0, 0, 0, 0);
+
+      // Current Monday in the user's local time
+      const userLocalNow = new Date(Date.now() - tzOffset * 60000);
+      const dayOfWeek = userLocalNow.getDay();
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const startOfWeek = new Date(
+        userLocalNow.getFullYear(),
+        userLocalNow.getMonth(),
+        userLocalNow.getDate() - daysFromMonday,
+        0, 0, 0, 0,
+      );
+
+      // Progress week = calendar weeks since start, minus skipped weeks
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      const rawWeek = Math.floor((startOfWeek.getTime() - programStart.getTime()) / msPerWeek) + 1;
+      const skippedRows = await db
+        .select({ weekStartDate: skippedWeeks.weekStartDate })
+        .from(skippedWeeks)
+        .where(eq(skippedWeeks.userId, req.user.id));
+      let skippedCount = 0;
+      for (const s of skippedRows) {
+        const d = new Date(s.weekStartDate);
+        d.setHours(0, 0, 0, 0);
+        const idx = Math.round((d.getTime() - programStart.getTime()) / msPerWeek);
+        if (idx >= 0 && idx < rawWeek) skippedCount++;
+      }
+      const progressWeek = Math.max(1, rawWeek - skippedCount);
+
+      if (progressWeek <= 50) {
+        return res.status(400).json({ message: "You can start over after finishing Week 50" });
+      }
+
+      const newYear = (user.programYear || 1) + 1;
+      // IMPORTANT: only update the start date and year - never delete any posts
+      // or other content here.
+      await db
+        .update(users)
+        .set({ programStartDate: startOfWeek, programYear: newYear })
+        .where(eq(users.id, req.user.id));
+
+      logger.info(
+        `User ${req.user.id} started over: year ${newYear}, new start ${startOfWeek.toISOString()}`,
+      );
+      res.json({ success: true, programYear: newYear, programStartDate: startOfWeek.toISOString() });
+    } catch (error) {
+      logger.error(`Error starting over: ${error instanceof Error ? error.message : String(error)}`);
+      res.status(500).json({ message: "Failed to start over" });
     }
   });
 
@@ -10555,6 +10649,17 @@ export const registerRoutes = async (
       // Convert programStartDate string to Date object if provided
       if (updateData.programStartDate && typeof updateData.programStartDate === 'string') {
         updateData.programStartDate = new Date(updateData.programStartDate);
+        // Normalize to UTC midnight of the intended calendar day. Clients may
+        // serialize a locally-picked date (e.g. Monday 00:00 local -> Sunday or
+        // Monday off-midnight in UTC); rounding to the nearest UTC midnight
+        // recovers the intended day for any timezone, so a Monday start always
+        // counts as Week 1 Day 1.
+        if (!isNaN(updateData.programStartDate.getTime())) {
+          const msPerDay = 24 * 60 * 60 * 1000;
+          updateData.programStartDate = new Date(
+            Math.round(updateData.programStartDate.getTime() / msPerDay) * msPerDay,
+          );
+        }
       }
 
       // Track whether the admin explicitly provided a new program start date in
@@ -10833,6 +10938,27 @@ export const registerRoutes = async (
 
             updateData.points = totalPoints;
             logger.info(`[ADMIN RESET] Recalculated points for user ${userId}: ${totalPoints}`);
+          }
+        }
+      }
+
+      // An explicit program start date change makes previously skipped weeks
+      // meaningless — they belong to the old schedule and would otherwise be
+      // miscounted against the new one (making the progress week appear one
+      // or more weeks short). Clear them only on explicit admin start-date
+      // edits, never for auto-computed team-change dates.
+      if (programStartDateExplicitlyProvided && updateData.programStartDate) {
+        const newStartMs = new Date(updateData.programStartDate).getTime();
+        const oldStartMs = existingUser?.programStartDate
+          ? new Date(existingUser.programStartDate).getTime()
+          : null;
+        if (oldStartMs === null || newStartMs !== oldStartMs) {
+          const removedSkips = await db
+            .delete(skippedWeeks)
+            .where(eq(skippedWeeks.userId, userId))
+            .returning();
+          if (removedSkips.length > 0) {
+            logger.info(`[ADMIN RESET] Cleared ${removedSkips.length} skipped week(s) for user ${userId} after program start date change`);
           }
         }
       }
