@@ -7804,10 +7804,42 @@ export const registerRoutes = async (
       logger.info(
         `Stats for user ${userId}: daily=${dailyPoints}, weekly=${weeklyPoints}, weeklyAvg=${weeklyAvgPoints}, completedWeeks=${completedWeeks}`,
       );
+
+      // Weekly history: total points per program week (week 1 .. current week)
+      const historyPosts = await db
+        .select({ createdAt: posts.createdAt, type: posts.type })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.userId, userId),
+            gte(posts.createdAt, programStartUTC),
+          ),
+        );
+      const totalHistoryWeeks = Math.max(0, currentWeekIdx + 1);
+      const weekTotals = new Array(totalHistoryWeeks).fill(0);
+      for (const post of historyPosts) {
+        if (!post.createdAt) continue;
+        const idx = Math.floor(
+          (new Date(post.createdAt).getTime() - programStartUTC.getTime()) / msPerWeek,
+        );
+        if (idx < 0 || idx >= totalHistoryWeeks) continue;
+        if (post.type === "food") weekTotals[idx] += 3;
+        else if (post.type === "workout") weekTotals[idx] += 3;
+        else if (post.type === "scripture") weekTotals[idx] += 3;
+        else if (post.type === "memory_verse") weekTotals[idx] += 10;
+      }
+      const weeklyHistory = weekTotals.map((points, idx) => ({
+        week: idx + 1,
+        points: skippedWeekIdxs.has(idx) ? 0 : points,
+        skipped: skippedWeekIdxs.has(idx),
+        isCurrentWeek: idx === currentWeekIdx,
+      }));
+
       res.json({
         dailyPoints,
         weeklyPoints,
         weeklyAvgPoints,
+        weeklyHistory,
       });
     } catch (error) {
       logger.error(
