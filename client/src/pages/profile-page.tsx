@@ -958,7 +958,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                 <h3 className="text-lg font-semibold mb-4">Weekly Points</h3>
                 <ResponsiveContainer
                   width="100%"
-                  height={Math.max(120, userStats.weeklyHistory.length * 28 + 40)}
+                  height={Math.max(100, userStats.weeklyHistory.length * 16 + 40)}
                 >
                   <BarChart
                     data={userStats.weeklyHistory}
@@ -985,7 +985,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                       }
                       labelFormatter={(w: number) => `Week ${w}`}
                     />
-                    <Bar dataKey="points" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="points" barSize={8} radius={[0, 4, 4, 0]}>
                       {userStats.weeklyHistory.map((entry: any) => (
                         <Cell
                           key={entry.week}
