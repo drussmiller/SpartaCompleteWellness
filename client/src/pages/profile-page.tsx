@@ -33,6 +33,10 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  Tooltip as RechartsTooltip,
+  Cell,
 } from "recharts";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -947,6 +951,64 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
               </div>
             </CardContent>
           </Card>
+
+          {(userStats?.weeklyHistory?.length ?? 0) > 0 && (
+            <Card>
+              <CardContent>
+                <h3 className="text-lg font-semibold mb-4">Weekly Points</h3>
+                <ResponsiveContainer
+                  width="100%"
+                  height={Math.max(120, userStats.weeklyHistory.length * 28 + 40)}
+                >
+                  <BarChart
+                    data={userStats.weeklyHistory}
+                    layout="vertical"
+                    margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
+                  >
+                    <XAxis
+                      type="number"
+                      allowDecimals={false}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="week"
+                      width={64}
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(w: number) => `Week ${w}`}
+                    />
+                    <RechartsTooltip
+                      formatter={(value: number, _name, props: any) =>
+                        props?.payload?.skipped
+                          ? ["Skipped", "Points"]
+                          : [value, "Points"]
+                      }
+                      labelFormatter={(w: number) => `Week ${w}`}
+                    />
+                    <Bar dataKey="points" radius={[0, 4, 4, 0]}>
+                      {userStats.weeklyHistory.map((entry: any) => (
+                        <Cell
+                          key={entry.week}
+                          fill={
+                            entry.skipped
+                              ? "hsl(var(--muted-foreground))"
+                              : entry.isCurrentWeek
+                                ? "hsl(var(--primary) / 0.5)"
+                                : "hsl(var(--primary))"
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="text-xs text-muted-foreground mt-2">
+                  {userStats.weeklyHistory.some((w: any) => w.skipped) &&
+                    "Gray bars are skipped weeks. "}
+                  The lighter bar is the current (in-progress) week.
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardContent>
