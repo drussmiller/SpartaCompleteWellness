@@ -4176,6 +4176,8 @@ export default function AdminPage({ onClose }: AdminPageProps) {
                                             {userProgress[user.id]?.week ?? user.currentWeek}
                                             , Day{" "}
                                             {userProgress[user.id]?.day ?? user.currentDay}
+                                            {((user as any).programYear || 1) > 1 &&
+                                              ` · Year ${(user as any).programYear}`}
                                           </>
                                         );
                                       })()}
