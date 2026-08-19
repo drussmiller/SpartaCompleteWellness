@@ -138,7 +138,7 @@ export default function ActivityPage() {
   });
 
   // Skipped weeks list for the Skip a Week panel
-  const { data: skippedWeeksData } = useQuery<{ weeks: { weekNumber: number; weekStart: string; isCurrentWeek: boolean; skipped: boolean }[] }>({
+  const { data: skippedWeeksData } = useQuery<{ weeks: { weekNumber: number; weekStart: string; isCurrentWeek: boolean; skipped: boolean; source: "manual" | "reengage" | null }[] }>({
     queryKey: ["/api/skipped-weeks"],
     queryFn: async () => {
       const response = await fetch(`/api/skipped-weeks?tzOffset=${new Date().getTimezoneOffset()}`);
@@ -249,6 +249,7 @@ export default function ActivityPage() {
     mutationFn: async (targetWeek: number) => {
       const response = await apiRequest("POST", "/api/users/reengage", {
         targetWeek,
+        tzOffset: new Date().getTimezoneOffset(),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -256,14 +257,16 @@ export default function ActivityPage() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast({
-        title: "Success",
-        description: "Program successfully reset. Your posts have been updated.",
+        title: "Re-engaged",
+        description: result.skippedWeeksAdded > 0
+          ? `${result.skippedWeeksAdded} missed week${result.skippedWeeksAdded === 1 ? "" : "s"} moved to the end of your program. Your posts and points were preserved.`
+          : "You are already on that week. Your posts and points were preserved.",
       });
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["/api/activities/current"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setSelectedWeek(result.currentWeek);
+      setSelectedDay(result.currentDay);
+      invalidateSkipQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       setReengageWeek("");
       setReengageOpen(false);
@@ -833,8 +836,8 @@ export default function ActivityPage() {
                 <CardContent className="pt-4">
                   <div className="space-y-4">
                     <div className="text-sm text-muted-foreground space-y-2">
-                      <p>Select a week to restart the program today.</p>
-                      <p>(Resetting the current week to a previous week will clear all posts and points for that Week/Day and after.)</p>
+                      <p>Select the week where you want to resume today.</p>
+                      <p>Missed weeks will be skipped and moved to the end of your program. Your Program Start Date, posts, points, and history will be preserved.</p>
                     </div>
 
                     <div className="space-y-2">
@@ -859,7 +862,7 @@ export default function ActivityPage() {
                       className="w-full"
                       data-testid="button-reengage-reset"
                     >
-                      {reengageMutation.isPending ? "Resetting..." : "Reset Program"}
+                      {reengageMutation.isPending ? "Re-engaging..." : "Re-engage"}
                     </Button>
                   </div>
                 </CardContent>
@@ -915,14 +918,14 @@ export default function ActivityPage() {
                       disabled={
                         skipWeekMutation.isPending ||
                         !skipWeekSelection ||
-                        (skippedWeeksData?.weeks || []).filter((w) => w.skipped).length >= 4
+                        (skippedWeeksData?.weeks || []).filter((w) => w.skipped && w.source !== "reengage").length >= 4
                       }
                       className="w-full"
                       data-testid="button-skip-week"
                     >
                       {skipWeekMutation.isPending ? "Skipping..." : "Skip Week"}
                     </Button>
-                    {(skippedWeeksData?.weeks || []).filter((w) => w.skipped).length >= 4 && (
+                    {(skippedWeeksData?.weeks || []).filter((w) => w.skipped && w.source !== "reengage").length >= 4 && (
                       <p className="text-sm text-muted-foreground">
                         You've reached the limit of 4 skipped weeks. Un-skip a week below to skip a different one.
                       </p>
@@ -937,16 +940,19 @@ export default function ActivityPage() {
                             <div key={w.weekStart} className="flex items-center justify-between text-sm">
                               <span>
                                 Week {w.weekNumber} ({formatWeekRange(w.weekStart)})
+                                {w.source === "reengage" ? " – Re-engagement" : ""}
                               </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => unskipWeekMutation.mutate(w.weekStart)}
-                                disabled={unskipWeekMutation.isPending}
-                                data-testid={`button-unskip-week-${w.weekNumber}`}
-                              >
-                                Un-skip
-                              </Button>
+                              {w.source !== "reengage" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => unskipWeekMutation.mutate(w.weekStart)}
+                                  disabled={unskipWeekMutation.isPending}
+                                  data-testid={`button-unskip-week-${w.weekNumber}`}
+                                >
+                                  Un-skip
+                                </Button>
+                              )}
                             </div>
                           ))}
                       </div>
