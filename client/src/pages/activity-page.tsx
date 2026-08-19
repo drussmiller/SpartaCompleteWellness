@@ -836,8 +836,8 @@ export default function ActivityPage() {
                 <CardContent className="pt-4">
                   <div className="space-y-4">
                     <div className="text-sm text-muted-foreground space-y-2">
-                      <p>Select the week where you want to resume today.</p>
-                      <p>Missed weeks will be skipped and moved to the end of your program. Your Program Start Date, posts, points, and history will be preserved.</p>
+                      <p>Select the last week you completed before your break.</p>
+                      <p>Every week after it, including the current week, will be skipped and moved to the end of your program. Your Program Start Date, posts, points, and history will be preserved.</p>
                     </div>
 
                     <div className="space-y-2">

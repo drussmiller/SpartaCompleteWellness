@@ -6857,10 +6857,10 @@ export const registerRoutes = async (
     },
   );
 
-  // Re-engage endpoint - preserves the original schedule and marks the most
-  // recent completed calendar weeks as automatic skips. This moves missed
-  // weeks to the end of the program without deleting posts or changing the
-  // program start date.
+  // Re-engage endpoint - preserves the original schedule and marks every
+  // calendar week after the selected "last completed" program week as an
+  // automatic skip, including the current partial week. This moves missed
+  // weeks to the end without deleting posts or changing the start date.
   router.post("/api/users/reengage", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -6905,48 +6905,79 @@ export const registerRoutes = async (
       const currentDayNumber = (daysSinceStart % 7) + 1;
 
       const result = await db.transaction(async (tx) => {
+        // Serialize authoritative skip-range replacements for this user. After
+        // waiting on the lock, PostgreSQL READ COMMITTED gives the following
+        // SELECT the latest committed automatic-skip range.
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(${req.user!.id})`,
+        );
+
         const existingRows = await tx
-          .select({ weekStartDate: skippedWeeks.weekStartDate })
+          .select({
+            weekStartDate: skippedWeeks.weekStartDate,
+            source: skippedWeeks.source,
+          })
           .from(skippedWeeks)
           .where(eq(skippedWeeks.userId, req.user!.id));
 
-        const skippedIdxs = new Set<number>();
+        const manualSkippedIdxs = new Set<number>();
         for (const row of existingRows) {
+          if (row.source === "reengage") continue;
           const skippedDate = new Date(row.weekStartDate);
           skippedDate.setHours(0, 0, 0, 0);
           const idx = Math.round(
             (skippedDate.getTime() - programStart.getTime()) / msPerWeek,
           );
-          if (idx >= 0 && idx < rawCurrentWeek) skippedIdxs.add(idx);
+          if (idx >= 0 && idx < rawCurrentWeek) manualSkippedIdxs.add(idx);
         }
 
-        const currentProgressWeek = Math.max(
+        const progressWithoutReengagement = Math.max(
           1,
-          rawCurrentWeek - skippedIdxs.size,
+          rawCurrentWeek - manualSkippedIdxs.size,
         );
-        if (targetWeek > currentProgressWeek) {
+        if (targetWeek > progressWithoutReengagement) {
           throw new Error("TARGET_WEEK_AHEAD");
         }
 
-        let skipsNeeded = currentProgressWeek - targetWeek;
+        // Locate the calendar week representing the selected program week
+        // after accounting for manual skips. The selected week remains active.
+        let activeProgramWeek = 0;
+        let targetCalendarIdx = -1;
+        for (let idx = 0; idx < rawCurrentWeek; idx++) {
+          if (manualSkippedIdxs.has(idx)) continue;
+          activeProgramWeek++;
+          if (activeProgramWeek === targetWeek) {
+            targetCalendarIdx = idx;
+            break;
+          }
+        }
+
+        if (targetCalendarIdx < 0) {
+          throw new Error("TARGET_WEEK_AHEAD");
+        }
+
         const weeksToSkip: { userId: number; weekStartDate: Date; source: string }[] = [];
 
-        // Work backward from last week. The current partial week is never
-        // skipped, and existing manual/automatic skips are left unchanged.
-        for (let idx = rawCurrentWeek - 2; idx >= 0 && skipsNeeded > 0; idx--) {
-          if (skippedIdxs.has(idx)) continue;
+        // Re-engagement is an authoritative cutoff: all calendar weeks after
+        // the selected active week are automatic skips, including this week.
+        for (let idx = targetCalendarIdx + 1; idx < rawCurrentWeek; idx++) {
+          if (manualSkippedIdxs.has(idx)) continue;
           weeksToSkip.push({
             userId: req.user!.id,
             weekStartDate: new Date(programStartRaw.getTime() + idx * msPerWeek),
             source: "reengage",
           });
-          skippedIdxs.add(idx);
-          skipsNeeded--;
         }
 
-        if (skipsNeeded > 0) {
-          throw new Error("INSUFFICIENT_COMPLETED_WEEKS");
-        }
+        const deletedRows = await tx
+          .delete(skippedWeeks)
+          .where(
+            and(
+              eq(skippedWeeks.userId, req.user!.id),
+              eq(skippedWeeks.source, "reengage"),
+            ),
+          )
+          .returning({ id: skippedWeeks.id });
 
         if (weeksToSkip.length > 0) {
           await tx
@@ -6955,11 +6986,15 @@ export const registerRoutes = async (
             .onConflictDoNothing();
         }
 
-        return { added: weeksToSkip.length, previousWeek: currentProgressWeek };
+        return {
+          added: weeksToSkip.length,
+          replaced: deletedRows.length,
+          previousWeek: progressWithoutReengagement,
+        };
       });
 
       logger.info(
-        `Re-engage: User ${req.user.id} moved from Week ${result.previousWeek} to Week ${targetWeek} by adding ${result.added} automatic skipped week(s); program start date and posts were preserved`,
+        `Re-engage: User ${req.user.id} selected Week ${targetWeek} as their last active week, replacing ${result.replaced} prior automatic skip(s) with ${result.added}; program start date and posts were preserved`,
       );
 
       res.json({
@@ -6972,9 +7007,6 @@ export const registerRoutes = async (
     } catch (error) {
       if (error instanceof Error && error.message === "TARGET_WEEK_AHEAD") {
         return res.status(400).json({ message: "Target week cannot be after your current week" });
-      }
-      if (error instanceof Error && error.message === "INSUFFICIENT_COMPLETED_WEEKS") {
-        return res.status(400).json({ message: "Not enough completed weeks to re-engage at that week" });
       }
       logger.error("Error in re-engage:", error);
       res.status(500).json({

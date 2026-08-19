@@ -221,7 +221,7 @@ export default function HomePage() {
     isFetchingNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["/api/posts", "v3-skip-filter", user?.teamId, user?.id, filterMode, selectedTeamId] as const,
+    queryKey: ["/api/posts", "v4-reengage-cutoff", user?.teamId, user?.id, filterMode, selectedTeamId] as const,
     queryFn: async ({ pageParam = 1 }) => {
       const url = buildPostsUrl(pageParam as number);
       const response = await apiRequest("GET", url);
