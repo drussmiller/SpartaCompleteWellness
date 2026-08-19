@@ -267,7 +267,6 @@ export default function ActivityPage() {
       setSelectedWeek(result.currentWeek);
       setSelectedDay(result.currentDay);
       invalidateSkipQueries();
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       setReengageWeek("");
       setReengageOpen(false);
     },
@@ -287,6 +286,16 @@ export default function ActivityPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
     queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/posts/counts"] });
+    void queryClient.refetchQueries({
+      queryKey: ["/api/posts"],
+      type: "all",
+    });
+    void queryClient.refetchQueries({
+      queryKey: ["/api/posts/counts"],
+      type: "all",
+    });
   };
 
   // Skip week mutation

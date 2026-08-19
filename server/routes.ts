@@ -217,6 +217,14 @@ export const registerRoutes = async (
       const queryEndTime = new Date(endOfDay.getTime() + tzOffset * 60000);
       const queryWeekStart = new Date(startOfWeek.getTime() + tzOffset * 60000);
       const queryWeekEnd = new Date(endOfWeek.getTime() + tzOffset * 60000);
+      const postWasNotSkipped = sql<boolean>`NOT EXISTS (
+        SELECT 1
+        FROM skipped_weeks sw
+        WHERE sw.user_id = ${posts.userId}
+          AND ${posts.createdAt} >= sw.week_start_date
+          AND ${posts.createdAt} < (sw.week_start_date + interval '7 days')
+          AND ${posts.createdAt} < sw.created_at
+      )`;
 
       // Query posts for the specified date by type
       const result = await db
@@ -232,6 +240,7 @@ export const registerRoutes = async (
             lt(posts.createdAt, queryEndTime),
             isNull(posts.parentId), // Don't count comments
             sql`${posts.type} IN ('food', 'workout', 'scripture', 'memory_verse')`, // Explicitly filter only these types
+            postWasNotSkipped,
           ),
         )
         .groupBy(posts.type);
@@ -250,6 +259,7 @@ export const registerRoutes = async (
             gte(posts.createdAt, queryWeekStart),
             lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
+            postWasNotSkipped,
           ),
         );
 
@@ -269,6 +279,7 @@ export const registerRoutes = async (
             gte(posts.createdAt, queryWeekStart),
             lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
+            postWasNotSkipped,
           ),
         );
 
@@ -288,6 +299,7 @@ export const registerRoutes = async (
             gte(posts.createdAt, queryWeekStart),
             lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
+            postWasNotSkipped,
           ),
         );
 
@@ -1682,6 +1694,7 @@ export const registerRoutes = async (
           WHERE sw.user_id = ${posts.userId}
             AND ${posts.createdAt} >= sw.week_start_date
             AND ${posts.createdAt} < (sw.week_start_date + interval '7 days')
+            AND ${posts.createdAt} < sw.created_at
         )`;
       };
 
@@ -2665,6 +2678,14 @@ export const registerRoutes = async (
         weekEnd.setDate(weekStart.getDate() + 7);
         const queryWeekStartUTC = new Date(weekStart.getTime() - (tzOffset * 60000));
         const queryWeekEndUTC = new Date(weekEnd.getTime() - (tzOffset * 60000));
+        const postWasNotSkipped = sql<boolean>`NOT EXISTS (
+          SELECT 1
+          FROM skipped_weeks sw
+          WHERE sw.user_id = ${posts.userId}
+            AND ${posts.createdAt} >= sw.week_start_date
+            AND ${posts.createdAt} < (sw.week_start_date + interval '7 days')
+            AND ${posts.createdAt} < sw.created_at
+        )`;
 
         const [weekResult] = await db
           .select({
@@ -2679,6 +2700,7 @@ export const registerRoutes = async (
               gte(posts.createdAt, queryWeekStartUTC),
               lt(posts.createdAt, queryWeekEndUTC),
               isNull(posts.parentId),
+              postWasNotSkipped,
             ),
           );
 
@@ -6914,21 +6936,34 @@ export const registerRoutes = async (
 
         const existingRows = await tx
           .select({
+            id: skippedWeeks.id,
             weekStartDate: skippedWeeks.weekStartDate,
             source: skippedWeeks.source,
+            createdAt: skippedWeeks.createdAt,
           })
           .from(skippedWeeks)
           .where(eq(skippedWeeks.userId, req.user!.id));
 
         const manualSkippedIdxs = new Set<number>();
+        const existingReengageByIdx = new Map<
+          number,
+          { id: number; createdAt: Date | null }
+        >();
         for (const row of existingRows) {
-          if (row.source === "reengage") continue;
           const skippedDate = new Date(row.weekStartDate);
           skippedDate.setHours(0, 0, 0, 0);
           const idx = Math.round(
             (skippedDate.getTime() - programStart.getTime()) / msPerWeek,
           );
-          if (idx >= 0 && idx < rawCurrentWeek) manualSkippedIdxs.add(idx);
+          if (idx < 0 || idx >= rawCurrentWeek) continue;
+          if (row.source === "reengage") {
+            existingReengageByIdx.set(idx, {
+              id: row.id,
+              createdAt: row.createdAt,
+            });
+          } else {
+            manualSkippedIdxs.add(idx);
+          }
         }
 
         const progressWithoutReengagement = Math.max(
@@ -6957,11 +6992,16 @@ export const registerRoutes = async (
         }
 
         const weeksToSkip: { userId: number; weekStartDate: Date; source: string }[] = [];
+        const desiredReengageIdxs = new Set<number>();
 
         // Re-engagement is an authoritative cutoff: all calendar weeks after
         // the selected active week are automatic skips, including this week.
         for (let idx = targetCalendarIdx + 1; idx < rawCurrentWeek; idx++) {
           if (manualSkippedIdxs.has(idx)) continue;
+          desiredReengageIdxs.add(idx);
+          // Keep rows already in the desired range so their original resume
+          // cutoff remains stable across repeated Re-engage requests.
+          if (existingReengageByIdx.has(idx)) continue;
           weeksToSkip.push({
             userId: req.user!.id,
             weekStartDate: new Date(programStartRaw.getTime() + idx * msPerWeek),
@@ -6969,15 +7009,15 @@ export const registerRoutes = async (
           });
         }
 
-        const deletedRows = await tx
-          .delete(skippedWeeks)
-          .where(
-            and(
-              eq(skippedWeeks.userId, req.user!.id),
-              eq(skippedWeeks.source, "reengage"),
-            ),
-          )
-          .returning({ id: skippedWeeks.id });
+        const obsoleteReengageIds = Array.from(existingReengageByIdx.entries())
+          .filter(([idx]) => !desiredReengageIdxs.has(idx))
+          .map(([, row]) => row.id);
+
+        if (obsoleteReengageIds.length > 0) {
+          await tx
+            .delete(skippedWeeks)
+            .where(inArray(skippedWeeks.id, obsoleteReengageIds));
+        }
 
         if (weeksToSkip.length > 0) {
           await tx
@@ -6988,7 +7028,7 @@ export const registerRoutes = async (
 
         return {
           added: weeksToSkip.length,
-          replaced: deletedRows.length,
+          replaced: obsoleteReengageIds.length,
           previousWeek: progressWithoutReengagement,
         };
       });
