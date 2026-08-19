@@ -1668,6 +1668,22 @@ export const registerRoutes = async (
       const groupAllUsers = req.query.groupAllUsers === "true";
       const orgAllUsers = req.query.orgAllUsers === "true";
       const specificTeamId = req.query.specificTeamId ? parseInt(req.query.specificTeamId as string) : null;
+      const excludeSkippedWeeks = req.query.excludeSkippedWeeks === "true";
+      const buildSkippedWeekFeedFilter = () => {
+        if (!excludeSkippedWeeks) return undefined;
+        // Home-feed posts from either manual or Re-engagement skipped weeks
+        // remain stored but are hidden before LIMIT/OFFSET pagination. The
+        // week_start_date value is already the canonical UTC boundary saved by
+        // the skip/re-engagement flow, so applying an offset again would move
+        // the Monday boundary twice.
+        return sql<boolean>`NOT EXISTS (
+          SELECT 1
+          FROM skipped_weeks sw
+          WHERE sw.user_id = ${posts.userId}
+            AND ${posts.createdAt} >= sw.week_start_date
+            AND ${posts.createdAt} < (sw.week_start_date + interval '7 days')
+        )`;
+      };
 
       // Specific Team filter: Org Admin or Group Admin viewing a specific team's posts
       if (specificTeamId && (req.user.isOrganizationAdmin || req.user.isGroupAdmin || req.user.isAdmin)) {
@@ -1753,7 +1769,8 @@ export const registerRoutes = async (
                   eq(posts.targetTeamId, specificTeamId)
                 )
               ),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1835,7 +1852,8 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, orgUserIds),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1906,7 +1924,8 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, userIds),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1955,7 +1974,8 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -2042,7 +2062,8 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              inArray(posts.userId, teamlessUserIds)
+              inArray(posts.userId, teamlessUserIds),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -2054,7 +2075,10 @@ export const registerRoutes = async (
       }
 
       // Build the query conditions
-      let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
+      let conditions = [
+        isNull(posts.parentId),
+        buildSkippedWeekFeedFilter(),
+      ]; // Start with only top-level posts
 
       // Add team-only filter if specified
       // This includes posts from team members AND posts targeted to this team via scope

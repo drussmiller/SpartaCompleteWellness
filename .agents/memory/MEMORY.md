@@ -1,3 +1,4 @@
 - [programStartDate on team change](program-start-date.md) — start-date computation rules + the [ADMIN RESET] deletion that must only fire on explicit admin start-date edits, never auto-computed team changes.
 - [Dev workflow has no watch](dev-workflow-no-watch.md) — server edits need manual restart_workflow; logger writes to logs/access.log not stdout.
 - [Timezone conventions](timezone-conventions.md) — stats/activities use client getTimezoneOffset (UTC=local+tz); leaderboard uses stored users.timezone_offset (UTC=local-tz). Match per endpoint.
+- [Re-engagement skips](reengagement-skips.md) — re-engagement is non-destructive; automatic missed-week skips are separate from the four manual skips and hidden from Home feeds.
