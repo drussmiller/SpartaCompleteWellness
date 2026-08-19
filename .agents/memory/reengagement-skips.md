@@ -7,4 +7,4 @@ Re-engagement must preserve the original program start date and all posts, media
 
 **Why:** The user wants illness/absence weeks with zero activity excluded from progress and extended at the end of the program without rewriting the schedule or forfeiting work.
 
-**How to apply:** Replace the user's prior automatic range with the authoritative new cutoff while leaving manual skips untouched. Preserve the original resume timestamp for unchanged automatic rows: posts made before the skip action are hidden and do not consume posting limits, while posts made after resuming are active. Keep automatic skips separate from the four manual skips.
+**How to apply:** Replace the prior automatic range while leaving manual skips untouched. If the selected target changes, use the new action time as the cutoff for every retained/new automatic week; an identical repeat preserves the old cutoff. Posts before the cutoff are hidden and do not consume limits, while posts after resuming are active. Keep automatic skips separate from the four manual skips.

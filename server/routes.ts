@@ -6933,6 +6933,7 @@ export const registerRoutes = async (
         await tx.execute(
           sql`SELECT pg_advisory_xact_lock(${req.user!.id})`,
         );
+        const reengagedAt = new Date();
 
         const existingRows = await tx
           .select({
@@ -6991,7 +6992,12 @@ export const registerRoutes = async (
           throw new Error("TARGET_WEEK_AHEAD");
         }
 
-        const weeksToSkip: { userId: number; weekStartDate: Date; source: string }[] = [];
+        const weeksToSkip: {
+          userId: number;
+          weekStartDate: Date;
+          source: string;
+          createdAt: Date;
+        }[] = [];
         const desiredReengageIdxs = new Set<number>();
 
         // Re-engagement is an authoritative cutoff: all calendar weeks after
@@ -7006,7 +7012,27 @@ export const registerRoutes = async (
             userId: req.user!.id,
             weekStartDate: new Date(programStartRaw.getTime() + idx * msPerWeek),
             source: "reengage",
+            createdAt: reengagedAt,
           });
+        }
+
+        const sameReengagementRange =
+          existingReengageByIdx.size === desiredReengageIdxs.size &&
+          Array.from(existingReengageByIdx.keys()).every((idx) =>
+            desiredReengageIdxs.has(idx),
+          );
+        const existingDesiredIds = Array.from(existingReengageByIdx.entries())
+          .filter(([idx]) => desiredReengageIdxs.has(idx))
+          .map(([, row]) => row.id);
+
+        // A changed target starts a new resume cutoff for every week in the
+        // retained automatic range. An identical repeat keeps the old cutoff
+        // so posts made after that resume remain active.
+        if (!sameReengagementRange && existingDesiredIds.length > 0) {
+          await tx
+            .update(skippedWeeks)
+            .set({ createdAt: reengagedAt })
+            .where(inArray(skippedWeeks.id, existingDesiredIds));
         }
 
         const obsoleteReengageIds = Array.from(existingReengageByIdx.entries())
