@@ -184,31 +184,32 @@ export default function HomePage() {
   }, [user, refetchLimits]);
 
   const buildPostsUrl = useCallback((page: number) => {
+    const homeFeedParams = "excludeSkippedWeeks=true";
     if (filterMode === "specific_team" && selectedTeamId && (user?.isAdmin || user?.isOrganizationAdmin || user?.isGroupAdmin)) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&specificTeamId=${selectedTeamId}`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&specificTeamId=${selectedTeamId}&${homeFeedParams}`;
     }
     if (filterMode === "new_users" && (user?.isAdmin || user?.isGroupAdmin || user?.isOrganizationAdmin || user?.isTeamLead)) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&teamlessIntroOnly=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&teamlessIntroOnly=true&${homeFeedParams}`;
     }
     if (filterMode === "all_users" && user?.isAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&allUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&allUsers=true&${homeFeedParams}`;
     }
     if (filterMode === "all_users" && user?.isOrganizationAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&orgAllUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&orgAllUsers=true&${homeFeedParams}`;
     }
     if (filterMode === "all_users" && user?.isGroupAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&groupAllUsers=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&groupAllUsers=true&${homeFeedParams}`;
     }
     if (filterMode === "all_users" && user?.isTeamLead) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true&${homeFeedParams}`;
     }
     if (!user?.teamId && user?.isAdmin) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true&${homeFeedParams}`;
     }
     if (!user?.teamId) {
-      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&type=introductory_video&userId=${user?.id}`;
+      return `/api/posts?page=${page}&limit=${PAGE_SIZE}&type=introductory_video&userId=${user?.id}&${homeFeedParams}`;
     }
-    return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true`;
+    return `/api/posts?page=${page}&limit=${PAGE_SIZE}&exclude=prayer,recipe,share&teamOnly=true&${homeFeedParams}`;
   }, [filterMode, selectedTeamId, user]);
 
   const {
@@ -220,7 +221,7 @@ export default function HomePage() {
     isFetchingNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["/api/posts", "v2", user?.teamId, user?.id, filterMode, selectedTeamId] as const,
+    queryKey: ["/api/posts", "v4-reengage-cutoff", user?.teamId, user?.id, filterMode, selectedTeamId] as const,
     queryFn: async ({ pageParam = 1 }) => {
       const url = buildPostsUrl(pageParam as number);
       const response = await apiRequest("GET", url);

@@ -217,6 +217,14 @@ export const registerRoutes = async (
       const queryEndTime = new Date(endOfDay.getTime() + tzOffset * 60000);
       const queryWeekStart = new Date(startOfWeek.getTime() + tzOffset * 60000);
       const queryWeekEnd = new Date(endOfWeek.getTime() + tzOffset * 60000);
+      const postWasNotSkipped = sql<boolean>`NOT EXISTS (
+        SELECT 1
+        FROM skipped_weeks sw
+        WHERE sw.user_id = ${posts.userId}
+          AND ${posts.createdAt} >= sw.week_start_date
+          AND ${posts.createdAt} < (sw.week_start_date + interval '7 days')
+          AND ${posts.createdAt} < sw.created_at
+      )`;
 
       // Query posts for the specified date by type
       const result = await db
@@ -232,6 +240,7 @@ export const registerRoutes = async (
             lt(posts.createdAt, queryEndTime),
             isNull(posts.parentId), // Don't count comments
             sql`${posts.type} IN ('food', 'workout', 'scripture', 'memory_verse')`, // Explicitly filter only these types
+            postWasNotSkipped,
           ),
         )
         .groupBy(posts.type);
@@ -250,6 +259,7 @@ export const registerRoutes = async (
             gte(posts.createdAt, queryWeekStart),
             lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
+            postWasNotSkipped,
           ),
         );
 
@@ -269,6 +279,7 @@ export const registerRoutes = async (
             gte(posts.createdAt, queryWeekStart),
             lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
+            postWasNotSkipped,
           ),
         );
 
@@ -288,6 +299,7 @@ export const registerRoutes = async (
             gte(posts.createdAt, queryWeekStart),
             lt(posts.createdAt, queryWeekEnd),
             isNull(posts.parentId),
+            postWasNotSkipped,
           ),
         );
 
@@ -1668,6 +1680,23 @@ export const registerRoutes = async (
       const groupAllUsers = req.query.groupAllUsers === "true";
       const orgAllUsers = req.query.orgAllUsers === "true";
       const specificTeamId = req.query.specificTeamId ? parseInt(req.query.specificTeamId as string) : null;
+      const excludeSkippedWeeks = req.query.excludeSkippedWeeks === "true";
+      const buildSkippedWeekFeedFilter = () => {
+        if (!excludeSkippedWeeks) return undefined;
+        // Home-feed posts from either manual or Re-engagement skipped weeks
+        // remain stored but are hidden before LIMIT/OFFSET pagination. The
+        // week_start_date value is already the canonical UTC boundary saved by
+        // the skip/re-engagement flow, so applying an offset again would move
+        // the Monday boundary twice.
+        return sql<boolean>`NOT EXISTS (
+          SELECT 1
+          FROM skipped_weeks sw
+          WHERE sw.user_id = ${posts.userId}
+            AND ${posts.createdAt} >= sw.week_start_date
+            AND ${posts.createdAt} < (sw.week_start_date + interval '7 days')
+            AND ${posts.createdAt} < sw.created_at
+        )`;
+      };
 
       // Specific Team filter: Org Admin or Group Admin viewing a specific team's posts
       if (specificTeamId && (req.user.isOrganizationAdmin || req.user.isGroupAdmin || req.user.isAdmin)) {
@@ -1753,7 +1782,8 @@ export const registerRoutes = async (
                   eq(posts.targetTeamId, specificTeamId)
                 )
               ),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1835,7 +1865,8 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, orgUserIds),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1906,7 +1937,8 @@ export const registerRoutes = async (
             and(
               isNull(posts.parentId),
               inArray(posts.userId, userIds),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -1955,7 +1987,8 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              buildExcludeFilter()
+              buildExcludeFilter(),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -2042,7 +2075,8 @@ export const registerRoutes = async (
           .where(
             and(
               isNull(posts.parentId),
-              inArray(posts.userId, teamlessUserIds)
+              inArray(posts.userId, teamlessUserIds),
+              buildSkippedWeekFeedFilter(),
             )
           )
           .orderBy(desc(posts.createdAt))
@@ -2054,7 +2088,10 @@ export const registerRoutes = async (
       }
 
       // Build the query conditions
-      let conditions = [isNull(posts.parentId)]; // Start with only top-level posts
+      let conditions = [
+        isNull(posts.parentId),
+        buildSkippedWeekFeedFilter(),
+      ]; // Start with only top-level posts
 
       // Add team-only filter if specified
       // This includes posts from team members AND posts targeted to this team via scope
@@ -2641,6 +2678,14 @@ export const registerRoutes = async (
         weekEnd.setDate(weekStart.getDate() + 7);
         const queryWeekStartUTC = new Date(weekStart.getTime() - (tzOffset * 60000));
         const queryWeekEndUTC = new Date(weekEnd.getTime() - (tzOffset * 60000));
+        const postWasNotSkipped = sql<boolean>`NOT EXISTS (
+          SELECT 1
+          FROM skipped_weeks sw
+          WHERE sw.user_id = ${posts.userId}
+            AND ${posts.createdAt} >= sw.week_start_date
+            AND ${posts.createdAt} < (sw.week_start_date + interval '7 days')
+            AND ${posts.createdAt} < sw.created_at
+        )`;
 
         const [weekResult] = await db
           .select({
@@ -2655,6 +2700,7 @@ export const registerRoutes = async (
               gte(posts.createdAt, queryWeekStartUTC),
               lt(posts.createdAt, queryWeekEndUTC),
               isNull(posts.parentId),
+              postWasNotSkipped,
             ),
           );
 
@@ -6833,20 +6879,26 @@ export const registerRoutes = async (
     },
   );
 
-  // Re-engage endpoint - allows users to restart from a previous week
+  // Re-engage endpoint - preserves the original schedule and marks every
+  // calendar week after the selected "last completed" program week as an
+  // automatic skip, including the current partial week. This moves missed
+  // weeks to the end without deleting posts or changing the start date.
   router.post("/api/users/reengage", authenticate, async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-      const { targetWeek } = req.body;
+      const targetWeek = Number(req.body?.targetWeek);
+      const tzOffset = Math.max(
+        -840,
+        Math.min(840, parseInt(req.body?.tzOffset) || 0),
+      );
 
-      if (!targetWeek || targetWeek < 1) {
+      if (!Number.isInteger(targetWeek) || targetWeek < 1) {
         return res.status(400).json({ message: "Invalid target week" });
       }
 
-      // Get user's current program start date
       const [currentUser] = await db
-        .select()
+        .select({ programStartDate: users.programStartDate })
         .from(users)
         .where(eq(users.id, req.user.id))
         .limit(1);
@@ -6855,141 +6907,173 @@ export const registerRoutes = async (
         return res.status(400).json({ message: "User program not initialized" });
       }
 
-      // Calculate today's day of the week (1=Monday, 7=Sunday)
-      const today = new Date();
-      const todayDayOfWeek = today.getDay();
-      // Convert JavaScript's 0=Sunday to our 1=Monday system
-      const currentDayNumber = todayDayOfWeek === 0 ? 7 : todayDayOfWeek;
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const msPerWeek = 7 * msPerDay;
+      const programStartRaw = new Date(currentUser.programStartDate);
+      const programStart = new Date(programStartRaw);
+      programStart.setHours(0, 0, 0, 0);
 
-      // Calculate new program_start_date
-      // Target: Week W Day D should be today
-      // Days from program start to target position: (W-1)*7 + (D-1)
-      const daysFromStart = (targetWeek - 1) * 7 + (currentDayNumber - 1);
-
-      // new_start_date = today - daysFromStart
-      const newProgramStartDate = new Date(today);
-      newProgramStartDate.setDate(today.getDate() - daysFromStart);
-      // Set to midnight
-      newProgramStartDate.setHours(0, 0, 0, 0);
-
-      // Calculate the cutoff date for deleting posts
-      // This is the date that represents targetWeek, currentDayNumber
-      const cutoffDate = new Date(newProgramStartDate);
-      cutoffDate.setDate(newProgramStartDate.getDate() + daysFromStart);
-      cutoffDate.setHours(0, 0, 0, 0);
-
-      logger.info(`Re-engage: User ${req.user.id} restarting at Week ${targetWeek}`);
-      logger.info(`Today is day ${currentDayNumber} of the week`);
-      logger.info(`New program start date: ${newProgramStartDate.toISOString()}`);
-      logger.info(`Deleting posts from ${cutoffDate.toISOString()} onwards`);
-
-      // First, get all posts that will be deleted to clean up their media
-      const postsToDelete = await db
-        .select({
-          id: posts.id,
-          mediaUrl: posts.mediaUrl,
-          is_video: posts.is_video
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            gte(posts.createdAt, cutoffDate)
-          )
-        );
-
-      logger.info(`Found ${postsToDelete.length} posts to delete for user ${req.user.id}`);
-
-      // Delete media files for each post before deleting the posts
-      if (postsToDelete.length > 0) {
-        const { spartaObjectStorage } = await import('./sparta-object-storage-final');
-
-        for (const post of postsToDelete) {
-          if (post.mediaUrl) {
-            try {
-              // Extract filename from mediaUrl
-              let filename = '';
-              if (post.mediaUrl.includes('filename=')) {
-                const urlParams = new URLSearchParams(post.mediaUrl.split('?')[1]);
-                filename = urlParams.get('filename') || '';
-              } else {
-                filename = post.mediaUrl.split('/').pop() || '';
-              }
-
-              if (filename) {
-                const filePath = `shared/uploads/${filename}`;
-
-                // Delete main media file
-                try {
-                  await spartaObjectStorage.deleteFile(filePath);
-                  logger.info(`Deleted media file: ${filePath} for post ${post.id}`);
-                } catch (err) {
-                  logger.error(`Could not delete media file ${filePath}: ${err}`);
-                }
-
-                // If it's a video, also delete the thumbnail
-                if (post.is_video) {
-                  const baseName = filename.substring(0, filename.lastIndexOf('.'));
-                  const thumbnailPath = `shared/uploads/${baseName}.jpg`;
-
-                  try {
-                    await spartaObjectStorage.deleteFile(thumbnailPath);
-                    logger.info(`Deleted video thumbnail: ${thumbnailPath} for post ${post.id}`);
-                  } catch (err) {
-                    logger.error(`Could not delete thumbnail ${thumbnailPath}: ${err}`);
-                  }
-                }
-              }
-            } catch (err) {
-              logger.error(`Error deleting media for post ${post.id}:`, err);
-            }
-          }
-        }
+      const userLocalNow = new Date(Date.now() - tzOffset * 60000);
+      const userStartOfDay = new Date(userLocalNow);
+      userStartOfDay.setHours(0, 0, 0, 0);
+      const daysSinceStart = Math.floor(
+        (userStartOfDay.getTime() - programStart.getTime()) / msPerDay,
+      );
+      if (daysSinceStart < 0) {
+        return res.status(400).json({ message: "User program has not started yet" });
       }
 
-      // Now delete the posts from the database
-      const deletedPosts = await db
-        .delete(posts)
-        .where(
-          and(
-            eq(posts.userId, req.user.id),
-            gte(posts.createdAt, cutoffDate)
-          )
-        )
-        .returning();
+      const rawCurrentWeek = Math.floor(daysSinceStart / 7) + 1;
+      const currentDayNumber = (daysSinceStart % 7) + 1;
 
-      logger.info(`Deleted ${deletedPosts.length} posts from database for user ${req.user.id}`);
+      const result = await db.transaction(async (tx) => {
+        // Serialize authoritative skip-range replacements for this user. After
+        // waiting on the lock, PostgreSQL READ COMMITTED gives the following
+        // SELECT the latest committed automatic-skip range.
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(${req.user!.id})`,
+        );
+        const reengagedAt = new Date();
 
-      // Update user's program_start_date
-      await db
-        .update(users)
-        .set({ programStartDate: newProgramStartDate })
-        .where(eq(users.id, req.user.id));
+        const existingRows = await tx
+          .select({
+            id: skippedWeeks.id,
+            weekStartDate: skippedWeeks.weekStartDate,
+            source: skippedWeeks.source,
+            createdAt: skippedWeeks.createdAt,
+          })
+          .from(skippedWeeks)
+          .where(eq(skippedWeeks.userId, req.user!.id));
 
-      // Recalculate points for the user
-      const userPosts = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.userId, req.user.id));
+        const manualSkippedIdxs = new Set<number>();
+        const existingReengageByIdx = new Map<
+          number,
+          { id: number; createdAt: Date | null }
+        >();
+        for (const row of existingRows) {
+          const skippedDate = new Date(row.weekStartDate);
+          skippedDate.setHours(0, 0, 0, 0);
+          const idx = Math.round(
+            (skippedDate.getTime() - programStart.getTime()) / msPerWeek,
+          );
+          if (idx < 0 || idx >= rawCurrentWeek) continue;
+          if (row.source === "reengage") {
+            existingReengageByIdx.set(idx, {
+              id: row.id,
+              createdAt: row.createdAt,
+            });
+          } else {
+            manualSkippedIdxs.add(idx);
+          }
+        }
 
-      const totalPoints = userPosts.reduce((sum, post) => sum + (post.points || 0), 0);
+        const progressWithoutReengagement = Math.max(
+          1,
+          rawCurrentWeek - manualSkippedIdxs.size,
+        );
+        if (targetWeek > progressWithoutReengagement) {
+          throw new Error("TARGET_WEEK_AHEAD");
+        }
 
-      await db
-        .update(users)
-        .set({ points: totalPoints })
-        .where(eq(users.id, req.user.id));
+        // Locate the calendar week representing the selected program week
+        // after accounting for manual skips. The selected week remains active.
+        let activeProgramWeek = 0;
+        let targetCalendarIdx = -1;
+        for (let idx = 0; idx < rawCurrentWeek; idx++) {
+          if (manualSkippedIdxs.has(idx)) continue;
+          activeProgramWeek++;
+          if (activeProgramWeek === targetWeek) {
+            targetCalendarIdx = idx;
+            break;
+          }
+        }
 
-      logger.info(`Recalculated points for user ${req.user.id}: ${totalPoints}`);
+        if (targetCalendarIdx < 0) {
+          throw new Error("TARGET_WEEK_AHEAD");
+        }
+
+        const weeksToSkip: {
+          userId: number;
+          weekStartDate: Date;
+          source: string;
+          createdAt: Date;
+        }[] = [];
+        const desiredReengageIdxs = new Set<number>();
+
+        // Re-engagement is an authoritative cutoff: all calendar weeks after
+        // the selected active week are automatic skips, including this week.
+        for (let idx = targetCalendarIdx + 1; idx < rawCurrentWeek; idx++) {
+          if (manualSkippedIdxs.has(idx)) continue;
+          desiredReengageIdxs.add(idx);
+          // Keep rows already in the desired range so their original resume
+          // cutoff remains stable across repeated Re-engage requests.
+          if (existingReengageByIdx.has(idx)) continue;
+          weeksToSkip.push({
+            userId: req.user!.id,
+            weekStartDate: new Date(programStartRaw.getTime() + idx * msPerWeek),
+            source: "reengage",
+            createdAt: reengagedAt,
+          });
+        }
+
+        const sameReengagementRange =
+          existingReengageByIdx.size === desiredReengageIdxs.size &&
+          Array.from(existingReengageByIdx.keys()).every((idx) =>
+            desiredReengageIdxs.has(idx),
+          );
+        const existingDesiredIds = Array.from(existingReengageByIdx.entries())
+          .filter(([idx]) => desiredReengageIdxs.has(idx))
+          .map(([, row]) => row.id);
+
+        // A changed target starts a new resume cutoff for every week in the
+        // retained automatic range. An identical repeat keeps the old cutoff
+        // so posts made after that resume remain active.
+        if (!sameReengagementRange && existingDesiredIds.length > 0) {
+          await tx
+            .update(skippedWeeks)
+            .set({ createdAt: reengagedAt })
+            .where(inArray(skippedWeeks.id, existingDesiredIds));
+        }
+
+        const obsoleteReengageIds = Array.from(existingReengageByIdx.entries())
+          .filter(([idx]) => !desiredReengageIdxs.has(idx))
+          .map(([, row]) => row.id);
+
+        if (obsoleteReengageIds.length > 0) {
+          await tx
+            .delete(skippedWeeks)
+            .where(inArray(skippedWeeks.id, obsoleteReengageIds));
+        }
+
+        if (weeksToSkip.length > 0) {
+          await tx
+            .insert(skippedWeeks)
+            .values(weeksToSkip)
+            .onConflictDoNothing();
+        }
+
+        return {
+          added: weeksToSkip.length,
+          replaced: obsoleteReengageIds.length,
+          previousWeek: progressWithoutReengagement,
+        };
+      });
+
+      logger.info(
+        `Re-engage: User ${req.user.id} selected Week ${targetWeek} as their last active week, replacing ${result.replaced} prior automatic skip(s) with ${result.added}; program start date and posts were preserved`,
+      );
 
       res.json({
-        message: "Program successfully reset",
-        newProgramStartDate,
-        deletedPostsCount: deletedPosts.length,
-        newPoints: totalPoints,
+        message: "Program successfully re-engaged",
+        programStartDate: currentUser.programStartDate,
+        skippedWeeksAdded: result.added,
         currentWeek: targetWeek,
         currentDay: currentDayNumber,
       });
     } catch (error) {
+      if (error instanceof Error && error.message === "TARGET_WEEK_AHEAD") {
+        return res.status(400).json({ message: "Target week cannot be after your current week" });
+      }
       logger.error("Error in re-engage:", error);
       res.status(500).json({
         message: "Failed to re-engage program",
@@ -7893,14 +7977,20 @@ export const registerRoutes = async (
       if (totalWeeks < 1) return res.json({ weeks: [] });
 
       const skippedRows = await db
-        .select()
+        .select({
+          weekStartDate: skippedWeeks.weekStartDate,
+          source: skippedWeeks.source,
+        })
         .from(skippedWeeks)
         .where(eq(skippedWeeks.userId, req.user.id));
       const skippedIdxs = new Set<number>();
+      const skippedSources = new Map<number, string>();
       for (const s of skippedRows) {
         const d = new Date(s.weekStartDate);
         d.setHours(0, 0, 0, 0);
-        skippedIdxs.add(Math.round((d.getTime() - programStart.getTime()) / msPerWeek));
+        const idx = Math.round((d.getTime() - programStart.getTime()) / msPerWeek);
+        skippedIdxs.add(idx);
+        skippedSources.set(idx, s.source);
       }
 
       const weeks = Array.from({ length: totalWeeks }, (_, i) => ({
@@ -7908,6 +7998,7 @@ export const registerRoutes = async (
         weekStart: new Date(programStartRaw.getTime() + i * msPerWeek).toISOString(),
         isCurrentWeek: i === totalWeeks - 1,
         skipped: skippedIdxs.has(i),
+        source: skippedSources.get(i) || null,
       }));
 
       res.json({ weeks });
@@ -7971,7 +8062,10 @@ export const registerRoutes = async (
 
       // Limit: at most 4 skipped weeks per user
       const existing = await db
-        .select({ weekStartDate: skippedWeeks.weekStartDate })
+        .select({
+          weekStartDate: skippedWeeks.weekStartDate,
+          source: skippedWeeks.source,
+        })
         .from(skippedWeeks)
         .where(eq(skippedWeeks.userId, req.user.id));
       const alreadySkipped = existing.some(
@@ -7984,7 +8078,9 @@ export const registerRoutes = async (
       // as-UTC (e.g. 06:00Z) normalize to the same basis as the start date.
       const utcDayIndex = (d: Date) => Math.floor(d.getTime() / msPerDay);
       const currentScheduleSkips = existing.filter(
-        (s) => utcDayIndex(new Date(s.weekStartDate)) >= utcDayIndex(programStartRaw),
+        (s) =>
+          s.source === "manual" &&
+          utcDayIndex(new Date(s.weekStartDate)) >= utcDayIndex(programStartRaw),
       ).length;
       if (!alreadySkipped && currentScheduleSkips >= 4) {
         return res.status(400).json({ message: "You can skip at most 4 weeks" });
@@ -7992,7 +8088,7 @@ export const registerRoutes = async (
 
       await db
         .insert(skippedWeeks)
-        .values({ userId: req.user.id, weekStartDate: normalized })
+        .values({ userId: req.user.id, weekStartDate: normalized, source: "manual" })
         .onConflictDoNothing();
 
       logger.info(`User ${req.user.id} skipped week starting ${normalized.toISOString()}`);
@@ -8021,6 +8117,7 @@ export const registerRoutes = async (
           and(
             eq(skippedWeeks.userId, req.user.id),
             eq(skippedWeeks.weekStartDate, requested),
+            eq(skippedWeeks.source, "manual"),
           ),
         );
 
@@ -8537,19 +8634,37 @@ export const registerRoutes = async (
       const queryStart = new Date(startOfWeek.getTime() - (tzOffset * 60000));
       const queryEnd = new Date(endOfWeek.getTime() - (tzOffset * 60000));
 
-      const result = await db
-        .select({
-          points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.userId, userId),
-            gte(posts.createdAt, queryStart),
-            lte(posts.createdAt, queryEnd),
-            isNull(posts.parentId), // Don't count comments
-          ),
+      // Both manual and Re-engagement skips exclude the week from point
+      // totals. skipped_weeks stores a local Monday as a timestamp; convert it
+      // to UTC using the same stored-offset convention as the leaderboard.
+      const userSkippedRows = await db
+        .select({ weekStartDate: skippedWeeks.weekStartDate })
+        .from(skippedWeeks)
+        .where(eq(skippedWeeks.userId, userId));
+      const currentWeekSkipped = userSkippedRows.some((row) => {
+        const skippedWeekStartUtc =
+          new Date(row.weekStartDate).getTime() - tzOffset * 60000;
+        return (
+          queryStart.getTime() >= skippedWeekStartUtc &&
+          queryStart.getTime() < skippedWeekStartUtc + 7 * 24 * 60 * 60 * 1000
         );
+      });
+
+      const result = currentWeekSkipped
+        ? [{ points: 0 }]
+        : await db
+            .select({
+              points: sql<number>`coalesce(sum(${posts.points}), 0)::integer`,
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.userId, userId),
+                gte(posts.createdAt, queryStart),
+                lte(posts.createdAt, queryEnd),
+                isNull(posts.parentId), // Don't count comments
+              ),
+            );
 
       // Ensure this endpoint also has consistent content-type
       res.setHeader("Content-Type", "application/json");

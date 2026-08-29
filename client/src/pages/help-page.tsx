@@ -103,7 +103,7 @@ function DefaultHelpContent() {
           <div>
             <h3 className="font-semibold">Re-Engage (Non-competitive teams only)</h3>
             <p className="mt-2">
-              If for some reason you had a pause in the program and you want to re-engage where you left off you can select the week you'd like to restart the program. You will restart on the current day of the week. All posts and points Week/Day and after will be forfeited.
+              If you paused the program and want to resume where you left off, select the last week you completed before your break. Every week after it, including the current week, will be skipped and moved to the end of your program. You will resume on the current day of the week, while your Program Start Date, posts, points, and history are preserved.
             </p>
           </div>
         </CardContent>

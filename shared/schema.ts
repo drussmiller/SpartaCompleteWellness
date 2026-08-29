@@ -601,6 +601,7 @@ export const skippedWeeks = pgTable("skipped_weeks", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   weekStartDate: timestamp("week_start_date").notNull(),
+  source: text("source").notNull().default("manual"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   userWeekUnique: unique("skipped_weeks_user_week_unique").on(table.userId, table.weekStartDate),
