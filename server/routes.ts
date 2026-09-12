@@ -2180,6 +2180,7 @@ export const registerRoutes = async (
 
         // Override any existing user filter for community posts to use group-level filtering
         conditions = conditions.filter(condition => {
+          if (!condition) return false;
           // Remove any existing userId conditions
           const conditionStr = condition.toString();
           return !conditionStr.includes('user_id') && !conditionStr.includes('userId');
