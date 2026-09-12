@@ -2178,13 +2178,15 @@ export const registerRoutes = async (
           return res.json([]);
         }
 
-        // Override any existing user filter for community posts to use group-level filtering
-        conditions = conditions.filter(condition => {
-          if (!condition) return false;
-          // Remove any existing userId conditions
-          const conditionStr = condition.toString();
-          return !conditionStr.includes('user_id') && !conditionStr.includes('userId');
-        });
+        // Community board visibility is group-based, so replace any earlier
+        // team/user filters with the base top-level and skipped-week filters.
+        // Do not inspect Drizzle filter objects with toString(); some optional
+        // filters are undefined and Drizzle conditions are not safe to parse.
+        conditions = [isNull(posts.parentId)];
+        const skippedWeekFeedFilter = buildSkippedWeekFeedFilter();
+        if (skippedWeekFeedFilter) {
+          conditions.push(skippedWeekFeedFilter);
+        }
 
         // Add group-level user filtering for community posts
         conditions.push(inArray(posts.userId, userIds));
