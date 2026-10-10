@@ -51,6 +51,7 @@ import {
   skippedWeeks,
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
+import { BIBLE_VERSION_CODES } from "@shared/bible-versions";
 import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
@@ -6353,6 +6354,27 @@ export const registerRoutes = async (
         message: "Failed to upload profile image",
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+  });
+
+  // Update the authenticated user's reading preference
+  router.patch("/api/user/bible-version", authenticate, async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const parsed = z.object({ bibleVersion: z.enum(BIBLE_VERSION_CODES) }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Choose AMP, NIV, NKJV, or ESV." });
+    }
+    try {
+      const [updated] = await db
+        .update(users)
+        .set({ bibleVersion: parsed.data.bibleVersion })
+        .where(eq(users.id, req.user.id))
+        .returning({ bibleVersion: users.bibleVersion });
+      if (!updated) return res.status(404).json({ message: "User not found" });
+      res.json(updated);
+    } catch (error) {
+      logger.error("Error updating Bible version:", error);
+      res.status(500).json({ message: "Failed to save Bible version" });
     }
   });
 

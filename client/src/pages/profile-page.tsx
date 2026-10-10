@@ -52,6 +52,7 @@ import { Edit, Sun, Moon, Type } from "lucide-react";
 import { useMemo } from "react";
 import { useDisplaySettings, FontSize } from "@/hooks/use-display-settings";
 import { Switch } from "@/components/ui/switch";
+import { BibleVersionPreference } from "@/components/bible-version-preference";
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -904,6 +905,7 @@ export default function ProfilePage({ onClose }: ProfilePageProps) {
                     Join a team to start your program
                   </p>
                 )}
+                <BibleVersionPreference user={user} />
               </div>
             </CardContent>
           </Card>
