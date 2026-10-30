@@ -52,6 +52,7 @@ import {
 } from "@shared/schema";
 import { setupAuth, authenticate } from "./auth";
 import { BIBLE_VERSION_CODES } from "@shared/bible-versions";
+import { normalizeActivityVideoLinks } from "./activity-document-links";
 import express, { Request, Response, NextFunction } from "express";
 import { Server as HttpServer } from "http";
 import mammoth from "mammoth";
@@ -10523,7 +10524,7 @@ export const registerRoutes = async (
         logger.info(`Document converted successfully, content length: ${result.value.length}`);
 
         // Return content without converting Bible verses to links
-        res.json({ content: result.value });
+        res.json({ content: normalizeActivityVideoLinks(result.value) });
       } catch (error) {
         logger.error("Error processing document:", {
           error,

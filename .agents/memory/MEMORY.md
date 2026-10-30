@@ -3,3 +3,4 @@
 - [Timezone conventions](timezone-conventions.md) — stats/activities use client getTimezoneOffset (UTC=local+tz); leaderboard uses stored users.timezone_offset (UTC=local-tz). Match per endpoint.
 - [Re-engagement skips](reengagement-skips.md) — re-engagement is non-destructive; automatic missed-week skips are separate from the four manual skips and hidden from Home feeds.
 - [Production transfer](production-workflow.md) — changes move through a separate production branch/system; preserve existing production data with additive migrations.
+- [Word video hyperlink pitfalls](word-video-hyperlinks.md) — edited Word URLs can retain nested stale destinations; normalize raw converted HTML before browser parsing.
