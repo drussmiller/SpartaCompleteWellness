@@ -8816,22 +8816,23 @@ export const registerRoutes = async (
           preferredName: users.preferredName,
           imageUrl: users.imageUrl,
           avatarColor: users.avatarColor,
-          points: sql<number>`CASE
-            WHEN EXISTS (
-              SELECT 1 FROM skipped_weeks sw
-              WHERE sw.user_id = users.id
-                AND ${queryStart} >= (sw.week_start_date - (${tzOffset} * interval '1 minute'))
-                AND ${queryStart} < (sw.week_start_date - (${tzOffset} * interval '1 minute') + interval '7 days')
-            ) THEN 0
-            ELSE COALESCE((
+          points: sql<number>`COALESCE((
               SELECT SUM(p.points)
               FROM posts p
               WHERE p.user_id = users.id
               AND p.created_at >= ${queryStart}
               AND p.created_at <= ${queryEnd}
               AND p.parent_id IS NULL
-            ), 0)
-          END::integer AS points`,
+              AND NOT EXISTS (
+                SELECT 1 FROM skipped_weeks sw
+                WHERE sw.user_id = users.id
+                  AND p.created_at >= (sw.week_start_date - (${tzOffset} * interval '1 minute'))
+                  AND p.created_at < (sw.week_start_date - (${tzOffset} * interval '1 minute') + interval '7 days')
+                  -- Automatic skips hide only activity before resuming.
+                  -- Explicit manual skips still exclude the entire week.
+                  AND (sw.source IS DISTINCT FROM 'reengage' OR p.created_at < sw.created_at)
+              )
+            ), 0)::integer AS points`,
           weeklyAvg: sql<number>`CASE
             WHEN (
               FLOOR(
@@ -8867,6 +8868,7 @@ export const registerRoutes = async (
                       WHERE sw2.user_id = users.id
                         AND p.created_at >= (sw2.week_start_date - (${tzOffset} * interval '1 minute'))
                         AND p.created_at < (sw2.week_start_date - (${tzOffset} * interval '1 minute') + interval '7 days')
+                        AND (sw2.source IS DISTINCT FROM 'reengage' OR p.created_at < sw2.created_at)
                     )
                 )::numeric
                 / (
@@ -8939,6 +8941,7 @@ export const registerRoutes = async (
                           WHERE sw2.user_id = u.id
                             AND p.created_at >= (sw2.week_start_date - (${tzOffset} * interval '1 minute'))
                             AND p.created_at < (sw2.week_start_date - (${tzOffset} * interval '1 minute') + interval '7 days')
+                            AND (sw2.source IS DISTINCT FROM 'reengage' OR p.created_at < sw2.created_at)
                         )
                     )::numeric
                     / (
